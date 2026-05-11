@@ -1,0 +1,99 @@
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editors/IDEs
+.idea/
+.vscode/
+*.iml
+
+# Env files and secrets
+.env
+.env.*
+!*.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Node/JS
+node_modules/
+.npm/
+.pnp/
+.pnp.js
+.yarn/
+dist/
+build/
+coverage/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+.venv/
+venv/
+ENV/
+.envrc
+
+# Backend artifacts
+*.sqlite
+*.db
+*.pid
+
+# Java/Kotlin/Gradle/Maven
+*.class
+*.jar
+*.war
+*.ear
+*.log
+.gradle/
+/build/
+/out/
+/.classpath
+/.project
+/.settings/
+
+# Go
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Rust
+/target/
+
+# Next.js / React Native / Expo
+.next/
+.out/
+.expo/
+.web/
+
+# Nuxt/Vue
+.nuxt/
+.dist/
+
+# SvelteKit
+.svelte-kit/
+
+# Docker
+.docker/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+
+# Misc
+*.swp
+*.tmp
+*.cache
+
