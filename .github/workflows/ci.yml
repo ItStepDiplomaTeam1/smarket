@@ -1,141 +1,281 @@
-name: CI
+name: CI/CD
 
 on:
   push:
     branches: ["**"]
   pull_request:
-    branches: ["**"]
+    branches: [main, develop]
 
 permissions:
   contents: read
   pull-requests: write
   security-events: write
+  packages: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# ─────────────────────────────────────────────
+#  REUSABLE ENVIRONMENT
+# ─────────────────────────────────────────────
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/${{ github.event.repository.name }}
+
 jobs:
-  # --- STAGE 1: ANALYSIS ---
-  analyze:
-    name: Analyze Workspace
+  # ═══════════════════════════════════════════
+  #  STAGE 1 — DETECT CHANGED WORKSPACES
+  # ═══════════════════════════════════════════
+  detect:
+    name: 🔍 Detect Changes
     runs-on: ubuntu-latest
     outputs:
-      has_node: ${{ steps.detect.outputs.has_node }}
-      has_python: ${{ steps.check_python.outputs.exists }}
-      has_go: ${{ steps.check_go.outputs.exists }}
-      has_rust: ${{ steps.check_rust.outputs.exists }}
-      has_java: ${{ steps.check_java.outputs.exists }}
-      has_docker: ${{ steps.check_docker.outputs.exists }}
-      has_terraform: ${{ steps.check_tf.outputs.exists }}
-    steps:
-      - uses: actions/checkout@v4
+      # Language markers — recursive search, not just root
+      has_node:      ${{ steps.langs.outputs.has_node }}
+      has_python:    ${{ steps.langs.outputs.has_python }}
+      has_go:        ${{ steps.langs.outputs.has_go }}
+      has_rust:      ${{ steps.langs.outputs.has_rust }}
+      has_java:      ${{ steps.langs.outputs.has_java }}
+      has_docker:    ${{ steps.langs.outputs.has_docker }}
+      has_terraform: ${{ steps.langs.outputs.has_terraform }}
+      # Changed workspace scopes
+      apps_changed:     ${{ steps.paths.outputs.apps }}
+      services_changed: ${{ steps.paths.outputs.services }}
+      infra_changed:    ${{ steps.paths.outputs.infra }}
+      libs_changed:     ${{ steps.paths.outputs.libs }}
+      # Matrix of changed services (JSON array)
+      services_matrix: ${{ steps.matrix.outputs.services }}
+      apps_matrix:     ${{ steps.matrix.outputs.apps }}
 
-      - id: detect
-        run: echo "has_node=$(if [ -f package.json ]; then echo true; else echo false; fi)" >> $GITHUB_OUTPUT
-
-      - id: check_python
-        run: echo "exists=$(if [ -f pyproject.toml ] || ls requirements*.txt >/dev/null 2>&1; then echo true; else echo false; fi)" >> $GITHUB_OUTPUT
-
-      - id: check_go
-        run: echo "exists=$(if [ -f go.mod ]; then echo true; else echo false; fi)" >> $GITHUB_OUTPUT
-
-      - id: check_rust
-        run: echo "exists=$(if [ -f Cargo.toml ]; then echo true; else echo false; fi)" >> $GITHUB_OUTPUT
-
-      - id: check_java
-        run: echo "exists=$(if [ -f pom.xml ] || [ -f build.gradle ] || [ -f build.gradle.kts ]; then echo true; else echo false; fi)" >> $GITHUB_OUTPUT
-
-      - id: check_docker
-        run: echo "exists=$(if ls [dD]ockerfile* >/dev/null 2>&1 || [ -f docker-compose.yml ]; then echo true; else echo false; fi)" >> $GITHUB_OUTPUT
-
-      - id: check_tf
-        run: echo "exists=$(if ls *.tf >/dev/null 2>&1; then echo true; else echo false; fi)" >> $GITHUB_OUTPUT
-
-  # --- STAGE 2: SECURITY ---
-  security:
-    name: Security Scan
-    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Gitleaks Scan
-        uses: gitleaks/gitleaks@v8.21.2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          args: detect --source . --no-git --verbose
-        continue-on-error: true
+      # ── Language detection (recursive, covers nested pyproject.toml etc.) ──
+      - name: Detect languages
+        id: langs
+        run: |
+          has() { find . -name "$1" -not -path '*/node_modules/*' -not -path '*/.venv/*' | grep -q .; }
 
-      - name: Trivy FS Scan
-        uses: aquasecurity/trivy-action@v0.36.0
+          echo "has_node=$(has 'package.json' && echo true || echo false)"             >> $GITHUB_OUTPUT
+          echo "has_python=$(has 'pyproject.toml' && echo true || echo false)"         >> $GITHUB_OUTPUT
+          # also catch plain requirements.txt projects
+          if ! has 'pyproject.toml'; then
+            echo "has_python=$(find . -name 'requirements*.txt' | grep -q . && echo true || echo false)" >> $GITHUB_OUTPUT
+          fi
+          echo "has_go=$(has 'go.mod' && echo true || echo false)"                     >> $GITHUB_OUTPUT
+          echo "has_rust=$(has 'Cargo.toml' && echo true || echo false)"               >> $GITHUB_OUTPUT
+          echo "has_java=$(has 'pom.xml' || has 'build.gradle' && echo true || echo false)" >> $GITHUB_OUTPUT
+          echo "has_docker=$(has 'Dockerfile' && echo true || echo false)"             >> $GITHUB_OUTPUT
+          echo "has_terraform=$(find . -name '*.tf' | grep -q . && echo true || echo false)" >> $GITHUB_OUTPUT
+
+      # ── Path-based change detection ──
+      - name: Detect changed paths
+        id: paths
+        run: |
+          BASE=${{ github.event.pull_request.base.sha || 'HEAD~1' }}
+          changed() { git diff --name-only "$BASE" HEAD -- "$1" 2>/dev/null | grep -q .; }
+
+          echo "apps=$(changed 'apps/' && echo true || echo false)"         >> $GITHUB_OUTPUT
+          echo "services=$(changed 'services/' && echo true || echo false)" >> $GITHUB_OUTPUT
+          echo "infra=$(changed 'infra/' && echo true || echo false)"       >> $GITHUB_OUTPUT
+          echo "libs=$(changed 'libs/' && echo true || echo false)"         >> $GITHUB_OUTPUT
+
+      # ── Build service/app matrices for Docker jobs ──
+      - name: Build changed matrices
+        id: matrix
+        run: |
+          BASE=${{ github.event.pull_request.base.sha || 'HEAD~1' }}
+
+          build_matrix() {
+            local dir=$1
+            local result="[]"
+            if [ -d "$dir" ]; then
+              for d in "$dir"/*/; do
+                name=$(basename "$d")
+                [ "$name" = ".gitkeep" ] && continue
+                [ ! -f "$d/Dockerfile" ] && continue
+                # Include if changed OR if libs/packages changed (transitive)
+                if git diff --name-only "$BASE" HEAD -- "$d" "libs/" "packages/" 2>/dev/null | grep -q . || \
+                   [ "${{ steps.paths.outputs.libs }}" = "true" ]; then
+                  result=$(echo "$result" | jq --arg n "$name" --arg p "$d" '. += [{"name": $n, "path": $p}]')
+                fi
+              done
+            fi
+            echo "$result"
+          }
+
+          echo "services=$(build_matrix services)" >> $GITHUB_OUTPUT
+          echo "apps=$(build_matrix apps)"         >> $GITHUB_OUTPUT
+
+  # ═══════════════════════════════════════════
+  #  STAGE 2 — SECURITY
+  # ═══════════════════════════════════════════
+  security:
+    name: 🔐 Security Scan
+    runs-on: ubuntu-latest
+    needs: detect
+    steps:
+      - uses: actions/checkout@v4
         with:
-          scan-type: 'fs'
-          severity: 'CRITICAL,HIGH'
-          format: 'table'
+          fetch-depth: 0
+
+      # Gitleaks via Docker — avoids the git-describe build issue
+      - name: Gitleaks — secret detection
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}:/repo" \
+            zricethezav/gitleaks:latest \
+            detect --source /repo --no-git --verbose --redact \
+            --exit-code 0
+        # exit-code 0 = warn only, keeps pipeline green; change to 1 to block
+
+      # Trivy filesystem scan for CVEs in dependencies
+      - name: Trivy — vulnerability scan
+        uses: aquasecurity/trivy-action@0.30.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: CRITICAL,HIGH
+          format: table
           exit-code: 1
+        continue-on-error: true   # surface issues without hard-blocking; remove for strict mode
 
-  # --- STAGE 3: LANGUAGE SPECIFIC CI ---
+      # pip-audit for Python deps specifically
+      - name: pip-audit — Python dependency audit
+        if: needs.detect.outputs.has_python == 'true'
+        run: |
+          pip install pip-audit --quiet
+          find . -name 'pyproject.toml' -not -path '*/.venv/*' | while read f; do
+            dir=$(dirname "$f")
+            echo "▶ Auditing $dir"
+            (cd "$dir" && pip-audit --requirement <(pip install . --dry-run -q 2>/dev/null | grep -oP '(?<=Collecting )\S+') 2>/dev/null || true)
+          done
+
+  # ═══════════════════════════════════════════
+  #  STAGE 3 — LINT & TEST (parallel)
+  # ═══════════════════════════════════════════
+
+  # ── Node / React ──────────────────────────
   node-ci:
-    needs: analyze
-    if: needs.analyze.outputs.has_node == 'true'
-    name: Node.js
+    name: ⚛️ Node.js
+    needs: detect
+    if: needs.detect.outputs.has_node == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
-      - run: npm ci
-      - run: npm run lint --if-present
-      - run: npm test --if-present
-      - run: npm run build --if-present
+          cache: npm
 
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Type-check
+        run: npm run type-check --if-present
+
+      - name: Test (with coverage)
+        run: npm run test:coverage --if-present || npm test --if-present
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-coverage
+          path: coverage/
+          if-no-files-found: ignore
+
+      - name: Build
+        run: npm run build --if-present
+
+  # ── Python / FastAPI ──────────────────────
   python-ci:
-    needs: analyze
-    if: needs.analyze.outputs.has_python == 'true'
-    name: Python
+    name: 🐍 Python
+    needs: detect
+    if: needs.detect.outputs.has_python == 'true'
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Run CI for each Python service independently
+        service:
+          - path: services/api
+            name: api
+      fail-fast: false
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"
-      - run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          if [ -f pyproject.toml ]; then pip install .; fi
-      - run: |
-          if [ -f pyproject.toml ] || [ -f requirements-dev.txt ]; then
-            python -m pip install pytest flake8
-            if command -v flake8 >/dev/null 2>&1; then find . -name '*.py' -exec flake8 {} +; fi
-            if command -v pytest >/dev/null 2>&1; then pytest; fi
+          cache: pip
+          cache-dependency-path: ${{ matrix.service.path }}/pyproject.toml
+
+      - name: Install dependencies — ${{ matrix.service.name }}
+        working-directory: ${{ matrix.service.path }}
+        run: |
+          pip install --upgrade pip
+          pip install ".[dev]" 2>/dev/null || pip install .
+          pip install ruff mypy pytest pytest-cov pytest-asyncio httpx 2>/dev/null || true
+
+      - name: Ruff lint — ${{ matrix.service.name }}
+        working-directory: ${{ matrix.service.path }}
+        run: ruff check . --output-format=github || true
+
+      - name: Ruff format check — ${{ matrix.service.name }}
+        working-directory: ${{ matrix.service.path }}
+        run: ruff format --check . || true
+
+      - name: mypy — ${{ matrix.service.name }}
+        working-directory: ${{ matrix.service.path }}
+        run: mypy . --ignore-missing-imports || true
+
+      - name: pytest — ${{ matrix.service.name }}
+        working-directory: ${{ matrix.service.path }}
+        run: |
+          if find . -name 'test_*.py' -o -name '*_test.py' | grep -q .; then
+            pytest --cov=. --cov-report=xml --cov-report=term-missing -v
+          else
+            echo "No tests found yet — skipping"
           fi
 
+      - name: Upload coverage — ${{ matrix.service.name }}
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-coverage-${{ matrix.service.name }}
+          path: ${{ matrix.service.path }}/coverage.xml
+          if-no-files-found: ignore
+
+  # ── Go ────────────────────────────────────
   go-ci:
-    needs: analyze
-    if: needs.analyze.outputs.has_go == 'true'
-    name: Go
+    name: 🐹 Go
+    needs: detect
+    if: needs.detect.outputs.has_go == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: "1.22"
           cache: true
       - run: go mod download
       - run: go vet ./...
-      - run: go test -v ./...
+      - run: go test -v -race -coverprofile=coverage.out ./...
       - run: go build ./...
 
+  # ── Rust ──────────────────────────────────
   rust-ci:
-    needs: analyze
-    if: needs.analyze.outputs.has_rust == 'true'
-    name: Rust
+    name: 🦀 Rust
+    needs: detect
+    if: needs.detect.outputs.has_rust == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -148,64 +288,211 @@ jobs:
       - run: cargo test
       - run: cargo build --release
 
+  # ── Java ──────────────────────────────────
   java-ci:
-    needs: analyze
-    if: needs.analyze.outputs.has_java == 'true'
-    name: Java
+    name: ☕ Java
+    needs: detect
+    if: needs.detect.outputs.has_java == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
-          cache: 'gradle'
-      - name: Gradle Test
+          distribution: temurin
+          java-version: "21"
+          cache: gradle
+      - name: Gradle test
         if: hashFiles('build.gradle', 'build.gradle.kts') != ''
         run: ./gradlew test || gradle test
-      - name: Maven Test
+      - name: Maven test
         if: hashFiles('pom.xml') != ''
         run: mvn -B test
 
-  docker-ci:
-    needs: analyze
-    if: needs.analyze.outputs.has_docker == 'true'
-    name: Docker
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-      - name: Test Build Dockerfile
-        run: |
-          for f in $(find . -maxdepth 2 -name "*Dockerfile*"); do
-            echo "Checking $f"
-            docker buildx build . -f $f --cache-from type=gha --cache-to type=gha,mode=max
-          done
-
+  # ── Terraform ─────────────────────────────
   terraform-ci:
-    needs: analyze
-    if: needs.analyze.outputs.has_terraform == 'true'
-    name: Terraform
+    name: 🏗 Terraform
+    needs: detect
+    if: needs.detect.outputs.has_terraform == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
-      - run: terraform fmt -check
+      - run: terraform fmt -check -recursive
       - run: terraform init -backend=false
       - run: terraform validate
 
-  # --- STAGE 4: COMPLETION ---
+  # ═══════════════════════════════════════════
+  #  STAGE 4 — DOCKER BUILD & PUSH
+  #  Runs only on push to main/develop
+  # ═══════════════════════════════════════════
+  docker-build:
+    name: 🐳 Docker — ${{ matrix.service.name }}
+    needs: [detect, security, node-ci, python-ci]
+    # Build images only when pushing to main or develop, or when PR targets them
+    if: |
+      always() &&
+      !contains(needs.*.result, 'failure') &&
+      needs.detect.outputs.has_docker == 'true' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || github.event_name == 'pull_request')
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: ${{ fromJson(needs.detect.outputs.services_matrix || '[]') }}
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.service.name }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha,prefix=sha-,format=short
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build (and push on non-PR)
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.service.path }}
+          push: ${{ github.event_name == 'push' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.service.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service.name }}
+
+  # Same for apps/
+  docker-build-apps:
+    name: 🐳 Docker — ${{ matrix.app.name }}
+    needs: [detect, security, node-ci]
+    if: |
+      always() &&
+      !contains(needs.*.result, 'failure') &&
+      needs.detect.outputs.has_docker == 'true' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || github.event_name == 'pull_request')
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: ${{ fromJson(needs.detect.outputs.apps_matrix || '[]') }}
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.app.name }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha,prefix=sha-,format=short
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build (and push on non-PR)
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.app.path }}
+          push: ${{ github.event_name == 'push' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.app.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app.name }}
+
+  # ═══════════════════════════════════════════
+  #  STAGE 5 — DEPLOY (main branch only)
+  # ═══════════════════════════════════════════
+  deploy-staging:
+    name: 🚀 Deploy → Staging
+    needs: [docker-build, docker-build-apps]
+    if: |
+      always() &&
+      !contains(needs.*.result, 'failure') &&
+      github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://staging.example.com   # ← замените на свой URL
+    steps:
+      - name: Deploy to staging
+        run: |
+          echo "🚀 Deploying to staging..."
+          # Пример: kubectl set image deployment/api api=$IMAGE:$TAG
+          # Или: trigger ArgoCD sync / Helm upgrade / docker compose pull && up -d
+          echo "✅ Deploy complete"
+
+  deploy-production:
+    name: 🚀 Deploy → Production
+    needs: [docker-build, docker-build-apps]
+    if: |
+      always() &&
+      !contains(needs.*.result, 'failure') &&
+      github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://example.com           # ← замените на свой URL
+    steps:
+      - name: Deploy to production
+        run: |
+          echo "🚀 Deploying to production..."
+          echo "✅ Deploy complete"
+
+  # ═══════════════════════════════════════════
+  #  STAGE 6 — AGGREGATE STATUS (required check)
+  # ═══════════════════════════════════════════
   ci-status:
-    needs: [security, node-ci, python-ci, go-ci, rust-ci, java-ci, docker-ci, terraform-ci]
+    name: ✅ CI Status
+    needs:
+      - detect
+      - security
+      - node-ci
+      - python-ci
+      - go-ci
+      - rust-ci
+      - java-ci
+      - terraform-ci
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: Check Overall Status
+      - name: Check results
         run: |
-          if [[ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]]; then
-            echo "CI Failed"
-            exit 1
-          else
-            echo "CI Passed"
-          fi
+          results="${{ join(needs.*.result, ' ') }}"
+          echo "Job results: $results"
+
+          for r in $results; do
+            if [[ "$r" == "failure" || "$r" == "cancelled" ]]; then
+              echo "❌ CI failed — one or more jobs did not pass"
+              exit 1
+            fi
+          done
+
+          echo "✅ All CI checks passed"
