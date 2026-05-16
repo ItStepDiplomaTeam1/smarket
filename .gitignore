@@ -43,10 +43,33 @@ venv/
 ENV/
 .envrc
 
+# Python caches/tests/typecheckers
+__pypackages__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.nox/
+.coverage
+coverage.xml
+htmlcov/
+.hypothesis/
+.pytype/
+.pyre/
+.ipynb_checkpoints/
+pip-wheel-metadata/
+*.egg
+
 # Backend artifacts
 *.sqlite
 *.db
 *.pid
+*.db-wal
+*.db-shm
+*.db-journal
+*.sqlite3
+celerybeat-schedule
+celerybeat.pid
 
 # Java/Kotlin/Gradle/Maven
 *.class
@@ -96,4 +119,4 @@ bin/
 *.swp
 *.tmp
 *.cache
-
+*.bak
