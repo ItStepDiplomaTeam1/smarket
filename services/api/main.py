@@ -6,6 +6,15 @@ from granian.constants import Interfaces
 
 from services.api.plugins.security.secrets.load_secret import get_secret
 
+
+def _coerce_int(value: object, default: int) -> int:
+    # Секреты почти всегда - string, поэтому тут нормализация к сейф инту
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # startup: init DB pool, redis, etc.
@@ -38,10 +47,10 @@ app = create_app()
 
 if __name__ == "__main__":
     Granian(
-        "app.main:app",
+        "services.api.main:app",
         address=get_secret("APP_HOST"),
-        port=get_secret("APP_PORT"),
+        port=_coerce_int(get_secret("APP_PORT"), 8000),
         interface=Interfaces.ASGI,
-        workers=get_secret("APP_WORKERS"),
+        workers=_coerce_int(get_secret("APP_WORKERS"), 1),
         reload=False,
     ).serve()
