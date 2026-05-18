@@ -29,3 +29,7 @@ dependencies = [
 
 [tool.uv.scripts]
 alembic = "alembic"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["plugins*", "database*"]
