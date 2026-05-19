@@ -206,8 +206,6 @@ jobs:
         service:
           - path: services/api
             name: api
-          - path: services/auth
-            name: auth
       fail-fast: false
 
     steps:
