@@ -1,17 +1,24 @@
-﻿from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+﻿from functools import lru_cache
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from services.api.plugins.security.secrets.load_secret import get_secret
 import os
 
 is_debug = os.getenv("DEBUG", "False") == "True"
 
-DATABASE_URL = get_secret('DATABASE_URL')
 
-engine = create_async_engine(DATABASE_URL, echo=is_debug)
+@lru_cache
+def _get_engine():
+    database_url = get_secret('DATABASE_URL')
+    return create_async_engine(database_url, echo=is_debug)
 
-AsyncSessionLocal = async_sessionmaker(
-    engine, class_=AsyncSession, expire_on_commit=False
-)
+
+@lru_cache
+def _get_async_session_local():
+    return async_sessionmaker(
+        _get_engine(), class_=AsyncSession, expire_on_commit=False
+    )
+
 
 async def get_db():
-    async with AsyncSessionLocal() as session:
+    async with _get_async_session_local() as session:
         yield session

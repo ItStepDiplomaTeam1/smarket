@@ -4,13 +4,16 @@ from services.api.database.services.create_tables import User
 from services.api.plugins.security.hash.password import verify_password
 
 
-async def user_password_check(session: AsyncSession, email: str, outer_password: str) -> bool:
+async def get_authenticated_user(session: AsyncSession, email: str, outer_password: str) -> User | None:
     result = await session.execute(
         select(User).where(User.email == email)
     )
     user = result.scalar_one_or_none()
 
     if user is None:
-        return False
+        return None
 
-    return verify_password(outer_password, user.hashed_password)
+    if not verify_password(outer_password, user.hashed_password):
+        return None
+
+    return user

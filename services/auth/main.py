@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 from services.api.plugins.security.limiters.auth_limiter import auth_limiter
 from services.api.database.session import get_db
 from services.api.database.services.create_tables import User
-from services.api.database.services.checking.user import user_password_check
+from services.api.database.services.checking.user import get_authenticated_user
 from services.api.schemas.auth import RegisterRequest, RegisterResponse, LoginResponse
 from services.api.plugins.security.jwt_handler import create_access_token
 from services.api.plugins.security.hash.password import hash_password
@@ -64,18 +64,14 @@ async def login(
     db: AsyncSession = Depends(get_db)
 ):
     try:
-        is_valid = await user_password_check(db, body.email, body.password)
+        user = await get_authenticated_user(db, body.email, body.password)
 
-        if not is_valid:
+        if user is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-
-        from sqlalchemy import select
-        result = await db.execute(select(User).where(User.email == body.email))
-        user = result.scalar_one()
 
         return LoginResponse(
             access_token=create_access_token(str(user.id), user.role),

@@ -201,6 +201,8 @@ jobs:
     needs: detect
     if: needs.detect.outputs.has_python == 'true'
     runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
     strategy:
       matrix:
         service:
@@ -238,8 +240,6 @@ jobs:
 
       - name: pytest — ${{ matrix.service.name }}
         working-directory: ${{ matrix.service.path }}
-        env:
-          PYTHONPATH: ${{ github.workspace }}
         run: |
           if find . -name 'test_*.py' -o -name '*_test.py' | grep -q .; then
             pytest --cov=. --cov-report=xml --cov-report=term-missing -v
