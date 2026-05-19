@@ -1,10 +1,12 @@
 ﻿from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from services.api.plugins.security.secrets.load_secret import get_secret
+import os
 
+is_debug = os.getenv("DEBUG", "False") == "True"
 
 DATABASE_URL = get_secret('DATABASE_URL')
 
-engine = create_async_engine(DATABASE_URL, echo=get_secret("DEBUG") == "True")
+engine = create_async_engine(DATABASE_URL, echo=is_debug)
 
 AsyncSessionLocal = async_sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False
