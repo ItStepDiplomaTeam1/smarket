@@ -20,5 +20,6 @@ def _get_async_session_local():
 
 
 async def get_db():
-    async with _get_async_session_local() as session:
+    session_maker = _get_async_session_local()
+    async with session_maker() as session:
         yield session
