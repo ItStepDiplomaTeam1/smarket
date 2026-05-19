@@ -203,10 +203,10 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # Run CI for each Python service independently
         service:
           - path: services/api
             name: api
+          
       fail-fast: false
 
     steps:

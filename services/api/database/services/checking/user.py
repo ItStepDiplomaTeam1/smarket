@@ -12,3 +12,5 @@ async def user_password_check(session: AsyncSession, email: str, outer_password:
 
     if user is None:
         return False
+
+    return verify_password(outer_password, user.hashed_password)
