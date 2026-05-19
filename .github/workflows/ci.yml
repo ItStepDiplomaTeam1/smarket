@@ -201,9 +201,10 @@ jobs:
     needs: detect
     if: needs.detect.outputs.has_python == 'true'
     runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}
     strategy:
       matrix:
-        # Run CI for each Python service independently
         service:
           - path: services/api
             name: api

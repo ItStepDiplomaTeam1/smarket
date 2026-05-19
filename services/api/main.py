@@ -6,6 +6,8 @@ from granian.constants import Interfaces
 
 from services.api.plugins.security.secrets.load_secret import get_secret
 
+from services.auth.main import router as auth_router
+
 
 def _coerce_int(value: object, default: int) -> int:
     # Секреты почти всегда - string, поэтому тут нормализация к сейф инту
@@ -31,9 +33,9 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
-    # Routers
-    # from app.api.v1 import router as v1_router
-    # app.include_router(v1_router, prefix="/api/v1")
+
+    app.include_router(auth_router, prefix="/auth")
+
 
     @app.get("/health", tags=["system"])
     async def health() -> dict:
