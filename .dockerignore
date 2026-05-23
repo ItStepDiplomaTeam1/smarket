@@ -1,0 +1,10 @@
+﻿.env
+**/.env
+__pycache__
+**/__pycache__
+.venv
+**/.venv
+.pytest_cache
+.mypy_cache
+infra/
+.git/
