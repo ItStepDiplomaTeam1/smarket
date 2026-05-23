@@ -1,6 +1,6 @@
-﻿from sqlalchemy import select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from services.api.database.services.create_tables import User
+from services.api.database.services.models import User
 from services.api.plugins.security.hash.password import verify_password
 
 

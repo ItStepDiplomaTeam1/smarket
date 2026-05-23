@@ -1,14 +1,24 @@
-﻿from fastapi import APIRouter, HTTPException, status, Depends, Request
+from fastapi import APIRouter, HTTPException, status, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone
 from sqlalchemy.exc import IntegrityError
 
 from services.api.plugins.security.limiters.auth_limiter import auth_limiter
 from services.api.database.session import get_db
-from services.api.database.services.create_tables import User
+from services.api.database.services.models import User
 from services.api.database.services.checking.user import get_authenticated_user
-from services.api.schemas.auth import RegisterRequest, RegisterResponse, LoginResponse
-from services.api.plugins.security.jwt_handler import create_access_token
+from services.api.schemas.auth import (
+    RegisterRequest,
+    RegisterResponse,
+    LoginResponse,
+    RefreshTokenRequest,
+    TokenResponse,
+)
+from services.api.plugins.security.jwt_handler import (
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+)
 from services.api.plugins.security.hash.password import hash_password
 
 
@@ -75,6 +85,7 @@ async def login(
 
         return LoginResponse(
             access_token=create_access_token(str(user.id), user.role),
+            refresh_token=create_refresh_token(str(user.id), user.role),
         )
 
     except HTTPException:
@@ -85,3 +96,20 @@ async def login(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
         )
+
+
+@router.post("/refresh", response_model=TokenResponse, status_code=status.HTTP_200_OK)
+async def refresh(body: RefreshTokenRequest):
+    payload = decode_token(body.refresh_token)
+
+    if payload.get("type") != "refresh":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token type",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return TokenResponse(
+        access_token=create_access_token(payload["sub"], payload["role"]),
+        token_type="bearer",
+    )
