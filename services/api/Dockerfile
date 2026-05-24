@@ -4,8 +4,8 @@ WORKDIR /app
 
 RUN pip install --no-cache-dir uv
 
-COPY services/api/pyproject.toml ./services/api/pyproject.toml
-RUN uv pip install --system --no-cache -r services/api/pyproject.toml
+COPY pyproject.toml ./pyproject.toml
+RUN uv pip install --system --no-cache -r pyproject.toml
 
 FROM python:3.11-slim
 
