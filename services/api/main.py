@@ -8,9 +8,13 @@ from services.api.plugins.security.secrets.load_secret import get_secret
 
 from services.auth.main import router as auth_router
 
+from services.api.plugins.logger import setup_logger
+from loguru import logger
+
+setup_logger()
 
 def _coerce_int(value: object, default: int) -> int:
-    # Секреты почти всегда - string, поэтому тут нормализация к сейф инту
+    # тут нормализация к сейф инту
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -39,6 +43,7 @@ def create_app() -> FastAPI:
 
     @app.get("/health", tags=["system"])
     async def health() -> dict:
+        logger.info("Обробка хелсчеку")
         return {"status": "ok"}
 
     return app
