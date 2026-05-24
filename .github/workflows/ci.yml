@@ -31,29 +31,25 @@ jobs:
     name: 🔍 Detect Changes
     runs-on: ubuntu-latest
     outputs:
-      # Language markers — recursive search, not just root
-      has_node:      ${{ steps.langs.outputs.has_node }}
-      has_python:    ${{ steps.langs.outputs.has_python }}
-      has_go:        ${{ steps.langs.outputs.has_go }}
-      has_rust:      ${{ steps.langs.outputs.has_rust }}
-      has_java:      ${{ steps.langs.outputs.has_java }}
-      has_docker:    ${{ steps.langs.outputs.has_docker }}
+      has_node: ${{ steps.langs.outputs.has_node }}
+      has_python: ${{ steps.langs.outputs.has_python }}
+      has_go: ${{ steps.langs.outputs.has_go }}
+      has_rust: ${{ steps.langs.outputs.has_rust }}
+      has_java: ${{ steps.langs.outputs.has_java }}
+      has_docker: ${{ steps.langs.outputs.has_docker }}
       has_terraform: ${{ steps.langs.outputs.has_terraform }}
-      # Changed workspace scopes
-      apps_changed:     ${{ steps.paths.outputs.apps }}
+      apps_changed: ${{ steps.paths.outputs.apps }}
       services_changed: ${{ steps.paths.outputs.services }}
-      infra_changed:    ${{ steps.paths.outputs.infra }}
-      libs_changed:     ${{ steps.paths.outputs.libs }}
-      # Matrix of changed services (JSON array)
+      infra_changed: ${{ steps.paths.outputs.infra }}
+      libs_changed: ${{ steps.paths.outputs.libs }}
       services_matrix: ${{ steps.matrix.outputs.services }}
-      apps_matrix:     ${{ steps.matrix.outputs.apps }}
+      apps_matrix: ${{ steps.matrix.outputs.apps }}
 
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # ── Language detection (recursive, covers nested pyproject.toml etc.) ──
       - name: Detect languages
         id: langs
         run: |
@@ -61,7 +57,6 @@ jobs:
 
           echo "has_node=$(has 'package.json' && echo true || echo false)"             >> $GITHUB_OUTPUT
           echo "has_python=$(has 'pyproject.toml' && echo true || echo false)"         >> $GITHUB_OUTPUT
-          # also catch plain requirements.txt projects
           if ! has 'pyproject.toml'; then
             echo "has_python=$(find . -name 'requirements*.txt' | grep -q . && echo true || echo false)" >> $GITHUB_OUTPUT
           fi
@@ -71,7 +66,6 @@ jobs:
           echo "has_docker=$(has 'Dockerfile' && echo true || echo false)"             >> $GITHUB_OUTPUT
           echo "has_terraform=$(find . -name '*.tf' | grep -q . && echo true || echo false)" >> $GITHUB_OUTPUT
 
-      # ── Path-based change detection ──
       - name: Detect changed paths
         id: paths
         run: |
@@ -83,7 +77,6 @@ jobs:
           echo "infra=$(changed 'infra/' && echo true || echo false)"       >> $GITHUB_OUTPUT
           echo "libs=$(changed 'libs/' && echo true || echo false)"         >> $GITHUB_OUTPUT
 
-      # ── Build service/app matrices for Docker jobs ──
       - name: Build changed matrices
         id: matrix
         run: |
@@ -97,7 +90,6 @@ jobs:
                 name=$(basename "$d")
                 [ "$name" = ".gitkeep" ] && continue
                 [ ! -f "$d/Dockerfile" ] && continue
-                # Include if changed OR if libs/packages changed (transitive)
                 if git diff --name-only "$BASE" HEAD -- "$d" "libs/" "packages/" 2>/dev/null | grep -q . || \
                    [ "${{ steps.paths.outputs.libs }}" = "true" ]; then
                   result=$(echo "$result" | jq --arg n "$name" --arg p "$d" '. += [{"name": $n, "path": $p}]')
@@ -107,9 +99,13 @@ jobs:
             echo "$result"
           }
 
-          echo "services=$(build_matrix services)" >> $GITHUB_OUTPUT
-          echo "apps=$(build_matrix apps)"         >> $GITHUB_OUTPUT
+          echo "services<<EOF" >> $GITHUB_OUTPUT
+          build_matrix services >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
+          echo "apps<<EOF" >> $GITHUB_OUTPUT
+          build_matrix apps >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
   # ═══════════════════════════════════════════
   #  STAGE 2 — SECURITY
   # ═══════════════════════════════════════════

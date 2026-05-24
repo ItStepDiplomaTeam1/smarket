@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import datetime, timezone
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy import select
+from loguru import logger
 
 from services.api.plugins.security.limiters.auth_limiter import auth_limiter
 from services.api.database.session import get_db
@@ -38,6 +39,7 @@ async def get_current_user(
     try:
         payload = decode_token(token)
     except (JWTExpiredError, JWTInvalidError):
+        logger.warning("Спроба доступу з невалідним або простроченим токеном")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired access token",
@@ -45,6 +47,7 @@ async def get_current_user(
         )
 
     if payload.get("type") != "access":
+        logger.warning(f"Надано неправильний тип токена: {payload.get('type')}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token type",
@@ -56,6 +59,7 @@ async def get_current_user(
     user = result.scalar_one_or_none()
 
     if not user:
+        logger.warning(f"Користувача з ID {user_id} не знайдено в базі даних")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
@@ -63,6 +67,7 @@ async def get_current_user(
         )
 
     if not user.is_active:
+        logger.warning(f"Запит від неактивного користувача з ID {user_id}")
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User is inactive",
@@ -95,6 +100,7 @@ async def register(
         body: RegisterRequest,
         db: AsyncSession = Depends(get_db)
 ):
+    logger.info(f"Запит на реєстрацію нового користувача з email: {body.email}")
     try:
         inner_user = User(
             email=body.email,
@@ -121,6 +127,7 @@ async def register(
             max_age=REFRESH_TOKEN_MAX_AGE,
         )
 
+        logger.success(f"Користувача {body.email} успішно зареєстровано з ID: {inner_user.id}")
         return RegisterResponse(
             access_token=access_token,
             token_type="bearer",
@@ -129,12 +136,14 @@ async def register(
 
     except IntegrityError:
         await db.rollback()
+        logger.warning(f"Помилка реєстрації: email {body.email} вже існує в системі")
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email already registered",
         )
     except Exception as e:
         await db.rollback()
+        logger.exception(f"Критична помилка під час реєстрації користувача {body.email}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
@@ -147,8 +156,10 @@ async def login(
         body: RegisterRequest,
         db: AsyncSession = Depends(get_db)
 ):
+    logger.info(f"Запит на авторизацію користувача з email: {body.email}")
     token = _extract_bearer_token(request)
     if token and _is_invalid_token(token):
+        logger.warning(f"Спроба авторизації з невалідним токеном у заголовок для {body.email}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
@@ -159,6 +170,7 @@ async def login(
         user = await get_authenticated_user(db, body.email, body.password)
 
         if user is None:
+            logger.warning(f"Невдала спроба входу: неправильний пароль або email для {body.email}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials",
@@ -177,6 +189,7 @@ async def login(
             max_age=REFRESH_TOKEN_MAX_AGE,
         )
 
+        logger.success(f"Користувач {body.email} успішно авторизований. ID: {user.id}")
         return LoginResponse(
             access_token=access_token,
             token_type="bearer"
@@ -185,6 +198,7 @@ async def login(
     except HTTPException:
         raise
     except Exception as e:
+        logger.exception(f"Критична помилка під час входу користувача {body.email}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e)
@@ -196,6 +210,7 @@ async def refresh(request: Request):
     refresh_token = request.cookies.get("refresh_token")
 
     if not refresh_token:
+        logger.warning("Спроба оновлення токена без наявності refresh_token у куках")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token missing",
@@ -205,6 +220,7 @@ async def refresh(request: Request):
     try:
         payload = decode_token(refresh_token)
     except (JWTExpiredError, JWTInvalidError):
+        logger.warning("Спроба оновлення з невалідним або простроченим refresh токеном")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired refresh token",
@@ -212,12 +228,14 @@ async def refresh(request: Request):
         )
 
     if payload.get("type") != "refresh":
+        logger.warning(f"Для оновлення надано токен невідповідного типу: {payload.get('type')}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token type",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    logger.info(f"Успішно оновлено токени для користувача з ID: {payload.get('sub')}")
     return TokenResponse(
         access_token=create_access_token(payload["sub"], payload["role"]),
         token_type="bearer",
@@ -226,6 +244,7 @@ async def refresh(request: Request):
 
 @router.get("/me")
 async def get_me(current_user: User = Depends(get_current_user)):
+    logger.info(f"Користувач {current_user.email} (ID: {current_user.id}) запитав інформацію про себе")
     return {
         "id": current_user.id,
         "email": current_user.email,
@@ -235,6 +254,7 @@ async def get_me(current_user: User = Depends(get_current_user)):
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(response: Response):
+    logger.info("Запит на вихід із системи, видалення refresh токена з кук")
     response.delete_cookie(
         key="refresh_token",
         httponly=True,
