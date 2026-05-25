@@ -5,6 +5,7 @@ WORKDIR /app
 RUN pip install --no-cache-dir uv
 
 COPY services/api/pyproject.toml ./pyproject.toml
+
 RUN uv pip install --system --no-cache -r pyproject.toml
 
 FROM python:3.11-slim
@@ -16,6 +17,6 @@ COPY --from=builder /usr/local/bin /usr/local/bin
 
 COPY . .
 
-EXPOSE 8000
+WORKDIR /app/services/api
 
-CMD ["python", "-m", "services.api.main"]
+EXPOSE 8000

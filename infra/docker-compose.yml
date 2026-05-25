@@ -1,12 +1,20 @@
 services:
-  api:
-    build:
-      context: ..
-      dockerfile: services/api/Dockerfile
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: smarket
+      POSTGRES_PASSWORD: smarket
+      POSTGRES_DB: smarket
     ports:
-      - "8000:8000"
-    env_file:
-      - ../services/api/.env
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smarket -d smarket"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   auth_service:
     build:
@@ -16,3 +24,42 @@ services:
       - "8001:8001"
     env_file:
       - ../services/auth_service/.env
+    depends_on:
+      db:
+        condition: service_healthy
+
+  migration_job:
+    build:
+      context: ..
+      dockerfile: services/api/Dockerfile
+    command:
+      - "sh"
+      - "-c"
+      - "alembic upgrade head && python seed_data.py"
+    env_file:
+      - ../services/api/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  business_logic_service:
+    build:
+      context: ..
+      dockerfile: services/api/Dockerfile
+    command:
+      - "sh"
+      - "-c"
+      - "cd /app && granian --interface asgi --host 0.0.0.0 --port 8000 --workers 4 services.api.main:app"
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../services/api/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      migration_job:
+        condition: service_completed_successfully
+
+volumes:
+  postgres_data:
