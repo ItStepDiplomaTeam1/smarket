@@ -1,7 +1,8 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from services.api.database.services.models import User
-from services.api.plugins.security.hash.password import verify_password
+
+from services.auth_service.database.models import User
+from services.auth_service.plugins.security.hash.password import verify_password
 
 
 async def get_authenticated_user(session: AsyncSession, email: str, outer_password: str) -> User | None:
