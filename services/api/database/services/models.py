@@ -23,9 +23,7 @@ class Base(DeclarativeBase):
 class User(Base):
     __tablename__ = "User"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[str] = mapped_column(String(255), nullable=False, default="user")
@@ -50,24 +48,18 @@ class Category(Base):
         UniqueConstraint("slug", name="category_slug_unique"),
     )
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     slug: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    products: Mapped[list["Product"]] = relationship(
-        "Product", back_populates="category"
-    )
+    products: Mapped[list["Product"]] = relationship("Product", back_populates="category")
 
 
 class Retailer(Base):
     __tablename__ = "Retailer"
     __table_args__ = (UniqueConstraint("name", name="retailer_name_unique"),)
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     logo_url: Mapped[str] = mapped_column(String(255), nullable=False)
 
@@ -82,9 +74,7 @@ class Retailer(Base):
 class Product(Base):
     __tablename__ = "Product"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     category_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("Category.id"), nullable=False
@@ -100,17 +90,13 @@ class Product(Base):
     price_history: Mapped[list["PriceHistory"]] = relationship(
         "PriceHistory", back_populates="product"
     )
-    cart_items: Mapped[list["CartItem"]] = relationship(
-        "CartItem", back_populates="product"
-    )
+    cart_items: Mapped[list["CartItem"]] = relationship("CartItem", back_populates="product")
 
 
 class ProductPrice(Base):
     __tablename__ = "ProductPrice"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     product_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("Product.id"), nullable=False
     )
@@ -118,9 +104,7 @@ class ProductPrice(Base):
         UUID(as_uuid=True), ForeignKey("Retailer.id"), nullable=False
     )
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
-    discount_price: Mapped[Decimal | None] = mapped_column(
-        Numeric(10, 2), nullable=True
-    )
+    discount_price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
     in_stock: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
@@ -129,20 +113,14 @@ class ProductPrice(Base):
         onupdate=func.now(),
     )
 
-    product: Mapped["Product"] = relationship(
-        "Product", back_populates="product_prices"
-    )
-    retailer: Mapped["Retailer"] = relationship(
-        "Retailer", back_populates="product_prices"
-    )
+    product: Mapped["Product"] = relationship("Product", back_populates="product_prices")
+    retailer: Mapped["Retailer"] = relationship("Retailer", back_populates="product_prices")
 
 
 class PriceHistory(Base):
     __tablename__ = "PriceHistory"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     product_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("Product.id"), nullable=False
     )
@@ -155,18 +133,14 @@ class PriceHistory(Base):
     )
 
     product: Mapped["Product"] = relationship("Product", back_populates="price_history")
-    retailer: Mapped["Retailer"] = relationship(
-        "Retailer", back_populates="price_history"
-    )
+    retailer: Mapped["Retailer"] = relationship("Retailer", back_populates="price_history")
 
 
 class Cart(Base):
     __tablename__ = "Cart"
     __table_args__ = (UniqueConstraint("user_id", name="cart_user_id_unique"),)
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("User.id"), nullable=False
     )
@@ -181,9 +155,7 @@ class Cart(Base):
 class CartItem(Base):
     __tablename__ = "CartItem"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     cart_id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), ForeignKey("Cart.id"), nullable=False
     )

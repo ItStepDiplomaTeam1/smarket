@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.responses import ORJSONResponse
@@ -40,13 +40,13 @@ async def _get_current_user(
     token = credentials.credentials
     try:
         payload = decode_token(token)
-    except (JWTExpiredError, JWTInvalidError):
+    except (JWTExpiredError, JWTInvalidError) as err:
         logger.warning("Спроба доступу з невалідним або простроченим токеном")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired access token",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from err
 
     if payload.get("type") != "access":
         logger.warning(f"Надано неправильний тип токена: {payload.get('type')}")
@@ -93,9 +93,7 @@ def _is_invalid_token(token: str) -> bool:
         return True
 
 
-@router.post(
-    "/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED
-)
+@router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
 @auth_limiter.limit("3/minute")
 @auth_limiter.limit("10/hour")
 async def register(
@@ -111,8 +109,8 @@ async def register(
             hashed_password=hash_password(body.password),
             role="user",
             is_active=True,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         db.add(inner_user)
@@ -131,30 +129,24 @@ async def register(
             max_age=_REFRESH_TOKEN_MAX_AGE,
         )
 
-        logger.success(
-            f"Користувача {body.email} успішно зареєстровано з ID: {inner_user.id}"
-        )
+        logger.success(f"Користувача {body.email} успішно зареєстровано з ID: {inner_user.id}")
         return RegisterResponse(
             access_token=access_token,
             token_type="bearer",
             email=body.email,
         )
 
-    except IntegrityError:
+    except IntegrityError as err:
         await db.rollback()
         logger.warning(f"Помилка реєстрації: email {body.email} вже існує в системі")
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email already registered",
-        )
+        ) from err
     except Exception as e:
         await db.rollback()
-        logger.exception(
-            f"Критична помилка під час реєстрації користувача {body.email}"
-        )
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
-        )
+        logger.exception(f"Критична помилка під час реєстрації користувача {body.email}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.post("/login", response_model=LoginResponse, status_code=status.HTTP_200_OK)
@@ -169,9 +161,7 @@ async def login(
     logger.info(f"Запит на авторизацію користувача з email: {body.email}")
     token = _extract_bearer_token(request)
     if token and _is_invalid_token(token):
-        logger.warning(
-            f"Спроба авторизації з невалідним токеном у заголовку для {body.email}"
-        )
+        logger.warning(f"Спроба авторизації з невалідним токеном у заголовку для {body.email}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
@@ -182,9 +172,7 @@ async def login(
         user = await get_authenticated_user(db, body.email, body.password)
 
         if user is None:
-            logger.warning(
-                f"Невдала спроба входу: неправильний пароль або email для {body.email}"
-            )
+            logger.warning(f"Невдала спроба входу: неправильний пароль або email для {body.email}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials",
@@ -216,7 +204,7 @@ async def login(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
-        )
+        ) from e
 
 
 @router.post("/refresh", response_model=TokenResponse, status_code=status.HTTP_200_OK)
@@ -233,18 +221,16 @@ async def refresh(request: Request):
 
     try:
         payload = decode_token(refresh_token)
-    except (JWTExpiredError, JWTInvalidError):
+    except (JWTExpiredError, JWTInvalidError) as err:
         logger.warning("Спроба оновлення з невалідним або простроченим refresh токеном")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired refresh token",
             headers={"WWW-Authenticate": "Bearer"},
-        )
+        ) from err
 
     if payload.get("type") != "refresh":
-        logger.warning(
-            f"Для оновлення надано токен невідповідного типу: {payload.get('type')}"
-        )
+        logger.warning(f"Для оновлення надано токен невідповідного типу: {payload.get('type')}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token type",

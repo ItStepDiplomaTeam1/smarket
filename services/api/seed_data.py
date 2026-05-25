@@ -3,9 +3,9 @@ import os
 
 from loguru import logger
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from services.api.database.services.models import Category, Retailer
+from database.services.models import Category, Retailer
 
 _DATABASE_URL = os.environ["DATABASE_URL"]
 
@@ -38,19 +38,16 @@ async def _seed_retailers(session: AsyncSession) -> None:
         logger.info("Retailers already seeded, skipping")
         return
 
-    session.add(
-        Retailer(name="Smarket-Retail", logo_url="https://example.com/logo.png")
-    )
+    session.add(Retailer(name="Smarket-Retail", logo_url="https://example.com/logo.png"))
     await session.flush()
     logger.info("Seeded default retailers")
 
 
 async def run_seed() -> None:
     logger.info("Starting database seed")
-    async with _SessionLocal() as session:
-        async with session.begin():
-            await _seed_categories(session)
-            await _seed_retailers(session)
+    async with _SessionLocal() as session, session.begin():
+        await _seed_categories(session)
+        await _seed_retailers(session)
     await _engine.dispose()
     logger.info("Database seed completed successfully")
 

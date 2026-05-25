@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 
 import jwt
@@ -25,7 +25,7 @@ def _get_secret_key() -> str:
 
 
 def create_access_token(user_id: str, role: str) -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload = {
         "sub": user_id,
         "role": role,
@@ -38,7 +38,7 @@ def create_access_token(user_id: str, role: str) -> str:
 
 
 def create_refresh_token(user_id: str, role: str) -> str:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload = {
         "sub": user_id,
         "role": role,
@@ -53,7 +53,7 @@ def create_refresh_token(user_id: str, role: str) -> str:
 def decode_token(token: str) -> dict:
     try:
         return jwt.decode(token, _get_secret_key(), algorithms=[ALGORITHM])
-    except jwt.ExpiredSignatureError:
-        raise JWTExpiredError("Token has expired")
-    except jwt.InvalidTokenError:
-        raise JWTInvalidError("Invalid token")
+    except jwt.ExpiredSignatureError as err:
+        raise JWTExpiredError("Token has expired") from err
+    except jwt.InvalidTokenError as err:
+        raise JWTInvalidError("Invalid token") from err

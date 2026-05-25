@@ -1,15 +1,16 @@
 import uuid
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, status, Depends
-from fastapi.responses import ORJSONResponse
-from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import delete
-from loguru import logger
 
-from services.api.plugins.logger import setup_logger
-from services.api.database.session import get_db
+from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.responses import ORJSONResponse
+from loguru import logger
+from pydantic import BaseModel, Field
+from sqlalchemy import delete
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from services.api.database.services.models import Product
+from services.api.database.session import get_db
+from services.api.plugins.logger import setup_logger
 
 setup_logger()
 
@@ -53,9 +54,7 @@ def create_app() -> FastAPI:
         status_code=status.HTTP_201_CREATED,
         tags=["products"],
     )
-    async def add_product(
-        body: ProductCreateRequest, db: AsyncSession = Depends(get_db)
-    ):
+    async def add_product(body: ProductCreateRequest, db: AsyncSession = Depends(get_db)):
         logger.info(f"Додавання нового продукту: {body.name}")
         try:
             new_product = Product(
@@ -75,14 +74,11 @@ def create_app() -> FastAPI:
             await db.rollback()
             logger.error(f"Помилка при додаванні продукту: {e}")
             raise HTTPException(
-                status_code=500, detail="Internal server error during product creation"
-            )
+                status_code=500,
+                detail="Internal server error during product creation",
+            ) from e
 
-    @app.delete(
-        "/products/{product_id}",
-        status_code=status.HTTP_204_NO_CONTENT,
-        tags=["products"],
-    )
+    @app.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["products"])
     async def delete_product(product_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
         logger.info(f"Реквест на видалення продукту з ID: {product_id}")
 
