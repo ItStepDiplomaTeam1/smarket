@@ -81,7 +81,7 @@ async def _get_current_user(
 def _extract_bearer_token(request: Request) -> str | None:
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
-        return auth_header[len("Bearer "):]
+        return auth_header[len("Bearer ") :]
     return None
 
 
@@ -93,7 +93,9 @@ def _is_invalid_token(token: str) -> bool:
         return True
 
 
-@router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED
+)
 @auth_limiter.limit("3/minute")
 @auth_limiter.limit("10/hour")
 async def register(
@@ -129,7 +131,9 @@ async def register(
             max_age=_REFRESH_TOKEN_MAX_AGE,
         )
 
-        logger.success(f"Користувача {body.email} успішно зареєстровано з ID: {inner_user.id}")
+        logger.success(
+            f"Користувача {body.email} успішно зареєстровано з ID: {inner_user.id}"
+        )
         return RegisterResponse(
             access_token=access_token,
             token_type="bearer",
@@ -145,8 +149,12 @@ async def register(
         )
     except Exception as e:
         await db.rollback()
-        logger.exception(f"Критична помилка під час реєстрації користувача {body.email}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        logger.exception(
+            f"Критична помилка під час реєстрації користувача {body.email}"
+        )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)
+        )
 
 
 @router.post("/login", response_model=LoginResponse, status_code=status.HTTP_200_OK)
@@ -161,7 +169,9 @@ async def login(
     logger.info(f"Запит на авторизацію користувача з email: {body.email}")
     token = _extract_bearer_token(request)
     if token and _is_invalid_token(token):
-        logger.warning(f"Спроба авторизації з невалідним токеном у заголовку для {body.email}")
+        logger.warning(
+            f"Спроба авторизації з невалідним токеном у заголовку для {body.email}"
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
@@ -172,7 +182,9 @@ async def login(
         user = await get_authenticated_user(db, body.email, body.password)
 
         if user is None:
-            logger.warning(f"Невдала спроба входу: неправильний пароль або email для {body.email}")
+            logger.warning(
+                f"Невдала спроба входу: неправильний пароль або email для {body.email}"
+            )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials",
@@ -230,7 +242,9 @@ async def refresh(request: Request):
         )
 
     if payload.get("type") != "refresh":
-        logger.warning(f"Для оновлення надано токен невідповідного типу: {payload.get('type')}")
+        logger.warning(
+            f"Для оновлення надано токен невідповідного типу: {payload.get('type')}"
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token type",
@@ -246,7 +260,9 @@ async def refresh(request: Request):
 
 @router.get("/me")
 async def get_me(current_user: User = Depends(_get_current_user)):
-    logger.info(f"Користувач {current_user.email} (ID: {current_user.id}) запитав інформацію про себе")
+    logger.info(
+        f"Користувач {current_user.email} (ID: {current_user.id}) запитав інформацію про себе"
+    )
     return {
         "id": str(current_user.id),
         "email": current_user.email,

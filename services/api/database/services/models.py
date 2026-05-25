@@ -8,7 +8,6 @@ from sqlalchemy import (
     Integer,
     Numeric,
     String,
-    Text,
     UniqueConstraint,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
@@ -57,7 +56,9 @@ class Category(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     slug: Mapped[str] = mapped_column(String(255), nullable=False)
 
-    products: Mapped[list["Product"]] = relationship("Product", back_populates="category")
+    products: Mapped[list["Product"]] = relationship(
+        "Product", back_populates="category"
+    )
 
 
 class Retailer(Base):
@@ -117,7 +118,9 @@ class ProductPrice(Base):
         UUID(as_uuid=True), ForeignKey("Retailer.id"), nullable=False
     )
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
-    discount_price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
+    discount_price: Mapped[Decimal | None] = mapped_column(
+        Numeric(10, 2), nullable=True
+    )
     in_stock: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     updated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
@@ -126,8 +129,12 @@ class ProductPrice(Base):
         onupdate=func.now(),
     )
 
-    product: Mapped["Product"] = relationship("Product", back_populates="product_prices")
-    retailer: Mapped["Retailer"] = relationship("Retailer", back_populates="product_prices")
+    product: Mapped["Product"] = relationship(
+        "Product", back_populates="product_prices"
+    )
+    retailer: Mapped["Retailer"] = relationship(
+        "Retailer", back_populates="product_prices"
+    )
 
 
 class PriceHistory(Base):
@@ -148,7 +155,9 @@ class PriceHistory(Base):
     )
 
     product: Mapped["Product"] = relationship("Product", back_populates="price_history")
-    retailer: Mapped["Retailer"] = relationship("Retailer", back_populates="price_history")
+    retailer: Mapped["Retailer"] = relationship(
+        "Retailer", back_populates="price_history"
+    )
 
 
 class Cart(Base):

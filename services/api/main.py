@@ -47,9 +47,15 @@ def create_app() -> FastAPI:
         logger.info("Обробка хелсчеку")
         return {"status": "ok"}
 
-
-    @app.post("/products", response_model=ProductResponse, status_code=status.HTTP_201_CREATED, tags=["products"])
-    async def add_product(body: ProductCreateRequest, db: AsyncSession = Depends(get_db)):
+    @app.post(
+        "/products",
+        response_model=ProductResponse,
+        status_code=status.HTTP_201_CREATED,
+        tags=["products"],
+    )
+    async def add_product(
+        body: ProductCreateRequest, db: AsyncSession = Depends(get_db)
+    ):
         logger.info(f"Додавання нового продукту: {body.name}")
         try:
             new_product = Product(
@@ -57,7 +63,7 @@ def create_app() -> FastAPI:
                 category_id=body.category_id,
                 external_id=body.external_id,
                 general_description=body.general_description,
-                specifications=body.specifications
+                specifications=body.specifications,
             )
             db.add(new_product)
             await db.commit()
@@ -68,9 +74,15 @@ def create_app() -> FastAPI:
         except Exception as e:
             await db.rollback()
             logger.error(f"Помилка при додаванні продукту: {e}")
-            raise HTTPException(status_code=500, detail="Internal server error during product creation")
+            raise HTTPException(
+                status_code=500, detail="Internal server error during product creation"
+            )
 
-    @app.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["products"])
+    @app.delete(
+        "/products/{product_id}",
+        status_code=status.HTTP_204_NO_CONTENT,
+        tags=["products"],
+    )
     async def delete_product(product_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
         logger.info(f"Реквест на видалення продукту з ID: {product_id}")
 

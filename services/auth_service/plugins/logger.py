@@ -18,7 +18,9 @@ class InterceptHandler(logging.Handler):
             frame = frame.f_back
             depth += 1
 
-        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
+        logger.opt(depth=depth, exception=record.exc_info).log(
+            level, record.getMessage()
+        )
 
 
 def setup_logger():
@@ -52,7 +54,13 @@ def setup_logger():
 
     logging.basicConfig(handlers=[InterceptHandler()], level=0, force=True)
 
-    for logger_name in ("fastapi", "uvicorn", "uvicorn.access", "sqlalchemy", "granian"):
+    for logger_name in (
+        "fastapi",
+        "uvicorn",
+        "uvicorn.access",
+        "sqlalchemy",
+        "granian",
+    ):
         mod_logger = logging.getLogger(logger_name)
         mod_logger.handlers = [InterceptHandler()]
         mod_logger.propagate = False
