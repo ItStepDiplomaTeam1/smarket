@@ -225,7 +225,6 @@ jobs:
           uv pip install --system \
             ruff \
             mypy \
-            pydantic-mypy \
             pytest \
             pytest-asyncio \
             pytest-cov \
