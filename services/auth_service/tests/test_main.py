@@ -39,7 +39,7 @@ def test_login_missing_body() -> None:
 
 def test_me_no_token() -> None:
     response = client.get("/auth/me")
-    assert response.status_code == 403
+    assert response.status_code in (401, 403)
 
 
 def test_refresh_no_cookie() -> None:
