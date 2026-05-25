@@ -191,20 +191,22 @@ jobs:
       - name: Build
         run: npm run build --if-present
 
-  # ── Python / FastAPI ──────────────────────
   python-ci:
-    name: 🐍 Python
+    name: 🐍 Python — ${{ matrix.service.name }}
     needs: detect
     if: needs.detect.outputs.has_python == 'true'
     runs-on: ubuntu-latest
     env:
       PYTHONPATH: ${{ github.workspace }}
+
     strategy:
+      fail-fast: false
       matrix:
         service:
           - path: services/api
             name: api
-      fail-fast: false
+          - path: services/auth_service
+            name: auth_service
 
     steps:
       - uses: actions/checkout@v4
@@ -212,35 +214,52 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: pip
-          cache-dependency-path: ${{ matrix.service.path }}/pyproject.toml
 
-      - name: Install dependencies — ${{ matrix.service.name }}
+      - name: Install uv
+        run: pip install uv --quiet
+
+      - name: Install service + lint/test tools — ${{ matrix.service.name }}
         working-directory: ${{ matrix.service.path }}
         run: |
-          pip install --upgrade pip
-          pip install ".[dev]" 2>/dev/null || pip install .
-          pip install ruff mypy pytest pytest-cov pytest-asyncio httpx 2>/dev/null || true
+          uv pip install --system .
+          uv pip install --system \
+            ruff \
+            mypy \
+            pydantic-mypy \
+            pytest \
+            pytest-asyncio \
+            pytest-cov \
+            httpx
 
       - name: Ruff lint — ${{ matrix.service.name }}
         working-directory: ${{ matrix.service.path }}
-        run: ruff check . --output-format=github || true
+        run: ruff check . --output-format=github
 
-      - name: Ruff format check — ${{ matrix.service.name }}
+      - name: Ruff format — ${{ matrix.service.name }}
         working-directory: ${{ matrix.service.path }}
-        run: ruff format --check . || true
+        run: ruff format --check .
 
       - name: mypy — ${{ matrix.service.name }}
         working-directory: ${{ matrix.service.path }}
-        run: mypy . --ignore-missing-imports || true
+        run: mypy .
 
       - name: pytest — ${{ matrix.service.name }}
         working-directory: ${{ matrix.service.path }}
+        env:
+          DATABASE_URL: "postgresql+asyncpg://test:test@localhost/test"
+          REDIS_URL: "redis://localhost:6379"
+          SECRET_KEY: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          APP_HOST: "0.0.0.0"
+          APP_PORT: "8000"
+          APP_WORKERS: "1"
+          DEBUG: "False"
         run: |
           if find . -name 'test_*.py' -o -name '*_test.py' | grep -q .; then
-            pytest --cov=. --cov-report=xml --cov-report=term-missing -v
+            pytest --cov=. --cov-report=xml --cov-report=term-missing --cov-fail-under=0 -v
           else
-            echo "No tests found yet — skipping"
+            echo "⚠️  No tests found for ${{ matrix.service.name }}"
+            echo "    Add tests in ${{ matrix.service.path }}/tests/ to enforce coverage."
+            exit 1
           fi
 
       - name: Upload coverage — ${{ matrix.service.name }}
@@ -250,6 +269,7 @@ jobs:
           name: python-coverage-${{ matrix.service.name }}
           path: ${{ matrix.service.path }}/coverage.xml
           if-no-files-found: ignore
+
 
   # ── Go ────────────────────────────────────
   go-ci:
