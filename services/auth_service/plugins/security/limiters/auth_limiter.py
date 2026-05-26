@@ -1,6 +1,7 @@
-﻿from slowapi import Limiter
+from slowapi import Limiter
 from slowapi.util import get_remote_address
-from services.api.plugins.security.secrets.load_secret import get_secret
+
+from services.auth_service.plugins.security.secrets.load_secret import get_secret
 
 
 class _LazyLimiter:
