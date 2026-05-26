@@ -9,10 +9,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY services/gateway/requirements.txt .
 
 RUN pip install --no-cache-dir --user -r requirements.txt
-
 
 
 FROM python:3.11-slim AS runtime
@@ -21,14 +20,13 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
 
-RUN useradd -u 8888 appuser && chown -R appuser:appuser /app
+RUN useradd -u 8888 appuser && mkdir -p /app && chown -R appuser:appuser /app
 
 COPY --from=builder /root/.local /home/appuser/.local
-COPY --from=builder /build /app
 
 ENV PATH=/home/appuser/.local/bin:$PATH
 
-COPY ./app /app/app
+COPY services/gateway/app /app/app
 
 USER appuser
 

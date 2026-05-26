@@ -28,6 +28,18 @@ services:
       db:
         condition: service_healthy
 
+  gateway_service:
+    build:
+      context: ..
+      dockerfile: services/gateway/Dockerfile
+    ports:
+      - "8080:8080"
+    env_file:
+      - ../services/gateway/.env
+    depends_on:
+      db:
+        condition: service_healthy
+
   migration_job:
     build:
       context: ..

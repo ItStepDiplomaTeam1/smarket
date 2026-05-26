@@ -5,7 +5,7 @@ from loguru import logger
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
-from database.services.models import Category, Retailer
+from services.api.database.services.models import Category, Retailer
 
 _DATABASE_URL = os.environ["DATABASE_URL"]
 

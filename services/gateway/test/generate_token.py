@@ -8,8 +8,8 @@ ALGORITHM = "HS256"
 # Payload — це корисні дані, які ми зашиваємо всередину токена
 payload = {
     "sub": "user_777_diploma",  # Ідентифікатор користувача (Subject)
-    "role": "admin",            # Можемо передавати будь-які кастомні дані
-    "exp": datetime.now(timezone.utc) + timedelta(hours=1)  # Час життя: 1 година
+    "role": "admin",  # Можемо передавати будь-які кастомні дані
+    "exp": datetime.now(timezone.utc) + timedelta(hours=1),  # Час життя: 1 година
 }
 
 # Генеруємо сам токен
