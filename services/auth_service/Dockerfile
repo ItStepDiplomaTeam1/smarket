@@ -4,7 +4,7 @@ WORKDIR /app
 
 RUN pip install --no-cache-dir uv
 
-COPY services/auth_service/pyproject.toml ./pyproject.toml
+COPY pyproject.toml ./pyproject.toml
 RUN uv pip install --system --no-cache -r pyproject.toml
 
 FROM python:3.11-slim
@@ -20,4 +20,4 @@ RUN mkdir -p logs
 
 EXPOSE 8001
 
-CMD ["python", "-m", "services.auth_service.main"]
+CMD ["python", "main.py"]
