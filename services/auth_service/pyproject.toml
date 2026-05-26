@@ -19,6 +19,9 @@ dependencies = [
     "sqlalchemy>=2.0.49",
 ]
 
+[tool.setuptools]
+packages = []
+
 [tool.ruff]
 target-version = "py311"
 line-length = 100
