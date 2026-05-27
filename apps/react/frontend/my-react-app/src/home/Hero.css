@@ -1,0 +1,134 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.hero-section {
+  width: 100%;
+  padding: 96px 0; 
+  background: linear-gradient(180deg, #F6FAF8 0%, #EAF7F2 100%); 
+}
+
+.hero-container {
+  width: 100%;
+  max-width: 1228px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center; 
+  gap: 40px;
+}
+
+.hero-text {
+  flex: 1;
+  max-width: 600px; 
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.hero-subtitle {
+  align-self: flex-start; 
+  background-color: #EAF7F2;
+  border-radius: 6px;
+  padding: 3px 12px 4px 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #265447; 
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.hero-title {
+  font-family: 'Manrope', sans-serif;
+  font-size: 68px;
+  font-weight: 800;
+  color: #173B33;
+  line-height: 70.72px;
+}
+
+.hero-description {
+  font-family: 'Inter', sans-serif;
+  font-size: 19px;
+  font-weight: 400;
+  color: #6D8279;
+  line-height: 32.3px;
+}
+
+.search-box {
+  display: flex;
+  background: #ffffff;
+  border: 1px solid #E5E7EB;
+  border-radius: 100px; 
+  padding: 8px 8px 8px 24px;
+  gap: 8px; 
+}
+
+.search-box input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  background: transparent;
+  padding: 0;
+}
+
+.search-btn {
+  background: #265447;
+  color: #ffffff;
+  border: none;
+  height: 48px; 
+  padding: 0 32px;
+  border-radius: 100px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trust-pills {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.trust-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #265447;
+}
+
+.trust-pill img {
+  width: 20px;
+  height: 20px;
+}
+
+.hero-subtext {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: #6D8279;
+  line-height: 23.1px;
+}
+
+.hero-visual {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.mockup-img {
+  width: 100%;
+  max-width: 500px; 
+  height: auto;
+  display: block;
+}

@@ -1,0 +1,116 @@
+.sm-section {
+  padding: 48px 0 80px 0;
+  background-color: transparent;
+}
+
+.sm-section-title {
+  font-family: 'Manrope', sans-serif;
+  font-size: 24px;
+  font-weight: 200; 
+  color: #173B33;
+  line-height: 31.2px; 
+  margin-bottom: 24px;
+}
+
+.sm-grid {
+  display: flex;
+  gap: 24px; 
+  overflow-x: auto; 
+  padding-bottom: 16px; 
+}
+
+.sm-card {
+  width: 271px; 
+  height: 489px; 
+  flex-shrink: 0; 
+  background-color: #FFFFFF;
+  border: 1px solid rgba(38, 84, 71, 0.08);
+  border-radius: 16px; 
+  padding: 16px; 
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+
+.sm-img-wrap {
+  width: 100%;
+  height: 339px; 
+  background-color: #F6FAF8;
+  border-radius: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.sm-img {
+  max-width: 80%; 
+  max-height: 80%;
+  object-fit: contain;
+}
+
+/* Название товара */
+.sm-title {
+  font-family: 'Manrope', sans-serif;
+  font-size: 14px;
+  font-weight: 200; 
+  color: #173B33;
+  line-height: 1.4;
+  margin: 0 0 8px 0;
+  
+  /* Обрезка на 2 строки, если текст слишком длинный */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Граммовка */
+.sm-weight {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: #6D8279;
+  font-weight: 400;
+  margin-bottom: 16px;
+}
+
+/* Футер (Цена + Кнопка) */
+.sm-footer {
+  margin-top: auto; 
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* Цена  */
+.sm-price {
+  font-family: 'Manrope', sans-serif;
+  font-size: 16px;
+  font-weight: 200; 
+  color: #265447;
+}
+
+/* Кнопка Порівняти */
+.sm-btn {
+  width: 92px;
+  height: 26px;
+  border-radius: 10px;
+  background-color: #ffffff;
+  border: 1px solid rgba(38, 84, 71, 0.16);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  
+  /* Текст внутри кнопки */
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: #265447;
+  
+  transition: background-color 0.2s;
+}
+
+.sm-btn:hover {
+  background-color: #F6FAF8;
+}

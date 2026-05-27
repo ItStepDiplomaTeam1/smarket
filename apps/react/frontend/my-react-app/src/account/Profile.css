@@ -1,0 +1,689 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Manrope:wght@200;400;600;700;800&display=swap');
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+.profile-page-wrapper {
+    display: flex;
+    min-height: 100vh;
+    background-color: #F6FAF8; 
+    font-family: 'Inter', sans-serif;
+}
+
+/* =========================================
+   ЛІВА ПАНЕЛЬ (САЙДБАР)
+   ========================================= */
+.profile-sidebar {
+    width: 280px; 
+    background-color: #FFFFFF;
+    border-right: 1px solid rgba(38, 84, 71, 0.08);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    padding-top: 24px;
+}
+
+.logo-link {
+    display: block;
+    padding-left: 24px;
+    margin-bottom: 32px;
+}
+
+.logo-img {
+    width: 101.42px;
+    height: 28px;
+}
+
+.user-block {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0 24px 24px 24px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid rgba(38, 84, 71, 0.08); 
+}
+
+.avatar-placeholder {
+    width: 44px;
+    height: 44px;
+    border-radius: 22px;
+    background-color: #EAF7F2;
+    color: #173B33;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: 'Manrope', sans-serif;
+    font-weight: 700;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.user-name {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    line-height: 21px;
+    color: #173B33;
+}
+
+.user-email {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    font-size: 12px;
+    line-height: 18px;
+    color: #6D8279;
+}
+
+/* Навігація */
+.profile-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 16px;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    text-decoration: none;
+    border-radius: 12px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 15px;
+    line-height: 22.5px;
+    color: #6D8279;
+    transition: all 0.2s ease;
+    position: relative; 
+}
+
+.nav-item > img:not(.active-indicator) {
+    width: 20px;
+    height: 20px;
+    opacity: 0.6; 
+    transition: opacity 0.2s ease;
+}
+
+.nav-item:hover {
+    background-color: #F9FAFB;
+    color: #173B33;
+}
+
+.nav-item:hover > img:not(.active-indicator) {
+    opacity: 1;
+}
+
+.nav-item.active {
+    background-color: #EAF7F2;
+    color: #173B33;
+    font-weight: 600;
+}
+
+.nav-item.active > img:not(.active-indicator) {
+    opacity: 1;
+}
+
+.active-indicator {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 20px;
+}
+
+/* =========================================
+   ПРАВА ПАНЕЛЬ (ОСНОВНИЙ КОНТЕНТ)
+   ========================================= */
+.profile-main-content {
+    flex: 1;
+    padding: 40px 48px; 
+    overflow-y: auto;
+}
+
+/* ШАПКА З ПОШУКОМ */
+.content-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 32px;
+}
+
+.header-text h1 {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 800;
+    font-size: 28px; 
+    line-height: 42px;
+    color: #173B33;
+    margin-bottom: 4px;
+}
+
+.header-text p {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    font-size: 15px; 
+    line-height: 22.5px;
+    color: #6D8279;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.search-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 320px; 
+    height: 44px;
+    background: #FFFFFF;
+    border: 1px solid rgba(38, 84, 71, 0.16);
+    border-radius: 10px;
+    padding: 0 16px;
+}
+
+.search-box img {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.search-box input {
+    border: none;
+    outline: none;
+    width: 100%;
+    height: 100%; 
+    padding: 0; 
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    line-height: 100%; 
+    color: #111827;
+    background: transparent;
+}
+
+.search-box input::placeholder {
+    color: #6D8279; 
+    opacity: 1;
+}
+
+.btn-back-home {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 44px;
+    padding: 0 16px;
+    background: #FFFFFF;
+    border: 1px solid rgba(38, 84, 71, 0.16);
+    border-radius: 10px;
+    text-decoration: none;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    color: #173B33;
+    transition: background 0.2s;
+}
+
+.btn-back-home:hover {
+    background: #F9FAFB;
+}
+
+.btn-back-home img {
+    width: 16px;
+    height: 16px;
+}
+
+/* СІТКА КАРТОК (ВЕРХНІ 3) */
+.dashboard-grid {
+    display: flex;
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.dashboard-card {
+    flex: 1;
+    background: #FFFFFF;
+    border: 1px solid rgba(38, 84, 71, 0.08);
+    border-radius: 24px;
+    padding: 24px;
+    box-shadow: 0px 12px 32px rgba(23, 59, 51, 0.04);
+}
+
+.card-subtitle {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 600; 
+    color: #6D8279;
+    margin-bottom: 16px;
+}
+
+.card-value-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.card-value-row h2 {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 800;
+    font-size: 28px;
+    color: #173B33;
+}
+
+.badge-top {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background-color: #FEF08A;
+    color: #854D0E;
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+.top-icon {
+    width: 12px;
+    height: 12px;
+}
+
+.card-footer-text {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    color: #9CA3AF;
+}
+
+/* =========================================
+   КАРТКА "ПОТОЧНИЙ КОШИК" (ВИПРАВЛЕНО)
+   ========================================= */
+.dashboard-main-row {
+    display: flex;
+    gap: 24px;
+}
+
+.left-col {
+    flex: 2; 
+}
+
+.right-col {
+    flex: 1; 
+}
+
+.large-card {
+    min-height: 350px; 
+}
+
+.section-title {
+    font-family: 'Manrope', sans-serif;
+    font-size: 18px;
+    font-weight: 700; 
+    line-height: 27px;
+    color: #173B33;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px dashed rgba(38, 84, 71, 0.16); 
+}
+
+.basket-header {
+    margin-bottom: 16px;
+}
+
+.basket-title {
+    font-family: 'Manrope', sans-serif;
+    font-size: 18px;
+    font-weight: 700; 
+    line-height: 27px;
+    color: #173B33;
+    margin-bottom: 4px;
+}
+
+.basket-subtitle {
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 400; 
+    line-height: 19.5px;
+    color: #6D8279;
+}
+
+.chips-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.category-chip {
+    background-color: #F6FAF8; 
+    border: 1px solid rgba(38, 84, 71, 0.08); 
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 500; 
+    line-height: 19.5px;
+    color: #265447;
+}
+
+/* ВИПРАВЛЕНО РАМКИ ТА ФОН ДЛЯ СІЛЬПО І NOVUS */
+.comparison-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px; 
+}
+
+.store-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    background-color: #F6FAF8; 
+    border: 1px solid rgba(38, 84, 71, 0.08); 
+    border-radius: 10px; 
+}
+
+/* Активний магазин (АТБ) */
+.store-row.highlighted {
+    background-color: #EAF7F2;
+    border: 1px solid #6FE3C2; 
+}
+
+.store-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.store-name {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    color: #173B33;
+}
+
+.badge-best-price {
+    background-color: #FACC14; 
+    color: #173B33;
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 6px;
+}
+
+.store-price-block {
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.store-price {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 800; 
+    font-size: 18px;
+    line-height: 27px;
+    color: #173B33;
+}
+
+.store-savings {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600; 
+    font-size: 12px;
+    line-height: 18px;
+    color: #265447;
+}
+
+.card-actions {
+    display: flex;
+    gap: 16px;
+    margin-top: 32px;
+}
+
+.btn-primary {
+    flex: 1;
+    height: 44px;
+    background-color: #265447;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 10px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-primary:hover {
+    background-color: #1A3E2F;
+}
+
+.btn-outline {
+    flex: 1;
+    height: 44px;
+    background-color: #FFFFFf;
+    color: #265447;
+    border: 1px solid rgba(38, 84, 71, 0.16);
+    border-radius: 10px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-outline:hover {
+    background-color: #F9FAFB;
+}
+
+/* =========================================
+   КАРТКА "ОСТАННІ ПОКУПКИ"
+   ========================================= */
+.purchase-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.purchase-item {
+    display: flex;
+    align-items: flex-start;
+    padding: 16px 0;
+    border-bottom: 1px solid rgba(38, 84, 71, 0.08);
+    gap: 16px;
+}
+
+.purchase-item:last-child {
+    border-bottom: none; 
+}
+
+.purchase-icon {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+}
+
+.purchase-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.purchase-title {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 700;
+    font-size: 15px; 
+    line-height: 22.5px;
+    color: #173B33;
+}
+
+.purchase-details {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600; 
+    font-size: 13px;
+    line-height: 19.5px;
+    color: #173B33;
+}
+
+.purchase-date {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400; 
+    font-size: 12px;
+    line-height: 18px;
+    color: #6D8279;
+}
+
+.purchase-link {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    color: #265447;
+    text-decoration: none;
+    margin-top: 2px; 
+}
+
+.purchase-link:hover {
+    text-decoration: underline;
+}
+
+/* =========================================
+   НИЖНІЙ РЯД (АДРЕСА ТА ПРОФІЛЬ) - ОНОВЛЕНО
+   ========================================= */
+.dashboard-bottom-row {
+    display: flex;
+    gap: 24px;
+    margin-top: 24px;
+}
+
+.bottom-card {
+    flex: 1;
+    min-height: 275px; 
+    display: flex;
+    flex-direction: column;
+    padding: 24px;
+}
+
+.bottom-card-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.main-info-text {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600; 
+    font-size: 15px;
+    color: #111827;
+    margin-bottom: 4px;
+}
+
+.sub-info-text {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    font-size: 13px;
+    color: #6D8279;
+    margin-bottom: 24px;
+}
+
+.profile-details-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr; 
+    gap: 16px 24px;
+    margin-bottom: 24px;
+}
+
+.detail-item:nth-child(1) {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+.detail-item:nth-child(2) {
+    grid-column: 2;
+    grid-row: 2;
+}
+
+.detail-item:nth-child(3) {
+    grid-column: 1;
+    grid-row: 2;
+}
+
+.detail-item:nth-child(4) {
+    grid-column: 2;
+    grid-row: 1;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.detail-label {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    font-size: 12px;
+    color: #6D8279;
+}
+
+.detail-value {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    color: #173B33;
+}
+
+.action-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 13px;
+    color: #265447;
+    text-decoration: none;
+}
+
+.action-link:hover {
+    text-decoration: underline;
+}
+
+/* Заголовок без обводки */
+.section-title {
+    font-family: 'Manrope', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    line-height: 27px;
+    color: #173B33;
+    margin-bottom: 24px;
+    border: none !important; 
+}
+
+/* Контейнер для вмісту картки */
+.bottom-card-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+/* Контейнер посилання з суцільною лінією */
+.action-row {
+    padding-top: 24px; 
+    border-top: 1px solid rgba(38, 84, 71, 0.16); 
+}
