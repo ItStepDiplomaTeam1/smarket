@@ -51,7 +51,7 @@ app.add_middleware(
 # -------------------------------------------------
 
 
-app.include_router(auth.router, prefix="/auth", tags=["Auth"])
+app.include_router(auth.router, prefix="/auth", tags=["Auth Service"])
 app.include_router(products.router, prefix="/products", tags=["Products Service"])
 
 # -------------------------------------------------
