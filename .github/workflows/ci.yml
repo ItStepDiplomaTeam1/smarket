@@ -463,6 +463,7 @@ jobs:
       always() &&
       !contains(needs.*.result, 'failure') &&
       needs.detect.outputs.has_docker == 'true' &&
+      needs.detect.outputs.apps_matrix != '[]' &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || github.event_name == 'pull_request')
     runs-on: ubuntu-latest
     strategy:

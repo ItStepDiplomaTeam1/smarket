@@ -1,0 +1,188 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Manrope:wght@200;400;700;800&display=swap');
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+.reviews-wrapper {
+    width: 100%;
+    max-width: 1180px;
+    margin: 0 auto 40px auto;
+    padding: 32px 0; 
+    font-family: 'Inter', sans-serif;
+}
+
+.reviews-title {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 200; 
+    font-size: 24px;
+    line-height: 31.2px;
+    color: #173B33;
+    margin-bottom: 24px;
+}
+
+/* =========================================
+   КАРТКА ЗАГАЛЬНОГО РЕЙТИНГУ (Скрін 13.06.50)
+   ========================================= */
+.reviews-header {
+    display: flex;
+    align-items: center;
+    background: #FFFFFF;
+    border: 1px solid rgba(38, 84, 71, 0.08);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px; 
+}
+
+.rating-score {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 200; 
+    font-size: 32px;
+    line-height: 48px;
+    color: #265447;
+    margin-right: 16px;
+}
+
+.rating-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.rating-stars-large {
+    display: flex;
+    gap: 4px;
+}
+
+.rating-stars-large img {
+    width: 16px;
+    height: 16px;
+}
+
+.rating-count {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 21px;
+    color: #6D8279;
+}
+
+.recommend-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 26px;
+    padding: 0 12px;
+    background-color: #EAF7F2;
+    border-radius: 16px;
+    margin-left: 32px; 
+    font-family: 'Inter', sans-serif;
+    font-weight: 600; 
+    font-size: 12px;
+    line-height: 18px;
+    color: #265447;
+}
+
+/* =========================================
+   СПИСОК ТА КАРТКИ ВІДГУКІВ
+   ========================================= */
+.reviews-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+.review-card {
+    border: 1px solid rgba(38, 84, 71, 0.08);
+    border-radius: 16px;
+    padding: 24px;
+    background: #FFFFFF;
+}
+
+.review-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.reviewer-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.reviewer-name {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    line-height: 24px;
+    color: #265447;
+}
+
+.review-stars {
+    display: flex;
+    gap: 2px;
+}
+
+.star-icon {
+    width: 12px;
+    height: 12px;
+}
+
+.review-date {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    font-size: 13px;
+    line-height: 19.5px;
+    color: #6D8279;
+}
+
+.review-text {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 24px;
+    color: #6D8279;
+}
+
+/* =========================================
+   НИЖНІЙ БЛОК (КНОПКА ТА ТЕКСТ)
+   ========================================= */
+.reviews-footer {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.btn-write-review {
+    width: 181px;
+    height: 46px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #FFFFFF;
+    border: 1px solid rgba(38, 84, 71, 0.16);
+    border-radius: 10px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    color: #265447;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.btn-write-review:hover {
+    background: #F9FAFB;
+}
+
+.action-hint {
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    font-size: 14px;
+    line-height: 21px;
+    color: #6D8279;
+}

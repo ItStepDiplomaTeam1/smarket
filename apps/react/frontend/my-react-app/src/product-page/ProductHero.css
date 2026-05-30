@@ -1,0 +1,463 @@
+.product-hero-section {
+  width: 100%;
+  padding: 32px 0 64px 0;
+  background-color: transparent; 
+}
+
+.product-container {
+  max-width: 1228px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+/* =========================================
+   ХЛІБНІ КРИХТИ (BREADCRUMBS) - ВИПРАВЛЕНО
+   ========================================= */
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px; 
+  min-height: 24px; 
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  margin-bottom: -16px; 
+}
+
+.breadcrumbs a {
+  color: #6D8279; 
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.breadcrumbs a:hover {
+  color: #265447; 
+}
+
+.breadcrumbs span.sep {
+  color: #D1D5DB; 
+  font-size: 12px;
+}
+
+.breadcrumbs span.current {
+  color: #111827; 
+  font-weight: 600; 
+}
+
+/* =========================================
+   ОСНОВНИЙ КОНТЕНТ ТОВАРУ
+   ========================================= */
+.product-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 40px; 
+}
+
+.product-left {
+  width: 453px; 
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.product-right {
+  width: 623px; 
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.product-gallery {
+  position: relative;
+  width: 453px;
+  height: 453px;
+  border-radius: 24px;
+  background-color: #FFFFFF; 
+  border: 1px solid rgba(38, 84, 71, 0.08); 
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.badges {
+  position: absolute;
+  top: 21px; 
+  left: 21px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  z-index: 2;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 12px;
+  border-radius: 16px;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px; 
+}
+
+.badge-yellow {
+  background-color: #FACC14;
+  color: #173B33;
+}
+
+.badge-green {
+  background-color: #6FE3C2;
+  color: #173B33;
+}
+
+.badge-white {
+  background-color: #ffffff;
+  border: 1px solid #265447;
+  color: #265447;
+  height: 28px; 
+}
+
+.badge-white img {
+  width: 12px;
+  height: 12px;
+}
+
+.main-visual {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.main-img {
+  width: 222px;
+  height: 297px;
+  object-fit: contain;
+}
+
+.thumbnails {
+  display: flex;
+  flex-direction: row; 
+  justify-content: space-between;
+  width: 100%;
+  gap: 12px; 
+}
+
+.thumb {
+  width: 143px; 
+  height: 143px;
+  border-radius: 16px; 
+  background-color: #F6FAF8; 
+  border: 1px solid rgba(38, 84, 71, 0.08); 
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.thumb.active {
+  background-color: #EAF7F2; 
+  border: 1px solid #265447; 
+}
+
+.thumb-img {
+  width: 56px;
+  height: 79px;
+  object-fit: contain;
+}
+
+/* =========================================
+   ПРАВА ПАНЕЛЬ (ІНФО ПРО ТОВАР)
+   ========================================= */
+.info-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 32px;
+}
+
+.title {
+  margin: 0;
+  font-family: 'Manrope', sans-serif;
+  font-size: 26px; 
+  font-weight: 200; 
+  line-height: 31.2px;
+  color: #173B33;
+}
+
+.weight {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 19.5px;
+  color: #6D8279;
+}
+
+.rating {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'Inter', sans-serif;
+}
+
+.stars-icons {
+  display: flex;
+  gap: 4px; 
+}
+
+.stars-icons img {
+  width: 16px;
+  height: 16px;
+}
+
+.reviews {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 19.5px;
+  color: #6D8279;
+}
+
+.reviews strong {
+  font-weight: 600; 
+  color: #265447;
+}
+
+.price-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 32px;
+}
+
+.main-price {
+  font-family: 'Manrope', sans-serif;
+  font-size: 30px; 
+  font-weight: 200; 
+  line-height: 45px;
+  color: #173B33;
+}
+
+.store-label {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500; 
+  line-height: 19.5px;
+  color: #6D8279;
+}
+
+.store-label strong {
+  font-weight: 700; 
+  font-size: 13px;
+  line-height: 19.5px;
+  color: #173B33;
+}
+
+.stock-warning {
+  padding: 4px 10px;
+  border-radius: 6px;
+  background-color: #FFF2F1; 
+  font-family: 'Inter', sans-serif;
+  font-size: 13px; 
+  font-weight: 600;
+  line-height: 19.5px;
+  color: #D94841; 
+}
+
+/* =========================================
+   КНОПКИ ДІЙ
+   ========================================= */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.counter {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(38, 84, 71, 0.16);
+}
+
+.counter button {
+  width: 36px;
+  height: 100%;
+  background: none;
+  border: none;
+  font-size: 20px;
+  color: #4B5563;
+  cursor: pointer;
+}
+
+.count-val {
+  width: 32px;
+  text-align: center;
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.btn-add-cart {
+  height: 44px;
+  padding: 0 24px;
+  border-radius: 10px;
+  border: none;
+  background-color: #265447;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-add-cart:hover {
+  background-color: #1A3E2F;
+}
+
+.btn-add-list {
+  height: 44px;
+  padding: 0 24px;
+  border-radius: 10px;
+  border: 1px solid rgba(38, 84, 71, 0.16);
+  background-color: #ffffff;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  color: #265447;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-add-list:hover {
+  background-color: #F9FAFB;
+}
+
+.disclaimer {
+  max-width: 480px;
+  margin: 0 0 32px 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  line-height: 18px;
+  color: #6D8279;
+}
+
+/* =========================================
+   БЛОК ПОРІВНЯННЯ ЦІН
+   ========================================= */
+.compare-widget {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 24px;
+  border-radius: 16px;
+  border: 1px solid rgba(38, 84, 71, 0.08);
+  background-color: #ffffff;
+}
+
+.compare-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.compare-head h3 {
+  margin: 0;
+  font-family: 'Manrope', sans-serif;
+  font-size: 18px;
+  font-weight: 200; 
+  line-height: 25.2px;
+  color: #173B33;
+}
+
+.savings-badge {
+  padding: 4px 12px;
+  border-radius: 24px;
+  background-color: #FACC14;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 19.5px;
+  color: #173B33;
+}
+
+.compare-stores {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.store-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 50px; 
+  padding: 0 16px; 
+  border-radius: 10px; 
+  border: 1px solid transparent;
+}
+
+.store-row.active {
+  background-color: #EAF7F2;
+  border: 1px solid #6FE3C2;
+}
+
+.s-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.s-name {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600; 
+  line-height: 21px;
+  color: #265447; 
+}
+
+.s-status {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: #6B7280;
+}
+
+.s-status.best {
+  font-weight: 600; 
+  font-size: 12px;
+  line-height: 18px;
+  color: #265447;
+}
+
+.s-price {
+  font-family: 'Manrope', sans-serif;
+  font-size: 16px;
+  font-weight: 200; 
+  line-height: 24px;
+  color: #265447; 
+}
+
+/* ЗАГАЛЬНИЙ ФОН */
+.product-page-bg {
+  background-color: #F6FAF8; 
+  min-height: 100vh;         
+  width: 100%;
+  padding-bottom: 64px;      
+}

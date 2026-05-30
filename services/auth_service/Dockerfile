@@ -21,4 +21,4 @@ RUN mkdir -p logs
 
 EXPOSE 8001
 
-CMD ["python", "-m", "services.auth_service.main"]
+CMD ["python", "main.py"]

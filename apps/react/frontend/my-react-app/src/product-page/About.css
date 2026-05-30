@@ -1,0 +1,115 @@
+.product-details-section {
+  padding: 0 0 40px 0; 
+  background-color: transparent;
+}
+
+.product-container {
+  max-width: 1228px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.section-title {
+  font-family: 'Manrope', sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  color: #173B33;
+  margin-bottom: 24px;
+}
+
+.info-card {
+  background-color: #FFFFFF;
+  border: 1px solid rgba(38, 84, 71, 0.08);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 16px;
+}
+
+.card-label {
+  font-family: 'Manrope', sans-serif;
+  font-size: 18px;
+  font-weight: 200; 
+  color: #173B33;
+  margin: 0 0 16px 0;
+}
+
+.card-text {
+  font-family: 'Inter', sans-serif;
+  font-size: 16px;
+  color: #173B33;
+  line-height: 24px;
+  margin: 0;
+}
+
+.nutrition-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.nutrition-item {
+  background: #F6FAF8; 
+  padding: 16px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.n-value { 
+  display: block; 
+  font-family: 'Inter', sans-serif;
+  font-weight: 700; 
+  font-size: 16px; 
+  color: #265447; 
+  margin-bottom: 4px; 
+}
+
+.n-label { 
+  font-family: 'Inter', sans-serif;
+  font-size: 13px; 
+  color: #6B7280; 
+  font-weight: 400;
+}
+
+.info-table {
+  display: flex;
+  flex-direction: column;
+}
+
+.info-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr); 
+  column-gap: 24px; 
+}
+
+.info-pair {
+  display: flex;
+  justify-content: space-between; 
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 0; 
+  border-bottom: 1px solid #E5E7EB; 
+}
+
+.info-row:last-child .info-pair {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.i-label { 
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: #6D8279; 
+  font-weight: 400;
+  white-space: nowrap; 
+}
+
+.i-val { 
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600; 
+  color: #265447; 
+  text-align: right; 
+}

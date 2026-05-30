@@ -1,122 +1,67 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState } from 'react';
+
+// 1. Импортируем компоненты для главной страницы
+import { Header } from './home/Header';
+import { Hero } from './home/Hero';
+import { ProductsSec } from './home/ProductsSec';
+import { CategoriesSec } from './home/CategoriesSec';
+import { Hws } from './home/Hws';
+import { FinalCTA } from './home/FinalCTA';
+import { Footer } from './home/Footer';
+
+// 2. Импортируем компоненты для страницы продукта
+import { ProductHero } from './product-page/ProductHero'; 
+import { About } from './product-page/About';
+import { FBT } from './product-page/FBT';
+import { SMProduct } from './product-page/SM-Product';
+import { BottomCti } from './product-page/Bottom-cti';
+import { Reviews } from './product-page/Reviews';
+
+// 3. Импортируем компонент для страниц аккаунта
+//import { Create } from './account/Create';
+//import { Login } from './account/Login';
+//import { Popup } from './account/Pop-up';
+//import { ForgotPass } from './account/ForgotPass';
+import { Profile } from './account/Profile';
+
+
 
 function App() {
-  const [count, setCount] = useState(0)
+
+  const [currentPage] = useState('product'); 
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="app-container">
+       <Header /> 
+      {currentPage === 'home' && (
+        <>
+          {/*<Hero />
+          <ProductsSec />
+          <CategoriesSec />
+          <Hws />
+          <FinalCTA />
+          */}
 
-      <div className="ticks"></div>
+        </>
+      )}
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      {currentPage === 'product' && (
+        <div className="product-page-bg">
+          <ProductHero />
+          <About />
+          <Reviews />
+          <FBT />
+          <SMProduct />
+          <BottomCti />
+          
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+        </div>
+      )}
+
+      <Footer /> 
+
+    </div>
+  );
 }
 
-export default App
+export default App;
