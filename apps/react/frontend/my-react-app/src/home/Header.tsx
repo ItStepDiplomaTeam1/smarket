@@ -3,6 +3,7 @@ import logo from '../assets/logo.svg';
 import lupa from '../assets/lupa.svg';
 import koshuk from '../assets/koshuk.svg';
 import lohm from '../assets/lohm.svg';
+import fix_logo from '../assets/Logo-Smarket.svg'
 
 export function Header() {
   return (
@@ -13,7 +14,7 @@ export function Header() {
         <div className="container">
           
           <a href="/" className="logo-link">
-            <img src={logo} alt="Smarket Logo" className="logo-img" />
+            <img src={fix_logo} alt="Smarket Logo" className="logo-img" />
           </a>
 
           <nav className="desktop-nav">

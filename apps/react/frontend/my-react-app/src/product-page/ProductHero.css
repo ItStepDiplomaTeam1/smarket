@@ -13,26 +13,43 @@
   gap: 32px;
 }
 
+/* =========================================
+   ХЛІБНІ КРИХТИ (BREADCRUMBS) - ВИПРАВЛЕНО
+   ========================================= */
 .breadcrumbs {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 60px;
+  gap: 8px; 
+  min-height: 24px; 
   font-family: 'Inter', sans-serif;
   font-size: 13px;
-  color: #9CA3AF;
+  margin-bottom: -16px; 
 }
 
 .breadcrumbs a {
-  color: #6B7280;
+  color: #6D8279; 
   text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.breadcrumbs a:hover {
+  color: #265447; 
+}
+
+.breadcrumbs span.sep {
+  color: #D1D5DB; 
+  font-size: 12px;
 }
 
 .breadcrumbs span.current {
-  color: #111827;
-  font-weight: 500;
+  color: #111827; 
+  font-weight: 600; 
 }
 
+/* =========================================
+   ОСНОВНИЙ КОНТЕНТ ТОВАРУ
+   ========================================= */
 .product-content {
   display: flex;
   justify-content: space-between;
@@ -126,10 +143,12 @@
   height: 297px;
   object-fit: contain;
 }
-ё
+
 .thumbnails {
   display: flex;
+  flex-direction: row; 
   justify-content: space-between;
+  width: 100%;
   gap: 12px; 
 }
 
@@ -143,6 +162,7 @@
   justify-content: center;
   align-items: center;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .thumb.active {
@@ -156,6 +176,9 @@
   object-fit: contain;
 }
 
+/* =========================================
+   ПРАВА ПАНЕЛЬ (ІНФО ПРО ТОВАР)
+   ========================================= */
 .info-header {
   display: flex;
   flex-direction: column;
@@ -167,7 +190,7 @@
   margin: 0;
   font-family: 'Manrope', sans-serif;
   font-size: 26px; 
-  font-weight: 200;
+  font-weight: 200; 
   line-height: 31.2px;
   color: #173B33;
 }
@@ -251,6 +274,9 @@
   color: #D94841; 
 }
 
+/* =========================================
+   КНОПКИ ДІЙ
+   ========================================= */
 .actions {
   display: flex;
   align-items: center;
@@ -298,6 +324,11 @@
   color: #ffffff;
   white-space: nowrap;
   cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-add-cart:hover {
+  background-color: #1A3E2F;
 }
 
 .btn-add-list {
@@ -312,6 +343,11 @@
   color: #265447;
   white-space: nowrap;
   cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.btn-add-list:hover {
+  background-color: #F9FAFB;
 }
 
 .disclaimer {
@@ -323,6 +359,9 @@
   color: #6D8279;
 }
 
+/* =========================================
+   БЛОК ПОРІВНЯННЯ ЦІН
+   ========================================= */
 .compare-widget {
   display: flex;
   flex-direction: column;
@@ -415,6 +454,7 @@
   color: #265447; 
 }
 
+/* ЗАГАЛЬНИЙ ФОН */
 .product-page-bg {
   background-color: #F6FAF8; 
   min-height: 100vh;         

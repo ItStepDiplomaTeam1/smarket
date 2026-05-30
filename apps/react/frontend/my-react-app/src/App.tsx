@@ -15,6 +15,7 @@ import { About } from './product-page/About';
 import { FBT } from './product-page/FBT';
 import { SMProduct } from './product-page/SM-Product';
 import { BottomCti } from './product-page/Bottom-cti';
+import { Reviews } from './product-page/Reviews';
 
 // 3. Импортируем компонент для страниц аккаунта
 import { Create } from './account/Create';
@@ -31,32 +32,33 @@ function App() {
 
   return (
     <div className="app-container">
-      {/* <Header /> */}
+       <Header /> 
       {currentPage === 'home' && (
         <>
-          <Hero />
+          {/*<Hero />
           <ProductsSec />
           <CategoriesSec />
           <Hws />
           <FinalCTA />
+          */}
 
         </>
       )}
 
       {currentPage === 'product' && (
         <div className="product-page-bg">
-        {/* <ProductHero />
+          <ProductHero />
           <About />
+          <Reviews />
           <FBT />
           <SMProduct />
           <BottomCti />
-          <ForgotPass />*/}
-          <Profile />
+          
 
         </div>
       )}
 
-      {/* <Footer /> */}
+      <Footer /> 
 
     </div>
   );
