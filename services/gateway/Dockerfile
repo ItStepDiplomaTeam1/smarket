@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
+COPY services/gateway/requirements.txt .
 
 RUN pip install --no-cache-dir --user -r requirements.txt
 
@@ -26,7 +26,7 @@ COPY --from=builder /root/.local /home/appuser/.local
 
 ENV PATH=/home/appuser/.local/bin:$PATH
 
-COPY app /app/app
+COPY services/gateway/app /app/app
 
 USER appuser
 

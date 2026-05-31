@@ -60,7 +60,7 @@ services:
     command:
       - "sh"
       - "-c"
-      - "cd /app && granian --interface asgi --host 0.0.0.0 --port 8000 --workers 4 services.api.main:app"
+      - "granian --interface asgi --host 0.0.0.0 --port 8000 --workers 4 services.api.main:app"
     ports:
       - "8000:8000"
     env_file:
