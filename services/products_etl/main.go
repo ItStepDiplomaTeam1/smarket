@@ -16,7 +16,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	mongoClient, err := database.ConnectMongoDB(ctx, cfg.MongoURI)
+	mongoClient, err := database.ConnectMongoDB(cfg.MongoURI)
 	if err != nil {
 		log.Fatalf("Критична помилка ініціалізації MongoDB: %v", err)
 	}
