@@ -339,16 +339,21 @@ jobs:
     needs: detect
     if: needs.detect.outputs.has_go == 'true'
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/products_etl
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version-file: services/products_etl/go.mod
           cache: true
+          cache-dependency-path: services/products_etl/go.sum
       - run: go mod download
       - run: go vet ./...
       - run: go test -v -race -coverprofile=coverage.out ./...
       - run: go build ./...
+
 
   # ── Rust ──────────────────────────────────
   rust-ci:

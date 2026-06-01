@@ -4,6 +4,11 @@ version = "1.0.0"
 description = "Standalone authentication microservice"
 readme = "README.md"
 requires-python = ">=3.11"
+
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 dependencies = [
     "asyncpg>=0.31.0",
     "bcrypt>=5.0.0",

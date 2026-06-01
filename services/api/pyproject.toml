@@ -4,6 +4,11 @@ version = "0.1.0"
 description = "Base microservice API"
 readme = "README.md"
 requires-python = ">=3.11"
+
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 dependencies = [
     "alembic>=1.18.4",
     "asyncpg>=0.31.0",
