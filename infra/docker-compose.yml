@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:16-alpine
@@ -83,17 +81,42 @@ services:
     networks:
       - smarket-network
 
+  products_etl:
+    build:
+      context: ../services/products_etl
+      dockerfile: Dockerfile
+    environment:
+      - ENV=production
+      - RABBITMQ_URL=amqp://smarket:smarket@rabbitmq:5672/
+    env_file:
+      - ../services/products_etl/.env
+    ports:
+      - "8082:8082"
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - smarket-network
+
   rabbitmq:
     image: rabbitmq:3-management
     container_name: smarket-rabbitmq
     ports:
-        - "5672:5672"
-        - "15672:15672"
+      - "5672:5672"
+      - "15672:15672"
     environment:
         RABBITMQ_DEFAULT_USER: smarket
         RABBITMQ_DEFAULT_PASS: smarket
     volumes:
         - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     networks:
         - smarket-network
 

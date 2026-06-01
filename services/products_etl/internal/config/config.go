@@ -8,9 +8,9 @@ import (
 )
 
 type Config struct {
-	MongoURI    string `env:"MONGO_URI,required=true"`
-	DatabaseURL string `env:"DATABASE_URL,required=true"`
-	RabbitMQURL string `env:"RABBITMQ_URL,required=true"`
+	MongoURI    string `env:"MONGO_URI,required"`
+	DatabaseURL string `env:"DATABASE_URL,required"`
+	RabbitMQURL string `env:"RABBITMQ_URL,required"`
 	Environment string `env:"ENV" envDefault:"development"`
 }
 
