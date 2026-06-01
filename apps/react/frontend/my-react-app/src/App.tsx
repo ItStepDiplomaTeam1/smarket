@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 
 // 1. Импортируем компоненты для главной страницы
@@ -18,10 +19,10 @@ import { BottomCti } from './product-page/Bottom-cti';
 import { Reviews } from './product-page/Reviews';
 
 // 3. Импортируем компонент для страниц аккаунта
-//import { Create } from './account/Create';
-//import { Login } from './account/Login';
-//import { Popup } from './account/Pop-up';
-//import { ForgotPass } from './account/ForgotPass';
+import { Create } from './account/Create';
+import { Login } from './account/Login';
+import { Popup } from './account/Pop-up';
+import { ForgotPass } from './account/ForgotPass';
 import { Profile } from './account/Profile';
 
 
@@ -39,22 +40,24 @@ function App() {
           <ProductsSec />
           <CategoriesSec />
           <Hws />
-          <FinalCTA />
-          */}
-
+          <FinalCTA />*/}
         </>
       )}
 
       {currentPage === 'product' && (
         <div className="product-page-bg">
-          <ProductHero />
+          {/*<ProductHero /> 
           <About />
-          <Reviews />
-          <FBT />
-          <SMProduct />
           <BottomCti />
-          
+          <FBT />
+          <Reviews />
+          <SMProduct />*/}
 
+          <Hero />
+          <ProductsSec />
+          <CategoriesSec />
+          <Hws />
+          <FinalCTA />
         </div>
       )}
 

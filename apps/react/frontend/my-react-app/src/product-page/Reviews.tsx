@@ -1,106 +1,70 @@
-import './Reviews.css';
-import goldstar from '../assets/gold-star.svg'; // золотая звезда 16x16 и 12x12
-import zero_star from '../assets/star-for-review.svg'; // пустая звезда 12x12
+import goldstar from '../assets/gold-star.svg';
+import zero_star from '../assets/star-for-review.svg';
+
+const ReviewStars = ({ filled }: { filled: number }) => (
+    <div className="flex gap-0.5">
+        {[0,1,2,3,4].map(i => (
+            <img key={i} src={i < filled ? goldstar : zero_star} alt="star" className="w-3 h-3" />
+        ))}
+    </div>
+);
+
+const reviews = [
+    { name: 'Марина', date: '06 червня 2026', stars: 5, text: 'Хороше молоко на кожен день. Часто додаю його у свій тижневий кошик.' },
+    { name: 'Олег',   date: '02 червня 2026', stars: 5, text: 'Зручно бачити, де це молоко дешевше. Ціна між магазинами реально відрізняється.' },
+    { name: 'Ірина',  date: '28 травня 2026', stars: 4, text: 'Якість хороша, але важливо перевіряти наявність у конкретному магазині.' },
+];
 
 export function Reviews() {
     return (
-        <section className="reviews-wrapper">
-            
-            {/* Заголовок*/}
-            <h2 className="reviews-title">Відгуки покупців</h2>
+        <section className="w-full max-w-[1180px] mx-auto mb-10 py-8 font-inter">
 
-            {/* Загальний рейтинг*/}
-            <div className="reviews-header">
-                <div className="rating-score">4.8</div>
-                
-                <div className="rating-details">
-                    <div className="rating-stars-large">
-                        <img src={goldstar} alt="star" />
-                        <img src={goldstar} alt="star" />
-                        <img src={goldstar} alt="star" />
-                        <img src={goldstar} alt="star" />
-                        <img src={goldstar} alt="star" />
+            <h2 className="font-manrope font-extralight text-2xl leading-[31.2px] text-[#173B33] mb-6">
+                Відгуки покупців
+            </h2>
+
+            {/* Overall rating card */}
+            <div className="flex items-center bg-white border border-[rgba(38,84,71,0.08)] rounded-2xl p-6 mb-6">
+                <div className="font-manrope font-extralight text-[32px] leading-[48px] text-[#265447] mr-4">4.8</div>
+                <div className="flex flex-col gap-1">
+                    <div className="flex gap-1">
+                        {[0,1,2,3,4].map(i => (
+                            <img key={i} src={goldstar} alt="star" className="w-4 h-4" />
+                        ))}
                     </div>
-                    <div className="rating-count">На основі 128 відгуків</div>
+                    <div className="font-inter font-normal text-sm leading-[21px] text-[#6D8279]">На основі 128 відгуків</div>
                 </div>
-
-                <span className="recommend-badge">
+                <span className="inline-flex items-center justify-center h-[26px] px-3 bg-[#EAF7F2] rounded-2xl ml-8 font-inter font-semibold text-xs leading-[18px] text-[#265447]">
                     Покупці рекомендують цей товар
                 </span>
             </div>
 
-            {/* Список відгуків */}
-            <div className="reviews-list">
-                
-                {/* Відгук 1 */}
-                <div className="review-card">
-                    <div className="review-header">
-                        <div className="reviewer-info">
-                            <span className="reviewer-name">Марина</span>
-                            <div className="review-stars">
-                                <img src={goldstar} alt="star" className="star-icon" />
-                                <img src={goldstar} alt="star" className="star-icon" />
-                                <img src={goldstar} alt="star" className="star-icon" />
-                                <img src={goldstar} alt="star" className="star-icon" />
-                                <img src={goldstar} alt="star" className="star-icon" />
+            {/* Review cards */}
+            <div className="flex flex-col gap-4 mb-8">
+                {reviews.map(({ name, date, stars, text }) => (
+                    <div key={name} className="border border-[rgba(38,84,71,0.08)] rounded-2xl p-6 bg-white">
+                        <div className="flex justify-between items-start mb-3">
+                            <div className="flex flex-col gap-1">
+                                <span className="font-inter font-semibold text-base leading-6 text-[#265447]">{name}</span>
+                                <ReviewStars filled={stars} />
                             </div>
+                            <span className="font-inter font-normal text-[13px] leading-[19.5px] text-[#6D8279]">{date}</span>
                         </div>
-                        <span className="review-date">06 червня 2026</span>
+                        <p className="font-inter font-normal text-base leading-6 text-[#6D8279] m-0">{text}</p>
                     </div>
-                    <p className="review-text">
-                        Хороше молоко на кожен день. Часто додаю його у свій тижневий кошик.
-                    </p>
-                </div>
-
-                {/* Відгук 2 */}
-                <div className="review-card">
-                    <div className="review-header">
-                        <div className="reviewer-info">
-                            <span className="reviewer-name">Олег</span>
-                            <div className="review-stars">
-                                <img src={goldstar} alt="star" className="star-icon" />
-                                <img src={goldstar} alt="star" className="star-icon" />
-                                <img src={goldstar} alt="star" className="star-icon" />
-                                <img src={goldstar} alt="star" className="star-icon" />
-                                <img src={goldstar} alt="star" className="star-icon" />
-                            </div>
-                        </div>
-                        <span className="review-date">02 червня 2026</span>
-                    </div>
-                    <p className="review-text">
-                        Зручно бачити, де це молоко дешевше. Ціна між магазинами реально відрізняється.
-                    </p>
-                </div>
-
-                {/* Відгук 3 */}
-                <div className="review-card">
-                    <div className="review-header">
-                        <div className="reviewer-info">
-                            <span className="reviewer-name">Ірина</span>
-                            <div className="review-stars">
-                                <img src={goldstar} alt="star" className="star-icon" />
-                                <img src={goldstar} alt="star" className="star-icon" />
-                                <img src={goldstar} alt="star" className="star-icon" />
-                                <img src={goldstar} alt="star" className="star-icon" />
-                                <img src={zero_star} alt="empty star" className="star-icon" />
-                            </div>
-                        </div>
-                        <span className="review-date">28 травня 2026</span>
-                    </div>
-                    <p className="review-text">
-                        Якість хороша, але важливо перевіряти наявність у конкретному магазині.
-                    </p>
-                </div>
-
+                ))}
             </div>
 
-            {/* Нижній блок з кнопкою */}
-            <div className="reviews-footer">
-                <button className="btn-write-review">Написати відгук</button>
-                <span className="action-hint">
+            {/* Footer */}
+            <div className="flex items-center gap-4">
+                <button className="w-[181px] h-[46px] flex justify-center items-center bg-white border border-[rgba(38,84,71,0.16)] rounded-[10px] font-inter font-semibold text-sm text-[#265447] cursor-pointer transition-colors duration-200 hover:bg-[#F9FAFB]">
+                    Написати відгук
+                </button>
+                <span className="font-inter font-normal text-sm leading-[21px] text-[#6D8279]">
                     Увійдіть в акаунт, щоб залишити відгук після покупки.
                 </span>
             </div>
+
         </section>
     );
 }
