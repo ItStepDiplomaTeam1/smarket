@@ -228,9 +228,7 @@ jobs:
 
       - name: Install service dependencies
         working-directory: ${{ matrix.service.path }}
-        run: |
-          uv pip install --system -r pyproject.toml
-          uv pip install --system .
+        run: uv pip install --system .
 
       - name: Ruff — lint
         working-directory: ${{ matrix.service.path }}
@@ -282,7 +280,6 @@ jobs:
       - name: Install service + test dependencies
         working-directory: ${{ matrix.service.path }}
         run: |
-          uv pip install --system -r pyproject.toml
           uv pip install --system .
           uv pip install --system pytest pytest-asyncio pytest-cov httpx
 
