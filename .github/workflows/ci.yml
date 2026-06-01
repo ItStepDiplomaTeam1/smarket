@@ -160,6 +160,9 @@ jobs:
     needs: detect
     if: needs.detect.outputs.has_node == 'true'
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/react/frontend/my-react-app
     steps:
       - uses: actions/checkout@v4
 
@@ -167,6 +170,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: apps/react/frontend/my-react-app/package-lock.json
 
       - name: Install
         run: npm ci
@@ -185,7 +189,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: node-coverage
-          path: coverage/
+          path: apps/react/frontend/my-react-app/coverage/
           if-no-files-found: ignore
 
       - name: Build
