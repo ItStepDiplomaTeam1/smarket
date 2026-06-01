@@ -97,6 +97,7 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+    restart: on-failure
     networks:
       - smarket-network
 
@@ -107,18 +108,18 @@ services:
       - "5672:5672"
       - "15672:15672"
     environment:
-        RABBITMQ_DEFAULT_USER: smarket
-        RABBITMQ_DEFAULT_PASS: smarket
+      RABBITMQ_DEFAULT_USER: smarket
+      RABBITMQ_DEFAULT_PASS: smarket
     volumes:
-        - rabbitmq_data:/var/lib/rabbitmq
+      - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
     networks:
-        - smarket-network
+      - smarket-network
 
 volumes:
   postgres_data:

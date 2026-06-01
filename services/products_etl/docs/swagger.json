@@ -1,0 +1,148 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "ETL-сервіс для парсингу та синхронізації товарного каталогу з Zakaz.ua.",
+        "title": "Products ETL Service API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "host": "localhost:8082",
+    "basePath": "/",
+    "paths": {
+        "/health": {
+            "get": {
+                "description": "Повертає статус \"ok\" якщо сервіс запущений і доступний",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "system"
+                ],
+                "summary": "Перевірка стану сервісу",
+                "responses": {
+                    "200": {
+                        "description": "{\"status\":\"ok\"}",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/product/get": {
+            "get": {
+                "description": "Виконує запит до API Zakaz.ua та повертає список товарів для заданого магазину та категорії",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "products"
+                ],
+                "summary": "Отримати список товарів з Zakaz.ua",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID магазину (наприклад: 48215803)",
+                        "name": "store_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID категорії (наприклад: 4820000)",
+                        "name": "category_id",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Список товарів",
+                        "schema": {
+                            "$ref": "#/definitions/DTO.ProductResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Помилка читання даних",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "502": {
+                        "description": "Помилка при запиті до Zakaz.ua",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "DTO.ProductDTO": {
+            "type": "object",
+            "properties": {
+                "brand": {
+                    "description": "Поля для сборки JSONBSpecifications в Postgres",
+                    "type": "string"
+                },
+                "ean": {
+                    "description": "Штрих-код (если есть)",
+                    "type": "string"
+                },
+                "id": {
+                    "description": "Внешний ID товара (ложится в external_id)",
+                    "type": "string"
+                },
+                "in_stock": {
+                    "description": "Наличие товара в данном магазине",
+                    "type": "boolean"
+                },
+                "metadata": {
+                    "description": "Дополнительные характеристики товара",
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "old_price": {
+                    "description": "Старая цена до скидки (nullable, если скидки нет)",
+                    "type": "number"
+                },
+                "pack_count": {
+                    "type": "integer"
+                },
+                "price": {
+                    "description": "Текущая цена (в гривнах, например 42.50)",
+                    "type": "number"
+                },
+                "title": {
+                    "description": "Название товара",
+                    "type": "string"
+                },
+                "unit": {
+                    "description": "Единица измерения (pcs, kg, g)",
+                    "type": "string"
+                },
+                "weight": {
+                    "description": "Вес/объем товара",
+                    "type": "number"
+                }
+            }
+        },
+        "DTO.ProductResponse": {
+            "type": "object",
+            "properties": {
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/DTO.ProductDTO"
+                    }
+                }
+            }
+        }
+    }
+}
