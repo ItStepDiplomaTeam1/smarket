@@ -1,29 +1,20 @@
 
 import { useState } from 'react';
 
-// 1. Импортируем компоненты для главной страницы
-import { Header } from './home/Header';
-import { Hero } from './home/Hero';
-import { ProductsSec } from './home/ProductsSec';
-import { CategoriesSec } from './home/CategoriesSec';
-import { Hws } from './home/Hws';
-import { FinalCTA } from './home/FinalCTA';
-import { Footer } from './home/Footer';
+// 1. Shared UI components
+import { Header, Footer } from './shared/ui';
 
-// 2. Импортируем компоненты для страницы продукта
-import { ProductHero } from './product-page/ProductHero'; 
-import { About } from './product-page/About';
-import { FBT } from './product-page/FBT';
-import { SMProduct } from './product-page/SM-Product';
-import { BottomCti } from './product-page/Bottom-cti';
-import { Reviews } from './product-page/Reviews';
+// 2. Home module components
+import { Hero, CategoriesSec, ProductsSec, Hws, FinalCTA } from './modules/Home';
 
-// 3. Импортируем компонент для страниц аккаунта
-import { Create } from './account/Create';
-import { Login } from './account/Login';
-import { Popup } from './account/Pop-up';
-import { ForgotPass } from './account/ForgotPass';
-import { Profile } from './account/Profile';
+// 3. Product module components
+import { ProductHero, About, FBT, SMProduct, BottomCti, Reviews } from './modules/Product';
+
+// 4. Auth module components
+import { Create, Login, Popup, ForgotPass } from './modules/Auth';
+
+// 5. Profile module components
+import { Profile } from './modules/Profile';
 
 
 
@@ -46,18 +37,19 @@ function App() {
 
       {currentPage === 'product' && (
         <div className="product-page-bg">
-          <ProductHero /> 
+          {/*<ProductHero /> 
           <About />
           <BottomCti />
           <FBT />
           <Reviews />
-          <SMProduct />
+          <SMProduct />*/}
 
           {/*<Hero />
           <ProductsSec />
           <CategoriesSec />
           <Hws />
           <FinalCTA />*/}
+          <Create />
         </div>
       )}
  
