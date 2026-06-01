@@ -143,11 +143,11 @@ jobs:
       - name: pip-audit — Python dependency audit
         if: needs.detect.outputs.has_python == 'true'
         run: |
-          pip install pip-audit --quiet
+          pip install pip-audit --quiet --break-system-packages
           find . -name 'pyproject.toml' -not -path '*/.venv/*' | while read f; do
             dir=$(dirname "$f")
             echo "▶ Auditing $dir"
-            (cd "$dir" && pip-audit --requirement <(pip install . --dry-run -q 2>/dev/null | grep -oP '(?<=Collecting )\S+') 2>/dev/null || true)
+            (cd "$dir" && pip-audit --requirement <(pip install . --dry-run --break-system-packages -q 2>/dev/null | grep -oP '(?<=Collecting )\S+') 2>/dev/null || true)
           done
 
   # ═══════════════════════════════════════════
@@ -181,7 +181,7 @@ jobs:
         run: npm run test:coverage --if-present || npm test --if-present
 
       - name: Upload coverage
-        if: always()
+        if: ${{ !env.ACT }}
         uses: actions/upload-artifact@v4
         with:
           name: node-coverage
@@ -309,7 +309,7 @@ jobs:
           fi
 
       - name: Upload coverage report
-        if: always()
+        if: always() && !env.ACT
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.service.name }}

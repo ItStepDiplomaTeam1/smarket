@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   db:
     image: postgres:16-alpine
@@ -15,6 +17,8 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
+    networks:
+      - smarket-network
 
   auth_service:
     build:
@@ -27,6 +31,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - smarket-network
 
   gateway_service:
     build:
@@ -39,6 +45,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - smarket-network
 
   migration_job:
     build:
@@ -52,6 +60,8 @@ services:
       db:
         condition: service_healthy
     restart: "no"
+    networks:
+      - smarket-network
 
   business_logic_service:
     build:
@@ -70,6 +80,27 @@ services:
         condition: service_healthy
       migration_job:
         condition: service_completed_successfully
+    networks:
+      - smarket-network
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: smarket-rabbitmq
+    ports:
+        - "5672:5672"
+        - "15672:15672"
+    environment:
+        RABBITMQ_DEFAULT_USER: smarket
+        RABBITMQ_DEFAULT_PASS: smarket
+    volumes:
+        - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+        - smarket-network
 
 volumes:
   postgres_data:
+  rabbitmq_data:
+
+networks:
+  smarket-network:
+    driver: bridge

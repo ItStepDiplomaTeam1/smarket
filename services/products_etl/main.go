@@ -7,7 +7,6 @@ import (
 
 	"smarket/services/products_etl/database"
 	"smarket/services/products_etl/internal/config"
-	"smarket/services/products_etl/internal/queue"
 )
 
 func main() {
@@ -16,38 +15,13 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	mongoClient, err := database.ConnectMongoDB(cfg.MongoURI)
+	infra, err := database.InitInfrastructure(ctx, cfg)
 	if err != nil {
-		log.Fatalf("Критична помилка ініціалізації MongoDB: %v", err)
+		log.Fatalf("Критична помилка ініціалізації інфраструктури: %v", err)
 	}
-	defer func() {
-		if err := mongoClient.Disconnect(context.Background()); err != nil {
-			log.Printf("Помилка при закритті з'єднання MongoDB: %v", err)
-		}
-	}()
+	defer infra.Close(context.Background())
 
-	if err := mongoClient.Ping(ctx, nil); err != nil {
-		log.Fatalf("Сервер MongoDB доступний, але відхилив Ping: %v", err)
-	}
-	log.Println("Успішне безпечне підключення до MongoDB!")
+	log.Println("Усі підключення до БД та RabbitMQ успішно ініціалізовано!")
 
-	pgPool, err := database.ConnectPostgres(ctx, cfg.DatabaseURL)
-	if err != nil {
-		log.Fatalf("Критична помилка ініціалізації PostgreSQL: %v", err)
-	}
-	defer pgPool.Close()
-	log.Println("Успішне безпечне підключення до PostgreSQL (NeonDB)!")
-
-	rabbitConn, err := queue.ConnectRabbitMQ(cfg.RabbitMQURL)
-	if err != nil {
-		log.Fatalf("Критична помилка ініціалізації RabbitMQ: %v", err)
-	}
-	defer func() {
-		if err := rabbitConn.Close(); err != nil {
-			log.Printf("Помилка при закритті з'єднання RabbitMQ: %v", err)
-		}
-	}()
-	log.Println("Успішне безпечне підключення до RabbitMQ!")
-
-	_, _, _ = mongoClient, pgPool, rabbitConn
+	_ = infra
 }

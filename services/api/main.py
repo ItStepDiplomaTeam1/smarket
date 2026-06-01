@@ -86,7 +86,7 @@ def create_app() -> FastAPI:
         result = await db.execute(stmt)
         await db.commit()
 
-        if result.rowcount == 0:
+        if getattr(result, "rowcount", 0) == 0:
             logger.warning(f"Продукт з ID {product_id} не був знайдений для видалення")
             raise HTTPException(status_code=404, detail="Product not found")
 
