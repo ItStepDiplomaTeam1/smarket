@@ -1,6 +1,6 @@
 import lupa from '../assets/lupa.svg';
 import koshuk from '../assets/koshuk.svg';
-import lohm from '../assets/lohm.svg';
+import people from '../assets/people.svg';
 import fix_logo from '../assets/Logo-Smarket.svg';
 
 export function Header() {
@@ -25,7 +25,7 @@ export function Header() {
             <img src={lupa} alt="Search" className="w-5 h-5 block" />
           </button>
           <button className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0">
-            <img src={lohm} alt="Profile" className="w-5 h-5 block" />
+            <img src={people} alt="Profile" className="w-5 h-5 block" />
           </button>
           <button className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0">
             <img src={koshuk} alt="Basket" className="w-5 h-5 block" />

@@ -46,22 +46,21 @@ function App() {
 
       {currentPage === 'product' && (
         <div className="product-page-bg">
-          {/*<ProductHero /> 
+          <ProductHero /> 
           <About />
           <BottomCti />
           <FBT />
           <Reviews />
-          <SMProduct />*/}
+          <SMProduct />
 
-          <Hero />
+          {/*<Hero />
           <ProductsSec />
           <CategoriesSec />
           <Hws />
-          <FinalCTA />
+          <FinalCTA />*/}
         </div>
       )}
-
-      <Footer /> 
+ 
 
     </div>
   );

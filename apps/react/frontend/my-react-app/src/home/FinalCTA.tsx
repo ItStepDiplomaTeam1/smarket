@@ -1,25 +1,25 @@
 export function FinalCTA() {
   return (
-    /* Screenshot: section sits on #F6FAF8 bg, the dark card is full-width inside */
-    <section className="w-full bg-[#F6FAF8] py-[64px] px-6">
-      <div className="max-w-[1180px] mx-auto bg-[#173B33] rounded-3xl py-[72px] px-8 flex flex-col items-center text-center">
+    <section className="w-full bg-white py-[80px] px-[20px]">
+      <div className="max-w-[1180px] mx-auto bg-[#173B33] rounded-[24px] py-[72px] px-[24px] flex flex-col items-center text-center">
 
-        <h2 className="font-manrope text-[36px] font-extrabold text-white m-0 mb-4 leading-[1.2]">
+        <h2 className="font-manrope text-[40px] font-extrabold text-white m-0 mb-[16px]">
           Готові зібрати вигідний кошик?
         </h2>
 
-        <p className="font-inter text-[15px] text-[#9CA3AF] leading-[1.7] m-0 mb-10 max-w-[400px]">
-          Додайте товари у список і дізнайтесь, де вся покупка буде дешевшою.
+        <p className="font-inter text-[16px] text-[#D1D5DB] leading-[1.5] m-0 mb-[40px]">
+          Додайте товари у список і дізнайтесь, де вся <br /> покупка буде дешевшою.
         </p>
 
-        <div className="flex flex-col items-center gap-4">
-          {/* CTA button — yellow, matching screenshot exactly */}
-          <button className="bg-[#FACC14] text-[#173B33] font-manrope text-[15px] font-semibold w-[168px] h-12 rounded-[10px] border-none cursor-pointer flex justify-center items-center transition-all duration-200 hover:bg-[#F59E0B] hover:-translate-y-0.5">
+        <div className="flex flex-col items-center gap-[20px]">
+          {/* Кнопка с правильными размерами и ховером из CSS */}
+          <button className="bg-[#FACC14] text-[#173B33] font-manrope text-[16px] font-semibold w-[154px] h-[48px] rounded-[10px] flex justify-center items-center transition-all duration-200 hover:bg-[#e9ba2e] hover:-translate-y-[2px]">
             Створити кошик
           </button>
+          
           <a
             href="#"
-            className="font-inter text-[13px] text-[#6FE3C2] no-underline transition-colors duration-200 hover:text-white"
+            className="font-inter text-[14px] text-[#6FE3C2] no-underline transition-all duration-200 hover:text-white hover:underline"
           >
             Переглянути акції →
           </a>

@@ -12,126 +12,132 @@ export function Create() {
     const [showConfirm, setShowConfirm] = useState(false);
 
     return (
-        <section className="relative flex justify-center items-center w-full min-h-screen bg-[#F6FAF8] font-inter p-10">
-
-            {/* Back link */}
+        <section className="relative flex justify-center items-center w-full min-h-screen bg-[#F6FAF8] font-inter p-[40px]">
+            
+            {/* Ссылка в правом верхнем углу */}
             <a
                 href="/"
-                className="absolute top-6 right-10 flex items-center gap-2 text-sm font-semibold text-[#265447] no-underline leading-[21px] hover:underline"
+                className="absolute top-[24px] right-[40px] flex items-center gap-[8px] text-[14px] font-semibold text-[#265447] no-underline leading-[21px] hover:underline"
             >
-                <img src={strela} alt="Back" className="w-4 h-4" />
+                <img src={strela} alt="Back" className="w-[16px] h-[16px]" />
                 На головну сторінку
             </a>
 
-            <div className="flex w-[1040px] h-[858.5px] bg-white rounded-3xl border border-[rgba(38,84,71,0.08)] shadow-[0px_18px_48px_rgba(23,59,51,0.12)] overflow-hidden shrink-0">
+            {/* Карточка MAIN */}
+            <div className="flex w-[1040px] h-[858.5px] bg-white rounded-[24px] border border-[rgba(38,84,71,0.08)] shadow-[0px_18px_48px_rgba(23,59,51,0.12)] overflow-hidden shrink-0">
 
-                {/* LEFT PANEL */}
-                <div className="w-[467px] shrink-0 bg-gradient-to-b from-[#EAF7F2] to-[#F6FAF8] p-12 flex flex-col text-[#173B33]">
-                    <img src={logo} alt="Smarket Logo" className="w-32 mb-8" />
+                {/* ЛЕВАЯ ПАНЕЛЬ (убрали flex flex-col) */}
+                <div className="w-[467px] shrink-0 bg-gradient-to-b from-[#EAF7F2] to-[#F6FAF8] border-r border-[rgba(38,84,71,0.08)] p-[48px] text-[#173B33]">
+                    <img src={logo} alt="Smarket Logo" className="w-[128px] mb-[32px]" />
 
-                    <h2 className="font-manrope text-[32px] font-bold leading-10 mb-4">
-                        Купуйте розумніше. <br /> Заощаджуйте більше.
+                    <h2 className="font-manrope text-[32px] font-bold leading-[40px] mb-[16px]">
+                        Купуйте розумніше. <br /> Заощаджуйте <br /> більше.
                     </h2>
-                    <p className="text-sm leading-[21px] text-[#6D8279] mb-6">
-                        Створіть акаунт, щоб зберігати кошики, порівнювати ціни між магазинами та бачити, де покупка буде дешевшою.
+                    <p className="text-[14px] leading-[21px] text-[#6D8279] mb-[24px]">
+                        Створіть акаунт, щоб зберігати кошики, <br /> порівнювати ціни між магазинами та бачити, де <br /> вся покупка буде дешевшою.
                     </p>
 
-                    <ul className="list-none p-0 m-0 mb-10">
-                        <li className="flex items-center gap-3 mb-3 text-sm">
-                            <img src={checkIcon} alt="check" className="w-4 h-4 shrink-0" /> Зберігайте списки покупок
+                    <ul className="list-none m-0 p-0 mb-[40px]">
+                        <li className="flex items-center gap-[12px] mb-[12px] text-[14px] font-medium">
+                            <img src={checkIcon} alt="check" className="w-[20px] h-[20px] shrink-0" /> Зберігайте списки покупок
                         </li>
-                        <li className="flex items-center gap-3 mb-3 text-sm">
-                            <img src={checkIcon} alt="check" className="w-4 h-4 shrink-0" /> Порівнюйте ціни між магазинами
+                        <li className="flex items-center gap-[12px] mb-[12px] text-[14px] font-medium">
+                            <img src={checkIcon} alt="check" className="w-[20px] h-[20px] shrink-0" /> Порівнюйте ціни між магазинами
                         </li>
-                        <li className="flex items-center gap-3 text-sm">
-                            <img src={checkIcon} alt="check" className="w-4 h-4 shrink-0" /> Відстежуйте свою економію
+                        <li className="flex items-center gap-[12px] text-[14px] font-medium">
+                            <img src={checkIcon} alt="check" className="w-[20px] h-[20px] shrink-0" /> Відстежуйте свою економію
                         </li>
                     </ul>
 
-                    <img src={basketImage} alt="Basket" className="w-[320px] h-[177px] object-cover rounded-2xl mt-auto" />
+                    {/* Картинка (убрали mt-auto, добавили block) */}
+                    <img 
+                        src={basketImage} 
+                        alt="Ваш тижневий кошик" 
+                        className="w-[360px] max-w-none h-auto -ml-[18px] block" 
+                    />
                 </div>
 
-                {/* RIGHT PANEL — scrollable so form fits even on smaller screens */}
-                <div className="w-[573px] flex justify-center items-start overflow-y-auto py-10">
+                {/* ПРАВАЯ ПАНЕЛЬ — строго по центру */}
+                <div className="w-[573px] flex justify-center items-center">
                     <div className="w-[380px]">
-                        <h1 className="font-manrope text-[30px] font-extrabold leading-[45px] text-[#265447] mb-2">
+                        <h1 className="font-manrope text-[30px] font-extrabold leading-[45px] text-[#265447] mb-[8px]">
                             Створіть акаунт
                         </h1>
-                        <p className="text-sm leading-[21px] text-[#6D8279] mb-6">
+                        <p className="text-[14px] leading-[21px] text-[#6D8279] mb-[24px]">
                             Почніть порівнювати ціни та збирати вигідні кошики вже сьогодні.
                         </p>
 
-                        {/* Social buttons */}
-                        <button className="flex items-center justify-center gap-2 w-full h-11 bg-white border border-[rgba(38,84,71,0.16)] rounded-[10px] mb-3 cursor-pointer font-inter text-[13px] font-semibold text-[#111827] transition-colors duration-200 hover:bg-[#F9FAFB]">
-                            <img src={btngoogle} alt="Google" className="w-5 h-5" />
+                        {/* Кнопки соцсетей */}
+                        <button className="flex items-center justify-center gap-[8px] w-full h-[44px] bg-white border border-[rgba(38,84,71,0.16)] rounded-[10px] mb-[12px] cursor-pointer font-inter text-[13px] font-semibold text-[#111827] transition-colors duration-200 hover:bg-[#F9FAFB]">
+                            <img src={btngoogle} alt="Google" className="w-[20px] h-[20px]" />
                             Продовжити з Google
                         </button>
-                        <button className="flex items-center justify-center gap-2 w-full h-11 bg-white border border-[rgba(38,84,71,0.16)] rounded-[10px] mb-3 cursor-pointer font-inter text-[13px] font-semibold text-[#111827] transition-colors duration-200 hover:bg-[#F9FAFB]">
-                            <img src={btnfacebook} alt="Facebook" className="w-5 h-5" />
+                        <button className="flex items-center justify-center gap-[8px] w-full h-[44px] bg-white border border-[rgba(38,84,71,0.16)] rounded-[10px] mb-[12px] cursor-pointer font-inter text-[13px] font-semibold text-[#111827] transition-colors duration-200 hover:bg-[#F9FAFB]">
+                            <img src={btnfacebook} alt="Facebook" className="w-[20px] h-[20px]" />
                             Продовжити з Facebook
                         </button>
 
-                        {/* OR divider */}
-                        <div className="flex items-center text-[#6D8279] text-[13px] mt-6 mb-6 gap-[10px]">
+                        {/* Разделитель */}
+                        <div className="flex items-center text-[#6D8279] text-[13px] mt-[24px] mb-[24px] gap-[10px]">
                             <span className="flex-1 h-px bg-[rgba(38,84,71,0.08)]"></span>
                             <span className="shrink-0">або зареєструйтесь через email</span>
                             <span className="flex-1 h-px bg-[rgba(38,84,71,0.08)]"></span>
                         </div>
 
                         <form className="flex flex-col">
-                            <label className="text-[13px] font-semibold text-[#265447] mb-2 block">Ім'я</label>
+                            <label className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Ім'я</label>
                             <input
                                 type="text"
                                 placeholder="Олена"
-                                className="w-full h-11 border border-[rgba(38,84,71,0.16)] rounded-[10px] px-4 mb-4 bg-white font-inter text-sm text-[#111827] outline-none transition-colors duration-200 focus:border-[#265447]"
+                                className="w-full h-[44px] border border-[rgba(38,84,71,0.16)] rounded-[10px] px-[16px] mb-[16px] bg-white font-inter text-[14px] text-[#111827] outline-none transition-colors duration-200 focus:border-[#265447]"
                             />
 
-                            <label className="text-[13px] font-semibold text-[#265447] mb-2 block">Email</label>
+                            <label className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Email</label>
                             <input
                                 type="email"
                                 placeholder="smarket@gmail.com"
-                                className="w-full h-11 border border-[rgba(38,84,71,0.16)] rounded-[10px] px-4 mb-4 bg-white font-inter text-sm text-[#111827] outline-none transition-colors duration-200 focus:border-[#265447]"
+                                className="w-full h-[44px] border border-[rgba(38,84,71,0.16)] rounded-[10px] px-[16px] mb-[16px] bg-white font-inter text-[14px] text-[#111827] outline-none transition-colors duration-200 focus:border-[#265447]"
                             />
 
-                            <label className="text-[13px] font-semibold text-[#265447] mb-2 block">Пароль</label>
-                            <div className="relative mb-4">
+                            <label className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Пароль</label>
+                            <div className="relative mb-[16px]">
                                 <input
                                     type={showPassword ? 'text' : 'password'}
                                     placeholder="Створіть пароль"
-                                    className="w-full h-11 border border-[rgba(38,84,71,0.16)] rounded-[10px] px-4 pr-10 bg-white font-inter text-sm text-[#111827] outline-none transition-colors duration-200 focus:border-[#265447]"
+                                    className="w-full h-[44px] border border-[rgba(38,84,71,0.16)] rounded-[10px] px-[16px] pr-[40px] bg-white font-inter text-[14px] text-[#111827] outline-none transition-colors duration-200 focus:border-[#265447]"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer p-0 flex items-center"
+                                    className="absolute right-[12px] top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer p-0 flex items-center"
                                 >
                                     <img src={eyeIcon} alt="toggle" className="w-[18px] h-[18px]" />
                                 </button>
                             </div>
 
-                            <label className="text-[13px] font-semibold text-[#265447] mb-2 block">Підтвердьте пароль</label>
-                            <div className="relative mb-4">
+                            <label className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Підтвердьте пароль</label>
+                            <div className="relative mb-[16px]">
                                 <input
                                     type={showConfirm ? 'text' : 'password'}
                                     placeholder="Повторіть пароль"
-                                    className="w-full h-11 border border-[rgba(38,84,71,0.16)] rounded-[10px] px-4 pr-10 bg-white font-inter text-sm text-[#111827] outline-none transition-colors duration-200 focus:border-[#265447]"
+                                    className="w-full h-[44px] border border-[rgba(38,84,71,0.16)] rounded-[10px] px-[16px] pr-[40px] bg-white font-inter text-[14px] text-[#111827] outline-none transition-colors duration-200 focus:border-[#265447]"
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowConfirm(!showConfirm)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer p-0 flex items-center"
+                                    className="absolute right-[12px] top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer p-0 flex items-center"
                                 >
                                     <img src={eyeIcon} alt="toggle" className="w-[18px] h-[18px]" />
                                 </button>
                             </div>
 
-                            {/* Custom checkbox */}
-                            <div className="flex items-start gap-3 mb-6">
+                            {/* Чекбокс */}
+                            <div className="flex items-start gap-[12px] mb-[24px]">
                                 <input
                                     type="checkbox"
                                     id="agree"
                                     className="
-                                        appearance-none shrink-0 w-5 h-5 mt-[1px]
+                                        appearance-none shrink-0 w-[20px] h-[20px] mt-[1px]
                                         border border-[rgba(38,84,71,0.16)] rounded-[6px] bg-white cursor-pointer relative
                                         checked:bg-[#265447] checked:border-[#265447]
                                         after:content-[''] after:absolute after:left-[6px] after:top-[2px]
@@ -147,11 +153,12 @@ export function Create() {
                                 </label>
                             </div>
 
-                            <button className="w-full h-[46px] bg-[#265447] text-white rounded-[10px] border-none cursor-pointer font-inter text-sm font-bold transition-colors duration-200 hover:bg-[#1A3E2F]">
+                            {/* Главная кнопка */}
+                            <button className="w-full h-[46px] mt-[8px] bg-[#265447] text-white rounded-[10px] border-none cursor-pointer font-inter text-[14px] font-bold transition-colors duration-200 hover:bg-[#1A3E2F]">
                                 Зареєструватися
                             </button>
 
-                            <p className="text-center text-sm mt-6 text-[#6B7280]">
+                            <p className="text-center text-[14px] mt-[24px] text-[#6B7280]">
                                 Вже маєте акаунт?{' '}
                                 <a href="#" className="text-[#265447] font-semibold no-underline hover:underline">
                                     Увійти
