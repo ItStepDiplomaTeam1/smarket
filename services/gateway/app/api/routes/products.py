@@ -23,24 +23,24 @@ async def proxy_to_product(request: Request, path: str):
         if not auth_header or not auth_header.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Авторизація обов'язкова для цієї операції")
         
-    token = auth_header.split(" ")[1]
-    try:
-        # Розшифровуємо токен
-        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        token = auth_header.split(" ")[1]
+        try:
+            # Розшифровуємо токен
+            payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
 
-        # ПЕРЕВІРКА НА АДМІНА:
-        # Якщо роль користувача не 'admin', Gateway дає відсіч і не пускає запит у мережу
-        if payload.get("role") != "admin":
-            raise HTTPException(status_code=403, detail="Доступ заборонено. Потрібні права адміністратора!")
-        
-        # Якщо це адмін — збагачуємо хедери для мікросервісу
+            # ПЕРЕВІРКА НА АДМІНА:
+            # Якщо роль користувача не 'admin', Gateway дає відсіч і не пускає запит у мережу
+            if payload.get("role") != "admin":
+                raise HTTPException(status_code=403, detail="Доступ заборонено. Потрібні права адміністратора!")
+            
+            # Якщо це адмін — збагачуємо хедери для мікросервісу
             headers["X-User-Id"] = str(payload.get("sub"))
             headers["X-User-Role"] = str(payload.get("role"))
 
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Сесія застаріла, увійдіть знову")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Невалідний токен доступу")
+        except jwt.ExpiredSignatureError:
+            raise HTTPException(status_code=401, detail="Сесія застаріла, увійдіть знову")
+        except jwt.InvalidTokenError:
+            raise HTTPException(status_code=401, detail="Невалідний токен доступу")
     
     # Якщо це був звичайний GET (перегляд товарів), блок перевірки вище просто проігнорується.
     # Запит полетить у мікросервіс як від анонімного гостя.
