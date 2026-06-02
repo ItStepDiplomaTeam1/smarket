@@ -143,11 +143,11 @@ jobs:
       - name: pip-audit — Python dependency audit
         if: needs.detect.outputs.has_python == 'true'
         run: |
-          pip install pip-audit --quiet
+          pip install pip-audit --quiet --break-system-packages
           find . -name 'pyproject.toml' -not -path '*/.venv/*' | while read f; do
             dir=$(dirname "$f")
             echo "▶ Auditing $dir"
-            (cd "$dir" && pip-audit --requirement <(pip install . --dry-run -q 2>/dev/null | grep -oP '(?<=Collecting )\S+') 2>/dev/null || true)
+            (cd "$dir" && pip-audit --requirement <(pip install . --dry-run --break-system-packages -q 2>/dev/null | grep -oP '(?<=Collecting )\S+') 2>/dev/null || true)
           done
 
   # ═══════════════════════════════════════════
@@ -160,6 +160,9 @@ jobs:
     needs: detect
     if: needs.detect.outputs.has_node == 'true'
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/react/frontend/my-react-app
     steps:
       - uses: actions/checkout@v4
 
@@ -167,6 +170,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: apps/react/frontend/my-react-app/package-lock.json
 
       - name: Install
         run: npm ci
@@ -181,11 +185,11 @@ jobs:
         run: npm run test:coverage --if-present || npm test --if-present
 
       - name: Upload coverage
-        if: always()
+        if: ${{ !env.ACT }}
         uses: actions/upload-artifact@v4
         with:
           name: node-coverage
-          path: coverage/
+          path: apps/react/frontend/my-react-app/coverage/
           if-no-files-found: ignore
 
       - name: Build
@@ -309,7 +313,7 @@ jobs:
           fi
 
       - name: Upload coverage report
-        if: always()
+        if: always() && !env.ACT
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ matrix.service.name }}
@@ -339,16 +343,21 @@ jobs:
     needs: detect
     if: needs.detect.outputs.has_go == 'true'
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/products_etl
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version-file: services/products_etl/go.mod
           cache: true
+          cache-dependency-path: services/products_etl/go.sum
       - run: go mod download
       - run: go vet ./...
       - run: go test -v -race -coverprofile=coverage.out ./...
       - run: go build ./...
+
 
   # ── Rust ──────────────────────────────────
   rust-ci:
@@ -463,6 +472,7 @@ jobs:
       always() &&
       !contains(needs.*.result, 'failure') &&
       needs.detect.outputs.has_docker == 'true' &&
+      needs.detect.outputs.apps_matrix != '[]' &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || github.event_name == 'pull_request')
     runs-on: ubuntu-latest
     strategy:

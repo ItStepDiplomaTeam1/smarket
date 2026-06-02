@@ -15,6 +15,8 @@ services:
       timeout: 5s
       retries: 10
       start_period: 10s
+    networks:
+      - smarket-network
 
   auth_service:
     build:
@@ -27,6 +29,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      migration_job:
+        condition: service_completed_successfully # Ждём завершения Alembic-миграций
+    networks:
+      - smarket-network
 
   gateway_service:
     build:
@@ -39,6 +45,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      - smarket-network
 
   migration_job:
     build:
@@ -52,6 +60,8 @@ services:
       db:
         condition: service_healthy
     restart: "no"
+    networks:
+      - smarket-network
 
   business_logic_service:
     build:
@@ -60,7 +70,7 @@ services:
     command:
       - "sh"
       - "-c"
-      - "cd /app && granian --interface asgi --host 0.0.0.0 --port 8000 --workers 4 services.api.main:app"
+      - "granian --interface asgi --host 0.0.0.0 --port 8000 --workers 4 services.api.main:app"
     ports:
       - "8000:8000"
     env_file:
@@ -70,6 +80,53 @@ services:
         condition: service_healthy
       migration_job:
         condition: service_completed_successfully
+    networks:
+      - smarket-network
+
+  products_etl:
+    build:
+      context: ../services/products_etl
+      dockerfile: Dockerfile
+    environment:
+      - ENV=production
+      - RABBITMQ_URL=amqp://smarket:smarket@rabbitmq:5672/
+    env_file:
+      - ../services/products_etl/.env
+    ports:
+      - "8082:8082"
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: on-failure
+    networks:
+      - smarket-network
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: smarket-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: smarket
+      RABBITMQ_DEFAULT_PASS: smarket
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      - smarket-network
 
 volumes:
   postgres_data:
+  rabbitmq_data:
+
+networks:
+  smarket-network:
+    driver: bridge

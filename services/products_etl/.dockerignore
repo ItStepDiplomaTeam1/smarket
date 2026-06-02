@@ -1,0 +1,7 @@
+.git
+.idea
+.env
+*.exe
+products_etl
+tmp_build
+.venv
