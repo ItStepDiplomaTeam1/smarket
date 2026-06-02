@@ -18,43 +18,56 @@ import { Profile } from './modules/Profile';
 
 
 
+//function App() {
+
+//  const [currentPage] = useState('product'); 
+
+//  return (
+//    <div className="app-container">
+//       <Header /> 
+//      {currentPage === 'home' && (
+//        <>
+//          {/*<Hero />
+//          <ProductsSec />
+//          <CategoriesSec />
+//          <Hws />
+//          <FinalCTA />*/}
+//        </>
+//      )}
+//
+//      {currentPage === 'product' && (
+//        <div className="product-page-bg">
+//          {/*<ProductHero /> 
+//          <About />
+//          <BottomCti />
+//          <FBT />
+//          <Reviews />
+//          <SMProduct />*/}
+//
+//          {/*<Hero />
+//          <ProductsSec />
+//          <CategoriesSec />
+//          <Hws />
+//          <FinalCTA />*/}
+//          <Create />
+//        </div>
+//      )}
+// 
+//
+//    </div>
+//  );
+//}
+//
+//export default App;
+
+// src/App.tsx
+import { AppRouter } from './app/routes/index.tsx';
+
 function App() {
-
-  const [currentPage] = useState('product'); 
-
   return (
-    <div className="app-container">
-       <Header /> 
-      {currentPage === 'home' && (
-        <>
-          {/*<Hero />
-          <ProductsSec />
-          <CategoriesSec />
-          <Hws />
-          <FinalCTA />*/}
-        </>
-      )}
-
-      {currentPage === 'product' && (
-        <div className="product-page-bg">
-          {/*<ProductHero /> 
-          <About />
-          <BottomCti />
-          <FBT />
-          <Reviews />
-          <SMProduct />*/}
-
-          {/*<Hero />
-          <ProductsSec />
-          <CategoriesSec />
-          <Hws />
-          <FinalCTA />*/}
-          <Create />
-        </div>
-      )}
- 
-
-    </div>
+    // Тут ми згодом додамо провайдери для Zustand, TanStack Query, Theme тощо.
+    // Наразі тут лише роутер.
+    <AppRouter />
   );
 }
 
