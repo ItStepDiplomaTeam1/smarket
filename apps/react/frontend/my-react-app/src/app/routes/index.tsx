@@ -5,7 +5,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 
 // Ліниве завантаження сторінок (використовуємо наш налаштований аліас @/) !!!!
 const HomePage = lazy(() => import('../../pages/Home/index.tsx')); // !!!!!!!!!!!!
-const AuthPage = lazy(() => import('../../pages/Auth')); // !!!!!!!!!!!!
+const AuthPage = lazy(() => import('../../modules/Auth/index.tsx')); // !!!!!!!!!!!!
 
 // Створюємо конфігурацію маршрутів
 const router = createBrowserRouter([
