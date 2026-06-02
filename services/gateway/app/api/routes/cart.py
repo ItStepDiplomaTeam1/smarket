@@ -8,7 +8,7 @@ from app.api.dependencies import verify_jwt
 router = APIRouter()
 
 # Усі запити до /cart/* вимагають наявності токена!
-@router.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+@router.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"], include_in_schema=False)
 async def proxy_to_cart(
     request: Request,
     path: str,
