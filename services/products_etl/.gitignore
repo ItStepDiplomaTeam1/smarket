@@ -1,0 +1,59 @@
+# =========================
+# Environment / secrets
+# =========================
+.env
+.env.*
+!.env.example
+
+# =========================
+# Go build artifacts
+# =========================
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Binaries and coverage
+bin/
+dist/
+build/
+coverage.out
+*.coverprofile
+
+# Go workspace / dependency cache
+vendor/
+
+# =========================
+# Logs and runtime files
+# =========================
+*.log
+logs/
+tmp/
+temp/
+
+# =========================
+# Editor / IDE
+# =========================
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# =========================
+# Misc
+# =========================
+.cache/
+.pytest_cache/
+

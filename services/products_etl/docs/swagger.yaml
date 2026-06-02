@@ -1,0 +1,102 @@
+basePath: /
+definitions:
+  DTO.ProductDTO:
+    properties:
+      brand:
+        description: Поля для сборки JSONBSpecifications в Postgres
+        type: string
+      ean:
+        description: Штрих-код (если есть)
+        type: string
+      id:
+        description: Внешний ID товара (ложится в external_id)
+        type: string
+      in_stock:
+        description: Наличие товара в данном магазине
+        type: boolean
+      metadata:
+        additionalProperties:
+          type: string
+        description: Дополнительные характеристики товара
+        type: object
+      old_price:
+        description: Старая цена до скидки (nullable, если скидки нет)
+        type: number
+      pack_count:
+        type: integer
+      price:
+        description: Текущая цена (в гривнах, например 42.50)
+        type: number
+      title:
+        description: Название товара
+        type: string
+      unit:
+        description: Единица измерения (pcs, kg, g)
+        type: string
+      weight:
+        description: Вес/объем товара
+        type: number
+    type: object
+  DTO.ProductResponse:
+    properties:
+      results:
+        items:
+          $ref: '#/definitions/DTO.ProductDTO'
+        type: array
+    type: object
+host: localhost:8082
+info:
+  contact: {}
+  description: ETL-сервіс для парсингу та синхронізації товарного каталогу з Zakaz.ua.
+  title: Products ETL Service API
+  version: "1.0"
+paths:
+  /health:
+    get:
+      description: Повертає статус "ok" якщо сервіс запущений і доступний
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: '{"status":"ok"}'
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Перевірка стану сервісу
+      tags:
+      - system
+  /product/get:
+    get:
+      description: Виконує запит до API Zakaz.ua та повертає список товарів для заданого
+        магазину та категорії
+      parameters:
+      - description: 'ID магазину (наприклад: 48215803)'
+        in: query
+        name: store_id
+        required: true
+        type: string
+      - description: 'ID категорії (наприклад: 4820000)'
+        in: query
+        name: category_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список товарів
+          schema:
+            $ref: '#/definitions/DTO.ProductResponse'
+        "500":
+          description: Помилка читання даних
+          schema:
+            type: string
+        "502":
+          description: Помилка при запиті до Zakaz.ua
+          schema:
+            type: string
+      summary: Отримати список товарів з Zakaz.ua
+      tags:
+      - products
+swagger: "2.0"

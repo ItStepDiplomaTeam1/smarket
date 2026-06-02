@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi.responses import ORJSONResponse
@@ -18,7 +19,7 @@ from services.auth_service.routers.auth import router as auth_router
 setup_logger()
 
 
-def _coerce_int(value: object, default: int) -> int:
+def _coerce_int(value: Any, default: int) -> int:
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -47,7 +48,8 @@ def create_app() -> FastAPI:
     )
 
     app.state.limiter = auth_limiter._get()
-    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    rate_limit_handler: Any = _rate_limit_exceeded_handler
+    app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
     app.add_middleware(SlowAPIMiddleware)
 
     app.include_router(auth_router, prefix="/auth", tags=["auth"])

@@ -1,9 +1,0 @@
-{
-  "name": "product-research",
-  "private": true,
-  "scripts": {
-    "lint": "echo 'no linter configured yet'",
-    "test": "echo 'no tests configured yet'",
-    "build": "echo 'no build configured yet'"
-  }
-}

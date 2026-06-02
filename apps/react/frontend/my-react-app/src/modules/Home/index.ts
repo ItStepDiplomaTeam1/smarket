@@ -1,0 +1,5 @@
+export { Hero } from './components/Hero'
+export { CategoriesSec } from './components/CategoriesSec'
+export { ProductsSec } from './components/ProductsSec'
+export { Hws } from './components/Hws'
+export { FinalCTA } from './components/FinalCTA'
