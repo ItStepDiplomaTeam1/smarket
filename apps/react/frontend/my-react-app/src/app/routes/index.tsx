@@ -4,8 +4,8 @@ import { Suspense, lazy } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 
 // Ліниве завантаження сторінок (використовуємо наш налаштований аліас @/) !!!!
-const HomePage = lazy(() => import('../../pages/Home/index.tsx')); // !!!!!!!!!!!!
-const AuthPage = lazy(() => import('../../modules/Auth/index.tsx')); // !!!!!!!!!!!!
+const HomePage = lazy(() => import('@/pages/Home/ui/Home.tsx')); // !!!!!!!!!!!!
+const AuthPage = lazy(() => import('@/pages/Auth')); // !!!!!!!!!!!!
 
 // Створюємо конфігурацію маршрутів
 const router = createBrowserRouter([

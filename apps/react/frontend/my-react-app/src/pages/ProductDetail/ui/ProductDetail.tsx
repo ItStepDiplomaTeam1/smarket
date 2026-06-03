@@ -1,5 +1,5 @@
-import { Header } from '../../../shared/ui/Header'
-import { ProductHero, About, FBT, SMProduct, Reviews, BottomCti } from '../../../modules/Product'
+import { Header } from '@/shared/ui/Header'
+import { ProductHero, About, FBT, SMProduct, Reviews, BottomCti } from '@/modules/Product'
 
 export function ProductDetail() {
   return (

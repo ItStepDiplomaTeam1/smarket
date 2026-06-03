@@ -1,4 +1,4 @@
-// src/modules/Auth/components/LoginForm.tsx
+// src/modules/Auth/components/Login.tsx
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import eyeIcon from '@/shared/assets/ButtonEye.svg';

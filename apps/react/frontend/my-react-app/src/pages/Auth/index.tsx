@@ -1,13 +1,13 @@
 // src/pages/Auth/index.tsx
-import btngoogle from '../../shared/assets/google.svg';
-import btnfacebook from '../../shared/assets/facebook.svg';
-import checkIcon from '../../shared/assets/checkgreen.svg';
-import logo from '../../shared/assets/logo.svg';
-import basketImage from '../../shared/assets/logindefault.svg';
-import strela from '../../shared/assets/strela.svg';
+import btngoogle from '@/shared/assets/google.svg';
+import btnfacebook from '@/shared/assets/facebook.svg';
+import checkIcon from '@/shared/assets/checkgreen.svg';
+import logo from '@/shared/assets/logo.svg';
+import basketImage from '@/shared/assets/logindefault.svg';
+import strela from '@/shared/assets/strela.svg';
 
 // Імпортуємо наш розумний компонент з модуля
-import { LoginForm } from '../../modules/Auth';
+import { LoginForm } from '@/modules/Auth';
 
 export default function AuthPage() {
     return (

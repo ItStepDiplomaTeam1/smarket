@@ -1,7 +1,7 @@
-import checkIcon from '../../../shared/assets/checkgreen.svg';
-import logo from '../../../shared/assets/logo.svg';
-import basketImage from '../../../shared/assets/logindefault.svg';
-import strela from '../../../shared/assets/strela.svg';
+import checkIcon from '@/shared/assets/checkgreen.svg';
+import logo from '@/shared/assets/logo.svg';
+import basketImage from '@/shared/assets/logindefault.svg';
+import strela from '@/shared/assets/strela.svg';
 
 export function ForgotPass() {
     return (

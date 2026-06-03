@@ -1,7 +1,7 @@
-import lupa from '../../assets/lupa.svg';
-import koshuk from '../../assets/koshuk.svg';
-import people from '../../assets/people.svg';
-import fix_logo from '../../assets/Logo-Smarket.svg';
+import lupa from '@/assets/lupa.svg';
+import koshuk from '@/assets/koshuk.svg';
+import people from '@/assets/people.svg';
+import fix_logo from '@/assets/Logo-Smarket.svg';
 
 export function Header() {
   return (

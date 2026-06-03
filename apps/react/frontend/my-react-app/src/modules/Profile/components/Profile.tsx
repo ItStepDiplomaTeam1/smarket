@@ -1,15 +1,15 @@
-import logo from '../../../shared/assets/logo.svg';
-import basket from '../../../shared/assets/basket-profile.svg';
-import squere from '../../../shared/assets/squere.svg';
-import location from '../../../shared/assets/location.svg';
-import history from '../../../shared/assets/history.svg';
-import profilelog from '../../../shared/assets/logo-profile.svg';
-import top from '../../../shared/assets/top.svg';
-import arrow from '../../../shared/assets/arrow-profile.svg';
-import lupa from '../../../shared/assets/lupa-for-profile.svg';
-import before from '../../../shared/assets/before.svg';
-import zaglushka from '../../../shared/assets/iconforprofilebasket.svg';
-import barrow_right from '../../../shared/assets/barrow-right.svg';
+import logo from '@/shared/assets/logo.svg';
+import basket from '@/shared/assets/basket-profile.svg';
+import squere from '@/shared/assets/squere.svg';
+import location from '@/shared/assets/location.svg';
+import history from '@/shared/assets/history.svg';
+import profilelog from '@/shared/assets/logo-profile.svg';
+import top from '@/shared/assets/top.svg';
+import arrow from '@/shared/assets/arrow-profile.svg';
+import lupa from '@/shared/assets/lupa-for-profile.svg';
+import before from '@/shared/assets/before.svg';
+import zaglushka from '@/shared/assets/iconforprofilebasket.svg';
+import barrow_right from '@/shared/assets/barrow-right.svg';
 
 export const Profile = () => {
     return (
