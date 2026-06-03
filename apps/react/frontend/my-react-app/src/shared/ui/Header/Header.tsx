@@ -1,7 +1,9 @@
-import lupa from '@/assets/lupa.svg';
-import koshuk from '@/assets/koshuk.svg';
-import people from '@/assets/people.svg';
-import fix_logo from '@/assets/Logo-Smarket.svg';
+import lupa from '@/shared/assets/lupa.svg';
+import koshuk from '@/shared/assets/koshuk.svg';
+import people from '@/shared/assets/people.svg';
+import fix_logo from '@/shared/assets/Logo-Smarket.svg';
+
+import { NavLink } from 'react-router-dom';
 
 export function Header() {
   return (
@@ -13,10 +15,37 @@ export function Header() {
         </a>
 
         <nav className="flex items-center gap-8">
-          <a href="#" className="no-underline text-[#173B33] text-sm font-medium hover:text-[#265447] transition-colors duration-200">Акції</a>
-          <a href="#" className="no-underline text-[#173B33] text-sm font-medium hover:text-[#265447] transition-colors duration-200">Порівняти ціни</a>
-          <a href="#" className="no-underline text-[#173B33] text-sm font-medium hover:text-[#265447] transition-colors duration-200">Магазини</a>
-          <a href="#" className="no-underline text-[#173B33] text-sm font-medium hover:text-[#265447] transition-colors duration-200">Кошик</a>
+            <NavLink 
+                to="/promotions" 
+                className={({ isActive }) => `no-underline text-sm font-medium transition-colors duration-200 
+                    ${isActive ? 'text-[#265447] font-semibold' : 'text-[#173B33] hover:text-[#265447]'}`
+                }>
+                Акції
+            </NavLink>
+
+            <NavLink 
+                to="/compare" 
+                className={({ isActive }) => `no-underline text-sm font-medium transition-colors duration-200 
+                    ${isActive ? 'text-[#265447] font-semibold' : 'text-[#173B33] hover:text-[#265447]'}`
+                }>
+                Порівняти ціни
+            </NavLink>
+
+            <NavLink 
+                to="/stores" 
+                className={({ isActive }) => `no-underline text-sm font-medium transition-colors duration-200 
+                    ${isActive ? 'text-[#265447] font-semibold' : 'text-[#173B33] hover:text-[#265447]'}`
+                }>
+                Магазини
+            </NavLink>
+
+            <NavLink 
+                to="/cart" 
+                className={({ isActive }) => `no-underline text-sm font-medium transition-colors duration-200 
+                    ${isActive ? 'text-[#265447] font-semibold' : 'text-[#173B33] hover:text-[#265447]'}`
+                }>
+                Кошик
+            </NavLink>
         </nav>
 
         <div className="flex items-center gap-5">
