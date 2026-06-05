@@ -1,6 +1,13 @@
 import resend
 import asyncio
+import os
+from jinja2 import Environment, FileSystemLoader
 from src.config import settings
+
+# Налаштовуємо Jinja2 для пошуку шаблонів у папці src/templates
+current_dir = os.path.dirname(os.path.abspath(__file__))
+templates_dir = os.path.join(current_dir, "templates")
+jinja_env = Environment(loader=FileSystemLoader(templates_dir))
 
 # Передаємо ключ з наших налаштувань в бібліотеку Resend
 resend.api_key = settings.resend_api_key
@@ -8,21 +15,22 @@ resend.api_key = settings.resend_api_key
 def _send_email(email_to: str, token: str, action: str):
     """Синхронна функція для відправки листа через Resend API."""
 
-    # Визначаємо тему та текст залежно від дії
+    # 1. Визначаємо шаблон та тему залежно від дії
     if action == "activation":
-
         subject = "Активація акаунту"
-        # Поки що робимо прості HTML-листи
-        html_content = f"<h1>Вітаємо!</h1><p>Ваш токен для активації: <strong>{token}</strong></p>"
-    
+        # Для активації можна створити окремий файл activation.html пізніше
+        template_name = "reset_password.html" 
     elif action == "reset_password":
-
         subject = "Відновлення паролю"
-        html_content = f"<h1>Запит на відновлення паролю</h1><p>Для відновлення використайте токен: <strong>{token}</strong></p>"
-   
+        template_name = "reset_password.html"
     else:
         raise ValueError(f"Невідома дія: {action}")
     
+    # 2. Завантажуємо шаблон і рендеримо його з нашим токеном
+    template = jinja_env.get_template(template_name)
+    html_content = template.render(token=token)
+
+    # 3. Формуємо параметри для Resend
     # Важливо: Для тестового акаунту Resend дозволяє відправляти листи 
     # ТІЛЬКИ на ту пошту, на яку ти зареєстрував акаунт в Resend!
     # Відправник має бути 'onboarding@resend.dev'

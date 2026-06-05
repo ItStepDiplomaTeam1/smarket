@@ -1,9 +1,8 @@
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    # Якщо змінної немає в .env, використається це значення за замовчуванням
-    rabbitmq_url: str = "amqp://guest:guest@localhost:5672/"
-    resend_api_key: str = "" # На майбутнє
+    rabbitmq_url: str = "amqp://smarket:smarket@rabbitmq:5672/"
+    resend_api_key: str
 
     class Config:
         env_file = ".env"

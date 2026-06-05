@@ -1,8 +1,6 @@
 from faststream import FastStream
 from faststream.rabbit import RabbitBroker, RabbitQueue
-from faststream.rabbit.exceptions import RejectMessage
-
-from pydantic import ValidationError
+from faststream.exceptions import RejectMessage
 
 # Імпортуємо наші налаштування та схеми з інших файлів
 from src.config import settings
@@ -22,20 +20,11 @@ dlq = RabbitQueue("email_dead_letter_queue")
 # 2.2 Налаштовуємо основну чергу
 main_queue = RabbitQueue(
     "email_queue",
-    dead_letter_exchange="", # Використовуємо дефолтний обмінник
-    dead_letter_routing_key=dlq.name # Направляємо прямо в нашу DLQ
+    arguments={
+        "x-dead-letter-exchange": "",
+        "x-dead-letter-routing-key": dlq.name
+    }
 )
-
-@app.after_startup
-async def setup_exception_handlers():
-    """Глобальний перехоплювач для логування невалідних даних"""
-
-    @broker.global_exception_handler(ValidationError)
-    async def handle_validation_error(e: ValidationError, message):
-        print(f"🧨 ОТРИМАНО НЕВАЛІДНІ ДАНІ: {e}")
-
-        # Також відхиляємо, щоб воно полетіло в DLQ
-        raise RejectMessage()
         
 
 @broker.subscriber("email_queue")
