@@ -10,7 +10,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U smarket -d smarket"]
+      test: [ "CMD-SHELL", "pg_isready -U smarket -d smarket" ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -115,11 +115,26 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
       interval: 10s
       timeout: 10s
       retries: 10
       start_period: 30s
+    networks:
+      - smarket-network
+
+  email_worker:
+    build:
+      context: ../services/email_worker
+      dockerfile: Dockerfile
+    environment:
+      - RABBITMQ_URL=amqp://smarket:smarket@rabbitmq:5672/
+    env_file:
+      - ../services/email_worker/.env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: on-failure
     networks:
       - smarket-network
 
