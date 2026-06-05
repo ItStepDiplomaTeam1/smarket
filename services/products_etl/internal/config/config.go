@@ -8,10 +8,12 @@ import (
 )
 
 type Config struct {
-	MongoURI    string `env:"MONGO_URI,required"`
-	DatabaseURL string `env:"DATABASE_URL,required"`
-	RabbitMQURL string `env:"RABBITMQ_URL,required"`
-	Environment string `env:"ENV" envDefault:"development"`
+	MongoURI      string `env:"MONGO_URI,required"`
+	MongoDBName   string `env:"MONGO_DB_NAME" envDefault:"smarket_datalake"`
+	DatabaseURL   string `env:"DATABASE_URL,required"`
+	RabbitMQURL   string `env:"RABBITMQ_URL,required"`
+	ETLQueueName  string `env:"ETL_QUEUE_NAME" envDefault:"etl_tasks"`
+	Environment   string `env:"ENV" envDefault:"development"`
 }
 
 func LoadConfig() *Config {

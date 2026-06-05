@@ -15,6 +15,7 @@ import (
 	"smarket/services/products_etl/database"
 	_ "smarket/services/products_etl/docs"
 	"smarket/services/products_etl/internal/config"
+	"smarket/services/products_etl/internal/service"
 	"smarket/services/products_etl/usefulMethods"
 
 	httpSwagger "github.com/swaggo/http-swagger/v2"
@@ -95,7 +96,11 @@ func main() {
 
 	log.Println("Усі підключення до БД та RabbitMQ успішно ініціалізовано!")
 
-	_ = infra
+	// Запускаємо Горутину №1: Extract & Load (Мережа → MongoDB)
+	// Слухає чергу RabbitMQ, завантажує продукти та зберігає сирі сторінки в MongoDB.
+	mongoDB := infra.MongoClient.Database(cfg.MongoDBName)
+	go service.ExtractLoadWorker(infra.RabbitConn, mongoDB, cfg.ETLQueueName)
+	log.Printf("[main] ExtractLoadWorker запущено (черга: %s, MongoDB: %s)", cfg.ETLQueueName, cfg.MongoDBName)
 
 	mux := http.NewServeMux()
 
