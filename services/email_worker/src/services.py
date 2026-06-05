@@ -45,6 +45,7 @@ async def process_email_sending(email_to: str, token: str, action: str):
         print(f"✅ Лист успішно відправлено! ID: {response.get('id')}")
     except Exception as e:
         print(f"❌ Помилка під час відправки через Resend: {e}")
+
         # Обов'язково прокидаємо помилку далі!
         # Якщо ми її приховаємо, RabbitMQ подумає, що все добре, і видалить повідомлення з черги
         raise e

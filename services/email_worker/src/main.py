@@ -1,21 +1,43 @@
 from faststream import FastStream
-from faststream.rabbit import RabbitBroker
+from faststream.rabbit import RabbitBroker, RabbitQueue
+from faststream.rabbit.exceptions import RejectMessage
+
+from pydantic import ValidationError
 
 # Імпортуємо наші налаштування та схеми з інших файлів
 from src.config import settings
 from src.schemas import EmailEvent
-
-# Додаємо імпорт нашого сервісу
 from src.services import process_email_sending
 
 
-# 1. Створюємо брокер (з'єднання з RabbitMQ)
+# 1.1 Створюємо брокер (з'єднання з RabbitMQ)
 broker = RabbitBroker(url=settings.rabbitmq_url)
 
-# 2. Створюємо FastStream і передаємо йому брокер
+# 1.2 Створюємо FastStream і передаємо йому брокер
 app = FastStream(broker=broker)
 
-# 3. Декоратор, який підписує функцію на конкретну чергу
+# 2.1 Створюємо чергу для помилок (Мертва черга)
+dlq = RabbitQueue("email_dead_letter_queue")
+
+# 2.2 Налаштовуємо основну чергу
+main_queue = RabbitQueue(
+    "email_queue",
+    dead_letter_exchange="", # Використовуємо дефолтний обмінник
+    dead_letter_routing_key=dlq.name # Направляємо прямо в нашу DLQ
+)
+
+@app.after_startup
+async def setup_exception_handlers():
+    """Глобальний перехоплювач для логування невалідних даних"""
+
+    @broker.global_exception_handler(ValidationError)
+    async def handle_validation_error(e: ValidationError, message):
+        print(f"🧨 ОТРИМАНО НЕВАЛІДНІ ДАНІ: {e}")
+
+        # Також відхиляємо, щоб воно полетіло в DLQ
+        raise RejectMessage()
+        
+
 @broker.subscriber("email_queue")
 async def handle_email(event: EmailEvent):
     # FastStream вже перетворив JSON з черги на об'єкт EmailEvent
@@ -27,11 +49,21 @@ async def handle_email(event: EmailEvent):
     # Якщо тут виникне помилка (raise e), FastStream автоматично зробить
     # Nack (Negative Acknowledgement) і повідомлення повернеться в чергу.
 
-    await process_email_sending(
-        email_to=event.email,
-        token=event.token,
-        action=event.action
-    )
+    try:
+        await process_email_sending(
+            email_to=event.email,
+            token=event.token,
+            action=event.action
+        )
+        print("[!] ЗАВДАННЯ ВИКОНАНО")
+
+    except Exception as e:
+        print(f"[X] КРИТИЧНА ПОМИЛКА: {e}")
+
+        # RejectMessage - це спеціальна помилка FastStream. 
+        # Вона каже брокеру зробити NACK (відхилити) і НЕ повертати в поточну чергу.
+        # Оскільки ми налаштували DLQ вище, RabbitMQ автоматично перекине його туди.
+        
+        raise RejectMessage()
     
-    print("[!] ЗАВДАННЯ ВИКОНАНО")
     print("="*40)
