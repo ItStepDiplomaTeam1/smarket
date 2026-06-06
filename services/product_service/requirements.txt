@@ -1,0 +1,7 @@
+fastapi
+granian[reload]
+sqlalchemy
+alembic
+asyncpg
+pydantic-settings
+greenlet
