@@ -52,7 +52,7 @@ export function Header() {
           <button className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0">
             <img src={lupa} alt="Search" className="w-5 h-5 block" />
           </button>
-          <button className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0">
+          <button className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0" onClick={() => window.location.href = "/auth"}>
             <img src={people} alt="Profile" className="w-5 h-5 block" />
           </button>
           <button className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0">

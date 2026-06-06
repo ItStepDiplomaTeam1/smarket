@@ -1,12 +1,28 @@
 // src/modules/Auth/components/Login.tsx
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import eyeIcon from '@/shared/assets/ButtonEye.svg';
 import { apiClient } from '@/shared/api/apiClient';
 // useAuthStore лежить поруч у модулі, тому тут можна залишити відносний шлях:
 import { useAuthStore } from '../store/authStore';
 
+// Інтерфейси для типізації відповіді сервера
+interface User {
+    id: string;
+    email: string;
+    // Додайте інші поля, якщо вони є у вашій моделі (наприклад, name, role)
+}
+
+interface LoginResponse {
+    token: string;
+    user: User;
+}
+
 export const LoginForm = () => {
+    const navigate = useNavigate();
+
     // 1. Локальний стан для UI та полів
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState('');
@@ -16,14 +32,22 @@ export const LoginForm = () => {
     const setAuth = useAuthStore((state) => state.setAuth);
 
     // 3. Серверний стан TanStack Query
-    const loginMutation = useMutation({
+    const loginMutation = useMutation<LoginResponse, Error>({
         mutationFn: async () => {
-            const response = await apiClient.post('/api/v1/auth/login', { email, password });
-            return response.data;
+            try {
+                const response = await apiClient.post<LoginResponse>('/api/v1/auth/login', { email, password });
+                return response.data;
+            } catch (error) {
+                // Дістаємо текст помилки саме з бекенду
+                if (axios.isAxiosError(error) && error.response?.data?.message) {
+                    throw new Error(error.response.data.message);
+                }
+                throw new Error('Помилка авторизації. Спробуйте ще раз.');
+            }
         },
         onSuccess: (data) => {
             setAuth(data.token, data.user);
-            // Тут можна додати редірект на головну або тост з успіхом
+            navigate('/'); // Редірект на головну сторінку
         },
     });
 
@@ -74,7 +98,7 @@ export const LoginForm = () => {
             {/* Виведення помилки від сервера */}
             {loginMutation.isError && (
                 <div className="mb-[16px] text-red-500 text-[13px]">
-                    {loginMutation.error?.message || 'Помилка авторизації. Спробуйте ще раз.'}
+                    {loginMutation.error?.message}
                 </div>
             )}
 
@@ -88,7 +112,7 @@ export const LoginForm = () => {
 
             <p className="text-center text-[14px] mt-[24px] text-[#6B7280]">
                 У вас немає акаунту?{' '}
-                <a href="#" className="text-[#265447] font-semibold no-underline hover:underline">
+                <a href="/create" className="text-[#265447] font-semibold no-underline hover:underline">
                     Зареєструватися
                 </a>
             </p>

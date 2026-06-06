@@ -1,5 +1,5 @@
 import { LoginForm } from '@/modules/Auth'
 
-export function LoginPage() {
+export default function LoginPage() {
   return <LoginForm />
 }

@@ -6,6 +6,7 @@ import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 // Ліниве завантаження сторінок (використовуємо наш налаштований аліас @/) !!!!
 const HomePage = lazy(() => import('@/pages/Home/ui/Home.tsx')); // !!!!!!!!!!!!
 const AuthPage = lazy(() => import('@/pages/Auth')); // !!!!!!!!!!!!
+const Registerform = lazy(() => import('@/pages/Register/ui/RegisterPage.tsx')); 
 
 // Створюємо конфігурацію маршрутів
 const router = createBrowserRouter([
@@ -23,6 +24,14 @@ const router = createBrowserRouter([
     element: (
       <Suspense fallback={<div>Завантаження авторизації...</div>}>
         <AuthPage />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/create',
+    element: (
+      <Suspense fallback={<div>Завантаження реєстрації...</div>}>
+        <Registerform />
       </Suspense>
     ),
   },
