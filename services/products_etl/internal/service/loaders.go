@@ -83,8 +83,6 @@ func ExtractLoadWorker(conn *amqp.Connection, mongoDB *mongo.Database, queueName
 	log.Println("[ExtractLoad] Канал RabbitMQ закрито, горутина завершена.")
 }
 
-// processTask — обрабатывает одну задачу из RabbitMQ.
-// При успехе подтверждает сообщение (Ack), при ошибке отправляет в dead-letter (Nack).
 func processTask(msg amqp.Delivery, mongoDB *mongo.Database) {
 	var task ETLTask
 	if err := json.Unmarshal(msg.Body, &task); err != nil {
