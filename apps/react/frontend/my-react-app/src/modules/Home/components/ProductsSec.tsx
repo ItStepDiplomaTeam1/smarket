@@ -1,4 +1,4 @@
-import product1 from '@/shared/assets/div.product-visual.svg';
+import product1 from '../../../shared/assets/div.product-visual.svg';
 
 export function ProductsSec() {
   return (

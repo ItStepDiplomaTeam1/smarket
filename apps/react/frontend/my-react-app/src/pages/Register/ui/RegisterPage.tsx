@@ -1,5 +1,5 @@
-import { Create } from '@/modules/Auth'
+import { Create } from '../../../modules/Auth'
 
-export default function RegisterPage() {
+export function RegisterPage() {
   return <Create />
 }

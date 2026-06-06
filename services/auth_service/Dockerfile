@@ -5,8 +5,7 @@ WORKDIR /app
 RUN pip install --no-cache-dir uv
 
 COPY services/auth_service/pyproject.toml ./pyproject.toml
-RUN uv venv .venv && \
-    uv pip install --no-cache -e .
+RUN uv pip install --system --no-cache -r pyproject.toml
 
 FROM python:3.11-slim
 
@@ -16,8 +15,8 @@ ENV PYTHONPATH=/app
 
 WORKDIR /app
 
-COPY --from=builder /app/.venv /app/.venv
-ENV PATH="/app/.venv/bin:$PATH"
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
 
 COPY services/auth_service/ ./services/auth_service/
 
