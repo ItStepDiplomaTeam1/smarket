@@ -1,5 +1,5 @@
-import mockupCard from '@/shared/assets/mockup-card.svg';
-import checkIcon from '@/shared/assets/check.svg';
+import mockupCard from '../../../shared/assets/mockup-card.svg';
+import checkIcon from '../../../shared/assets/check.svg';
 
 export function Hero() {
   return (

@@ -1,5 +1,5 @@
-import { LoginForm } from '@/modules/Auth'
+import { Login } from '../../../modules/Auth'
 
-export default function LoginPage() {
-  return <LoginForm />
+export function LoginPage() {
+  return <Login />
 }

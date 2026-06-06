@@ -1,4 +1,4 @@
-import zagluska from '@/shared/assets/Vectorbuttle.svg';
+import zagluska from '../../../shared/assets/Vectorbuttle.svg';
 
 const SmCard = () => (
     <div className="w-[271px] h-[489px] shrink-0 bg-white border border-[rgba(38,84,71,0.08)] rounded-[16px] p-[16px] flex flex-col box-border">

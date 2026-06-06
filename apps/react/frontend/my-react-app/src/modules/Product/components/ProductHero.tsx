@@ -1,7 +1,7 @@
-import mainMilk from '@/shared/assets/milk.svg';
-import thumb1 from '@/shared/assets/bottle.svg';
-import starIcon from '@/shared/assets/gold-star.svg';
-import staricongreen from '@/shared/assets/star.svg';
+import mainMilk from '../../../shared/assets/milk.svg';
+import thumb1 from '../../../shared/assets/bottle.svg';
+import starIcon from '../../../shared/assets/gold-star.svg';
+import staricongreen from '../../../shared/assets/star.svg';
 
 export function ProductHero() {
     return (

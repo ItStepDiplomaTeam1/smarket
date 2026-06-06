@@ -1,8 +1,8 @@
-import { Header } from '@/shared/ui/Header'
-import { Hero, CategoriesSec, ProductsSec, Hws, FinalCTA } from '@/modules/Home'
-import { Footer } from '@/shared/ui/Footer'
+import { Header } from '../../../shared/ui/Header'
+import { Hero, CategoriesSec, ProductsSec, Hws, FinalCTA } from '../../../modules/Home'
+import { Footer } from '../../../shared/ui/Footer'
 
-export default function Home() {
+export function Home() {
   return (
     <>
       <Header />

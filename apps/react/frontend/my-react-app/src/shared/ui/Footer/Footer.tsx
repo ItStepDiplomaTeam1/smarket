@@ -1,4 +1,4 @@
-import logo from '@/shared/assets/logo.svg';
+import logo from '../../assets/logo.svg';
 
 export function Footer() {
   return (
