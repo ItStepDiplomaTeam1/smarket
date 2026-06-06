@@ -1,4 +1,4 @@
-import { ForgotPass } from '../../../modules/Auth'
+import { ForgotPass } from '@/modules/Auth'
 
 export function ForgotPasswordPage() {
   return <ForgotPass />

@@ -1,5 +1,5 @@
-import goldstar from '../../../shared/assets/gold-star.svg';
-import zero_star from '../../../shared/assets/star-for-review.svg';
+import goldstar from '@/shared/assets/gold-star.svg';
+import zero_star from '@/shared/assets/star-for-review.svg';
 
 const ReviewStars = ({ filled }: { filled: number }) => (
     <div className="flex gap-[2px]">
