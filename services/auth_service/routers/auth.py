@@ -25,6 +25,7 @@ from services.auth_service.shared.DTO import (
     RegisterRequest,
     RegisterResponse,
     TokenResponse,
+    UserResponse,
 )
 
 router = APIRouter(default_response_class=ORJSONResponse)
@@ -133,7 +134,11 @@ async def register(
         return RegisterResponse(
             access_token=access_token,
             token_type="bearer",
-            email=body.email,
+            user=UserResponse(
+                id=str(inner_user.id),
+                email=inner_user.email,
+                role=inner_user.role,
+            ),
         )
 
     except IntegrityError as err:
@@ -195,6 +200,11 @@ async def login(
         return LoginResponse(
             access_token=access_token,
             token_type="bearer",
+            user=UserResponse(
+                id=str(user.id),
+                email=user.email,
+                role=user.role,
+            ),
         )
 
     except HTTPException:
@@ -208,7 +218,7 @@ async def login(
 
 
 @router.post("/refresh", response_model=TokenResponse, status_code=status.HTTP_200_OK)
-async def refresh(request: Request):
+async def refresh(request: Request, response: Response):
     refresh_token = request.cookies.get("refresh_token")
 
     if not refresh_token:
@@ -238,8 +248,19 @@ async def refresh(request: Request):
         )
 
     logger.info(f"Успішно оновлено токени для користувача з ID: {payload.get('sub')}")
+    new_access_token = create_access_token(payload["sub"], payload["role"])
+    new_refresh_token = create_refresh_token(payload["sub"], payload["role"])
+
+    response.set_cookie(
+        key="refresh_token",
+        value=new_refresh_token,
+        httponly=True,
+        secure=True,
+        samesite="lax",
+        max_age=_REFRESH_TOKEN_MAX_AGE,
+    )
     return TokenResponse(
-        access_token=create_access_token(payload["sub"], payload["role"]),
+        access_token=new_access_token,
         token_type="bearer",
     )
 
