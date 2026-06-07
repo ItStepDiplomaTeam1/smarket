@@ -1,0 +1,276 @@
+package service
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"time"
+
+	"smarket/services/products_etl/usefulMethods"
+
+	amqp "github.com/rabbitmq/amqp091-go"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+)
+
+// ---------------------------------------------------------------------------
+// Типи задач та відповідей API
+// ---------------------------------------------------------------------------
+
+// ETLTask — повідомлення, яке горутина отримує з черги RabbitMQ.
+// Приклад: {"store_id": "48201031"}
+type ETLTask struct {
+	StoreID string `json:"store_id"`
+}
+
+// categoryItem — один елемент масиву, що повертає /stores/{id}/categories/.
+// API віддає голий масив: [{"id": "fresh-meat", ...}, ...].
+// Поле називається "id", а не "slug" — саме воно використовується як slug у URL продуктів.
+type categoryItem struct {
+	Slug string `json:"id"` // в API це поле "id", але семантично — slug для URL
+}
+
+// productsPageMeta — мінімальні поля сторінки продуктів (для пагінації).
+type productsPageMeta struct {
+	Count   int             `json:"count"`
+	Next    *string         `json:"next"`
+	Results json.RawMessage `json:"results"`
+}
+
+// ---------------------------------------------------------------------------
+// Константи
+// ---------------------------------------------------------------------------
+
+const productsPageLimit = 100
+
+// ---------------------------------------------------------------------------
+// Горутина №1: Extract & Load  (Мережа → MongoDB)
+// ---------------------------------------------------------------------------
+
+// ExtractLoadWorker слухає чергу RabbitMQ і для кожної задачі запускає повний
+// цикл «скачати всі сторінки по всіх категоріях → зберегти сирі JSON у Mongo».
+// Функція блокуюча; запускається в окремій горутині з main.go.
+func ExtractLoadWorker(conn *amqp.Connection, mongoDB *mongo.Database, queueName string) {
+	ch, err := conn.Channel()
+	if err != nil {
+		log.Fatalf("[ExtractLoad] Не вдалось відкрити канал RabbitMQ: %v", err)
+	}
+	defer ch.Close()
+
+	// Оголошуємо чергу (idempotent — не страшно якщо вже існує).
+	q, err := ch.QueueDeclare(
+		queueName,
+		true,  // durable  — черга переживає рестарт брокера
+		false, // auto-delete
+		false, // exclusive
+		false, // no-wait
+		nil,
+	)
+	if err != nil {
+		log.Fatalf("[ExtractLoad] Не вдалось оголосити чергу %q: %v", queueName, err)
+	}
+
+	// prefetchCount=1: не брати наступну задачу, поки попередня не завершена.
+	// Це гарантія, що один воркер не «з'їсть» всю чергу, якщо ETL повільний.
+	if err := ch.Qos(1, 0, false); err != nil {
+		log.Fatalf("[ExtractLoad] Помилка Qos: %v", err)
+	}
+
+	msgs, err := ch.Consume(
+		q.Name,
+		"",    // consumer tag — генерується автоматично
+		false, // auto-ack=false: підтверджуємо вручну після успіху
+		false, // exclusive
+		false, // no-local
+		false, // no-wait
+		nil,
+	)
+	if err != nil {
+		log.Fatalf("[ExtractLoad] Не вдалось зареєструвати споживача: %v", err)
+	}
+
+	log.Printf("[ExtractLoad] Очікування задач у черзі %q...", queueName)
+
+	for msg := range msgs {
+		processExtractTask(msg, mongoDB)
+	}
+
+	log.Println("[ExtractLoad] Канал RabbitMQ закрито, горутина завершена.")
+}
+
+// processExtractTask розбирає одне повідомлення з черги і запускає ETL для store_id.
+// При помилці повертає повідомлення в чергу (nack + requeue).
+func processExtractTask(msg amqp.Delivery, mongoDB *mongo.Database) {
+	var task ETLTask
+	if err := json.Unmarshal(msg.Body, &task); err != nil {
+		log.Printf("[ExtractLoad] Помилка десеріалізації задачі: %v | body: %s", err, msg.Body)
+		// Невалідний JSON — повторна спроба нічого не дасть, відкидаємо назавжди.
+		_ = msg.Nack(false, false)
+		return
+	}
+
+	if task.StoreID == "" {
+		log.Printf("[ExtractLoad] Задача без store_id, пропускаємо. body: %s", msg.Body)
+		_ = msg.Nack(false, false)
+		return
+	}
+
+	log.Printf("[ExtractLoad] ▶ Починаємо ETL для store_id=%s", task.StoreID)
+
+	if err := runExtractLoad(task.StoreID, mongoDB); err != nil {
+		log.Printf("[ExtractLoad] ✗ ETL для store_id=%s завершився з помилкою: %v", task.StoreID, err)
+		// Повертаємо в чергу — можлива тимчасова мережева помилка.
+		_ = msg.Nack(false, true)
+		return
+	}
+
+	log.Printf("[ExtractLoad] ✓ ETL для store_id=%s успішно завершено.", task.StoreID)
+	_ = msg.Ack(false)
+}
+
+// runExtractLoad — основний пайплайн горутини №1:
+// 1. Отримати всі slug-и категорій магазину.
+// 2. Для кожного slug-а пробігти всі сторінки продуктів.
+// 3. Кожну сторінку зберегти як окремий документ у MongoDB.
+func runExtractLoad(storeID string, mongoDB *mongo.Database) error {
+	slugs, err := fetchCategorySlugs(storeID)
+	if err != nil {
+		return fmt.Errorf("сканування категорій: %w", err)
+	}
+	log.Printf("[ExtractLoad] store_id=%s: знайдено %d категорій", storeID, len(slugs))
+
+	collection := mongoDB.Collection("raw_pages")
+
+	for _, slug := range slugs {
+		if err := fetchAndStoreAllPages(storeID, slug, collection); err != nil {
+			// Логуємо помилку, але продовжуємо з наступною категорією.
+			// Вже збережені сторінки залишаються в Mongo — мережу не потрібно смикати повторно.
+			log.Printf("[ExtractLoad] store_id=%s slug=%s: помилка, пропускаємо: %v", storeID, slug, err)
+		}
+	}
+
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+// Допоміжні функції — HTTP-запити до Zakaz.ua API
+// ---------------------------------------------------------------------------
+
+// fetchCategorySlugs повертає плоский список slug-ів усіх категорій магазину.
+// Zakaz.ua API повертає голий JSON-масив: [{"slug":"fruits",...}, ...]
+func fetchCategorySlugs(storeID string) ([]string, error) {
+	url := fmt.Sprintf("https://stores-api.zakaz.ua/stores/%s/categories/", storeID)
+
+	resp, err := usefulMethods.MakeRequest("GET", url, nil, true)
+	if err != nil {
+		return nil, fmt.Errorf("HTTP запит до %s: %w", url, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("API повернув статус %d для %s", resp.StatusCode, url)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("читання тіла відповіді: %w", err)
+	}
+
+	// API повертає масив напряму, без обгортки {"results": [...]}
+	var categories []categoryItem
+	if err := json.Unmarshal(body, &categories); err != nil {
+		return nil, fmt.Errorf("розбір JSON категорій: %w", err)
+	}
+
+	slugs := make([]string, 0, len(categories))
+	for _, item := range categories {
+		if item.Slug != "" {
+			slugs = append(slugs, item.Slug)
+		}
+	}
+	return slugs, nil
+}
+
+// fetchAndStoreAllPages пробігає всі сторінки однієї категорії та зберігає
+// кожну сторінку як окремий документ у MongoDB.
+// Якщо API відпаде на середині — вже збережені сторінки залишаться в Mongo.
+func fetchAndStoreAllPages(storeID, slug string, collection *mongo.Collection) error {
+	page := 1
+
+	for {
+		offset := (page - 1) * productsPageLimit
+		url := fmt.Sprintf(
+			"https://stores-api.zakaz.ua/stores/%s/categories/%s/products/?limit=%d&offset=%d",
+			storeID, slug, productsPageLimit, offset,
+		)
+
+		rawBody, meta, err := fetchProductsPage(url)
+		if err != nil {
+			return fmt.Errorf("сторінка %d: %w", page, err)
+		}
+
+		if err := saveRawPageToMongo(collection, storeID, slug, page, rawBody); err != nil {
+			// Помилка запису в Mongo — логуємо, але продовжуємо пагінацію.
+			log.Printf("[ExtractLoad] store_id=%s slug=%s page=%d: помилка запису в Mongo: %v",
+				storeID, slug, page, err)
+		} else {
+			log.Printf("[ExtractLoad] store_id=%s slug=%s page=%d: збережено (%d товарів, total=%d)",
+				storeID, slug, page, len(meta.Results), meta.Count)
+		}
+
+		// Зупиняємось якщо немає наступної сторінки або повернулась порожня.
+		if meta.Next == nil || len(meta.Results) == 0 {
+			break
+		}
+
+		page++
+	}
+
+	return nil
+}
+
+func fetchProductsPage(url string) ([]byte, *productsPageMeta, error) {
+	resp, err := usefulMethods.MakeRequest("GET", url, nil, true)
+	if err != nil {
+		return nil, nil, fmt.Errorf("HTTP запит: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return nil, nil, fmt.Errorf("API повернув статус %d для %s", resp.StatusCode, url)
+	}
+
+	rawBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, nil, fmt.Errorf("читання тіла: %w", err)
+	}
+
+	var meta productsPageMeta
+	if err := json.Unmarshal(rawBody, &meta); err != nil {
+		return nil, nil, fmt.Errorf("розбір мета-даних сторінки: %w", err)
+	}
+
+	return rawBody, &meta, nil
+}
+
+func saveRawPageToMongo(collection *mongo.Collection, storeID, slug string, page int, rawBody []byte) error {
+	doc := bson.D{
+		{Key: "store_id", Value: storeID},
+		{Key: "category_slug", Value: slug},
+		{Key: "page", Value: page},
+		{Key: "fetched_at", Value: time.Now().UTC()},
+		{Key: "status", Value: "new"},     // позначка для горутини №2
+		{Key: "raw_data", Value: rawBody}, // повний JSON ритейлера
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	_, err := collection.InsertOne(ctx, doc)
+	if err != nil {
+		return fmt.Errorf("InsertOne: %w", err)
+	}
+	return nil
+}
