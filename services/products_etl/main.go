@@ -96,11 +96,31 @@ func main() {
 
 	log.Println("Усі підключення до БД та RabbitMQ успішно ініціалізовано!")
 
-	// Запускаємо Горутину №1: Extract & Load (Мережа → MongoDB)
-	// Слухає чергу RabbitMQ, завантажує продукти та зберігає сирі сторінки в MongoDB.
+	// Крок 1: Міграція — окремий контекст, щоб не залежати від 10-секундного стартового ctx
+	migrateCtx, migrateCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer migrateCancel()
+	if err := database.RunMigrations(migrateCtx, infra.PgPool); err != nil {
+		log.Fatalf("Критична помилка міграції: %v", err)
+	}
+
+	// Крок 2: Сідінг магазинів — 66 INSERT-ів через мережу потребують більше часу, ніж 10с
+	seedCtx, seedCancel := context.WithTimeout(context.Background(), 120*time.Second)
+	defer seedCancel()
+	if err := service.SeedStores(seedCtx, infra.PgPool); err != nil {
+		// Не фатально — сервіс може працювати без оновленого списку магазинів
+		log.Printf("WARN: не вдалось синхронізувати магазини: %v", err)
+	}
+
+	// Горутина №1: Extract & Load (Мережа → MongoDB)
+	// Слухає чергу RabbitMQ, качає продукти по всіх категоріях та зберігає сирі JSON-сторінки в MongoDB.
 	mongoDB := infra.MongoClient.Database(cfg.MongoDBName)
 	go service.ExtractLoadWorker(infra.RabbitConn, mongoDB, cfg.ETLQueueName)
 	log.Printf("[main] ExtractLoadWorker запущено (черга: %s, MongoDB: %s)", cfg.ETLQueueName, cfg.MongoDBName)
+
+	// Горутина №2: Transform & Load (MongoDB → PostgreSQL)
+	// Опитує MongoDB на нові документи, трансформує їх та зберігає в Postgres.
+	go service.TransformLoadWorker(infra.MongoClient, infra.PgPool, cfg.MongoDBName)
+	log.Printf("[main] TransformLoadWorker запущено (MongoDB: %s → PostgreSQL)", cfg.MongoDBName)
 
 	mux := http.NewServeMux()
 
