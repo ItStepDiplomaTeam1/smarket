@@ -90,7 +90,7 @@ export const LoginForm = () => {
             </div>
 
             <div className="flex justify-end mb-[24px]">
-                <a href="#" className="font-inter text-[14px] font-normal leading-[21px] text-[#6D8279] no-underline hover:underline">
+                <a href="/forgot-password" className="font-inter text-[14px] font-normal leading-[21px] text-[#6D8279] no-underline hover:underline">
                     Забули пароль?
                 </a>
             </div>

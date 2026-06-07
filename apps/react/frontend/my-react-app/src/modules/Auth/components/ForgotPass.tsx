@@ -73,7 +73,7 @@ export function ForgotPass() {
 
                             <p className="text-center text-[14px] mt-[24px] text-[#6B7280]">
                                 Згадали пароль?{' '}
-                                <a href="#" className="text-[#265447] font-semibold no-underline hover:underline">
+                                <a href="/auth" className="text-[#265447] font-semibold no-underline hover:underline">
                                     Увійти
                                 </a>
                             </p>
