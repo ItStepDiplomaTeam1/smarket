@@ -1,0 +1,9 @@
+fastapi
+pydantic
+pydantic-settings
+sqlalchemy
+alembic
+asyncpg
+httpx
+granian
+orjson
