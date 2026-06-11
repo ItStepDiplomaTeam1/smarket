@@ -1,1 +1,21 @@
+services:
+  gateway_service:
+    image: ghcr.io/itstepdiplomateam1/smarket-gateway:latest
+    ports:
+      - "80:8080"
+    environment:
+      - ENV=development
+    networks:
+      - smarket-network
 
+  auth_service:
+    image: ghcr.io/itstepdiplomateam1/smarket-auth:latest
+    environment:
+      - ENV=development
+      - DATABASE_URL=postgresql+asyncpg://user:pass@neon-host/db
+    networks:
+      - smarket-network
+
+networks:
+  smarket-network:
+    driver: bridge
