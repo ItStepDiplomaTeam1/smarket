@@ -1,9 +1,8 @@
 fastapi
-pydantic
-pydantic-settings
-sqlalchemy
-alembic
-asyncpg
-httpx
 granian
+alembic
+sqlalchemy
+asyncpg
+pydantic-settings
+httpx
 orjson
