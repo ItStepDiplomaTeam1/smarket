@@ -27,13 +27,22 @@ class PriceResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class PriceWithStoreResponse(PriceResponse):
+    """Ціна з інформацією про магазин (для фронтенду — не потрібен окремий запит)."""
+    store: StoreResponse
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ProductResponse(BaseModel):
     id: int
-    ean: str
+    ean: Optional[str] = None
+    store_product_id: Optional[str] = None
     title: str
     brand: Optional[str] = None
     unit: Optional[str] = None
     weight: Optional[float] = None
+    image_url: Optional[str] = None
     canonical_category_id: Optional[int] = None
     created_at: datetime.datetime
 
@@ -41,7 +50,32 @@ class ProductResponse(BaseModel):
 
 
 class ProductDetail(ProductResponse):
-    prices: list[PriceResponse] = []
+    """Товар з усіма цінами (включно з інформацією про магазин)."""
+    prices: list[PriceWithStoreResponse] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class StoreProductResponse(BaseModel):
+    """Зв'язок товар ↔ магазин (в якому магазині є товар)."""
+    store_id: str
+    store_product_id: Optional[str] = None
+    first_seen_at: datetime.datetime
+    store: StoreResponse
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProductWithStoresResponse(ProductResponse):
+    """Товар зі списком магазинів, де він продається."""
+    store_products: list[StoreProductResponse] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProductInStoreResponse(ProductResponse):
+    """Товар з актуальною ціною для конкретного магазину."""
+    latest_price: Optional[PriceResponse] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -53,5 +87,6 @@ class ProductFilters(BaseModel):
     store_id: Optional[str] = None
     min_price: Optional[float] = None
     max_price: Optional[float] = None
+    search: Optional[str] = None
     skip: int = 0
     limit: int = 100

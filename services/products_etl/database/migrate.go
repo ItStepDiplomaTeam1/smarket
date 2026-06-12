@@ -16,6 +16,7 @@ import (
 //   - store_categories_mapping — маппинг slug категорії → internal ID
 //   - products                — глобальний каталог товарів (дедупліковано по EAN)
 //   - prices                  — іммутабельний лог цін
+//   - store_products          — зв'язок товарів з магазинами
 func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 	log.Println("[migrate] Запуск міграцій ETL-бази...")
 
@@ -49,14 +50,39 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			sql: `
 				CREATE TABLE IF NOT EXISTS products (
 					id                    BIGSERIAL   PRIMARY KEY,
-					ean                   TEXT        UNIQUE NOT NULL, -- міжнародний штрихкод (ключ дедуплікації)
+					canonical_ean         TEXT        UNIQUE,        -- міжнародний EAN-13, ключ дедуплікації
+					store_product_id      TEXT,                       -- внутрішній ID магазину з Zakaz.ua
 					title                 TEXT        NOT NULL,
 					brand                 TEXT,
-					unit                  TEXT,                        -- "pcs", "kg", "g"
+					unit                  TEXT,
 					weight                FLOAT,
 					canonical_category_id INTEGER,
 					created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
 				)`,
+		},
+		{
+			name: "migrate products schema for EAN",
+			sql: `
+				DO $$
+				BEGIN
+					IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='products' AND column_name='ean') THEN
+						ALTER TABLE products RENAME COLUMN ean TO canonical_ean;
+						ALTER TABLE products ALTER COLUMN canonical_ean DROP NOT NULL;
+					END IF;
+
+					IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='products' AND column_name='store_product_id') THEN
+						ALTER TABLE products ADD COLUMN store_product_id TEXT;
+					END IF;
+				END $$;
+			`,
+		},
+		{
+			name: "create partial unique index store_product_id",
+			sql: `
+				CREATE UNIQUE INDEX IF NOT EXISTS idx_products_store_product_id_null_ean
+				ON products (store_product_id)
+				WHERE canonical_ean IS NULL
+			`,
 		},
 		{
 			name: "create prices",
@@ -77,6 +103,46 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			sql: `
 				CREATE INDEX IF NOT EXISTS idx_prices_store_product
 				ON prices (store_id, product_id, recorded_at DESC)`,
+		},
+		{
+			name: "add image_url to products",
+			sql:  `ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT`,
+		},
+		{
+			name: "create store_products",
+			sql: `
+				CREATE TABLE IF NOT EXISTS store_products (
+					product_id       BIGINT      NOT NULL REFERENCES products(id),
+					store_id         TEXT        NOT NULL REFERENCES stores(external_id),
+					store_product_id TEXT,
+					first_seen_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+					PRIMARY KEY (product_id, store_id)
+				)`,
+		},
+		{
+			name: "prices columns to numeric",
+			sql: `
+				DO $$
+				BEGIN
+					IF EXISTS (
+						SELECT 1 FROM information_schema.columns
+						WHERE table_name='prices' AND column_name='price' AND data_type='double precision'
+					) THEN
+						ALTER TABLE prices
+							ALTER COLUMN price TYPE NUMERIC(10,2),
+							ALTER COLUMN old_price TYPE NUMERIC(10,2);
+					END IF;
+				END $$;
+			`,
+		},
+		{
+			name: "fix kopeck prices",
+			sql: `
+				UPDATE prices SET
+					price = price / 100.0,
+					old_price = old_price / 100.0
+				WHERE price > 1000
+			`,
 		},
 	}
 

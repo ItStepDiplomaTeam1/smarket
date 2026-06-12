@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
@@ -108,17 +109,88 @@ func findNewDocuments(ctx context.Context, collection *mongo.Collection) ([]bson
 // Типи для десеріалізації сирих даних
 // ---------------------------------------------------------------------------
 
-// rawProduct — мінімальна структура товару для десеріалізації з raw_data.
+// rawProducer — вкладена структура виробника (API може повертати producer.trademark).
+type rawProducer struct {
+	Trademark string `json:"trademark"`
+	Name      string `json:"name"`
+}
+
+// rawDiscount — вкладена структура знижки (API може повертати discount.old_price).
+type rawDiscount struct {
+	OldPrice   *float64 `json:"old_price"`
+	Percentage int      `json:"percentage"`
+}
+
+// rawProduct — структура товару для десеріалізації з raw_data.
+// Підтримує як плоскі поля (brand, old_price), так і вкладені (producer.trademark, discount.old_price).
 type rawProduct struct {
 	ID       string   `json:"id"`
+	SKU      string   `json:"sku"`
 	Title    string   `json:"title"`
 	EAN      string   `json:"ean"`
-	Price    float64  `json:"price"`
-	OldPrice *float64 `json:"old_price"`
+	Price    float64  `json:"price"`       // ціна в КОПІЙКАХ (10890 = 108.90 грн)
+	OldPrice *float64 `json:"old_price"`   // стара ціна (плоске поле, fallback)
 	InStock  bool     `json:"in_stock"`
 	Unit     string   `json:"unit"`
 	Weight   float64  `json:"weight"`
-	Brand    string   `json:"brand"`
+	Brand    string   `json:"brand"`       // бренд (плоске поле, fallback)
+
+	// Вкладені об'єкти — API Zakaz.ua може повертати дані у вкладених структурах
+	Producer *rawProducer     `json:"producer"`
+	Discount *rawDiscount     `json:"discount"`
+	Img      json.RawMessage  `json:"img"` // може бути рядком або об'єктом
+}
+
+// resolvedBrand повертає бренд: спочатку плоске поле, потім producer.trademark.
+func (p rawProduct) resolvedBrand() string {
+	if p.Brand != "" {
+		return p.Brand
+	}
+	if p.Producer != nil && p.Producer.Trademark != "" {
+		return p.Producer.Trademark
+	}
+	return ""
+}
+
+// resolvedOldPrice повертає стару ціну (в копійках): спочатку плоске поле, потім discount.old_price.
+func (p rawProduct) resolvedOldPrice() *float64 {
+	if p.OldPrice != nil {
+		return p.OldPrice
+	}
+	if p.Discount != nil && p.Discount.OldPrice != nil {
+		return p.Discount.OldPrice
+	}
+	return nil
+}
+
+// resolvedImageURL витягує URL зображення з поля img.
+// img може бути рядком ("https://...") або об'єктом ({"s350x350": "https://..."}).
+func (p rawProduct) resolvedImageURL() string {
+	if len(p.Img) == 0 {
+		return ""
+	}
+	// Спроба як рядок
+	var imgStr string
+	if err := json.Unmarshal(p.Img, &imgStr); err == nil && imgStr != "" {
+		return imgStr
+	}
+	// Спроба як об'єкт — беремо найбільше зображення
+	var imgObj map[string]string
+	if err := json.Unmarshal(p.Img, &imgObj); err == nil {
+		// Пріоритет: s1350x1350 > s350x350 > s150x150 > будь-яке
+		for _, key := range []string{"s1350x1350", "s350x350", "s200x200", "s150x150"} {
+			if url, ok := imgObj[key]; ok && url != "" {
+				return url
+			}
+		}
+		// Будь-яке перше значення
+		for _, url := range imgObj {
+			if url != "" {
+				return url
+			}
+		}
+	}
+	return ""
 }
 
 // rawPage — структура сирої сторінки, що зберігається в MongoDB.
@@ -178,11 +250,43 @@ func processDocument(ctx context.Context, doc bson.M, pgPool *pgxpool.Pool) erro
 // Стратегія 2: batchUpsertPage — одна транзакція на всю сторінку
 // ---------------------------------------------------------------------------
 
+// cleanEAN очищує штрих-код від лідируючих нулів (GTIN-14 формат)
+func cleanEAN(ean string) string {
+	if len(ean) == 14 && ean[0] == '0' {
+		return ean[1:]
+	}
+	return ean
+}
+
+// isValidEAN13 перевіряє, чи є рядок валідним штрих-кодом EAN-13
+func isValidEAN13(ean string) bool {
+	if len(ean) != 13 {
+		return false
+	}
+	for _, ch := range ean {
+		if ch < '0' || ch > '9' {
+			return false
+		}
+	}
+	sum := 0
+	for i, ch := range ean[:12] {
+		d := int(ch - '0')
+		if i%2 == 0 {
+			sum += d
+		} else {
+			sum += d * 3
+		}
+	}
+	check := (10 - (sum % 10)) % 10
+	return check == int(ean[12]-'0')
+}
+
 // batchUpsertPage виконує весь pipeline для одної сторінки (до 100 товарів)
 // в межах однієї транзакції:
-//  1. Bulk INSERT нових products (ON CONFLICT DO NOTHING)
-//  2. Bulk SELECT product_id по EAN (щоб отримати ID всіх товарів)
-//  3. Bulk INSERT prices для всієї сторінки
+//  1. Bulk UPSERT products (ON CONFLICT DO UPDATE — оновлює метадані)
+//  2. Bulk SELECT product_id по EAN або по store_product_id
+//  3. Bulk INSERT prices (ціни конвертуються з копійок у гривні: ÷100)
+//  4. Bulk INSERT store_products (зв'язок товар↔магазин)
 func batchUpsertPage(
 	ctx context.Context,
 	pgPool *pgxpool.Pool,
@@ -196,22 +300,59 @@ func batchUpsertPage(
 	}
 	defer tx.Rollback(ctx) //nolint:errcheck
 
-	// --- Крок 1: Batch INSERT нових товарів ---
-	// ON CONFLICT DO NOTHING — безпечно при паралельних воркерах.
-	// Товари, що вже існують, просто пропускаються.
+	// --- Крок 1: Batch UPSERT товарів ---
+	// ON CONFLICT DO UPDATE — оновлює метадані (title, brand, image_url) при повторному парсингу.
 	newCount := 0
 	for _, p := range products {
-		if p.EAN == "" {
-			continue // Товар без EAN не можна дедублікувати
+		var canonicalEAN *string
+		cleanedEAN := cleanEAN(p.EAN)
+		if isValidEAN13(cleanedEAN) {
+			canonicalEAN = &cleanedEAN
 		}
-		tag, err := tx.Exec(ctx, `
-			INSERT INTO products (ean, title, brand, unit, weight, canonical_category_id, created_at)
-			VALUES ($1, $2, $3, $4, $5, $6, NOW())
-			ON CONFLICT (ean) DO NOTHING`,
-			p.EAN, p.Title, p.Brand, p.Unit, p.Weight, categoryID,
-		)
+
+		storeProductID := p.SKU
+		if storeProductID == "" {
+			storeProductID = p.ID
+		}
+
+		brand := p.resolvedBrand()
+		imageURL := p.resolvedImageURL()
+
+		var tag pgconn.CommandTag
+		var err error
+
+		if canonicalEAN != nil {
+			// Товар з валідним EAN — conflict по canonical_ean
+			tag, err = tx.Exec(ctx, `
+				INSERT INTO products
+					(canonical_ean, store_product_id, title, brand, unit, weight, image_url, canonical_category_id, created_at)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+				ON CONFLICT (canonical_ean) DO UPDATE SET
+					title     = EXCLUDED.title,
+					brand     = COALESCE(NULLIF(EXCLUDED.brand, ''), products.brand),
+					unit      = EXCLUDED.unit,
+					weight    = EXCLUDED.weight,
+					image_url = COALESCE(NULLIF(EXCLUDED.image_url, ''), products.image_url)`,
+				canonicalEAN, storeProductID, p.Title, brand, p.Unit, p.Weight, imageURL, categoryID,
+			)
+		} else {
+			// Товар без EAN — conflict по partial unique index store_product_id
+			tag, err = tx.Exec(ctx, `
+				INSERT INTO products
+					(store_product_id, title, brand, unit, weight, image_url, canonical_category_id, created_at)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+				ON CONFLICT (store_product_id) WHERE canonical_ean IS NULL DO UPDATE SET
+					title     = EXCLUDED.title,
+					brand     = COALESCE(NULLIF(EXCLUDED.brand, ''), products.brand),
+					unit      = EXCLUDED.unit,
+					weight    = EXCLUDED.weight,
+					image_url = COALESCE(NULLIF(EXCLUDED.image_url, ''), products.image_url)`,
+				storeProductID, p.Title, brand, p.Unit, p.Weight, imageURL, categoryID,
+			)
+		}
+
 		if err != nil {
-			log.Printf("[Transform] WARN: не вдалось INSERT product EAN=%s: %v", p.EAN, err)
+			log.Printf("[Transform] WARN: не вдалось UPSERT product store_product_id=%s, EAN=%s: %v", storeProductID, p.EAN, err)
 			continue
 		}
 		if tag.RowsAffected() > 0 {
@@ -222,56 +363,109 @@ func batchUpsertPage(
 		log.Printf("[Transform] ✚ Нових товарів у батчі: %d (store=%s cat_id=%d)", newCount, storeID, categoryID)
 	}
 
-	// --- Крок 2: Batch SELECT product_id по EAN ---
-	// Збираємо EAN-и всіх товарів для масового SELECT
+	// --- Крок 2: Batch SELECT product_id ---
+	// Збираємо EAN-и та store_product_id товарів для масового SELECT
 	eans := make([]string, 0, len(products))
+	storeProductIDs := make([]string, 0, len(products))
 	for _, p := range products {
-		if p.EAN != "" {
-			eans = append(eans, p.EAN)
+		storeProductID := p.SKU
+		if storeProductID == "" {
+			storeProductID = p.ID
+		}
+
+		cleanedEAN := cleanEAN(p.EAN)
+		if isValidEAN13(cleanedEAN) {
+			eans = append(eans, cleanedEAN)
+		} else {
+			storeProductIDs = append(storeProductIDs, storeProductID)
 		}
 	}
 
-	// Один SELECT для всіх EAN замість N окремих запитів
+	// Один SELECT для всіх EAN та store_product_id замість N окремих запитів
 	rows, err := tx.Query(ctx,
-		`SELECT id, ean FROM products WHERE ean = ANY($1)`,
+		`SELECT id, canonical_ean, store_product_id 
+		 FROM products 
+		 WHERE canonical_ean = ANY($1) 
+		    OR (canonical_ean IS NULL AND store_product_id = ANY($2))`,
 		eans,
+		storeProductIDs,
 	)
 	if err != nil {
 		return fmt.Errorf("batch SELECT products: %w", err)
 	}
 
-	// Будуємо map: EAN → product_id
-	eanToID := make(map[string]int64, len(products))
+	// Будуємо map: EAN → product_id та store_product_id → product_id
+	eanToID := make(map[string]int64)
+	storeProductIDToID := make(map[string]int64)
+
 	for rows.Next() {
 		var id int64
-		var ean string
-		if err := rows.Scan(&id, &ean); err != nil {
+		var canonicalEAN *string
+		var storeProductID *string
+		if err := rows.Scan(&id, &canonicalEAN, &storeProductID); err != nil {
 			rows.Close()
 			return fmt.Errorf("scan product row: %w", err)
 		}
-		eanToID[ean] = id
+		if canonicalEAN != nil {
+			eanToID[*canonicalEAN] = id
+		}
+		if storeProductID != nil {
+			storeProductIDToID[*storeProductID] = id
+		}
 	}
 	rows.Close()
 	if err := rows.Err(); err != nil {
 		return fmt.Errorf("rows.Err після batch SELECT: %w", err)
 	}
 
-	// --- Крок 3: Batch INSERT prices ---
-	// pgx.Batch дозволяє відправити всі INSERT в одному мережевому round-trip
+	// --- Крок 3: Batch INSERT prices + store_products ---
+	// pgx.Batch дозволяє відправити всі INSERT в одному мережевому round-trip.
+	// Ціни конвертуються з копійок у гривні (÷100).
 	batch := &pgx.Batch{}
 	priceCount := 0
 	for _, p := range products {
-		productID, ok := eanToID[p.EAN]
+		var productID int64
+		var ok bool
+
+		storeProductID := p.SKU
+		if storeProductID == "" {
+			storeProductID = p.ID
+		}
+
+		cleanedEAN := cleanEAN(p.EAN)
+		if isValidEAN13(cleanedEAN) {
+			productID, ok = eanToID[cleanedEAN]
+		} else {
+			productID, ok = storeProductIDToID[storeProductID]
+		}
+
 		if !ok {
-			// Товар не знайшовся після INSERT — нестандартна ситуація, пропускаємо
-			log.Printf("[Transform] WARN: product_id не знайдено для EAN=%s, пропускаємо ціну", p.EAN)
+			log.Printf("[Transform] WARN: product_id не знайдено для store_product_id=%s (EAN=%s), пропускаємо", storeProductID, p.EAN)
 			continue
 		}
+
+		// Конвертація цін з копійок у гривні (API повертає 10890 = 108.90 грн)
+		priceUAH := p.Price / 100.0
+		var oldPriceUAH *float64
+		if resolved := p.resolvedOldPrice(); resolved != nil {
+			v := *resolved / 100.0
+			oldPriceUAH = &v
+		}
+
 		batch.Queue(`
 			INSERT INTO prices (product_id, store_id, price, old_price, in_stock, recorded_at)
 			VALUES ($1, $2, $3, $4, $5, NOW())`,
-			productID, storeID, p.Price, p.OldPrice, p.InStock,
+			productID, storeID, priceUAH, oldPriceUAH, p.InStock,
 		)
+
+		// Крок 4: зв'язок товар↔магазин
+		batch.Queue(`
+			INSERT INTO store_products (product_id, store_id, store_product_id)
+			VALUES ($1, $2, $3)
+			ON CONFLICT (product_id, store_id) DO NOTHING`,
+			productID, storeID, storeProductID,
+		)
+
 		priceCount++
 	}
 
@@ -283,7 +477,7 @@ func batchUpsertPage(
 		}
 	}
 
-	// Один COMMIT для всієї сторінки
+	// One COMMIT for whole page
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("COMMIT транзакції: %w", err)
 	}
@@ -298,7 +492,8 @@ func batchUpsertPage(
 // ---------------------------------------------------------------------------
 
 // ResolveCategoryID шукає canonical_category_id для заданого slug у таблиці
-// store_categories_mapping. Якщо слаг не знайдено — повертає unknownCategoryID.
+// store_categories_mapping. Якщо слаг не знайдено — автоматично додає його
+// з тимчасовим canonical_category_id=999 (unknown) та повертає unknownCategoryID.
 func ResolveCategoryID(ctx context.Context, pgPool *pgxpool.Pool, categorySlug string) (int, error) {
 	const query = `
 		SELECT canonical_category_id
@@ -312,11 +507,21 @@ func ResolveCategoryID(ctx context.Context, pgPool *pgxpool.Pool, categorySlug s
 
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			log.Printf(
-				"[Transform] WARN: category_slug %q не знайдено в store_categories_mapping. "+
-					"Присвоєно тимчасовий ID=%d. Додайте маппинг до таблиці.",
+			// Автоматично додаємо новий slug з тимчасовим ID
+			_, insertErr := pgPool.Exec(ctx, `
+				INSERT INTO store_categories_mapping (slug, canonical_category_id)
+				VALUES ($1, $2)
+				ON CONFLICT (slug) DO NOTHING`,
 				categorySlug, unknownCategoryID,
 			)
+			if insertErr != nil {
+				log.Printf("[Transform] WARN: не вдалось додати slug %q в store_categories_mapping: %v",
+					categorySlug, insertErr)
+			} else {
+				log.Printf("[Transform] ✚ Новий slug %q додано в store_categories_mapping (ID=%d). "+
+					"Оновіть canonical_category_id для точної категоризації.",
+					categorySlug, unknownCategoryID)
+			}
 			return unknownCategoryID, nil
 		}
 		return 0, fmt.Errorf("SELECT store_categories_mapping: %w", err)

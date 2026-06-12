@@ -10,13 +10,14 @@ Alembic-міграції в цьому сервісі НЕ повинні ств
   - store_categories_mapping (slug → canonical_category_id)
   - products                 (PRIMARY KEY: BIGSERIAL id, UNIQUE ean)
   - prices                   (лог цін: product_id → store_id → price)
+  - store_products           (зв'язок товар ↔ магазин)
 """
 import datetime
 from typing import Optional
 
 from sqlalchemy import (
     BigInteger, Boolean, Float, ForeignKey,
-    Integer, String, Text, DateTime
+    Integer, Numeric, String, Text, DateTime
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -42,6 +43,7 @@ class Store(Base):
     )
 
     prices: Mapped[list["Price"]] = relationship("Price", back_populates="store")
+    store_products: Mapped[list["StoreProduct"]] = relationship("StoreProduct", back_populates="store")
 
 
 class StoreCategoryMapping(Base):
@@ -59,29 +61,56 @@ class StoreCategoryMapping(Base):
 class Product(Base):
     """
     Глобальний каталог товарів, дедублікований по EAN (штрихкод).
-    Записується лише ETL-воркером (INSERT ... ON CONFLICT DO NOTHING).
+    Записується лише ETL-воркером (INSERT ... ON CONFLICT DO UPDATE).
     product_service лише читає.
     """
     __tablename__ = "products"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    ean: Mapped[str] = mapped_column(String, unique=True, nullable=False)
+    ean: Mapped[Optional[str]] = mapped_column("canonical_ean", String, unique=True, nullable=True)
+    store_product_id: Mapped[Optional[str]] = mapped_column("store_product_id", String, nullable=True)
     title: Mapped[str] = mapped_column(Text, nullable=False)
     brand: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     unit: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     weight: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    image_url: Mapped[Optional[str]] = mapped_column("image_url", Text, nullable=True)
     canonical_category_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime.datetime] = mapped_column(
         "created_at", DateTime(timezone=True), nullable=False
     )
 
     prices: Mapped[list["Price"]] = relationship("Price", back_populates="product")
+    store_products: Mapped[list["StoreProduct"]] = relationship("StoreProduct", back_populates="product")
+
+
+class StoreProduct(Base):
+    """
+    Зв'язок товар ↔ магазин (junction table).
+    Показує, які товари продаються в яких магазинах.
+    Наповнюється ETL-воркером при кожному парсингу.
+    """
+    __tablename__ = "store_products"
+
+    product_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("products.id"), primary_key=True
+    )
+    store_id: Mapped[str] = mapped_column(
+        String, ForeignKey("stores.external_id"), primary_key=True
+    )
+    store_product_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    first_seen_at: Mapped[datetime.datetime] = mapped_column(
+        "first_seen_at", DateTime(timezone=True), nullable=False
+    )
+
+    product: Mapped["Product"] = relationship("Product", back_populates="store_products")
+    store: Mapped["Store"] = relationship("Store", back_populates="store_products")
 
 
 class Price(Base):
     """
     Іммутабельний лог цін: кожен запис — ціна товару в конкретному магазині
     в момент часу recorded_at. Старі записи не видаляються — лише додаються нові.
+    Ціни зберігаються в гривнях (UAH), наприклад 71.90.
     """
     __tablename__ = "prices"
 
@@ -92,8 +121,8 @@ class Price(Base):
     store_id: Mapped[str] = mapped_column(
         String, ForeignKey("stores.external_id"), nullable=False
     )
-    price: Mapped[float] = mapped_column(Float, nullable=False)
-    old_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+    old_price: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)
     in_stock: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     recorded_at: Mapped[datetime.datetime] = mapped_column(
         "recorded_at", DateTime(timezone=True), nullable=False

@@ -102,7 +102,9 @@ func ExtractLoadWorker(conn *amqp.Connection, mongoDB *mongo.Database, queueName
 }
 
 // processExtractTask розбирає одне повідомлення з черги і запускає ETL для store_id.
-// При помилці повертає повідомлення в чергу (nack + requeue).
+// При помилці повертає повідомлення в чергу (nack + requeue), але не більше maxRetries разів.
+const maxRetries = 3
+
 func processExtractTask(msg amqp.Delivery, mongoDB *mongo.Database) {
 	var task ETLTask
 	if err := json.Unmarshal(msg.Body, &task); err != nil {
@@ -121,9 +123,28 @@ func processExtractTask(msg amqp.Delivery, mongoDB *mongo.Database) {
 	log.Printf("[ExtractLoad] ▶ Починаємо ETL для store_id=%s", task.StoreID)
 
 	if err := updatedRunExtractLoad(task.StoreID, mongoDB); err != nil {
-		log.Printf("[ExtractLoad] ✗ ETL для store_id=%s завершився з помилкою: %v", task.StoreID, err)
-		// Повертаємо в чергу — можлива тимчасова мережева помилка.
-		_ = msg.Nack(false, true)
+		// Перевіряємо кількість повторних спроб
+		retryCount := int64(0)
+		if msg.Headers != nil {
+			if rc, ok := msg.Headers["x-retry-count"]; ok {
+				switch v := rc.(type) {
+				case int64:
+					retryCount = v
+				case int32:
+					retryCount = int64(v)
+				}
+			}
+		}
+
+		if retryCount >= int64(maxRetries) {
+			log.Printf("[ExtractLoad] ✗ ETL для store_id=%s: вичерпано %d спроб, відкидаємо задачу: %v",
+				task.StoreID, maxRetries, err)
+			_ = msg.Nack(false, false) // дропаємо — більше не реквюїмо
+		} else {
+			log.Printf("[ExtractLoad] ✗ ETL для store_id=%s: спроба %d/%d, повертаємо у чергу: %v",
+				task.StoreID, retryCount+1, maxRetries, err)
+			_ = msg.Nack(false, true) // повертаємо в чергу
+		}
 		return
 	}
 
