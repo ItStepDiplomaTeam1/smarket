@@ -1,0 +1,36 @@
+name: CI/CD Smarket Develop Deploy
+
+# 1. Спрацьовує тільки при пуші в гілку develop
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    # 2. Клонуємо репозиторій на віртуальну машину GitHub
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # 3. Підключаємося до сервера через SSH і виконуємо команди оновлення
+    - name: Deploy to DigitalOcean
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.SERVER_HOST }}
+        username: ${{ secrets.SERVER_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          cd /app/smarket
+          
+          # Оновлюємо код до останнього коміту з develop
+          git checkout develop
+          git pull origin develop
+          
+          # Перезапускаємо контейнери з підтягуванням нових образів (якщо мінялися Dockerfile)
+          docker compose -f docker-compose.develop.yml up -d --build
+          
+          # Очищаємо застарілі невикористовувані Docker-іміджі, щоб не забивати диск сервера
+          docker image prune -f
