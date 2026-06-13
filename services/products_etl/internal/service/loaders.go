@@ -173,6 +173,11 @@ func processExtractTask(msg amqp.Delivery, mongoDB *mongo.Database) {
 //}
 
 func updatedRunExtractLoad(storeID string, mongoDB *mongo.Database) error {
+	// Фіксуємо час початку ETL для цього магазину.
+	// TransformLoadWorker використовує цей час як межу:
+	// товари, не оновлені після startTime, вважаються видаленими з каталогу.
+	startTime := time.Now().UTC()
+
 	slugs, err := fetchCategorySlugs(storeID)
 	if err != nil {
 		return fmt.Errorf("Сканування категорій: %w", err)
@@ -183,6 +188,8 @@ func updatedRunExtractLoad(storeID string, mongoDB *mongo.Database) error {
 	jobs := make(chan string, len(slugs))
 
 	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var hasErrors bool // true якщо хоча б одна категорія завершилась з помилкою
 	const workersNum = 5
 
 	for w := 1; w <= workersNum; w++ {
@@ -196,9 +203,12 @@ func updatedRunExtractLoad(storeID string, mongoDB *mongo.Database) error {
 
 				if err := fetchAndStoreAllPages(storeID, slug, collection); err != nil {
 					log.Printf("[Worker %d] ✗ Помилка у категорії %s: %v", workerID, slug, err)
+					mu.Lock()
+					hasErrors = true
+					mu.Unlock()
+				} else {
+					log.Printf("[Worker %d] ✓ Категорія %s повністю оброблена", workerID, slug)
 				}
-
-				log.Printf("[Worker %d] ✓ Категорія %s повністю оброблена", workerID, slug)
 			}
 		}(w)
 	}
@@ -211,7 +221,36 @@ func updatedRunExtractLoad(storeID string, mongoDB *mongo.Database) error {
 
 	wg.Wait()
 
+	// Якщо всі категорії успішно виконані — записуємо маркер завершення.
+	// TransformLoadWorker знайде його і видалить товари, яких не було в цьому циклі.
+	// Якщо були помилки — маркер НЕ пишемо, щоб не видалити товари помилково.
+	if !hasErrors {
+		if err := saveCompletionMarker(collection, storeID, startTime); err != nil {
+			log.Printf("[ExtractLoad] WARN: не вдалось записати маркер завершення store=%s: %v", storeID, err)
+			// Не фатально — cleanup просто не відбудеться цього разу
+		} else {
+			log.Printf("[ExtractLoad] ✔ Маркер завершення записано для store=%s", storeID)
+		}
+	} else {
+		log.Printf("[ExtractLoad] WARN: store=%s завершено з помилками — маркер очищення не записано", storeID)
+	}
+
 	return nil
+}
+
+// saveCompletionMarker записує в MongoDB документ, який сигналізує TransformLoadWorker
+// про успішне завершення повного ETL-циклу для магазину.
+// started_at — час початку Extract, до якого все що старше вважається застарілим.
+func saveCompletionMarker(collection *mongo.Collection, storeID string, startedAt time.Time) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	_, err := collection.InsertOne(ctx, bson.D{
+		{Key: "store_id", Value: storeID},
+		{Key: "status", Value: "etl_complete"},
+		{Key: "started_at", Value: startedAt},
+		{Key: "saved_at", Value: time.Now().UTC()},
+	})
+	return err
 }
 
 // ---------------------------------------------------------------------------

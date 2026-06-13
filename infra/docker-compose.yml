@@ -84,13 +84,14 @@ services:
       - smarket-network
 
   products_etl:
-    platform: linux/amd64   # явно фіксуємо x86_64, щоб уникнути "exec format error" на будь-якому хості
+    platform: linux/amd64   # явно фіксуємо x86_64, щоб уникнути "exec format error" на будь-конкретному хості
     build:
       context: ../services/products_etl
       dockerfile: Dockerfile
     environment:
       - ENV=production
       - RABBITMQ_URL=amqp://smarket:smarket@rabbitmq:5672/
+      - MONGO_URI=mongodb://mongodb:27017/
     env_file:
       - ../services/products_etl/.env
     ports:
@@ -99,6 +100,8 @@ services:
       db:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      mongodb:
         condition: service_healthy
     restart: on-failure
     networks:
@@ -115,6 +118,23 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    restart: on-failure
+    networks:
+      - smarket-network
+
+  mongodb:
+    image: mongo:8.3
+    container_name: smarket-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     restart: on-failure
     networks:
       - smarket-network
@@ -139,6 +159,21 @@ services:
     networks:
       - smarket-network
 
+  redis:
+    image: redis:7-alpine
+    container_name: smarket-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: on-failure
+    networks:
+      - smarket-network
+
   email_worker:
     build:
       context: ../services/email_worker
@@ -157,6 +192,7 @@ services:
 volumes:
   postgres_data:
   rabbitmq_data:
+  mongodb_data:
 
 networks:
   smarket-network:

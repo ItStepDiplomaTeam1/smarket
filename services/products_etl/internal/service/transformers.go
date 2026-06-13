@@ -85,6 +85,42 @@ func runTransformBatch(ctx context.Context, collection *mongo.Collection, pgPool
 		notifyProductsUpdated(ctx, pgPool, storeID)
 	}
 
+	// --- Другий прохід: маркери завершення ETL ---
+	// Маркер з'являється тільки якщо ВСІ категорії store скачані без помилок.
+	// Повертаємо маркери лише якщо для цього store вже немає документів зі статусом "new".
+	markers, err := findReadyCompletionMarkers(ctx, collection)
+	if err != nil {
+		log.Printf("[Transform] Помилка пошуку маркерів завершення: %v", err)
+	} else {
+		for _, marker := range markers {
+			docID, _ := marker["_id"].(bson.ObjectID)
+			storeID, _ := marker["store_id"].(string)
+			startedAt, _ := marker["started_at"].(time.Time)
+
+			if storeID == "" {
+				_ = markDocumentProcessed(ctx, collection, docID)
+				continue
+			}
+
+			deleted, err := cleanupStaleStoreProducts(ctx, pgPool, storeID, startedAt)
+			if err != nil {
+				log.Printf("[Transform] ✗ Помилка очищення застарілих товарів store=%s: %v", storeID, err)
+				if markErr := markDocumentFailed(ctx, collection, docID, err.Error()); markErr != nil {
+					log.Printf("[Transform] Не вдалось позначити маркер %s як failed: %v", docID.Hex(), markErr)
+				}
+				continue
+			}
+
+			if deleted > 0 {
+				log.Printf("[Transform] 🗑 store=%s: видалено %d застарілих товарів з каталогу магазину", storeID, deleted)
+			} else {
+				log.Printf("[Transform] ✓ store=%s: застарілих товарів не виявлено", storeID)
+			}
+
+			_ = markDocumentProcessed(ctx, collection, docID)
+		}
+	}
+
 	return nil
 }
 
@@ -103,6 +139,65 @@ func findNewDocuments(ctx context.Context, collection *mongo.Collection) ([]bson
 		return nil, err
 	}
 	return docs, nil
+}
+
+// findReadyCompletionMarkers повертає маркери завершення ETL (status=etl_complete),
+// для яких вже немає невідпрацьованих документів з status=new.
+// Завдяки цьому cleanup відбувається ТІЛЬКИ після того, як весь батч трансформовано.
+func findReadyCompletionMarkers(ctx context.Context, collection *mongo.Collection) ([]bson.M, error) {
+	pipeline := mongo.Pipeline{
+		// Беремо лише маркери завершення
+		{{Key: "$match", Value: bson.M{"status": "etl_complete"}}},
+		// Підтягуємо документи status=new для того самого store_id
+		{{Key: "$lookup", Value: bson.D{
+			{Key: "from", Value: "raw_pages"},
+			{Key: "let", Value: bson.D{{Key: "sid", Value: "$store_id"}}},
+			{Key: "pipeline", Value: mongo.Pipeline{
+				{{Key: "$match", Value: bson.D{
+					{Key: "$expr", Value: bson.D{
+						{Key: "$and", Value: bson.A{
+							bson.D{{Key: "$eq", Value: bson.A{"$store_id", "$$sid"}}},
+							bson.D{{Key: "$eq", Value: bson.A{"$status", "new"}}},
+						}},
+					}},
+				}}},
+				{{Key: "$limit", Value: 1}},
+			}},
+			{Key: "as", Value: "pending"},
+		}}},
+		// Беремо лише ті маркери, де pending порожній (всі сторінки оброблені)
+		{{Key: "$match", Value: bson.M{"pending": bson.M{"$size": 0}}}},
+		{{Key: "$limit", Value: 10}},
+	}
+
+	cursor, err := collection.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var docs []bson.M
+	if err := cursor.All(ctx, &docs); err != nil {
+		return nil, err
+	}
+	return docs, nil
+}
+
+// cleanupStaleStoreProducts видаляє з таблиці store_products всі записи,
+// де last_seen_at < startedAt. Це означає: товар не зустрічався в поточному
+// ETL-циклі й був видалений з каталогу магазину на Zakaz.ua.
+// Повертає кількість видалених рядків.
+func cleanupStaleStoreProducts(ctx context.Context, pgPool *pgxpool.Pool, storeID string, startedAt time.Time) (int64, error) {
+	tag, err := pgPool.Exec(ctx,
+		`DELETE FROM store_products
+		 WHERE store_id   = $1
+		   AND last_seen_at < $2`,
+		storeID, startedAt,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("DELETE stale store_products (store=%s): %w", storeID, err)
+	}
+	return tag.RowsAffected(), nil
 }
 
 // ---------------------------------------------------------------------------
@@ -322,7 +417,9 @@ func batchUpsertPage(
 		var err error
 
 		if canonicalEAN != nil {
-			// Товар з валідним EAN — conflict по canonical_ean
+			// Товар з валідним EAN — conflict по canonical_ean.
+			// EAN є глобальним ідентифікатором — один товар з різних мереж
+			// відображається в одному рядку products.
 			tag, err = tx.Exec(ctx, `
 				INSERT INTO products
 					(canonical_ean, store_product_id, title, brand, unit, weight, image_url, canonical_category_id, created_at)
@@ -336,18 +433,20 @@ func batchUpsertPage(
 				canonicalEAN, storeProductID, p.Title, brand, p.Unit, p.Weight, imageURL, categoryID,
 			)
 		} else {
-			// Товар без EAN — conflict по partial unique index store_product_id
+			// Товар без EAN — прив'язаний до конкретного магазину через store_id.
+			// Conflict по composite unique index (store_product_id, store_id) WHERE canonical_ean IS NULL.
+			// Це гарантує, що однойменні SKU різних мереж НЕ конфліктують між собою.
 			tag, err = tx.Exec(ctx, `
 				INSERT INTO products
-					(store_product_id, title, brand, unit, weight, image_url, canonical_category_id, created_at)
-				VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
-				ON CONFLICT (store_product_id) WHERE canonical_ean IS NULL DO UPDATE SET
+					(store_product_id, store_id, title, brand, unit, weight, image_url, canonical_category_id, created_at)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+				ON CONFLICT (store_product_id, store_id) WHERE canonical_ean IS NULL DO UPDATE SET
 					title     = EXCLUDED.title,
 					brand     = COALESCE(NULLIF(EXCLUDED.brand, ''), products.brand),
 					unit      = EXCLUDED.unit,
 					weight    = EXCLUDED.weight,
 					image_url = COALESCE(NULLIF(EXCLUDED.image_url, ''), products.image_url)`,
-				storeProductID, p.Title, brand, p.Unit, p.Weight, imageURL, categoryID,
+				storeProductID, storeID, p.Title, brand, p.Unit, p.Weight, imageURL, categoryID,
 			)
 		}
 
@@ -381,14 +480,17 @@ func batchUpsertPage(
 		}
 	}
 
-	// Один SELECT для всіх EAN та store_product_id замість N окремих запитів
+	// Один SELECT для всіх EAN та store_product_id замість N окремих запитів.
+	// Для товарів без EAN додатково фільтруємо по store_id, щоб не підхопити
+	// однойменний SKU з іншої мережі.
 	rows, err := tx.Query(ctx,
 		`SELECT id, canonical_ean, store_product_id 
 		 FROM products 
 		 WHERE canonical_ean = ANY($1) 
-		    OR (canonical_ean IS NULL AND store_product_id = ANY($2))`,
+		    OR (canonical_ean IS NULL AND store_product_id = ANY($2) AND store_id = $3)`,
 		eans,
 		storeProductIDs,
+		storeID,
 	)
 	if err != nil {
 		return fmt.Errorf("batch SELECT products: %w", err)
@@ -452,17 +554,31 @@ func batchUpsertPage(
 			oldPriceUAH = &v
 		}
 
+		// Крок 3: INSERT ціни лише якщо вона змінилась з моменту останнього запису.
+		// Порівнюємо: ціна, стара ціна та наявність. Якщо все однакове — пропускаємо.
+		// Це запобігає безконтрольному зростанню таблиці prices при кожному перепарсингу.
 		batch.Queue(`
 			INSERT INTO prices (product_id, store_id, price, old_price, in_stock, recorded_at)
-			VALUES ($1, $2, $3, $4, $5, NOW())`,
+			SELECT $1, $2, $3, $4, $5, NOW()
+			WHERE NOT EXISTS (
+				SELECT 1 FROM prices
+				WHERE product_id = $1
+				  AND store_id   = $2
+				  AND price      = $3
+				  AND in_stock   = $5
+				  AND (old_price IS NOT DISTINCT FROM $4)
+				  AND recorded_at > NOW() - INTERVAL '3 hours'
+			)`,
 			productID, storeID, priceUAH, oldPriceUAH, p.InStock,
 		)
 
-		// Крок 4: зв'язок товар↔магазин
+		// Крок 4: зв'язок товар↔магазин — оновлюємо last_seen_at щоб відстежувати
+		// які товари були в поточному ETL-циклі. Після cleanup старі зв'язки видаляються.
 		batch.Queue(`
-			INSERT INTO store_products (product_id, store_id, store_product_id)
-			VALUES ($1, $2, $3)
-			ON CONFLICT (product_id, store_id) DO NOTHING`,
+			INSERT INTO store_products (product_id, store_id, store_product_id, last_seen_at)
+			VALUES ($1, $2, $3, NOW())
+			ON CONFLICT (product_id, store_id) DO UPDATE SET
+				last_seen_at = NOW()`,
 			productID, storeID, storeProductID,
 		)
 
@@ -475,6 +591,16 @@ func batchUpsertPage(
 		if err := br.Close(); err != nil {
 			return fmt.Errorf("batch INSERT prices: %w", err)
 		}
+	}
+
+	// Крок 5: позначаємо магазин як щойно спарсений.
+	// Планувальник використовує цю колонку замість дорогого GROUP BY на prices.
+	if _, err := tx.Exec(ctx,
+		`UPDATE stores SET last_parsed_at = NOW() WHERE external_id = $1`,
+		storeID,
+	); err != nil {
+		log.Printf("[Transform] WARN: не вдалось оновити last_parsed_at для store=%s: %v", storeID, err)
+		// Не фатально — продовжуємо commit
 	}
 
 	// One COMMIT for whole page

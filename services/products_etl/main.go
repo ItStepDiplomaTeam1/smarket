@@ -101,10 +101,9 @@ func declareQueue(conn *amqp.Connection, name string) {
 func main() {
 	cfg := config.LoadConfig()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-
-	infra, err := database.InitInfrastructure(ctx, cfg)
+	// context.Background() без таймауту — InitInfrastructure сам керує
+	// тривалістю кожної спроби (per-attempt 5s ping + retry loop 30 разів).
+	infra, err := database.InitInfrastructure(context.Background(), cfg)
 	if err != nil {
 		log.Fatalf("Критична помилка ініціалізації інфраструктури: %v", err)
 	}
@@ -127,60 +126,6 @@ func main() {
 	// Оголошується черга до старту горутин, щоб уникнути race condition
 	declareQueue(infra.RabbitConn, cfg.ETLQueueName)
 
-	// Горутина №0: Запуск ETL при старті (новий деплой) — кидаємо у чергу магазини без цін
-	go func() {
-		rows, err := infra.PgPool.Query(context.Background(),
-			`SELECT s.external_id FROM stores s
-			 LEFT JOIN prices p ON p.store_id = s.external_id
-			 WHERE s.is_active = true
-			 GROUP BY s.external_id
-			 HAVING MAX(p.recorded_at) IS NULL`)
-		if err != nil {
-			log.Printf("[StartupSeeder] Помилка отримання нових магазинів: %v", err)
-			return
-		}
-		defer rows.Close()
-
-		ch, err := infra.RabbitConn.Channel()
-		if err != nil {
-			log.Printf("[StartupSeeder] Помилка створення каналу RabbitMQ: %v", err)
-			return
-		}
-		defer ch.Close()
-
-		var count int
-		for rows.Next() {
-			var storeID string
-			if err := rows.Scan(&storeID); err != nil {
-				log.Printf("[StartupSeeder] Помилка сканування рядка: %v", err)
-				continue
-			}
-
-			body, err := json.Marshal(service.ETLTask{StoreID: storeID})
-			if err != nil {
-				log.Printf("[StartupSeeder] Помилка маршалінгу store_id=%s: %v", storeID, err)
-				continue
-			}
-
-			err = ch.Publish("", cfg.ETLQueueName, false, false, amqp.Publishing{
-				DeliveryMode: amqp.Persistent,
-				ContentType:  "application/json",
-				Body:         body,
-			})
-			if err != nil {
-				log.Printf("[StartupSeeder] Помилка публікації store_id=%s: %v", storeID, err)
-				continue
-			}
-			log.Printf("[StartupSeeder] Поставлено у чергу store_id=%s (новий деплой/без цін)", storeID)
-			count++
-		}
-
-		if err := rows.Err(); err != nil {
-			log.Printf("[StartupSeeder] Помилка після читання рядків: %v", err)
-		}
-		log.Printf("[StartupSeeder] Роботу завершено. Поставлено у чергу %d магазинів.", count)
-	}()
-
 	// Горутина №1: Періодичне докачування устарілих даних (кожні 2 години)
 	// Перевірка запускається ОДРАЗУ при старті, а потім кожні 2 години.
 	go func() {
@@ -193,12 +138,14 @@ func main() {
 		runSchedulerCheck := func() {
 			log.Println("[Scheduler] Перевірка застарілих даних магазинів...")
 			rows, err := infra.PgPool.Query(context.Background(),
-				`SELECT s.external_id FROM stores s
-				 LEFT JOIN prices p ON p.store_id = s.external_id
-				 WHERE s.is_active = true
-				 GROUP BY s.external_id
-				 HAVING MAX(p.recorded_at) < NOW() - INTERVAL '2 hours'
-				    OR MAX(p.recorded_at) IS NULL`)
+				// last_parsed_at — індексована колонка, яку TransformLoadWorker оновлює
+				// після кожного успішного батчу. Це набагато швидше ніж GROUP BY на prices.
+				// NULL означає: магазин ніколи не парсився (перший деплой або новий магазин).
+				`SELECT external_id FROM stores
+				 WHERE is_active = true
+				   AND (last_parsed_at IS NULL
+				        OR last_parsed_at < NOW() - INTERVAL '2 hours')
+				 ORDER BY last_parsed_at ASC NULLS FIRST`)
 			if err != nil {
 				log.Printf("[Scheduler] Помилка запиту перевірки застарілих магазинів: %v", err)
 				return
@@ -234,7 +181,7 @@ func main() {
 					log.Printf("[Scheduler] Помилка публікації store_id=%s: %v", storeID, err)
 					continue
 				}
-				log.Printf("[Scheduler] Поставлено у чергу store_id=%s (дані застаріли)", storeID)
+				log.Printf("[Scheduler] Поставлено у чергу store_id=%s (дані застаріли або відсутні)", storeID)
 				count++
 			}
 

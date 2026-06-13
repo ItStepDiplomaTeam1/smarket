@@ -41,6 +41,11 @@ class Store(Base):
     synced_at: Mapped[datetime.datetime] = mapped_column(
         "synced_at", DateTime(timezone=True), nullable=False
     )
+    # Час останнього успішного парсингу ETL-воркером.
+    # NULL означає: магазин ніколи не парсився.
+    last_parsed_at: Mapped[Optional[datetime.datetime]] = mapped_column(
+        "last_parsed_at", DateTime(timezone=True), nullable=True
+    )
 
     prices: Mapped[list["Price"]] = relationship("Price", back_populates="store")
     store_products: Mapped[list["StoreProduct"]] = relationship("StoreProduct", back_populates="store")
@@ -75,6 +80,11 @@ class Product(Base):
     weight: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     image_url: Mapped[Optional[str]] = mapped_column("image_url", Text, nullable=True)
     canonical_category_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    # ID магазину, до якого прив'язаний товар без EAN.
+    # Для товарів з EAN це поле NULL (вони глобальні та можуть бути у будь-якому магазині).
+    store_id: Mapped[Optional[str]] = mapped_column(
+        "store_id", String, ForeignKey("stores.external_id"), nullable=True
+    )
     created_at: Mapped[datetime.datetime] = mapped_column(
         "created_at", DateTime(timezone=True), nullable=False
     )
