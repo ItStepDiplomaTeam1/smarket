@@ -8,7 +8,10 @@ from app.database.models import Product
 from app.shared.schemas import ProductCreate, ProductUpdate, ProductResponse
 from app.database.session import get_db
 
-router = APIRouter(default_response_class=ORJSONResponse)
+router = APIRouter(
+    tags=["Products"],
+    default_response_class=ORJSONResponse
+)
 
 @router.post("/", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
 async def create_product(body: ProductCreate, db: AsyncSession = Depends(get_db)):

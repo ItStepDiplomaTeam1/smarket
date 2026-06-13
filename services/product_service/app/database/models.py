@@ -1,5 +1,5 @@
 import uuid
-from typing import Any
+from typing import Any, Optional    
 
 from sqlalchemy import String, Text
 from sqlalchemy.dialects.postgresql import UUID, JSONB
@@ -17,6 +17,8 @@ class Product(Base):
     external_id: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     specification: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=True, default=dict)
+    image_url: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    
 
 class Category(Base):
     __tablename__ = "categories"

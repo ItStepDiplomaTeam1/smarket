@@ -8,6 +8,7 @@ class ProductBase(BaseModel):
     external_id: str = Field(..., max_length=255)
     description: str
     specification: Optional[dict[str, Any]] = Field(default_factory=dict)
+    image_url: Optional[str] = Field(None, max_length=1024)
 
 class ProductCreate(ProductBase):
     pass
@@ -18,6 +19,7 @@ class ProductUpdate(BaseModel):
     external_id: Optional[str] = Field(None, max_length=255)
     description: Optional[str] = None
     specification: Optional[dict[str, Any]] = None
+    image_url: Optional[str] = Field(None, max_length=1024)
 
 class ProductResponse(ProductBase):
     id: uuid.UUID
