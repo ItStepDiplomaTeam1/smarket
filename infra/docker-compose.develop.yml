@@ -1,0 +1,22 @@
+services:
+  gateway_service:
+    image: ghcr.io/itstepdiplomateam1/smarket-gateway:latest
+    ports:
+      - "80:8080"  # Приймаємо трафік з інтернету на 80 порт і шлемо в Gateway
+    environment:
+      - ENV=development
+    networks:
+      - smarket-network
+
+  auth_service:
+    image: ghcr.io/itstepdiplomateam1/smarket-auth:latest
+    environment:
+      - ENV=development
+      # Сюди Тимофій або Влад згодом впишуть реальний URL до NeonDB
+      - DATABASE_URL=postgresql+asyncpg://user:pass@neon-host/db
+    networks:
+      - smarket-network
+
+networks:
+  smarket-network:
+    driver: bridge
