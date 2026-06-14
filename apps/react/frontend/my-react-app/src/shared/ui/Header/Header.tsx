@@ -24,11 +24,11 @@ export function Header() {
             </NavLink>
 
             <NavLink 
-                to="/compare" 
+                to="/catalog" 
                 className={({ isActive }) => `no-underline text-sm font-medium transition-colors duration-200 
                     ${isActive ? 'text-[#265447] font-semibold' : 'text-[#173B33] hover:text-[#265447]'}`
                 }>
-                Порівняти ціни
+                Каталог
             </NavLink>
 
             <NavLink 
