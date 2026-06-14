@@ -80,6 +80,24 @@ class ProductInStoreResponse(ProductResponse):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ProductOfferResponse(BaseModel):
+    """Актуальна пропозиція товару в одному магазині (ціна + магазин)."""
+    store: StoreResponse
+    price: float
+    old_price: Optional[float] = None
+    in_stock: bool
+    recorded_at: datetime.datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ProductOffersResponse(ProductResponse):
+    """Товар з актуальними цінами в усіх магазинах — зручний агрегат для фронтенду."""
+    offers: list[ProductOfferResponse] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class ProductFilters(BaseModel):
     category_id: Optional[int] = None
     brand: Optional[str] = None

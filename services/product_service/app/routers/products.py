@@ -11,6 +11,8 @@ from app.shared.schemas import (
     PriceWithStoreResponse,
     ProductDetail,
     ProductInStoreResponse,
+    ProductOfferResponse,
+    ProductOffersResponse,
     ProductResponse,
     ProductWithStoresResponse,
 )
@@ -226,6 +228,89 @@ async def get_product_stores(
             detail=f"Товар з id={product_id} не знайдено",
         )
     return product
+
+
+@router.get(
+    "/{product_id}/offers",
+    response_model=ProductOffersResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Актуальні пропозиції товару",
+    description=(
+        "Повертає товар разом з актуальною ціною в кожному магазині (остання зафіксована ціна), "
+        "включаючи інформацію про магазин: назву, мережу, місто. "
+        "Ідеально підходить для сторінки товару: один запит — уся потрібна інформація."
+    ),
+)
+async def get_product_offers(
+    product_id: int,
+    in_stock: Optional[bool] = Query(None, description="Обмежити пропозиції лише товарами в наявності"),
+    db: AsyncSession = Depends(get_db),
+):
+    # 1. Знаходимо товар
+    product = await db.scalar(select(Product).where(Product.id == product_id))
+    if product is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Товар з id={product_id} не знайдено",
+        )
+
+    # 2. Підзапит: остання ціна для кожного магазину
+    latest_price_subq = (
+        select(
+            Price.store_id,
+            func.max(Price.recorded_at).label("max_recorded_at"),
+        )
+        .where(Price.product_id == product_id)
+        .group_by(Price.store_id)
+        .subquery()
+    )
+
+    # 3. Вибираємо актуальні ціни з інформацією про магазин
+    prices_stmt = (
+        select(Price)
+        .options(selectinload(Price.store))
+        .join(
+            latest_price_subq,
+            and_(
+                Price.store_id == latest_price_subq.c.store_id,
+                Price.recorded_at == latest_price_subq.c.max_recorded_at,
+            ),
+        )
+        .where(Price.product_id == product_id)
+    )
+
+    if in_stock is not None:
+        prices_stmt = prices_stmt.where(Price.in_stock == in_stock)
+
+    prices_stmt = prices_stmt.order_by(Price.price)
+    prices_result = await db.execute(prices_stmt)
+    latest_prices = prices_result.scalars().all()
+
+    # 4. Збираємо відповідь
+    offers = [
+        ProductOfferResponse(
+            store=price.store,
+            price=float(price.price),
+            old_price=float(price.old_price) if price.old_price else None,
+            in_stock=price.in_stock,
+            recorded_at=price.recorded_at,
+        )
+        for price in latest_prices
+    ]
+
+    return ProductOffersResponse(
+        id=product.id,
+        ean=product.ean,
+        store_product_id=product.store_product_id,
+        title=product.title,
+        brand=product.brand,
+        unit=product.unit,
+        weight=product.weight,
+        image_url=product.image_url,
+        canonical_category_id=product.canonical_category_id,
+        created_at=product.created_at,
+        offers=offers,
+    )
 
 
 @router.get(
