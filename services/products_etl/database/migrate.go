@@ -16,6 +16,7 @@ import (
 //   - store_categories_mapping — маппинг slug категорії → internal ID
 //   - products                — глобальний каталог товарів (дедупліковано по EAN)
 //   - prices                  — іммутабельний лог цін
+//   - store_products          — зв'язок товарів з магазинами
 func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 	log.Println("[migrate] Запуск міграцій ETL-бази...")
 
@@ -49,14 +50,39 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			sql: `
 				CREATE TABLE IF NOT EXISTS products (
 					id                    BIGSERIAL   PRIMARY KEY,
-					ean                   TEXT        UNIQUE NOT NULL, -- міжнародний штрихкод (ключ дедуплікації)
+					canonical_ean         TEXT        UNIQUE,        -- міжнародний EAN-13, ключ дедуплікації
+					store_product_id      TEXT,                       -- внутрішній ID магазину з Zakaz.ua
 					title                 TEXT        NOT NULL,
 					brand                 TEXT,
-					unit                  TEXT,                        -- "pcs", "kg", "g"
+					unit                  TEXT,
 					weight                FLOAT,
 					canonical_category_id INTEGER,
 					created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
 				)`,
+		},
+		{
+			name: "migrate products schema for EAN",
+			sql: `
+				DO $$
+				BEGIN
+					IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='products' AND column_name='ean') THEN
+						ALTER TABLE products RENAME COLUMN ean TO canonical_ean;
+						ALTER TABLE products ALTER COLUMN canonical_ean DROP NOT NULL;
+					END IF;
+
+					IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='products' AND column_name='store_product_id') THEN
+						ALTER TABLE products ADD COLUMN store_product_id TEXT;
+					END IF;
+				END $$;
+			`,
+		},
+		{
+			name: "create partial unique index store_product_id",
+			sql: `
+				-- Замінено на складений унікальний індекс у пізнішій міграції idx_products_store_product_id_store_id_null_ean.
+				-- Старий глобальний індекс більше не потрібен та видаляється.
+				SELECT 1;
+			`,
 		},
 		{
 			name: "create prices",
@@ -77,6 +103,111 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			sql: `
 				CREATE INDEX IF NOT EXISTS idx_prices_store_product
 				ON prices (store_id, product_id, recorded_at DESC)`,
+		},
+		{
+			name: "add image_url to products",
+			sql:  `ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT`,
+		},
+		{
+			name: "create store_products",
+			sql: `
+				CREATE TABLE IF NOT EXISTS store_products (
+					product_id       BIGINT      NOT NULL REFERENCES products(id),
+					store_id         TEXT        NOT NULL REFERENCES stores(external_id),
+					store_product_id TEXT,
+					first_seen_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+					PRIMARY KEY (product_id, store_id)
+				)`,
+		},
+		{
+			name: "prices columns to numeric",
+			sql: `
+				DO $$
+				BEGIN
+					IF EXISTS (
+						SELECT 1 FROM information_schema.columns
+						WHERE table_name='prices' AND column_name='price' AND data_type='double precision'
+					) THEN
+						ALTER TABLE prices
+							ALTER COLUMN price TYPE NUMERIC(10,2),
+							ALTER COLUMN old_price TYPE NUMERIC(10,2);
+					END IF;
+				END $$;
+			`,
+		},
+		{
+			name: "fix kopeck prices",
+			sql: `
+				UPDATE prices SET
+					price = price / 100.0,
+					old_price = old_price / 100.0
+				WHERE price > 1000
+			`,
+		},
+		// ---------------------------------------------------------------
+		// Нові міграції: фіксуємо дедуплікацію товарів та відслідковуємо
+		// час останнього оновлення магазину.
+		// ---------------------------------------------------------------
+		{
+			// Колонка last_parsed_at дозволяє планувальнику швидко знайти
+			// магазини, дані яких застаріли, без дорогого GROUP BY на prices.
+			name: "add last_parsed_at to stores",
+			sql: `
+				ALTER TABLE stores
+					ADD COLUMN IF NOT EXISTS last_parsed_at TIMESTAMPTZ
+			`,
+		},
+		{
+			// store_id у таблиці products прив'язує товари без EAN до конкретного
+			// магазину, запобігаючи конфліктам між однойменними SKU різних мереж.
+			name: "add store_id to products",
+			sql: `
+				ALTER TABLE products
+					ADD COLUMN IF NOT EXISTS store_id TEXT REFERENCES stores(external_id)
+			`,
+		},
+		{
+			// Прибираємо старий глобальний індекс та замінюємо його
+			// на store-scoped composite unique index.
+			// Один і той самий SKU у різних мережах тепер не конфліктує.
+			name: "replace global store_product_id index with store-scoped",
+			sql: `
+				DO $$
+				BEGIN
+					-- Видаляємо старий глобальний індекс (якщо ще існує)
+					DROP INDEX IF EXISTS idx_products_store_product_id_null_ean;
+
+					-- Створюємо новий composite unique index: SKU унікальний в межах одного магазину
+					IF NOT EXISTS (
+						SELECT 1 FROM pg_indexes
+						WHERE indexname = 'idx_products_store_product_id_store_id_null_ean'
+					) THEN
+						CREATE UNIQUE INDEX idx_products_store_product_id_store_id_null_ean
+						ON products (store_product_id, store_id)
+						WHERE canonical_ean IS NULL;
+					END IF;
+				END $$
+			`,
+		},
+		{
+			// Індекс для швидкого пошуку застарілих магазинів планувальником.
+			// Без нього планувальник буде робити full table scan кожні 2 години.
+			name: "index stores_last_parsed_at",
+			sql: `
+				CREATE INDEX IF NOT EXISTS idx_stores_last_parsed_at
+				ON stores (last_parsed_at ASC NULLS FIRST)
+				WHERE is_active = true
+			`,
+		},
+		{
+			// last_seen_at в store_products дозволяє ETL-воркеру автоматично визначати,
+			// які товари більше не повертаються АПІ Zakaz.ua і повинні бути видалені.
+			// DEFAULT NOW() автоматично заповнює існуючі рядки.
+			name: "add last_seen_at to store_products",
+			sql: `
+				ALTER TABLE store_products
+					ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+			`,
 		},
 	}
 

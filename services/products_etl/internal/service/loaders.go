@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"sync"
 	"time"
 
 	"smarket/services/products_etl/usefulMethods"
@@ -101,7 +102,9 @@ func ExtractLoadWorker(conn *amqp.Connection, mongoDB *mongo.Database, queueName
 }
 
 // processExtractTask розбирає одне повідомлення з черги і запускає ETL для store_id.
-// При помилці повертає повідомлення в чергу (nack + requeue).
+// При помилці повертає повідомлення в чергу (nack + requeue), але не більше maxRetries разів.
+const maxRetries = 3
+
 func processExtractTask(msg amqp.Delivery, mongoDB *mongo.Database) {
 	var task ETLTask
 	if err := json.Unmarshal(msg.Body, &task); err != nil {
@@ -119,10 +122,29 @@ func processExtractTask(msg amqp.Delivery, mongoDB *mongo.Database) {
 
 	log.Printf("[ExtractLoad] ▶ Починаємо ETL для store_id=%s", task.StoreID)
 
-	if err := runExtractLoad(task.StoreID, mongoDB); err != nil {
-		log.Printf("[ExtractLoad] ✗ ETL для store_id=%s завершився з помилкою: %v", task.StoreID, err)
-		// Повертаємо в чергу — можлива тимчасова мережева помилка.
-		_ = msg.Nack(false, true)
+	if err := updatedRunExtractLoad(task.StoreID, mongoDB); err != nil {
+		// Перевіряємо кількість повторних спроб
+		retryCount := int64(0)
+		if msg.Headers != nil {
+			if rc, ok := msg.Headers["x-retry-count"]; ok {
+				switch v := rc.(type) {
+				case int64:
+					retryCount = v
+				case int32:
+					retryCount = int64(v)
+				}
+			}
+		}
+
+		if retryCount >= int64(maxRetries) {
+			log.Printf("[ExtractLoad] ✗ ETL для store_id=%s: вичерпано %d спроб, відкидаємо задачу: %v",
+				task.StoreID, maxRetries, err)
+			_ = msg.Nack(false, false) // дропаємо — більше не реквюїмо
+		} else {
+			log.Printf("[ExtractLoad] ✗ ETL для store_id=%s: спроба %d/%d, повертаємо у чергу: %v",
+				task.StoreID, retryCount+1, maxRetries, err)
+			_ = msg.Nack(false, true) // повертаємо в чергу
+		}
 		return
 	}
 
@@ -130,28 +152,105 @@ func processExtractTask(msg amqp.Delivery, mongoDB *mongo.Database) {
 	_ = msg.Ack(false)
 }
 
-// runExtractLoad — основний пайплайн горутини №1:
-// 1. Отримати всі slug-и категорій магазину.
-// 2. Для кожного slug-а пробігти всі сторінки продуктів.
-// 3. Кожну сторінку зберегти як окремий документ у MongoDB.
-func runExtractLoad(storeID string, mongoDB *mongo.Database) error {
+//func runExtractLoad(storeID string, mongoDB *mongo.Database) error {
+//	slugs, err := fetchCategorySlugs(storeID)
+//	if err != nil {
+//		return fmt.Errorf("сканування категорій: %w", err)
+//	}
+//	log.Printf("[ExtractLoad] store_id=%s: знайдено %d категорій", storeID, len(slugs))
+//
+//	collection := mongoDB.Collection("raw_pages")
+//
+//	for _, slug := range slugs {
+//		if err := fetchAndStoreAllPages(storeID, slug, collection); err != nil {
+//			// Логуємо помилку, але продовжуємо з наступною категорією.
+//			// Вже збережені сторінки залишаються в Mongo — мережу не потрібно смикати повторно.
+//			log.Printf("[ExtractLoad] store_id=%s slug=%s: помилка, пропускаємо: %v", storeID, slug, err)
+//		}
+//	}
+//
+//	return nil
+//}
+
+func updatedRunExtractLoad(storeID string, mongoDB *mongo.Database) error {
+	// Фіксуємо час початку ETL для цього магазину.
+	// TransformLoadWorker використовує цей час як межу:
+	// товари, не оновлені після startTime, вважаються видаленими з каталогу.
+	startTime := time.Now().UTC()
+
 	slugs, err := fetchCategorySlugs(storeID)
 	if err != nil {
-		return fmt.Errorf("сканування категорій: %w", err)
+		return fmt.Errorf("Сканування категорій: %w", err)
 	}
 	log.Printf("[ExtractLoad] store_id=%s: знайдено %d категорій", storeID, len(slugs))
-
 	collection := mongoDB.Collection("raw_pages")
 
+	jobs := make(chan string, len(slugs))
+
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	var hasErrors bool // true якщо хоча б одна категорія завершилась з помилкою
+	const workersNum = 5
+
+	for w := 1; w <= workersNum; w++ {
+		wg.Add(1)
+
+		go func(workerID int) {
+			defer wg.Done()
+
+			for slug := range jobs {
+				log.Printf("[Worker %d] ▶ Починаємо качати категорію: %s", workerID, slug)
+
+				if err := fetchAndStoreAllPages(storeID, slug, collection); err != nil {
+					log.Printf("[Worker %d] ✗ Помилка у категорії %s: %v", workerID, slug, err)
+					mu.Lock()
+					hasErrors = true
+					mu.Unlock()
+				} else {
+					log.Printf("[Worker %d] ✓ Категорія %s повністю оброблена", workerID, slug)
+				}
+			}
+		}(w)
+	}
+
 	for _, slug := range slugs {
-		if err := fetchAndStoreAllPages(storeID, slug, collection); err != nil {
-			// Логуємо помилку, але продовжуємо з наступною категорією.
-			// Вже збережені сторінки залишаються в Mongo — мережу не потрібно смикати повторно.
-			log.Printf("[ExtractLoad] store_id=%s slug=%s: помилка, пропускаємо: %v", storeID, slug, err)
+		jobs <- slug
+	}
+
+	close(jobs)
+
+	wg.Wait()
+
+	// Якщо всі категорії успішно виконані — записуємо маркер завершення.
+	// TransformLoadWorker знайде його і видалить товари, яких не було в цьому циклі.
+	// Якщо були помилки — маркер НЕ пишемо, щоб не видалити товари помилково.
+	if !hasErrors {
+		if err := saveCompletionMarker(collection, storeID, startTime); err != nil {
+			log.Printf("[ExtractLoad] WARN: не вдалось записати маркер завершення store=%s: %v", storeID, err)
+			// Не фатально — cleanup просто не відбудеться цього разу
+		} else {
+			log.Printf("[ExtractLoad] ✔ Маркер завершення записано для store=%s", storeID)
 		}
+	} else {
+		log.Printf("[ExtractLoad] WARN: store=%s завершено з помилками — маркер очищення не записано", storeID)
 	}
 
 	return nil
+}
+
+// saveCompletionMarker записує в MongoDB документ, який сигналізує TransformLoadWorker
+// про успішне завершення повного ETL-циклу для магазину.
+// started_at — час початку Extract, до якого все що старше вважається застарілим.
+func saveCompletionMarker(collection *mongo.Collection, storeID string, startedAt time.Time) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	_, err := collection.InsertOne(ctx, bson.D{
+		{Key: "store_id", Value: storeID},
+		{Key: "status", Value: "etl_complete"},
+		{Key: "started_at", Value: startedAt},
+		{Key: "saved_at", Value: time.Now().UTC()},
+	})
+	return err
 }
 
 // ---------------------------------------------------------------------------
