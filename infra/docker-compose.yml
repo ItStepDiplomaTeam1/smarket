@@ -36,8 +36,8 @@ services:
 
   gateway_service:
     build:
-      context: ..
-      dockerfile: services/gateway/Dockerfile
+      context: ../services/gateway
+      dockerfile: Dockerfile
     ports:
       - "8080:8080"
     env_file:
