@@ -1,4 +1,3 @@
-
 // src/app/routes/index.tsx
 import { Suspense, lazy } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
@@ -11,6 +10,7 @@ const ForgotPassword = lazy(() => import('@/pages/ForgotPassword/ui/ForgotPasswo
 const LoginPage = lazy(() => import('@/pages/Login/ui/LoginPage.tsx'));
 const ProductDetail = lazy(() => import('@/pages/ProductDetail/ui/ProductDetail.tsx'));
 const Profile = lazy(() => import('@/pages/Profile/ui/ProfilePage.tsx'));
+const Catalog = lazy(() => import('@/pages/Catalog/ui/Catalog.tsx'));
 
 // Створюємо конфігурацію маршрутів
 const router = createBrowserRouter([
@@ -68,6 +68,14 @@ const router = createBrowserRouter([
     element: (
       <Suspense fallback={<div>Завантаження профілю...</div>}>
         <Profile />
+      </Suspense>
+    ),
+  },
+  {
+    path: '/catalog',
+    element: (
+      <Suspense fallback={<div>Завантаження каталогу...</div>}>
+        <Catalog />
       </Suspense>
     ),
   }
