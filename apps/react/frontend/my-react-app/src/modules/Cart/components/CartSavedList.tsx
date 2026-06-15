@@ -1,9 +1,12 @@
 import React, { useRef, useEffect } from 'react';
 import { useCartStore } from '../store/useCartStore';
+import { useFetchCarts, useDeleteCart } from '../../../hooks/api/useCartApi';
 import { MoreHorizontal, Edit2, Share2, Copy, Trash2 } from 'lucide-react';
 
 export const CartSavedList: React.FC = () => {
-  const { carts, activeCartId, setActiveCart, openMenuId, setOpenMenuId, deleteCart } = useCartStore();
+  const { activeCartId, setActiveCart, openMenuId, setOpenMenuId } = useCartStore();
+  const { data: carts = [] } = useFetchCarts();
+  const { mutate: deleteCart } = useDeleteCart();
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -36,7 +39,7 @@ export const CartSavedList: React.FC = () => {
             onClick={() => setActiveCart(cart.id)}
           >
             <div className="flex justify-between items-start mb-2">
-              <h3 className="font-semibold text-gray-900">{cart.name}</h3>
+              <h3 className="font-semibold text-gray-900">{cart.title}</h3>
               <div className="relative" ref={openMenuId === cart.id ? menuRef : null}>
                 <button 
                   className="p-1 text-gray-400 hover:text-gray-600 rounded"
@@ -65,6 +68,8 @@ export const CartSavedList: React.FC = () => {
                       onClick={(e) => {
                         e.stopPropagation();
                         deleteCart(cart.id);
+                        if (activeCartId === cart.id) setActiveCart(null);
+                        setOpenMenuId(null);
                       }}
                     >
                       <Trash2 className="w-4 h-4" /> Видалити
@@ -75,18 +80,18 @@ export const CartSavedList: React.FC = () => {
             </div>
             
             <div className="text-sm text-gray-500 mb-3">
-              {cart.items.length} товарів • {new Date(cart.updatedAt).toLocaleDateString('uk-UA')}
+              {cart.itemsCount} товарів • {new Date(cart.updatedAt).toLocaleDateString('uk-UA')}
             </div>
             
             <div className="flex justify-between items-end">
               <div>
-                <div className="text-xs text-gray-500 mb-1">Економія {cart.savings} ₴</div>
+                <div className="text-xs text-gray-500 mb-1">Економія {cart.potentialSavings} ₴</div>
                 <div className="inline-flex items-center px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded">
                   {cart.bestStore}
                 </div>
               </div>
               <div className="font-semibold text-lg text-gray-900">
-                {cart.totalPrice} грн
+                {cart.bestPrice} грн
               </div>
             </div>
           </div>
