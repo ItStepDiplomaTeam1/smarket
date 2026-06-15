@@ -1,4 +1,4 @@
-import zagluska from '../../../shared/assets/products-zaglushka.svg';
+import zagluska from '@/shared/assets/products-zaglushka.svg';
 
 const FbtCard = () => (
     <div className="w-[175px] h-[296px] shrink-0 bg-white border border-[rgba(38,84,71,0.08)] rounded-[16px] p-[16px] flex flex-col box-border">

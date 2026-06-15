@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import eyeIcon from '../../../shared/assets/ButtonEye.svg';
-import btngoogle from '../../../shared/assets/google.svg';
-import btnfacebook from '../../../shared/assets/facebook.svg';
+import eyeIcon from '@/shared/assets/ButtonEye.svg';
+import btngoogle from '@/shared/assets/google.svg';
+import btnfacebook from '@/shared/assets/facebook.svg';
 
 export function Popup() {
     const [showPassword, setShowPassword] = useState(false);
