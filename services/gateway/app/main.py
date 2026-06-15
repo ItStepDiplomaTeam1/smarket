@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
 
-from app.api.routes import auth, products
+from app.api.routes import auth, products, cart, stores
 
 
 # Ця функція виконається один раз при старті сервера
@@ -50,13 +50,17 @@ app.add_middleware(
 #               Routes Connecting
 # -------------------------------------------------
 
+# Задаємо глобальний префікс версії
+API_V1_STR = "/api/v1"
 
-app.include_router(auth.router, prefix="/auth", tags=["Auth"])
-app.include_router(products.router, prefix="/products", tags=["Products Service"])
-
-# -------------------------------------------------
-
+# Підключаємо роутери з додаванням версіонування
+app.include_router(auth.router, prefix=f"{API_V1_STR}/auth", tags=["Auth Proxy v1"])
+app.include_router(products.router, prefix=f"{API_V1_STR}/products", tags=["Products Proxy v1"])
+app.include_router(stores.router, prefix=f"{API_V1_STR}/stores", tags=["Stores Proxy v1"])
+app.include_router(cart.router, prefix=f"{API_V1_STR}/cart", tags=["Cart Proxy v1"])
 
 @app.get("/health", tags=["System"])
 async def root():
-    return {"status": "ok", "service": "Api Gateway"}
+    return {"status": "ok", "service": "Api Gateway", "version": "v1"}
+
+# -------------------------------------------------
