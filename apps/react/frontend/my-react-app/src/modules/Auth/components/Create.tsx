@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { apiClient } from '@/shared/api/apiClient';
-import { useAuthStore } from '../store/authStore'; // Якщо шлях інший - виправте
+import { useAuthStore } from '../store/authStore';
+import { Header } from '@/shared/ui/Header';
+import { Footer } from '@/shared/ui/Footer';
 
 import eyeIcon from '@/shared/assets/ButtonEye.svg';
 import btngoogle from '@/shared/assets/google.svg';
@@ -11,9 +13,7 @@ import btnfacebook from '@/shared/assets/facebook.svg';
 import checkIcon from '@/shared/assets/checkgreen.svg';
 import logo from '@/shared/assets/logo.svg';
 import basketImage from '@/shared/assets/logindefault.svg';
-import strela from '@/shared/assets/strela.svg';
 
-// Інтерфейси для відповіді сервера (припускаємо, що після реєстрації він теж повертає токен)
 interface User {
     id: string;
     name: string;
@@ -25,33 +25,114 @@ interface RegisterResponse {
     user: User;
 }
 
+// --- Password strength helpers ---
+
+type StrengthLevel = 'weak' | 'medium' | 'strong';
+
+interface PasswordStrength {
+    level: StrengthLevel;
+    score: number; // 0–3
+    label: string;
+}
+
+function getPasswordStrength(password: string): PasswordStrength {
+    if (!password) return { level: 'weak', score: 0, label: '' };
+
+    let score = 0;
+    if (password.length >= 8) score++;
+    if (/[A-Z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+
+    if (score === 3) return { level: 'strong', score: 3, label: 'Надійний' };
+    if (score === 2) return { level: 'medium', score: 2, label: 'Середній' };
+    return { level: 'weak', score: 1, label: 'Слабкий' };
+}
+
+const strengthColors: Record<StrengthLevel, string[]> = {
+    weak:   ['bg-red-400',    'bg-[rgba(38,84,71,0.08)]', 'bg-[rgba(38,84,71,0.08)]'],
+    medium: ['bg-yellow-400', 'bg-yellow-400',             'bg-[rgba(38,84,71,0.08)]'],
+    strong: ['bg-[#265447]',  'bg-[#265447]',              'bg-[#265447]'],
+};
+
+const strengthTextColors: Record<StrengthLevel, string> = {
+    weak:   'text-red-500',
+    medium: 'text-yellow-500',
+    strong: 'text-[#265447]',
+};
+
+// --- Field validation helpers ---
+
+const emailRegex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
+
+function validateName(value: string): string {
+    if (!value) return "Ім'я є обов'язковим.";
+    if (value.length < 2) return "Ім'я повинно містити щонайменше 2 символи.";
+    return '';
+}
+
+function validateEmail(value: string): string {
+    if (!value) return 'Email є обов\'язковим.';
+    if (!emailRegex.test(value)) return 'Будь ласка, введіть дійсний email.';
+    return '';
+}
+
+function validatePassword(value: string): string {
+    if (!value) return 'Пароль є обов\'язковим.';
+    if (value.length < 8) return 'Мінімум 8 символів.';
+    if (!/[A-Z]/.test(value)) return 'Потрібна хоча б 1 велика літера.';
+    if (!/[0-9]/.test(value)) return 'Потрібна хоча б 1 цифра.';
+    return '';
+}
+
+function validateConfirm(password: string, confirm: string): string {
+    if (!confirm) return 'Підтвердження пароля є обов\'язковим.';
+    if (password !== confirm) return 'Паролі не співпадають.';
+    return '';
+}
+
+// --- Component ---
+
 export function Create() {
     const navigate = useNavigate();
     const setAuth = useAuthStore((state) => state.setAuth);
 
-    // 1. Локальні стани для видимості паролів
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
 
-    // 2. Локальні стани для значень полів
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [agree, setAgree] = useState(false);
 
-    // Стан для фронтенд-помилок (наприклад, якщо паролі не співпадають)
-    const [validationError, setValidationError] = useState('');
+    // Per-field errors (shown after first blur or submit attempt)
+    const [touched, setTouched] = useState({
+        name: false,
+        email: false,
+        password: false,
+        confirm: false,
+    });
 
-    // 3. Мутація для реєстрації
+    const [serverError, setServerError] = useState('');
+
+    const nameError    = touched.name     ? validateName(name)                          : '';
+    const emailError   = touched.email    ? validateEmail(email)                        : '';
+    const passwordError = touched.password ? validatePassword(password)                 : '';
+    const confirmError = touched.confirm  ? validateConfirm(password, confirmPassword)  : '';
+
+    const strength = getPasswordStrength(password);
+
+    const handleBlur = useCallback((field: keyof typeof touched) => {
+        setTouched((prev) => ({ ...prev, [field]: true }));
+    }, []);
+
     const registerMutation = useMutation<RegisterResponse, Error>({
         mutationFn: async () => {
             try {
-                // Відправляємо дані на роут /register. Підтвердження пароля та чекбокс на сервер зазвичай не передаються.
-                const response = await apiClient.post<RegisterResponse>('/api/v1/auth/register', { 
-                    name, 
-                    email, 
-                    password 
+                const response = await apiClient.post<RegisterResponse>('/api/v1/auth/register', {
+                    name,
+                    email,
+                    password,
                 });
                 return response.data;
             } catch (error) {
@@ -62,45 +143,50 @@ export function Create() {
             }
         },
         onSuccess: (data) => {
-            // Якщо сервер одразу після реєстрації повертає токен — авторизуємо юзера
             setAuth(data.token, data.user);
-            navigate('/'); // Редірект на головну
+            navigate('/');
+        },
+        onError: (error) => {
+            setServerError(error.message);
         },
     });
 
-    // 4. Обробник форми
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        setValidationError(''); // Очищаємо попередні помилки
+        setServerError('');
 
-        // Перевірки на фронтенді
-        if (!name || !email || !password || !confirmPassword) {
-            setValidationError('Будь ласка, заповніть всі поля.');
-            return;
-        }
+        // Mark all fields as touched so errors appear
+        setTouched({ name: true, email: true, password: true, confirm: true });
 
-        if (password !== confirmPassword) {
-            setValidationError('Паролі не співпадають.');
-            return;
-        }
+        const hasErrors =
+            validateName(name) ||
+            validateEmail(email) ||
+            validatePassword(password) ||
+            validateConfirm(password, confirmPassword);
+
+        if (hasErrors) return;
 
         if (!agree) {
-            setValidationError('Ви повинні погодитися з Умовами користування.');
+            setServerError('Ви повинні погодитися з Умовами користування.');
             return;
         }
 
-        // Якщо всі перевірки пройдені, відправляємо запит
         registerMutation.mutate();
     };
 
+    // Derived border classes
+    const fieldBorder = (error: string, isTouched: boolean) =>
+        isTouched && error
+            ? 'border-red-400 focus:border-red-400'
+            : 'border-[rgba(38,84,71,0.16)] focus:border-[#265447]';
+
     return (
-        <section className="relative flex justify-center items-center w-full min-h-screen bg-[#F6FAF8] font-inter p-[40px]">
-            <a href="/" className="absolute top-[24px] right-[40px] flex items-center gap-[8px] text-[14px] font-semibold text-[#265447] no-underline leading-[21px] hover:underline">
-                <img src={strela} alt="Back" className="w-[16px] h-[16px]" />
-                На головну сторінку
-            </a>
+        <section className="flex flex-col w-full min-h-screen bg-[#F6FAF8] font-inter">
+            <Header />
+            <div className="flex flex-1 justify-center items-center p-[40px]">
 
             <div className="flex w-[1040px] h-[858.5px] bg-white rounded-[24px] border border-[rgba(38,84,71,0.08)] shadow-[0px_18px_48px_rgba(23,59,51,0.12)] overflow-hidden shrink-0">
+                {/* Left panel */}
                 <div className="w-[467px] shrink-0 bg-gradient-to-b from-[#EAF7F2] to-[#F6FAF8] border-r border-[rgba(38,84,71,0.08)] p-[48px] text-[#173B33]">
                     <img src={logo} alt="Smarket Logo" className="w-[128px] mb-[32px]" />
                     <h2 className="font-manrope text-[32px] font-bold leading-[40px] mb-[16px]">
@@ -123,6 +209,7 @@ export function Create() {
                     <img src={basketImage} alt="Ваш тижневий кошик" className="w-[360px] max-w-none h-auto -ml-[18px] block" />
                 </div>
 
+                {/* Right panel */}
                 <div className="w-[573px] flex justify-center items-center">
                     <div className="w-[380px]">
                         <h1 className="font-manrope text-[30px] font-extrabold leading-[45px] text-[#265447] mb-[8px]">
@@ -147,37 +234,53 @@ export function Create() {
                             <span className="flex-1 h-px bg-[rgba(38,84,71,0.08)]"></span>
                         </div>
 
-                        {/* Додано onSubmit до форми */}
-                        <form className="flex flex-col" onSubmit={handleSubmit}>
-                            <label className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Ім'я</label>
+                        <form className="flex flex-col" onSubmit={handleSubmit} noValidate>
+                            {/* Name */}
+                            <label htmlFor="reg-name" className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Ім'я</label>
                             <input
+                                id="reg-name"
                                 type="text"
                                 placeholder="Олена"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
+                                onBlur={() => handleBlur('name')}
                                 disabled={registerMutation.isPending}
-                                className="w-full h-[44px] border border-[rgba(38,84,71,0.16)] rounded-[10px] px-[16px] mb-[16px] bg-white font-inter text-[14px] text-[#111827] outline-none transition-colors duration-200 focus:border-[#265447]"
+                                className={`w-full h-[44px] border rounded-[10px] px-[16px] bg-white font-inter text-[14px] text-[#111827] outline-none transition-colors duration-200 ${fieldBorder(nameError, touched.name)}`}
                             />
+                            {nameError && (
+                                <p className="mt-[4px] mb-[8px] text-[12px] text-red-500 font-medium">{nameError}</p>
+                            )}
+                            {!nameError && <div className="mb-[16px]" />}
 
-                            <label className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Email</label>
+                            {/* Email */}
+                            <label htmlFor="reg-email" className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Email</label>
                             <input
+                                id="reg-email"
                                 type="email"
                                 placeholder="smarket@gmail.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
+                                onBlur={() => handleBlur('email')}
                                 disabled={registerMutation.isPending}
-                                className="w-full h-[44px] border border-[rgba(38,84,71,0.16)] rounded-[10px] px-[16px] mb-[16px] bg-white font-inter text-[14px] text-[#111827] outline-none transition-colors duration-200 focus:border-[#265447]"
+                                className={`w-full h-[44px] border rounded-[10px] px-[16px] bg-white font-inter text-[14px] text-[#111827] outline-none transition-colors duration-200 ${fieldBorder(emailError, touched.email)}`}
                             />
+                            {emailError && (
+                                <p className="mt-[4px] mb-[8px] text-[12px] text-red-500 font-medium">{emailError}</p>
+                            )}
+                            {!emailError && <div className="mb-[16px]" />}
 
-                            <label className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Пароль</label>
-                            <div className="relative mb-[16px]">
+                            {/* Password */}
+                            <label htmlFor="reg-password" className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Пароль</label>
+                            <div className="relative">
                                 <input
+                                    id="reg-password"
                                     type={showPassword ? 'text' : 'password'}
                                     placeholder="Створіть пароль"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
+                                    onBlur={() => handleBlur('password')}
                                     disabled={registerMutation.isPending}
-                                    className="w-full h-[44px] border border-[rgba(38,84,71,0.16)] rounded-[10px] px-[16px] pr-[40px] bg-white font-inter text-[14px] text-[#111827] outline-none transition-colors duration-200 focus:border-[#265447]"
+                                    className={`w-full h-[44px] border rounded-[10px] px-[16px] pr-[40px] bg-white font-inter text-[14px] text-[#111827] outline-none transition-colors duration-200 ${fieldBorder(passwordError, touched.password)}`}
                                 />
                                 <button
                                     type="button"
@@ -188,15 +291,43 @@ export function Create() {
                                 </button>
                             </div>
 
-                            <label className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Підтвердьте пароль</label>
-                            <div className="relative mb-[16px]">
+                            {/* Strength bar */}
+                            {password && (
+                                <div className="mt-[8px]">
+                                    <div className="flex gap-[4px] mb-[4px]">
+                                        {strengthColors[strength.level].map((color, i) => (
+                                            <div
+                                                key={i}
+                                                className={`flex-1 h-[4px] rounded-full transition-colors duration-300 ${color}`}
+                                            />
+                                        ))}
+                                    </div>
+                                    <p className={`text-[11px] font-semibold ${strengthTextColors[strength.level]}`}>
+                                        {strength.label}
+                                    </p>
+                                </div>
+                            )}
+
+                            {passwordError && (
+                                <p className="mt-[4px] mb-[8px] text-[12px] text-red-500 font-medium">{passwordError}</p>
+                            )}
+                            {!passwordError && <div className="mb-[16px]" />}
+
+                            {/* Confirm password */}
+                            <label htmlFor="reg-confirm" className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Підтвердьте пароль</label>
+                            <div className="relative">
                                 <input
+                                    id="reg-confirm"
                                     type={showConfirm ? 'text' : 'password'}
                                     placeholder="Повторіть пароль"
                                     value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    onChange={(e) => {
+                                        setConfirmPassword(e.target.value);
+                                        if (!touched.confirm) setTouched((prev) => ({ ...prev, confirm: true }));
+                                    }}
+                                    onBlur={() => handleBlur('confirm')}
                                     disabled={registerMutation.isPending}
-                                    className="w-full h-[44px] border border-[rgba(38,84,71,0.16)] rounded-[10px] px-[16px] pr-[40px] bg-white font-inter text-[14px] text-[#111827] outline-none transition-colors duration-200 focus:border-[#265447]"
+                                    className={`w-full h-[44px] border rounded-[10px] px-[16px] pr-[40px] bg-white font-inter text-[14px] text-[#111827] outline-none transition-colors duration-200 ${fieldBorder(confirmError, touched.confirm)}`}
                                 />
                                 <button
                                     type="button"
@@ -206,7 +337,12 @@ export function Create() {
                                     <img src={eyeIcon} alt="toggle" className="w-[18px] h-[18px]" />
                                 </button>
                             </div>
+                            {confirmError && (
+                                <p className="mt-[4px] mb-[8px] text-[12px] text-red-500 font-medium">{confirmError}</p>
+                            )}
+                            {!confirmError && <div className="mb-[16px]" />}
 
+                            {/* Agree */}
                             <div className="flex items-start gap-[12px] mb-[24px]">
                                 <input
                                     type="checkbox"
@@ -221,15 +357,13 @@ export function Create() {
                                 </label>
                             </div>
 
-                            {/* Блок виведення помилок: локальних або з сервера */}
-                            {(validationError || registerMutation.isError) && (
-                                <div className="mb-[16px] text-red-500 text-[13px] font-medium">
-                                    {validationError || registerMutation.error?.message}
-                                </div>
+                            {/* Server error */}
+                            {serverError && (
+                                <div className="mb-[16px] text-red-500 text-[13px] font-medium">{serverError}</div>
                             )}
 
-                            <button 
-                                type="submit" 
+                            <button
+                                type="submit"
                                 disabled={registerMutation.isPending}
                                 className="w-full h-[46px] mt-[8px] bg-[#265447] text-white rounded-[10px] border-none cursor-pointer font-inter text-[14px] font-bold transition-colors duration-200 hover:bg-[#1A3E2F] disabled:opacity-50"
                             >
@@ -243,6 +377,8 @@ export function Create() {
                     </div>
                 </div>
             </div>
+            </div>
+            <Footer />
         </section>
     );
 }

@@ -1,20 +1,14 @@
 import checkIcon from '@/shared/assets/checkgreen.svg';
 import logo from '@/shared/assets/logo.svg';
 import basketImage from '@/shared/assets/logindefault.svg';
-import strela from '@/shared/assets/strela.svg';
+import { Header } from '@/shared/ui/Header';
+import { Footer } from '@/shared/ui/Footer';
 
 export function ForgotPass() {
     return (
-        <section className="relative flex justify-center items-center w-full min-h-screen bg-[#F6FAF8] font-inter p-[40px]">
-
-            {/* Back link */}
-            <a
-                href="/"
-                className="absolute top-[24px] right-[40px] flex items-center gap-[8px] text-[14px] font-semibold text-[#265447] no-underline leading-[21px] hover:underline"
-            >
-                <img src={strela} alt="Back" className="w-[16px] h-[16px]" />
-                На головну сторінку
-            </a>
+        <section className="flex flex-col w-full min-h-screen bg-[#F6FAF8] font-inter">
+            <Header />
+            <div className="flex flex-1 justify-center items-center p-[40px]">
 
             {/* MAIN CARD */}
             <div className="flex w-[1040px] h-[858.5px] bg-white rounded-[24px] border border-[rgba(38,84,71,0.08)] shadow-[0px_18px_48px_rgba(23,59,51,0.12)] overflow-hidden shrink-0">
@@ -81,6 +75,8 @@ export function ForgotPass() {
                     </div>
                 </div>
             </div>
+            </div>
+            <Footer />
         </section>
     );
 }
