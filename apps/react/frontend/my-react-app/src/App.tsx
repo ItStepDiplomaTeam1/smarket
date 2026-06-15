@@ -16,15 +16,18 @@ import { Create, Login, Popup, ForgotPass } from './modules/Auth';
 // 5. Profile module components
 import { Profile } from './modules/Profile';
 
+// 6. Cart module components
+import { CartPage } from './modules/Cart';
+
 
 
 function App() {
 
-  const [currentPage] = useState('product'); 
+  const [currentPage, setCurrentPage] = useState('product'); 
 
   return (
     <div className="app-container">
-       <Header /> 
+       <Header onNavigate={setCurrentPage} /> 
       {currentPage === 'home' && (
         <>
           {/*<Hero />
@@ -53,6 +56,9 @@ function App() {
         </div>
       )}
  
+      {currentPage === 'cart' && (
+        <CartPage />
+      )}
 
     </div>
   );

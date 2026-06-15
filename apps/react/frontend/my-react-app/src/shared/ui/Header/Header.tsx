@@ -3,12 +3,23 @@ import koshuk from '../../assets/koshuk.svg';
 import people from '../../assets/people.svg';
 import fix_logo from '../../assets/Logo-Smarket.svg';
 
-export function Header() {
+export interface HeaderProps {
+  onNavigate?: (page: string) => void;
+}
+
+export function Header({ onNavigate }: HeaderProps) {
   return (
     <header className="w-full bg-white border-b border-[#E5E7EB] h-[72px] sticky top-0 z-50">
       <div className="max-w-[1228px] mx-auto px-6 h-full flex justify-between items-center">
 
-        <a href="/" className="flex items-center h-full py-0">
+        <a 
+          href="/" 
+          onClick={(e) => {
+            e.preventDefault();
+            onNavigate?.('product');
+          }}
+          className="flex items-center h-full py-0"
+        >
           <img src={fix_logo} alt="Smarket Logo" className="h-8 w-auto block object-contain" />
         </a>
 
@@ -16,7 +27,16 @@ export function Header() {
           <a href="#" className="no-underline text-[#173B33] text-sm font-medium hover:text-[#265447] transition-colors duration-200">Акції</a>
           <a href="#" className="no-underline text-[#173B33] text-sm font-medium hover:text-[#265447] transition-colors duration-200">Порівняти ціни</a>
           <a href="#" className="no-underline text-[#173B33] text-sm font-medium hover:text-[#265447] transition-colors duration-200">Магазини</a>
-          <a href="#" className="no-underline text-[#173B33] text-sm font-medium hover:text-[#265447] transition-colors duration-200">Кошик</a>
+          <a 
+            href="#cart" 
+            onClick={(e) => {
+              e.preventDefault();
+              onNavigate?.('cart');
+            }}
+            className="no-underline text-[#173B33] text-sm font-medium hover:text-[#265447] transition-colors duration-200"
+          >
+            Кошик
+          </a>
         </nav>
 
         <div className="flex items-center gap-5">
@@ -26,7 +46,10 @@ export function Header() {
           <button className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0">
             <img src={people} alt="Profile" className="w-5 h-5 block" />
           </button>
-          <button className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0">
+          <button 
+            className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0"
+            onClick={() => onNavigate?.('cart')}
+          >
             <img src={koshuk} alt="Basket" className="w-5 h-5 block" />
           </button>
         </div>
