@@ -1,7 +1,14 @@
 import React from 'react';
 import { ShoppingBag } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useCartStore } from '../store/useCartStore';
+import { useCreateCart } from '../../../hooks/api/useCartApi';
 
 export const CartEmptyState: React.FC = () => {
+  const navigate = useNavigate();
+  const { setActiveCart } = useCartStore();
+  const { mutate: createCart, isPending: isCreating } = useCreateCart();
+
   return (
     <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
       <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6">
@@ -16,10 +23,23 @@ export const CartEmptyState: React.FC = () => {
       </p>
       
       <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-        <button className="px-6 py-3 bg-[#305C50] text-white rounded-lg font-medium hover:bg-[#25473e] transition-colors w-full sm:w-auto">
-          Створити кошик
+        <button 
+          className="px-6 py-3 bg-[#305C50] text-white rounded-lg font-medium hover:bg-[#25473e] transition-colors w-full sm:w-auto disabled:opacity-50"
+          onClick={() => {
+            createCart(undefined, {
+              onSuccess: (newCartId) => {
+                setActiveCart(newCartId);
+              }
+            });
+          }}
+          disabled={isCreating}
+        >
+          {isCreating ? 'Створення...' : 'Створити кошик'}
         </button>
-        <button className="px-6 py-3 border border-[#305C50] text-[#305C50] rounded-lg font-medium hover:bg-[#305C50] hover:text-white transition-colors w-full sm:w-auto">
+        <button 
+          className="px-6 py-3 border border-[#305C50] text-[#305C50] rounded-lg font-medium hover:bg-[#305C50] hover:text-white transition-colors w-full sm:w-auto"
+          onClick={() => navigate('/catalog')}
+        >
           Перейти в каталог
         </button>
       </div>

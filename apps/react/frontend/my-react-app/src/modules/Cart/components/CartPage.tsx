@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../store/useCartStore';
-import { useFetchCarts } from '../../../hooks/api/useCartApi';
+import { useFetchCarts, useCreateCart } from '../../../hooks/api/useCartApi';
 import { CartEmptyState } from './CartEmptyState';
 import { CartSavedList } from './CartSavedList';
 import { CartDetails } from './CartDetails';
@@ -8,7 +9,9 @@ import { CartSummary } from './CartSummary';
 import { ChevronRight } from 'lucide-react';
 
 export const CartPage: React.FC = () => {
+  const navigate = useNavigate();
   const { data: carts, isLoading, isError } = useFetchCarts();
+  const { mutate: createCart, isPending: isCreating } = useCreateCart();
   const { activeCartId, setActiveCart } = useCartStore();
 
   useEffect(() => {
@@ -18,6 +21,14 @@ export const CartPage: React.FC = () => {
     }
   }, [carts, activeCartId, setActiveCart]);
 
+  const handleCreateCart = () => {
+    createCart(undefined, {
+      onSuccess: (newCartId) => {
+        setActiveCart(newCartId);
+      }
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -25,7 +36,7 @@ export const CartPage: React.FC = () => {
         {/* Page Header */}
         <div className="mb-8">
           <div className="flex items-center text-sm text-gray-500 mb-4">
-            <span className="hover:text-gray-900 cursor-pointer">Головна</span>
+            <span className="hover:text-gray-900 cursor-pointer" onClick={() => navigate('/')}>Головна</span>
             <ChevronRight className="w-4 h-4 mx-2" />
             <span className="text-gray-900 font-medium">Кошик</span>
           </div>
@@ -38,11 +49,18 @@ export const CartPage: React.FC = () => {
             
             {(!isLoading && carts && carts.length > 0) && (
               <div className="flex gap-3">
-                <button className="px-4 py-2 border border-gray-300 text-gray-700 bg-white rounded-lg font-medium hover:bg-gray-50 transition-colors">
+                <button 
+                  className="px-4 py-2 border border-gray-300 text-gray-700 bg-white rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                  onClick={() => navigate('/catalog')}
+                >
                   Перейти в каталог
                 </button>
-                <button className="px-4 py-2 bg-[#305C50] text-white rounded-lg font-medium hover:bg-[#25473e] transition-colors">
-                  Створити новий кошик
+                <button 
+                  className="px-4 py-2 bg-[#305C50] text-white rounded-lg font-medium hover:bg-[#25473e] transition-colors disabled:opacity-50"
+                  onClick={handleCreateCart}
+                  disabled={isCreating}
+                >
+                  {isCreating ? 'Створення...' : 'Створити новий кошик'}
                 </button>
               </div>
             )}

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import lupa from '@/shared/assets/lupa.svg';
 import koshuk from '@/shared/assets/koshuk.svg';
+import people from '@/shared/assets/people.svg';
 import fix_logo from '@/shared/assets/Logo-Smarket.svg';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 

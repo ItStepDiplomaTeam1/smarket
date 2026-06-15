@@ -11,7 +11,7 @@ export function Popup() {
     const googleOAuthMutation = useGoogleOAuth();
 
     const handleGoogleLogin = useGoogleLogin({
-        onSuccess: (tokenResponse) => {
+        onSuccess: (tokenResponse: any) => {
             googleOAuthMutation.mutate(tokenResponse.access_token);
         },
         flow: 'implicit',
