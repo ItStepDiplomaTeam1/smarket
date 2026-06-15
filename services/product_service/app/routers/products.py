@@ -18,7 +18,10 @@ from app.shared.schemas import (
 )
 from app.database.session import get_db
 
-router = APIRouter(default_response_class=ORJSONResponse)
+router = APIRouter(
+    tags=["Products"],
+    default_response_class=ORJSONResponse
+)
 
 
 @router.get(
