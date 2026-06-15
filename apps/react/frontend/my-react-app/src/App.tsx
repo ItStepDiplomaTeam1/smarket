@@ -62,20 +62,8 @@ import { CartPage } from './modules/Cart';
 //}
 //
 //export default App;
-
-  const [currentPage, setCurrentPage] = useState('product'); 
-
-// Створюємо інстанс клієнта для керування кешем запитів
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false, // вимикаємо авто-запит при переході між вкладками браузера (корисно при розробці)
-      retry: 1, // якщо запит впав, спробувати ще 1 раз перед тим, як показати помилку
-    },
-  },
-});
-
 function App() {
+  const [currentPage, setCurrentPage] = useState('product');
   return (
     <div className="app-container">
        <Header onNavigate={setCurrentPage} /> 
