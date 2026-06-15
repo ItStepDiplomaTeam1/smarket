@@ -1,0 +1,8 @@
+fastapi
+granian
+alembic
+sqlalchemy
+asyncpg
+pydantic-settings
+httpx
+orjson
