@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { useCartStore } from '@/store/useCartStore';
+import { useCartStore } from '../store/useCartStore';
 import { MoreHorizontal, Edit2, Share2, Copy, Trash2 } from 'lucide-react';
 
 export const CartSavedList: React.FC = () => {

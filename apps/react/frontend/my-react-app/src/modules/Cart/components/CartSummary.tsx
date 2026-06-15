@@ -1,5 +1,5 @@
 import React from 'react';
-import { useCartStore } from '@/store/useCartStore';
+import { useCartStore } from '../store/useCartStore';
 
 export const CartSummary: React.FC = () => {
   const { carts, activeCartId } = useCartStore();

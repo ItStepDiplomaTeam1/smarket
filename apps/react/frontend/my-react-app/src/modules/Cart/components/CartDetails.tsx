@@ -1,5 +1,5 @@
 import React from 'react';
-import { useCartStore } from '@/store/useCartStore';
+import { useCartStore } from '../store/useCartStore';
 import { Trash2, Plus, Minus, Image as ImageIcon } from 'lucide-react';
 
 export const CartDetails: React.FC = () => {

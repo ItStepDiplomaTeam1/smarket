@@ -1,5 +1,5 @@
 import React from 'react';
-import { useCartStore } from '@/store/useCartStore';
+import { useCartStore } from '../store/useCartStore';
 import { CartEmptyState } from './CartEmptyState';
 import { CartSavedList } from './CartSavedList';
 import { CartDetails } from './CartDetails';
