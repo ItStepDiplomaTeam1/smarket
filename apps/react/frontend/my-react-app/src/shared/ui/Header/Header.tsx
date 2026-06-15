@@ -1,7 +1,40 @@
-import lupa from '../../assets/lupa.svg';
-import koshuk from '../../assets/koshuk.svg';
-import people from '../../assets/people.svg';
-import fix_logo from '../../assets/Logo-Smarket.svg';
+import { useState, useRef, useEffect } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import lupa from '@/shared/assets/lupa.svg';
+import koshuk from '@/shared/assets/koshuk.svg';
+import fix_logo from '@/shared/assets/Logo-Smarket.svg';
+import { useAuthStore } from '@/modules/Auth/store/authStore';
+
+function getInitials(name?: string, email?: string): string {
+    if (name && name.trim()) {
+        const parts = name.trim().split(' ');
+        if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+        return parts[0].slice(0, 2).toUpperCase();
+    }
+    if (email) return email.slice(0, 2).toUpperCase();
+    return '??';
+}
+
+function getDisplayName(name?: string, email?: string): string {
+    if (name && name.trim()) return name.trim().split(' ')[0];
+    if (email) return email.split('@')[0];
+    return 'Користувач';
+}
+
+// Generates a stable HSL color from a string
+function stringToHsl(str: string): string {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const hue = Math.abs(hash) % 360;
+    return `hsl(${hue}, 50%, 38%)`;
+}
+
+const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+    `no-underline text-sm font-medium transition-colors duration-200 ${
+        isActive ? 'text-[#265447] font-semibold' : 'text-[#173B33] hover:text-[#265447]'
+    }`;
 
 export interface HeaderProps {
   onNavigate?: (page: string) => void;
