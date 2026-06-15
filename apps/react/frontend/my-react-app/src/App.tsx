@@ -16,6 +16,9 @@ import { Create, LoginForm, Popup, ForgotPass } from './modules/Auth';
 // 5. Profile module components
 import { Profile } from './modules/Profile';
 
+// 6. Cart module components
+import { CartPage } from './modules/Cart';
+
 
 
 //function App() {
@@ -60,9 +63,7 @@ import { Profile } from './modules/Profile';
 //
 //export default App;
 
-// src/App.tsx
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AppRouter } from './app/routes/index.tsx'; // використовуємо відносний шлях, як домовилися
+  const [currentPage, setCurrentPage] = useState('product'); 
 
 // Створюємо інстанс клієнта для керування кешем запитів
 const queryClient = new QueryClient({
@@ -76,10 +77,41 @@ const queryClient = new QueryClient({
 
 function App() {
   return (
-    // Огортаємо додаток у провайдер серверного стейту
-    <QueryClientProvider client={queryClient}>
-      <AppRouter />
-    </QueryClientProvider>
+    <div className="app-container">
+       <Header onNavigate={setCurrentPage} /> 
+      {currentPage === 'home' && (
+        <>
+          {/*<Hero />
+          <ProductsSec />
+          <CategoriesSec />
+          <Hws />
+          <FinalCTA />*/}
+        </>
+      )}
+
+      {currentPage === 'product' && (
+        <div className="product-page-bg">
+          {/*<ProductHero /> 
+          <About />
+          <BottomCti />
+          <FBT />
+          <Reviews />
+          <SMProduct />*/}
+
+          {/*<Hero />
+          <ProductsSec />
+          <CategoriesSec />
+          <Hws />
+          <FinalCTA />*/}
+          <Create />
+        </div>
+      )}
+ 
+      {currentPage === 'cart' && (
+        <CartPage />
+      )}
+
+    </div>
   );
 }
 
