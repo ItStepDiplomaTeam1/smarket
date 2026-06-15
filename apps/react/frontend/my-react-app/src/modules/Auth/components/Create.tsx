@@ -2,10 +2,12 @@ import { useState, useCallback } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useGoogleLogin } from '@react-oauth/google';
 import { apiClient } from '@/shared/api/apiClient';
 import { useAuthStore } from '../store/authStore';
 import { Header } from '@/shared/ui/Header';
 import { Footer } from '@/shared/ui/Footer';
+import { useGoogleOAuth } from '@/hooks/api/useAuthApi';
 
 import eyeIcon from '@/shared/assets/ButtonEye.svg';
 import btngoogle from '@/shared/assets/google.svg';
@@ -41,7 +43,7 @@ function getPasswordStrength(password: string): PasswordStrength {
     let score = 0;
     if (password.length >= 8) score++;
     if (/[A-Z]/.test(password)) score++;
-    if (/[0-9]/.test(password)) score++;
+    if (/\d/.test(password)) score++;
 
     if (score === 3) return { level: 'strong', score: 3, label: 'Надійний' };
     if (score === 2) return { level: 'medium', score: 2, label: 'Середній' };
@@ -80,7 +82,7 @@ function validatePassword(value: string): string {
     if (!value) return 'Пароль є обов\'язковим.';
     if (value.length < 8) return 'Мінімум 8 символів.';
     if (!/[A-Z]/.test(value)) return 'Потрібна хоча б 1 велика літера.';
-    if (!/[0-9]/.test(value)) return 'Потрібна хоча б 1 цифра.';
+    if (!/\d/.test(value)) return 'Потрібна хоча б 1 цифра.';
     return '';
 }
 
@@ -95,6 +97,14 @@ function validateConfirm(password: string, confirm: string): string {
 export function Create() {
     const navigate = useNavigate();
     const setAuth = useAuthStore((state) => state.setAuth);
+    const googleOAuthMutation = useGoogleOAuth();
+
+    const handleGoogleLogin = useGoogleLogin({
+        onSuccess: (tokenResponse) => {
+            googleOAuthMutation.mutate(tokenResponse.access_token);
+        },
+        flow: 'implicit',
+    });
 
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
@@ -137,9 +147,9 @@ export function Create() {
                 return response.data;
             } catch (error) {
                 if (axios.isAxiosError(error) && error.response?.data?.message) {
-                    throw new Error(error.response.data.message);
+                    throw new Error(error.response.data.message, { cause: error });
                 }
-                throw new Error('Помилка реєстрації. Спробуйте ще раз.');
+                throw new Error('Помилка реєстрації. Спробуйте ще раз.', { cause: error });
             }
         },
         onSuccess: (data) => {
@@ -151,7 +161,7 @@ export function Create() {
         },
     });
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
         e.preventDefault();
         setServerError('');
 
@@ -197,13 +207,16 @@ export function Create() {
                     </p>
                     <ul className="list-none m-0 p-0 mb-[40px]">
                         <li className="flex items-center gap-[12px] mb-[12px] text-[14px] font-medium">
-                            <img src={checkIcon} alt="check" className="w-[20px] h-[20px] shrink-0" /> Зберігайте списки покупок
+                            <img src={checkIcon} alt="check" className="w-[20px] h-[20px] shrink-0" />
+                            <span>Зберігайте списки покупок</span>
                         </li>
                         <li className="flex items-center gap-[12px] mb-[12px] text-[14px] font-medium">
-                            <img src={checkIcon} alt="check" className="w-[20px] h-[20px] shrink-0" /> Порівнюйте ціни між магазинами
+                            <img src={checkIcon} alt="check" className="w-[20px] h-[20px] shrink-0" />
+                            <span>Порівнюйте ціни між магазинами</span>
                         </li>
                         <li className="flex items-center gap-[12px] text-[14px] font-medium">
-                            <img src={checkIcon} alt="check" className="w-[20px] h-[20px] shrink-0" /> Відстежуйте свою економію
+                            <img src={checkIcon} alt="check" className="w-[20px] h-[20px] shrink-0" />
+                            <span>Відстежуйте свою економію</span>
                         </li>
                     </ul>
                     <img src={basketImage} alt="Ваш тижневий кошик" className="w-[360px] max-w-none h-auto -ml-[18px] block" />
@@ -219,13 +232,25 @@ export function Create() {
                             Почніть порівнювати ціни та збирати вигідні кошики вже сьогодні.
                         </p>
 
-                        <button className="flex items-center justify-center gap-[8px] w-full h-[44px] bg-white border border-[rgba(38,84,71,0.16)] rounded-[10px] mb-[12px] cursor-pointer font-inter text-[13px] font-semibold text-[#111827] transition-colors duration-200 hover:bg-[#F9FAFB]">
+                        {googleOAuthMutation.isError && (
+                            <p className="text-red-500 text-[12px] mb-[8px] text-center">
+                                {googleOAuthMutation.error?.message}
+                            </p>
+                        )}
+
+                        <button
+                            id="btn-google-register"
+                            type="button"
+                            onClick={() => handleGoogleLogin()}
+                            disabled={googleOAuthMutation.isPending}
+                            className="flex items-center justify-center gap-[8px] w-full h-[44px] bg-white border border-[rgba(38,84,71,0.16)] rounded-[10px] mb-[12px] cursor-pointer font-inter text-[13px] font-semibold text-[#111827] transition-colors duration-200 hover:bg-[#F9FAFB] disabled:opacity-50"
+                        >
                             <img src={btngoogle} alt="Google" className="w-[20px] h-[20px]" />
-                            Продовжити з Google
+                            <span>{googleOAuthMutation.isPending ? 'Завантаження...' : 'Продовжити з Google'}</span>
                         </button>
                         <button className="flex items-center justify-center gap-[8px] w-full h-[44px] bg-white border border-[rgba(38,84,71,0.16)] rounded-[10px] mb-[12px] cursor-pointer font-inter text-[13px] font-semibold text-[#111827] transition-colors duration-200 hover:bg-[#F9FAFB]">
                             <img src={btnfacebook} alt="Facebook" className="w-[20px] h-[20px]" />
-                            Продовжити з Facebook
+                            <span>Продовжити з Facebook</span>
                         </button>
 
                         <div className="flex items-center text-[#6D8279] text-[13px] mt-[24px] mb-[24px] gap-[10px]">
@@ -295,12 +320,9 @@ export function Create() {
                             {password && (
                                 <div className="mt-[8px]">
                                     <div className="flex gap-[4px] mb-[4px]">
-                                        {strengthColors[strength.level].map((color, i) => (
-                                            <div
-                                                key={i}
-                                                className={`flex-1 h-[4px] rounded-full transition-colors duration-300 ${color}`}
-                                            />
-                                        ))}
+                                        <div className={`flex-1 h-[4px] rounded-full transition-colors duration-300 ${strengthColors[strength.level][0]}`} />
+                                        <div className={`flex-1 h-[4px] rounded-full transition-colors duration-300 ${strengthColors[strength.level][1]}`} />
+                                        <div className={`flex-1 h-[4px] rounded-full transition-colors duration-300 ${strengthColors[strength.level][2]}`} />
                                     </div>
                                     <p className={`text-[11px] font-semibold ${strengthTextColors[strength.level]}`}>
                                         {strength.label}

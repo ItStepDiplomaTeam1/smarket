@@ -121,5 +121,7 @@ bin/
 *.cache
 *.bak
 
+# AI agent context
+Gemini.md
 .agents
 .mockups

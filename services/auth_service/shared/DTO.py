@@ -42,3 +42,8 @@ class RefreshTokenRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class GoogleOAuthRequest(BaseModel):
+    credential: str | None = None
+    access_token: str | None = None

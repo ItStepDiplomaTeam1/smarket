@@ -215,6 +215,7 @@ async def login(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
         ) from e
+    
 
 
 @router.post("/refresh", response_model=TokenResponse, status_code=status.HTTP_200_OK)

@@ -15,6 +15,7 @@ from services.auth_service.plugins.logger import setup_logger
 from services.auth_service.plugins.security.limiters.auth_limiter import auth_limiter
 from services.auth_service.plugins.security.secrets.load_secret import get_secret
 from services.auth_service.routers.auth import router as auth_router
+from services.auth_service.routers.oauth import router as oauth_router
 
 setup_logger()
 
@@ -53,6 +54,7 @@ def create_app() -> FastAPI:
     app.add_middleware(SlowAPIMiddleware)
 
     app.include_router(auth_router, prefix="/auth", tags=["auth"])
+    app.include_router(oauth_router, prefix="/auth", tags=["oauth"])
 
     @app.get("/health", tags=["system"])
     async def health() -> dict:
