@@ -42,47 +42,39 @@ export interface HeaderProps {
 }
 
 export function Header({ onNavigate }: HeaderProps) {
+  const navigate = useNavigate();
+
   return (
     <header className="w-full bg-white border-b border-[#E5E7EB] h-[72px] sticky top-0 z-50">
       <div className="max-w-[1228px] mx-auto px-6 h-full flex justify-between items-center">
 
-        <a 
-          href="/" 
-          onClick={(e) => {
-            e.preventDefault();
-            onNavigate?.('product');
-          }}
+        <NavLink 
+          to="/" 
           className="flex items-center h-full py-0"
         >
           <img src={fix_logo} alt="Smarket Logo" className="h-8 w-auto block object-contain" />
-        </a>
+        </NavLink>
 
         <nav className="flex items-center gap-8">
-          <a href="#" className="no-underline text-[#173B33] text-sm font-medium hover:text-[#265447] transition-colors duration-200">Акції</a>
-          <a href="#" className="no-underline text-[#173B33] text-sm font-medium hover:text-[#265447] transition-colors duration-200">Порівняти ціни</a>
-          <a href="#" className="no-underline text-[#173B33] text-sm font-medium hover:text-[#265447] transition-colors duration-200">Магазини</a>
-          <a 
-            href="#cart" 
-            onClick={(e) => {
-              e.preventDefault();
-              onNavigate?.('cart');
-            }}
-            className="no-underline text-[#173B33] text-sm font-medium hover:text-[#265447] transition-colors duration-200"
-          >
-            Кошик
-          </a>
+          <NavLink to="/catalog" className={navLinkClass}>Акції</NavLink>
+          <NavLink to="/catalog" className={navLinkClass}>Порівняти ціни</NavLink>
+          <NavLink to="/catalog" className={navLinkClass}>Магазини</NavLink>
+          <NavLink to="/cart" className={navLinkClass}>Кошик</NavLink>
         </nav>
 
         <div className="flex items-center gap-5">
           <button className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0">
             <img src={lupa} alt="Search" className="w-5 h-5 block" />
           </button>
-          <button className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0">
+          <button 
+            className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0"
+            onClick={() => navigate('/login')}
+          >
             <img src={people} alt="Profile" className="w-5 h-5 block" />
           </button>
           <button 
             className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0"
-            onClick={() => onNavigate?.('cart')}
+            onClick={() => navigate('/cart')}
           >
             <img src={koshuk} alt="Basket" className="w-5 h-5 block" />
           </button>

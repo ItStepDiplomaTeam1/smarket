@@ -1,12 +1,15 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../store/useCartStore';
-import { useFetchCartDetails, useUpdateCartItem } from '../../../hooks/api/useCartApi';
+import { useFetchCartDetails, useUpdateCartItem, useClearCart } from '../../../hooks/api/useCartApi';
 import { Trash2, Plus, Minus, Image as ImageIcon } from 'lucide-react';
 
 export const CartDetails: React.FC = () => {
+  const navigate = useNavigate();
   const { activeCartId } = useCartStore();
   const { data: activeCart, isLoading } = useFetchCartDetails(activeCartId);
   const { mutate: updateItem } = useUpdateCartItem();
+  const { mutate: clearCart, isPending: isClearing } = useClearCart();
 
   if (isLoading) {
     return (
@@ -98,14 +101,18 @@ export const CartDetails: React.FC = () => {
 
       {/* Footer Actions */}
       <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-between">
-        <button className="flex items-center gap-2 text-[#305C50] font-medium hover:text-[#25473e] transition-colors">
+        <button 
+          className="flex items-center gap-2 text-[#305C50] font-medium hover:text-[#25473e] transition-colors"
+          onClick={() => navigate('/catalog')}
+        >
           <Plus className="w-5 h-5" /> Додати товар
         </button>
         <button 
-          className="text-gray-500 font-medium hover:text-red-600 transition-colors"
-          onClick={() => {}}
+          className="text-gray-500 font-medium hover:text-red-600 transition-colors disabled:opacity-50"
+          onClick={() => clearCart(activeCart.id)}
+          disabled={isClearing || activeCart.items.length === 0}
         >
-          Очистити кошик
+          {isClearing ? 'Очищення...' : 'Очистити кошик'}
         </button>
       </div>
     </div>

@@ -1,9 +1,7 @@
-// src/app/routes/index.tsx
 import { Suspense, lazy } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { MainLayout } from '../layouts/MainLayout';
 
-// Ліниве завантаження сторінок (використовуємо наш налаштований аліас @/)
 const HomePage = lazy(() => import('@/pages/Home/ui/Home.tsx'));
 const AuthPage = lazy(() => import('@/pages/Auth'));
 const Registerform = lazy(() => import('@/pages/Register/ui/RegisterPage.tsx')); 
@@ -14,7 +12,6 @@ const Profile = lazy(() => import('@/pages/Profile/ui/ProfilePage.tsx'));
 const Catalog = lazy(() => import('@/pages/Catalog/ui/Catalog.tsx'));
 const CartPage = lazy(() => import('@/modules/Cart/components/CartPage.tsx').then(m => ({ default: m.CartPage })));
 
-// Створюємо конфігурацію маршрутів
 const router = createBrowserRouter([
   {
     path: '/',
@@ -96,7 +93,6 @@ const router = createBrowserRouter([
   }
 ]);
 
-// Експортуємо провайдер, який огорне наш додаток
 export const AppRouter = () => {
   return <RouterProvider router={router} />;
 };

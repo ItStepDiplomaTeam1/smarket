@@ -62,3 +62,32 @@ export const useDeleteCart = () => {
     },
   });
 };
+
+export const useCreateCart = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      await delay(DELAY_MS);
+      return "new-cart-id"; // Simulated ID
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['carts'] });
+    },
+  });
+};
+
+export const useClearCart = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (cartId: string) => {
+      await delay(DELAY_MS);
+      return cartId;
+    },
+    onSuccess: (_, cartId) => {
+      queryClient.invalidateQueries({ queryKey: ['cart', cartId] });
+      queryClient.invalidateQueries({ queryKey: ['carts'] });
+    },
+  });
+};
