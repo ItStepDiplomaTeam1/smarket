@@ -5,8 +5,6 @@ import axios from 'axios';
 import { useGoogleLogin } from '@react-oauth/google';
 import { apiClient } from '@/shared/api/apiClient';
 import { useAuthStore } from '../store/authStore';
-import { Header } from '@/shared/ui/Header';
-import { Footer } from '@/shared/ui/Footer';
 import { useGoogleOAuth } from '@/hooks/api/useAuthApi';
 
 import eyeIcon from '@/shared/assets/ButtonEye.svg';
@@ -192,7 +190,6 @@ export function Create() {
 
     return (
         <section className="flex flex-col w-full min-h-screen bg-[#F6FAF8] font-inter">
-            <Header />
             <div className="flex flex-1 justify-center items-center p-[40px]">
 
             <div className="flex w-[1040px] h-[858.5px] bg-white rounded-[24px] border border-[rgba(38,84,71,0.08)] shadow-[0px_18px_48px_rgba(23,59,51,0.12)] overflow-hidden shrink-0">
@@ -399,8 +396,7 @@ export function Create() {
                     </div>
                 </div>
             </div>
-            </div>
-            <Footer />
+        </div>
         </section>
     );
 }

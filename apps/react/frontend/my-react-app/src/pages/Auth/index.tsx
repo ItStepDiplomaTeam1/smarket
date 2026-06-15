@@ -5,8 +5,6 @@ import logo from '@/shared/assets/logo.svg';
 import basketImage from '@/shared/assets/logindefault.svg';
 
 import { LoginForm } from '@/modules/Auth';
-import { Header } from '@/shared/ui/Header';
-import { Footer } from '@/shared/ui/Footer';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useGoogleOAuth } from '@/hooks/api/useAuthApi';
 
@@ -21,7 +19,6 @@ export default function AuthPage() {
     });
     return (
         <section className="flex flex-col w-full min-h-screen bg-[#F6FAF8] font-inter">
-            <Header />
             <div className="flex flex-1 justify-center items-center p-[40px]">
 
             {/* MAIN CARD */}
@@ -105,8 +102,7 @@ export default function AuthPage() {
                     </div>
                 </div>
             </div>
-            </div>
-            <Footer />
+        </div>
         </section>
     );
 }
