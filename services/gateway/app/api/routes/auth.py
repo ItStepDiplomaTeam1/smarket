@@ -62,6 +62,12 @@ async def logout(request: Request):
     return await proxy_request(request, "logout")
 
 
+@router.post("/oauth/google")
+async def google_oauth(request: Request):
+    """Google OAuth — верифікація Google ID Token і видача системних JWT."""
+    return await proxy_request(request, "oauth/google")
+
+
 # ---------------------------------------------------------------
 #  Захищені роути (вимагають валідний Bearer токен)
 #  Gateway перевіряє JWT локально (без зайвого мережевого запиту),

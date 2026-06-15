@@ -1,4 +1,3 @@
-// src/pages/Auth/index.tsx
 import btngoogle from '@/shared/assets/google.svg';
 import btnfacebook from '@/shared/assets/facebook.svg';
 import checkIcon from '@/shared/assets/checkgreen.svg';
@@ -8,8 +7,18 @@ import basketImage from '@/shared/assets/logindefault.svg';
 import { LoginForm } from '@/modules/Auth';
 import { Header } from '@/shared/ui/Header';
 import { Footer } from '@/shared/ui/Footer';
+import { useGoogleLogin } from '@react-oauth/google';
+import { useGoogleOAuth } from '@/hooks/api/useAuthApi';
 
 export default function AuthPage() {
+    const googleOAuthMutation = useGoogleOAuth();
+
+    const handleGoogleLogin = useGoogleLogin({
+        onSuccess: (tokenResponse) => {
+            googleOAuthMutation.mutate(tokenResponse.access_token);
+        },
+        flow: 'implicit',
+    });
     return (
         <section className="flex flex-col w-full min-h-screen bg-[#F6FAF8] font-inter">
             <Header />
@@ -31,13 +40,16 @@ export default function AuthPage() {
 
                     <ul className="list-none m-0 p-0 mb-[40px]">
                         <li className="flex items-center gap-[12px] mb-[12px] text-[14px] font-medium">
-                            <img src={checkIcon} alt="check" className="w-[20px] h-[20px] shrink-0" /> Зберігайте списки покупок
+                            <img src={checkIcon} alt="check" className="w-[20px] h-[20px] shrink-0" />
+                            <span>Зберігайте списки покупок</span>
                         </li>
                         <li className="flex items-center gap-[12px] mb-[12px] text-[14px] font-medium">
-                            <img src={checkIcon} alt="check" className="w-[20px] h-[20px] shrink-0" /> Порівнюйте ціни між магазинами
+                            <img src={checkIcon} alt="check" className="w-[20px] h-[20px] shrink-0" />
+                            <span>Порівнюйте ціни між магазинами</span>
                         </li>
                         <li className="flex items-center gap-[12px] text-[14px] font-medium">
-                            <img src={checkIcon} alt="check" className="w-[20px] h-[20px] shrink-0" /> Відстежуйте свою економію
+                            <img src={checkIcon} alt="check" className="w-[20px] h-[20px] shrink-0" />
+                            <span>Відстежуйте свою економію</span>
                         </li>
                     </ul>
 
@@ -59,13 +71,25 @@ export default function AuthPage() {
                         </p>
 
                         {/* Social buttons */}
-                        <button className="flex items-center justify-center gap-[8px] w-full h-[44px] bg-white border border-[rgba(38,84,71,0.16)] rounded-[10px] mb-[12px] cursor-pointer font-inter text-[13px] font-semibold text-[#265447] transition-colors duration-200 hover:bg-[#F9FAFB]">
+                        {googleOAuthMutation.isError && (
+                            <p className="text-red-500 text-[12px] mb-[8px] text-center">
+                                {googleOAuthMutation.error?.message}
+                            </p>
+                        )}
+
+                        <button
+                            id="btn-google-login"
+                            type="button"
+                            onClick={() => handleGoogleLogin()}
+                            disabled={googleOAuthMutation.isPending}
+                            className="flex items-center justify-center gap-[8px] w-full h-[44px] bg-white border border-[rgba(38,84,71,0.16)] rounded-[10px] mb-[12px] cursor-pointer font-inter text-[13px] font-semibold text-[#265447] transition-colors duration-200 hover:bg-[#F9FAFB] disabled:opacity-50"
+                        >
                             <img src={btngoogle} alt="Google" className="w-[20px] h-[20px]" />
-                            Продовжити з Google
+                            <span>{googleOAuthMutation.isPending ? 'Завантаження...' : 'Продовжити з Google'}</span>
                         </button>
                         <button className="flex items-center justify-center gap-[8px] w-full h-[44px] bg-white border border-[rgba(38,84,71,0.16)] rounded-[10px] mb-[12px] cursor-pointer font-inter text-[13px] font-semibold text-[#265447] transition-colors duration-200 hover:bg-[#F9FAFB]">
                             <img src={btnfacebook} alt="Facebook" className="w-[20px] h-[20px]" />
-                            Продовжити з Facebook
+                            <span>Продовжити з Facebook</span>
                         </button>
 
                         {/* OR divider */}
