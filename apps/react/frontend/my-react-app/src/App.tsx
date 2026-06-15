@@ -66,7 +66,7 @@ function App() {
   const [currentPage, setCurrentPage] = useState('product');
   return (
     <div className="app-container">
-       <Header onNavigate={setCurrentPage} /> 
+      <Header onNavigate={setCurrentPage} />
       {currentPage === 'home' && (
         <>
           {/*<Hero />
@@ -94,7 +94,7 @@ function App() {
           <Create />
         </div>
       )}
- 
+
       {currentPage === 'cart' && (
         <CartPage />
       )}

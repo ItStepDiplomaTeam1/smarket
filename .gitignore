@@ -120,3 +120,8 @@ bin/
 *.tmp
 *.cache
 *.bak
+
+# AI agent context
+Gemini.md
+.agents
+.mockups

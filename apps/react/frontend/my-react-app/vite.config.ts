@@ -6,7 +6,7 @@ import path from 'path'
 export default defineConfig({
   plugins: [
     react(),
-    tailwindcss(), // 2. Додаємо його в масив плагінів
+    tailwindcss(),
   ],
   resolve: {
     alias: {
