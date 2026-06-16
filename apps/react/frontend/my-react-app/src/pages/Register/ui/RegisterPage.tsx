@@ -1,5 +1,13 @@
+import { Header } from '@/shared/ui/Header'
 import { Create } from '@/modules/Auth'
+import { Footer } from '@/shared/ui/Footer'
 
 export default function RegisterPage() {
-  return <Create />
+  return (
+    <>
+      <Header />
+      <Create />
+      <Footer />
+    </>
+  )
 }

@@ -35,11 +35,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
         isActive ? 'text-[#265447] font-semibold' : 'text-[#173B33] hover:text-[#265447]'
     }`;
 
-export interface HeaderProps {
-    readonly onNavigate?: (page: string) => void;
-}
-
-export function Header({ onNavigate }: HeaderProps = {}) {
+export function Header() {
     const navigate = useNavigate();
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const user = useAuthStore((state) => state.user);
@@ -65,7 +61,6 @@ export function Header({ onNavigate }: HeaderProps = {}) {
     const handleLogout = () => {
         setDropdownOpen(false);
         logout();
-        onNavigate?.('home');
         navigate('/');
     };
 
@@ -73,7 +68,7 @@ export function Header({ onNavigate }: HeaderProps = {}) {
         <header className="w-full bg-white border-b border-[#E5E7EB] h-18 sticky top-0 z-50">
             <div className="max-w-307 mx-auto px-6 h-full flex justify-between items-center">
 
-                <Link to="/" className="flex items-center h-full py-0" onClick={() => onNavigate?.('home')}>
+                <Link to="/" className="flex items-center h-full py-0">
                     <img src={fix_logo} alt="Smarket Logo" className="h-8 w-auto block object-contain" />
                 </Link>
 
@@ -89,7 +84,7 @@ export function Header({ onNavigate }: HeaderProps = {}) {
                     </button>
 
                     <button
-                        onClick={() => { onNavigate?.('cart'); navigate('/catalog'); }}
+                        onClick={() => navigate('/cart')}
                         className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0 w-5 h-5"
                     >
                         <img src={koshuk} alt="Basket" className="w-5 h-5 block" />
@@ -150,7 +145,7 @@ export function Header({ onNavigate }: HeaderProps = {}) {
                                 {/* Menu items */}
                                 <div className="py-2">
                                     <button
-                                        onClick={() => { setDropdownOpen(false); onNavigate?.('profile'); navigate('/profile'); }}
+                                        onClick={() => { setDropdownOpen(false); navigate('/profile'); }}
                                         className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium text-[#173B33] hover:bg-[#F6FAF8] hover:text-[#265447] transition-colors duration-150 cursor-pointer bg-transparent border-none text-left"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0 text-[#6D8279]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -160,7 +155,7 @@ export function Header({ onNavigate }: HeaderProps = {}) {
                                         Профіль
                                     </button>
                                     <button
-                                        onClick={() => { setDropdownOpen(false); onNavigate?.('cart'); navigate('/cart'); }}
+                                        onClick={() => { setDropdownOpen(false); navigate('/cart'); }}
                                         className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium text-[#173B33] hover:bg-[#F6FAF8] hover:text-[#265447] transition-colors duration-150 cursor-pointer bg-transparent border-none text-left"
                                     >
                                         <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0 text-[#6D8279]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -189,8 +184,8 @@ export function Header({ onNavigate }: HeaderProps = {}) {
                             </div>
                         </div>
                     ) : (
-                        <a
-                            href="/auth"
+                        <Link
+                            to="/auth"
                             className="flex items-center gap-1.5 h-9 px-4 rounded-[10px] bg-[#265447] text-white text-[13px] font-semibold no-underline transition-all duration-200 hover:bg-[#1A3E2F] hover:shadow-[0_4px_12px_rgba(38,84,71,0.25)] active:scale-95"
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -199,7 +194,7 @@ export function Header({ onNavigate }: HeaderProps = {}) {
                                 <line x1="15" y1="12" x2="3" y2="12"/>
                             </svg>
                             Увійти
-                        </a>
+                        </Link>
                     )}
                 </div>
 

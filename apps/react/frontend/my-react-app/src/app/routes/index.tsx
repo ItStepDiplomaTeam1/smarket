@@ -1,87 +1,50 @@
-// src/app/routes/index.tsx
 import { Suspense, lazy } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 
-// Ліниве завантаження сторінок (використовуємо наш налаштований аліас @/) !!!!
-const HomePage = lazy(() => import('@/pages/Home/ui/Home.tsx')); // !!!!!!!!!!!!
-const AuthPage = lazy(() => import('@/pages/Auth')); // !!!!!!!!!!!!
-const Registerform = lazy(() => import('@/pages/Register/ui/RegisterPage.tsx')); 
-const ForgotPassword = lazy(() => import('@/pages/ForgotPassword/ui/ForgotPasswordPage.tsx')); 
-const LoginPage = lazy(() => import('@/pages/Login/ui/LoginPage.tsx'));
-const ProductDetail = lazy(() => import('@/pages/ProductDetail/ui/ProductDetail.tsx'));
-const Profile = lazy(() => import('@/pages/Profile/ui/ProfilePage.tsx'));
-const Catalog = lazy(() => import('@/pages/Catalog/ui/Catalog.tsx'));
+const HomePage = lazy(() => import('@/pages/Home/ui/Home'));
+const AuthPage = lazy(() => import('@/pages/Auth'));
+const RegisterPage = lazy(() => import('@/pages/Register/ui/RegisterPage'));
+const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPassword/ui/ForgotPasswordPage'));
+const LoginPage = lazy(() => import('@/pages/Login/ui/LoginPage'));
+const ProductDetailPage = lazy(() => import('@/pages/ProductDetail/ui/ProductDetail'));
+const ProfilePage = lazy(() => import('@/pages/Profile/ui/ProfilePage'));
+const CatalogPage = lazy(() => import('@/pages/Catalog/ui/Catalog'));
 
-// Створюємо конфігурацію маршрутів
+const fallback = <div />;
+
 const router = createBrowserRouter([
   {
     path: '/',
-    element: (
-      // Suspense перехоплює момент завантаження чанка сторінки
-      <Suspense fallback={<div>Завантаження сторінки...</div>}>
-        <HomePage />
-      </Suspense>
-    ),
+    element: <Suspense fallback={fallback}><HomePage /></Suspense>,
   },
   {
     path: '/auth',
-    element: (
-      <Suspense fallback={<div>Завантаження авторизації...</div>}>
-        <AuthPage />
-      </Suspense>
-    ),
+    element: <Suspense fallback={fallback}><AuthPage /></Suspense>,
   },
   {
-    path: '/create',
-    element: (
-      <Suspense fallback={<div>Завантаження реєстрації...</div>}>
-        <Registerform />
-      </Suspense>
-    ),
+    path: '/register',
+    element: <Suspense fallback={fallback}><RegisterPage /></Suspense>,
   },
   {
     path: '/forgot-password',
-    element: (
-      <Suspense fallback={<div>Завантаження відновлення пароля...</div>}>
-        <ForgotPassword />
-      </Suspense>
-    ),
+    element: <Suspense fallback={fallback}><ForgotPasswordPage /></Suspense>,
   },
   {
     path: '/login',
-    element: (
-      <Suspense fallback={<div>Завантаження входу...</div>}>
-        <LoginPage />
-      </Suspense>
-    ),
+    element: <Suspense fallback={fallback}><LoginPage /></Suspense>,
   },
   {
     path: '/product/:id',
-    element: (
-      <Suspense fallback={<div>Завантаження деталей продукту...</div>}>
-        <ProductDetail />
-      </Suspense>
-    ),
+    element: <Suspense fallback={fallback}><ProductDetailPage /></Suspense>,
   },
   {
     path: '/profile',
-    element: (
-      <Suspense fallback={<div>Завантаження профілю...</div>}>
-        <Profile />
-      </Suspense>
-    ),
+    element: <Suspense fallback={fallback}><ProfilePage /></Suspense>,
   },
   {
     path: '/catalog',
-    element: (
-      <Suspense fallback={<div>Завантаження каталогу...</div>}>
-        <Catalog />
-      </Suspense>
-    ),
-  }
+    element: <Suspense fallback={fallback}><CatalogPage /></Suspense>,
+  },
 ]);
 
-// Експортуємо провайдер, який огорне наш додаток
-export const AppRouter = () => {
-  return <RouterProvider router={router} />;
-};
+export const AppRouter = () => <RouterProvider router={router} />;
