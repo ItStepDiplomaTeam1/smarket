@@ -43,7 +43,7 @@ export default function ProductDetail() {
       <About product={product} />
       <FBT />
       <SMProduct />
-      <Reviews />
+      <Reviews productId={productId} />
       <BottomCti />
     </>
   )
