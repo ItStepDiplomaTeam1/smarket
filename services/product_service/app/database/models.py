@@ -1,5 +1,25 @@
-import uuid
-from typing import Any, Optional    
+"""
+models.py — SQLAlchemy-моделі для product_service.
+
+ВАЖЛИВО: Ці таблиці створюються та наповнюються виключно ETL-воркером (products_etl, Go).
+product_service є READ-ONLY клієнтом цієї бази даних.
+Alembic-міграції в цьому сервісі НЕ повинні створювати або видаляти ці таблиці.
+
+Схема таблиць відповідає database/migrate.go із products_etl:
+  - stores                   (PRIMARY KEY: external_id TEXT)
+  - store_categories_mapping (slug → canonical_category_id)
+  - products                 (PRIMARY KEY: BIGSERIAL id, UNIQUE ean)
+  - prices                   (лог цін: product_id → store_id → price)
+  - store_products           (зв'язок товар ↔ магазин)
+"""
+import datetime
+from typing import Optional
+
+from sqlalchemy import (
+    BigInteger, Boolean, Float, ForeignKey,
+    Integer, Numeric, String, Text, DateTime
+)
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 class Base(DeclarativeBase):
@@ -51,14 +71,58 @@ class Product(Base):
     """
     __tablename__ = "products"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    category_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
-    external_id: Mapped[str] = mapped_column(String(255), nullable=False)
-    description: Mapped[str] = mapped_column(Text, nullable=False)
-    specification: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=True, default=dict)
-    image_url: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
-    
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    ean: Mapped[Optional[str]] = mapped_column("canonical_ean", String, unique=True, nullable=True)
+    store_product_id: Mapped[Optional[str]] = mapped_column("store_product_id", String, nullable=True)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    brand: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    unit: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    weight: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    image_url: Mapped[Optional[str]] = mapped_column("image_url", Text, nullable=True)
+    canonical_category_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    # ID магазину, до якого прив'язаний товар без EAN.
+    # Для товарів з EAN це поле NULL (вони глобальні та можуть бути у будь-якому магазині).
+    store_id: Mapped[Optional[str]] = mapped_column(
+        "store_id", String, ForeignKey("stores.external_id"), nullable=True
+    )
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        "created_at", DateTime(timezone=True), nullable=False
+    )
+
+    prices: Mapped[list["Price"]] = relationship("Price", back_populates="product")
+    store_products: Mapped[list["StoreProduct"]] = relationship("StoreProduct", back_populates="product")
+
+
+class StoreProduct(Base):
+    """
+    Зв'язок товар ↔ магазин (junction table).
+    Показує, які товари продаються в яких магазинах.
+    Наповнюється ETL-воркером при кожному парсингу.
+    """
+    __tablename__ = "store_products"
+
+    product_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("products.id"), primary_key=True
+    )
+    store_id: Mapped[str] = mapped_column(
+        String, ForeignKey("stores.external_id"), primary_key=True
+    )
+    store_product_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    first_seen_at: Mapped[datetime.datetime] = mapped_column(
+        "first_seen_at", DateTime(timezone=True), nullable=False
+    )
+
+    product: Mapped["Product"] = relationship("Product", back_populates="store_products")
+    store: Mapped["Store"] = relationship("Store", back_populates="store_products")
+
+
+class Price(Base):
+    """
+    Іммутабельний лог цін: кожен запис — ціна товару в конкретному магазині
+    в момент часу recorded_at. Старі записи не видаляються — лише додаються нові.
+    Ціни зберігаються в гривнях (UAH), наприклад 71.90.
+    """
+    __tablename__ = "prices"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     product_id: Mapped[int] = mapped_column(

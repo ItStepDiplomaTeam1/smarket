@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from typing import Optional
 
-from app.database.models import Price, Product, StoreProduct, Store
+from app.database.models import Price, Product, StoreProduct, Store, StoreCategoryMapping
 from app.shared.schemas import (
     PriceResponse,
     PriceWithStoreResponse,
@@ -15,6 +15,7 @@ from app.shared.schemas import (
     ProductOffersResponse,
     ProductResponse,
     ProductWithStoresResponse,
+    CategoryResponse,
 )
 from app.database.session import get_db
 
@@ -356,3 +357,29 @@ async def get_product_prices(
     stmt = stmt.limit(limit)
     result = await db.execute(stmt)
     return list(result.scalars().all())
+
+
+@router.get(
+    "/categories",
+    response_model=list[CategoryResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Отримати список категорій",
+)
+async def get_categories(
+    db: AsyncSession = Depends(get_db),
+):
+    stmt = select(StoreCategoryMapping)
+    result = await db.execute(stmt)
+    mappings = result.scalars().all()
+    response = []
+    seen = set()
+    for m in mappings:
+        if m.canonical_category_id not in seen:
+            seen.add(m.canonical_category_id)
+            response.append(
+                CategoryResponse(
+                    id=m.canonical_category_id,
+                    slug=m.slug,
+                )
+            )
+    return response

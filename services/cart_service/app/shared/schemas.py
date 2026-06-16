@@ -25,3 +25,16 @@ class CartResponse(BaseModel):
     total_price: float = 0.0
     
     model_config = ConfigDict(from_attributes=True)
+
+
+class CartStoreComparison(BaseModel):
+    store_id: str
+    store_name: str
+    retail_chain: str
+    city: Optional[str] = None
+    total_price: float
+    found_items_count: int
+    missing_items_count: int
+    is_complete: bool
+
+    model_config = ConfigDict(from_attributes=True)
