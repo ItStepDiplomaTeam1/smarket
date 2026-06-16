@@ -1,3 +1,4 @@
+import os
 from datetime import UTC, datetime
 
 import httpx
@@ -24,6 +25,7 @@ router = APIRouter(
 )
 
 _REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60
+_COOKIE_SECURE = os.getenv("DEBUG", "False").lower() not in ("true", "1", "yes")
 _GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs"
 _GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 
@@ -143,7 +145,7 @@ async def oauth_google_login(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=True,
+        secure=_COOKIE_SECURE,
         samesite="lax",
         max_age=_REFRESH_TOKEN_MAX_AGE,
     )

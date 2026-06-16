@@ -1,6 +1,9 @@
 import uuid
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Header
 from sqlalchemy.ext.asyncio import AsyncSession
+
+def get_user_id(x_user_id: uuid.UUID = Header(..., alias="X-User-Id")) -> uuid.UUID:
+    return x_user_id
 
 from app.database.session import get_db
 from app.shared.schemas import CartItemCreate, CartResponse, CartStoreComparison
@@ -10,7 +13,7 @@ from app.external_api import fetch_product_details, fetch_product_offers
 router = APIRouter(prefix="/cart", tags=["Cart"])
 
 @router.get("/", response_model=CartResponse)
-async def get_cart(user_id: uuid.UUID = Query(...), db: AsyncSession = Depends(get_db)):
+async def get_cart(user_id: uuid.UUID = Depends(get_user_id), db: AsyncSession = Depends(get_db)):
     """Отримати корзину користувача з реальними цінами та назвами"""
     cart = await crud.get_or_create_cart(db, user_id)
     cart_response = {
@@ -44,18 +47,18 @@ async def get_cart(user_id: uuid.UUID = Query(...), db: AsyncSession = Depends(g
     return cart_response
 
 @router.post("/items", response_model=CartResponse)
-async def add_item_to_cart(item_in: CartItemCreate, user_id: uuid.UUID = Query(...), db: AsyncSession = Depends(get_db)):
+async def add_item_to_cart(item_in: CartItemCreate, user_id: uuid.UUID = Depends(get_user_id), db: AsyncSession = Depends(get_db)):
     """Додати товар в корзину"""
     return await crud.add_item(db, user_id, item_in)
 
 @router.delete("/items/{item_id}")
-async def remove_item_from_cart(item_id: uuid.UUID, user_id: uuid.UUID = Query(...), db: AsyncSession = Depends(get_db)):
+async def remove_item_from_cart(item_id: uuid.UUID, user_id: uuid.UUID = Depends(get_user_id), db: AsyncSession = Depends(get_db)):
     """Видалити конкретний товар з корзини"""
     await crud.remove_item(db, user_id, item_id)
     return {"message": "Товар успішно видалено"}
 
 @router.delete("/")
-async def clear_cart(user_id: uuid.UUID = Query(...), db: AsyncSession = Depends(get_db)):
+async def clear_cart(user_id: uuid.UUID = Depends(get_user_id), db: AsyncSession = Depends(get_db)):
     """Очистити всю корзину"""
     await crud.clear_cart(db, user_id)
     return {"message": "Корзину очищено"}
@@ -63,7 +66,7 @@ async def clear_cart(user_id: uuid.UUID = Query(...), db: AsyncSession = Depends
 
 @router.get("/compare", response_model=list[CartStoreComparison])
 async def compare_cart_prices(
-    user_id: uuid.UUID = Query(...), db: AsyncSession = Depends(get_db)
+    user_id: uuid.UUID = Depends(get_user_id), db: AsyncSession = Depends(get_db)
 ):
     cart = await crud.get_or_create_cart(db, user_id)
     if not cart.items:

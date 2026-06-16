@@ -23,7 +23,7 @@ interface User {
 }
 
 interface RegisterResponse {
-    token: string;
+    access_token: string;
     user: User;
 }
 
@@ -153,7 +153,7 @@ export function Create() {
             }
         },
         onSuccess: (data) => {
-            setAuth(data.token, data.user);
+            setAuth(data.access_token, data.user);
             navigate('/');
         },
         onError: (error) => {
