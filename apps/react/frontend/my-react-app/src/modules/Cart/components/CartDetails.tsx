@@ -28,70 +28,73 @@ export const CartDetails: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div className="flex flex-col h-full bg-white rounded-2xl border border-[#265447]/10 overflow-hidden shadow-sm">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-6 border-b border-gray-100">
         <div className="flex justify-between items-start mb-2">
-          <h2 className="text-xl font-semibold text-gray-900">{activeCart.title}</h2>
-          <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+          <h2 className="text-2xl font-[800] font-['Manrope'] text-[#173B33]">{activeCart.title}</h2>
+          <span className="px-3 py-1 bg-[#EAF3EF] text-[#265447] text-xs font-bold rounded-full font-['Inter']">
             Готовий до порівняння
           </span>
         </div>
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-[#6D8279] font-['Inter']">
           {activeCart.items.length} товарів • Оновлено {new Date(activeCart.updatedAt).toLocaleDateString('uk-UA')}
         </div>
       </div>
 
       {/* Items List */}
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+      <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
         {activeCart.items.length === 0 ? (
-          <div className="text-center py-10 text-gray-500">Кошик порожній</div>
+          <div className="text-center py-10 text-[#6D8279] font-['Inter']">Кошик порожній</div>
         ) : (
           activeCart.items.map((item) => (
-            <div key={item.productId} className="flex gap-4 p-4 border border-gray-100 rounded-xl hover:border-gray-200 transition-colors">
-              {/* Image Placeholder */}
-              <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                <ImageIcon className="w-6 h-6 text-gray-400" />
-              </div>
-              
-              <div className="flex-1 min-w-0">
-                <h3 className="font-medium text-gray-900 text-sm mb-1 truncate" title={item.name}>
-                  {item.name}
-                </h3>
-                <div className="text-sm text-gray-500 mb-3">
-                  {item.basePrice.toFixed(2)} грн / шт
+            <div key={item.productId} className="flex items-center justify-between p-4 bg-white border border-[#265447]/10 rounded-xl hover:border-[#265447]/30 transition-colors">
+              <div className="flex items-center gap-4 flex-1">
+                {/* Image Placeholder */}
+                <div className="w-16 h-16 bg-gray-50 rounded-lg flex items-center justify-center shrink-0">
+                  <ImageIcon className="w-6 h-6 text-gray-400" />
                 </div>
                 
-                <div className="flex items-center justify-between">
-                  {/* Quantity Controls */}
-                  <div className="flex items-center border border-gray-200 rounded-lg">
-                    <button 
-                      className="p-1 text-gray-500 hover:bg-gray-50 rounded-l-lg disabled:opacity-50"
-                      onClick={() => updateItem({ cartId: activeCart.id, productId: item.productId, quantity: Math.max(1, item.quantity - 1) })}
-                      disabled={item.quantity <= 1}
-                    >
-                      <Minus className="w-4 h-4" />
-                    </button>
-                    <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
-                    <button 
-                      className="p-1 text-gray-500 hover:bg-gray-50 rounded-r-lg"
-                      onClick={() => updateItem({ cartId: activeCart.id, productId: item.productId, quantity: item.quantity + 1 })}
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
+                <div className="flex-1">
+                  <h3 className="font-semibold font-['Manrope'] text-[#173B33] line-clamp-2 mb-1" title={item.name}>
+                    {item.name}
+                  </h3>
+                  <div className="text-sm text-[#6D8279] font-['Inter']">
+                    {item.basePrice.toFixed(2)} ₴ / шт
                   </div>
-                  
-                  <div className="flex items-center gap-4">
-                    <span className="font-semibold text-gray-900">
-                      {item.totalItemPrice.toFixed(2)} грн
-                    </span>
-                    <button 
-                      className="text-gray-400 hover:text-red-500 transition-colors"
-                      onClick={() => updateItem({ cartId: activeCart.id, productId: item.productId, quantity: 0 })}
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-8 ml-4 shrink-0">
+                {/* Quantity Controls */}
+                <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-1 border border-gray-100">
+                  <button 
+                    className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-white hover:shadow-sm transition-all text-[#6D8279] hover:text-[#173B33] disabled:opacity-50"
+                    onClick={() => updateItem({ cartId: activeCart.id, productId: item.productId, quantity: Math.max(1, item.quantity - 1) })}
+                    disabled={item.quantity <= 1}
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <span className="w-6 text-center text-sm font-medium font-['Inter'] text-[#173B33]">{item.quantity}</span>
+                  <button 
+                    className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-white hover:shadow-sm transition-all text-[#6D8279] hover:text-[#173B33]"
+                    onClick={() => updateItem({ cartId: activeCart.id, productId: item.productId, quantity: item.quantity + 1 })}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+                
+                {/* Price & Delete */}
+                <div className="flex items-center gap-6 w-32 justify-end">
+                  <div className="font-bold font-['Manrope'] text-lg text-[#173B33] text-right">
+                    {item.totalItemPrice.toFixed(2)} ₴
                   </div>
+                  <button 
+                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+                    onClick={() => updateItem({ cartId: activeCart.id, productId: item.productId, quantity: 0 })}
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -100,15 +103,15 @@ export const CartDetails: React.FC = () => {
       </div>
 
       {/* Footer Actions */}
-      <div className="p-4 border-t border-gray-200 bg-gray-50 flex justify-between">
+      <div className="p-6 border-t border-gray-100 bg-[#F6FAF8] flex justify-between rounded-b-2xl">
         <button 
-          className="flex items-center gap-2 text-[#305C50] font-medium hover:text-[#25473e] transition-colors"
+          className="flex items-center gap-2 text-[#265447] font-medium font-['Inter'] hover:text-[#173B33] transition-colors"
           onClick={() => navigate('/catalog')}
         >
           <Plus className="w-5 h-5" /> Додати товар
         </button>
         <button 
-          className="text-gray-500 font-medium hover:text-red-600 transition-colors disabled:opacity-50"
+          className="text-[#6D8279] font-medium font-['Inter'] hover:text-red-600 transition-colors disabled:opacity-50"
           onClick={() => clearCart(activeCart.id)}
           disabled={isClearing || activeCart.items.length === 0}
         >

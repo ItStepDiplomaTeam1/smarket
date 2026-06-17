@@ -10,7 +10,7 @@ const LoginPage = lazy(() => import('@/pages/Login/ui/LoginPage.tsx'));
 const ProductDetail = lazy(() => import('@/pages/ProductDetail/ui/ProductDetail.tsx'));
 const Profile = lazy(() => import('@/pages/Profile/ui/ProfilePage.tsx'));
 const Catalog = lazy(() => import('@/pages/Catalog/ui/Catalog.tsx'));
-const CartPage = lazy(() => import('@/modules/Cart/components/CartPage.tsx').then(m => ({ default: m.CartPage })));
+const CartPage = lazy(() => import('@/pages/Cart/ui/CartPage.tsx').then(m => ({ default: m.CartPage })));
 
 const router = createBrowserRouter([
   {

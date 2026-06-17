@@ -67,7 +67,7 @@ export const useCreateCart = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async () => {
+    mutationFn: async (name: string) => {
       await delay(DELAY_MS);
       return "new-cart-id"; // Simulated ID
     },

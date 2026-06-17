@@ -10,7 +10,7 @@ const LoginPage = lazy(() => import('@/pages/Login/ui/LoginPage'));
 const ProductDetailPage = lazy(() => import('@/pages/ProductDetail/ui/ProductDetail'));
 const ProfilePage = lazy(() => import('@/pages/Profile/ui/ProfilePage'));
 const CatalogPage = lazy(() => import('@/pages/Catalog/ui/Catalog'));
-const CartPage = lazy(() => import('@/modules/Cart/components/CartPage.tsx').then(m => ({ default: m.CartPage })));
+const CartPage = lazy(() => import('@/pages/Cart/ui/CartPage.tsx').then(m => ({ default: m.CartPage })));
 
 const fallback = <div>Завантаження...</div>;
 
