@@ -1,7 +1,7 @@
 // src/modules/Auth/components/Login.tsx
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import eyeIcon from '@/shared/assets/ButtonEye.svg';
 import { apiClient } from '@/shared/api/apiClient';
@@ -112,9 +112,9 @@ export const LoginForm = () => {
 
             <p className="text-center text-[14px] mt-[24px] text-[#6B7280]">
                 У вас немає акаунту?{' '}
-                <a href="/create" className="text-[#265447] font-semibold no-underline hover:underline">
+                <Link to="/register" className="text-[#265447] font-semibold no-underline hover:underline">
                     Зареєструватися
-                </a>
+                </Link>
             </p>
         </form>
     );
