@@ -1,3 +1,4 @@
+import os
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -25,11 +26,13 @@ from services.auth_service.shared.DTO import (
     RegisterRequest,
     RegisterResponse,
     TokenResponse,
+    UserResponse,
 )
 
 router = APIRouter(default_response_class=ORJSONResponse)
 
 _REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60
+_COOKIE_SECURE = os.getenv("DEBUG", "False").lower() not in ("true", "1", "yes")
 _security = HTTPBearer()
 
 
@@ -124,7 +127,7 @@ async def register(
             key="refresh_token",
             value=refresh_token,
             httponly=True,
-            secure=True,
+            secure=_COOKIE_SECURE,
             samesite="lax",
             max_age=_REFRESH_TOKEN_MAX_AGE,
         )
@@ -133,7 +136,11 @@ async def register(
         return RegisterResponse(
             access_token=access_token,
             token_type="bearer",
-            email=body.email,
+            user=UserResponse(
+                id=str(inner_user.id),
+                email=inner_user.email,
+                role=inner_user.role,
+            ),
         )
 
     except IntegrityError as err:
@@ -186,7 +193,7 @@ async def login(
             key="refresh_token",
             value=refresh_token,
             httponly=True,
-            secure=True,
+            secure=_COOKIE_SECURE,
             samesite="lax",
             max_age=_REFRESH_TOKEN_MAX_AGE,
         )
@@ -195,6 +202,11 @@ async def login(
         return LoginResponse(
             access_token=access_token,
             token_type="bearer",
+            user=UserResponse(
+                id=str(user.id),
+                email=user.email,
+                role=user.role,
+            ),
         )
 
     except HTTPException:
@@ -205,10 +217,11 @@ async def login(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
         ) from e
+    
 
 
 @router.post("/refresh", response_model=TokenResponse, status_code=status.HTTP_200_OK)
-async def refresh(request: Request):
+async def refresh(request: Request, response: Response):
     refresh_token = request.cookies.get("refresh_token")
 
     if not refresh_token:
@@ -238,8 +251,19 @@ async def refresh(request: Request):
         )
 
     logger.info(f"Успішно оновлено токени для користувача з ID: {payload.get('sub')}")
+    new_access_token = create_access_token(payload["sub"], payload["role"])
+    new_refresh_token = create_refresh_token(payload["sub"], payload["role"])
+
+    response.set_cookie(
+        key="refresh_token",
+        value=new_refresh_token,
+        httponly=True,
+        secure=_COOKIE_SECURE,
+        samesite="lax",
+        max_age=_REFRESH_TOKEN_MAX_AGE,
+    )
     return TokenResponse(
-        access_token=create_access_token(payload["sub"], payload["role"]),
+        access_token=new_access_token,
         token_type="bearer",
     )
 
@@ -262,7 +286,7 @@ async def logout(response: Response):
     response.delete_cookie(
         key="refresh_token",
         httponly=True,
-        secure=True,
+        secure=_COOKIE_SECURE,
         samesite="lax",
     )
     return

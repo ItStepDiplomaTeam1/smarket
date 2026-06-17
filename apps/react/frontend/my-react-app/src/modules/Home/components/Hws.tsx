@@ -1,7 +1,7 @@
-import step1 from '../../../shared/assets/div.step-number1.svg';
-import step2 from '../../../shared/assets/div.step-number2.svg';
-import step3 from '../../../shared/assets/div.step-number3.svg';
-import hwsVisual from '../../../shared/assets/div.hiw-visual.svg';
+import step1 from '@/shared/assets/div.step-number1.svg';
+import step2 from '@/shared/assets/div.step-number2.svg';
+import step3 from '@/shared/assets/div.step-number3.svg';
+import hwsVisual from '@/shared/assets/div.hiw-visual.svg';
 
 export function Hws() {
   return (

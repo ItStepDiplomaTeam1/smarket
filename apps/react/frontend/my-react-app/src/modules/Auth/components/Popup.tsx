@@ -1,11 +1,21 @@
 import { useState } from 'react';
-import eyeIcon from '../../../shared/assets/ButtonEye.svg';
-import btngoogle from '../../../shared/assets/google.svg';
-import btnfacebook from '../../../shared/assets/facebook.svg';
+import { useGoogleLogin } from '@react-oauth/google';
+import eyeIcon from '@/shared/assets/ButtonEye.svg';
+import btngoogle from '@/shared/assets/google.svg';
+import btnfacebook from '@/shared/assets/facebook.svg';
+import { useGoogleOAuth } from '@/hooks/api/useAuthApi';
 
 export function Popup() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
+    const googleOAuthMutation = useGoogleOAuth();
+
+    const handleGoogleLogin = useGoogleLogin({
+        onSuccess: (tokenResponse) => {
+            googleOAuthMutation.mutate(tokenResponse.access_token);
+        },
+        flow: 'implicit',
+    });
 
     return (
         /* Overlay */
@@ -21,13 +31,25 @@ export function Popup() {
                     </p>
 
                     {/* Social buttons */}
-                    <button className="flex items-center justify-center gap-[8px] w-full h-[44px] bg-white border border-[rgba(38,84,71,0.16)] rounded-[10px] mb-[12px] cursor-pointer font-inter text-[13px] font-semibold text-[#265447] transition-colors duration-200 hover:bg-[#F9FAFB]">
+                    {googleOAuthMutation.isError && (
+                        <p className="text-red-500 text-[12px] mb-[8px] text-center">
+                            {googleOAuthMutation.error?.message}
+                        </p>
+                    )}
+
+                    <button
+                        id="btn-google-popup"
+                        type="button"
+                        onClick={() => handleGoogleLogin()}
+                        disabled={googleOAuthMutation.isPending}
+                        className="flex items-center justify-center gap-[8px] w-full h-[44px] bg-white border border-[rgba(38,84,71,0.16)] rounded-[10px] mb-[12px] cursor-pointer font-inter text-[13px] font-semibold text-[#265447] transition-colors duration-200 hover:bg-[#F9FAFB] disabled:opacity-50"
+                    >
                         <img src={btngoogle} alt="Google" className="w-[20px] h-[20px]" />
-                        Продовжити з Google
+                        <span>{googleOAuthMutation.isPending ? 'Завантаження...' : 'Продовжити з Google'}</span>
                     </button>
                     <button className="flex items-center justify-center gap-[8px] w-full h-[44px] bg-white border border-[rgba(38,84,71,0.16)] rounded-[10px] mb-[12px] cursor-pointer font-inter text-[13px] font-semibold text-[#265447] transition-colors duration-200 hover:bg-[#F9FAFB]">
                         <img src={btnfacebook} alt="Facebook" className="w-[20px] h-[20px]" />
-                        Продовжити з Facebook
+                        <span>Продовжити з Facebook</span>
                     </button>
 
                     {/* OR divider */}
@@ -38,23 +60,26 @@ export function Popup() {
                     </div>
 
                     <form className="flex flex-col">
-                        <label className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Ім'я</label>
+                        <label htmlFor="popup-name" className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Ім'я</label>
                         <input
+                            id="popup-name"
                             type="text"
                             placeholder="Олена"
                             className="w-full h-[44px] border border-[rgba(38,84,71,0.16)] rounded-[10px] px-[16px] mb-[16px] bg-white font-inter text-[14px] text-[#111827] outline-none transition-colors duration-200 focus:border-[#265447]"
                         />
 
-                        <label className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Email</label>
+                        <label htmlFor="popup-email" className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Email</label>
                         <input
+                            id="popup-email"
                             type="email"
                             placeholder="smarket@gmail.com"
                             className="w-full h-[44px] border border-[rgba(38,84,71,0.16)] rounded-[10px] px-[16px] mb-[16px] bg-white font-inter text-[14px] text-[#111827] outline-none transition-colors duration-200 focus:border-[#265447]"
                         />
 
-                        <label className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Пароль</label>
+                        <label htmlFor="popup-password" className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Пароль</label>
                         <div className="relative mb-[16px]">
                             <input
+                                id="popup-password"
                                 type={showPassword ? 'text' : 'password'}
                                 placeholder="Створіть пароль"
                                 className="w-full h-[44px] border border-[rgba(38,84,71,0.16)] rounded-[10px] px-[16px] pr-[40px] bg-white font-inter text-[14px] text-[#111827] outline-none transition-colors duration-200 focus:border-[#265447]"
@@ -68,9 +93,10 @@ export function Popup() {
                             </button>
                         </div>
 
-                        <label className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Підтвердьте пароль</label>
+                        <label htmlFor="popup-confirm" className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Підтвердьте пароль</label>
                         <div className="relative mb-[16px]">
                             <input
+                                id="popup-confirm"
                                 type={showConfirm ? 'text' : 'password'}
                                 placeholder="Повторіть пароль"
                                 className="w-full h-[44px] border border-[rgba(38,84,71,0.16)] rounded-[10px] px-[16px] pr-[40px] bg-white font-inter text-[14px] text-[#111827] outline-none transition-colors duration-200 focus:border-[#265447]"
@@ -112,7 +138,7 @@ export function Popup() {
 
                         <p className="text-center text-[14px] mt-[24px] text-[#6B7280]">
                             Вже маєте акаунт?{' '}
-                            <a href="#" className="text-[#265447] font-semibold no-underline hover:underline">
+                            <a href="/auth" className="text-[#265447] font-semibold no-underline hover:underline">
                                 Увійти
                             </a>
                         </p>

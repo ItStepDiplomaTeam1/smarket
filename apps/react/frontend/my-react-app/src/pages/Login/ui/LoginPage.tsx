@@ -1,5 +1,13 @@
-import { Login } from '../../../modules/Auth'
+import { Header } from '@/shared/ui/Header'
+import { LoginForm } from '@/modules/Auth'
+import { Footer } from '@/shared/ui/Footer'
 
-export function LoginPage() {
-  return <Login />
+export default function LoginPage() {
+  return (
+    <>
+      <Header />
+      <LoginForm />
+      <Footer />
+    </>
+  )
 }

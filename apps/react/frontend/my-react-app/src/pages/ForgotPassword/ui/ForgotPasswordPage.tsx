@@ -1,5 +1,13 @@
-import { ForgotPass } from '../../../modules/Auth'
+import { Header } from '@/shared/ui/Header'
+import { ForgotPass } from '@/modules/Auth'
+import { Footer } from '@/shared/ui/Footer'
 
-export function ForgotPasswordPage() {
-  return <ForgotPass />
+export default function ForgotPasswordPage() {
+  return (
+    <>
+      <Header />
+      <ForgotPass />
+      <Footer />
+    </>
+  )
 }

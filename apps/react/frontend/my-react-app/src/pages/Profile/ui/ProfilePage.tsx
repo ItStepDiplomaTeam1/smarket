@@ -1,5 +1,13 @@
-import { Profile } from '../../../modules/Profile'
+import { Header } from '@/shared/ui/Header'
+import { Profile } from '@/modules/Profile'
+import { Footer } from '@/shared/ui/Footer'
 
-export function ProfilePage() {
-  return <Profile />
+export default function ProfilePage() {
+  return (
+    <>
+      <Header />
+      <Profile />
+      <Footer />
+    </>
+  )
 }
