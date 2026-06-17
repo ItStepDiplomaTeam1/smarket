@@ -204,6 +204,21 @@ services:
     networks:
       - smarket-network
 
+  reviews_service:
+    build:
+      context: ..
+      dockerfile: services/reviews_service/Dockerfile
+    ports:
+      - "8004:8004"
+    env_file:
+      - ../services/reviews_service/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
+    networks:
+      - smarket-network
+
 volumes:
   postgres_data:
   rabbitmq_data:
