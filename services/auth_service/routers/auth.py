@@ -1,3 +1,4 @@
+import os
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -31,6 +32,7 @@ from services.auth_service.shared.DTO import (
 router = APIRouter(default_response_class=ORJSONResponse)
 
 _REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60
+_COOKIE_SECURE = os.getenv("DEBUG", "False").lower() not in ("true", "1", "yes")
 _security = HTTPBearer()
 
 
@@ -125,7 +127,7 @@ async def register(
             key="refresh_token",
             value=refresh_token,
             httponly=True,
-            secure=True,
+            secure=_COOKIE_SECURE,
             samesite="lax",
             max_age=_REFRESH_TOKEN_MAX_AGE,
         )
@@ -191,7 +193,7 @@ async def login(
             key="refresh_token",
             value=refresh_token,
             httponly=True,
-            secure=True,
+            secure=_COOKIE_SECURE,
             samesite="lax",
             max_age=_REFRESH_TOKEN_MAX_AGE,
         )
@@ -256,7 +258,7 @@ async def refresh(request: Request, response: Response):
         key="refresh_token",
         value=new_refresh_token,
         httponly=True,
-        secure=True,
+        secure=_COOKIE_SECURE,
         samesite="lax",
         max_age=_REFRESH_TOKEN_MAX_AGE,
     )
@@ -284,7 +286,7 @@ async def logout(response: Response):
     response.delete_cookie(
         key="refresh_token",
         httponly=True,
-        secure=True,
+        secure=_COOKIE_SECURE,
         samesite="lax",
     )
     return

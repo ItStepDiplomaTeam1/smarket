@@ -16,7 +16,7 @@ interface User {
 }
 
 interface LoginResponse {
-    token: string;
+    access_token: string;
     user: User;
 }
 
@@ -46,8 +46,8 @@ export const LoginForm = () => {
             }
         },
         onSuccess: (data) => {
-            setAuth(data.token, data.user);
-            navigate('/'); // Редірект на головну сторінку
+            setAuth(data.access_token, data.user);
+            navigate('/');
         },
     });
 

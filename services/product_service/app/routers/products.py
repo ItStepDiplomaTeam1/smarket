@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from typing import Optional
 
-from app.database.models import Price, Product, StoreProduct, Store
+from app.database.models import Price, Product, StoreProduct, Store, StoreCategoryMapping
 from app.shared.schemas import (
     PriceResponse,
     PriceWithStoreResponse,
@@ -15,6 +15,7 @@ from app.shared.schemas import (
     ProductOffersResponse,
     ProductResponse,
     ProductWithStoresResponse,
+    CategoryResponse,
 )
 from app.database.session import get_db
 
@@ -180,28 +181,60 @@ async def get_products_by_store(
     response_model=ProductDetail,
     status_code=status.HTTP_200_OK,
     summary="Деталі товару",
-    description="Повертає товар разом з усіма його цінами в усіх магазинах (включно з інформацією про магазин).",
+    description="Повертає товар разом з актуальною ціною в кожному магазині (остання зафіксована ціна, без дублікатів).",
 )
 async def get_product(
     product_id: int,
     db: AsyncSession = Depends(get_db),
 ):
-    stmt = (
-        select(Product)
-        .options(
-            selectinload(Product.prices).selectinload(Price.store),
-        )
-        .where(Product.id == product_id)
-    )
-    result = await db.execute(stmt)
-    product = result.scalar_one_or_none()
-
+    product = await db.scalar(select(Product).where(Product.id == product_id))
     if not product:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Товар з id={product_id} не знайдено",
         )
-    return product
+
+    # Підзапит: остання ціна для кожного магазину (щоб не було дублікатів з лог-таблиці)
+    latest_price_subq = (
+        select(
+            Price.store_id,
+            func.max(Price.recorded_at).label("max_recorded_at"),
+        )
+        .where(Price.product_id == product_id)
+        .group_by(Price.store_id)
+        .subquery()
+    )
+
+    prices_stmt = (
+        select(Price)
+        .options(selectinload(Price.store))
+        .join(
+            latest_price_subq,
+            and_(
+                Price.store_id == latest_price_subq.c.store_id,
+                Price.recorded_at == latest_price_subq.c.max_recorded_at,
+            ),
+        )
+        .where(Price.product_id == product_id)
+        .order_by(Price.price)
+    )
+
+    prices_result = await db.execute(prices_stmt)
+    latest_prices = list(prices_result.scalars().all())
+
+    return ProductDetail(
+        id=product.id,
+        ean=product.ean,
+        store_product_id=product.store_product_id,
+        title=product.title,
+        brand=product.brand,
+        unit=product.unit,
+        weight=product.weight,
+        image_url=product.image_url,
+        canonical_category_id=product.canonical_category_id,
+        created_at=product.created_at,
+        prices=latest_prices,
+    )
 
 
 @router.get(
@@ -356,3 +389,29 @@ async def get_product_prices(
     stmt = stmt.limit(limit)
     result = await db.execute(stmt)
     return list(result.scalars().all())
+
+
+@router.get(
+    "/categories",
+    response_model=list[CategoryResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Отримати список категорій",
+)
+async def get_categories(
+    db: AsyncSession = Depends(get_db),
+):
+    stmt = select(StoreCategoryMapping)
+    result = await db.execute(stmt)
+    mappings = result.scalars().all()
+    response = []
+    seen = set()
+    for m in mappings:
+        if m.canonical_category_id not in seen:
+            seen.add(m.canonical_category_id)
+            response.append(
+                CategoryResponse(
+                    id=m.canonical_category_id,
+                    slug=m.slug,
+                )
+            )
+    return response

@@ -189,6 +189,21 @@ services:
     networks:
       - smarket-network
 
+  cart_service:
+    build:
+      context: ..
+      dockerfile: services/cart_service/DockerFile
+    ports:
+      - "8002:8002"
+    env_file:
+      - ../services/cart_service/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
+    networks:
+      - smarket-network
+
 volumes:
   postgres_data:
   rabbitmq_data:

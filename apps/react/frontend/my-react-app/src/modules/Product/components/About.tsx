@@ -1,8 +1,31 @@
-export function About() {
+import { type Product } from '../type';
+
+interface AboutProps {
+  product: Product | null;
+}
+
+export function About({ product }: AboutProps) {
+  if (!product) return null;
+  const generatedDescription = `${product.title} — якісний продукт категорії, представлений брендом "${product.brand || 'без ТМ'}". Вага/об'єм становить ${product.weight && product.weight > 0 ? `${product.weight} ${product.unit}` : `1 ${product.unit || 'шт'}`}.`;
+
+  const infoRows = [
+    [
+      { label: 'Бренд', val: product.brand && product.brand !== 'без тм' ? product.brand : 'Без бренду' },
+      { label: 'Артикул товару', val: product.store_product_id },
+      { label: 'Штрих-код (EAN)', val: product.ean || 'Не вказано' },
+      { label: 'Вага / Одиниця', val: product.weight && product.weight > 0 ? `${product.weight} ${product.unit}` : `1 ${product.unit}` },
+    ],
+    [
+      { label: 'Дата додавання', val: new Date(product.created_at).toLocaleDateString('uk-UA') },
+      { label: 'Категорія ID', val: product.canonical_category_id !== null ? String(product.canonical_category_id) : 'Не вказано' },
+      { label: 'Країна-виробник', val: 'Україна' }, 
+      { label: 'Статус', val: 'В наявності' },
+    ]
+  ];
+
   return (
     <section className="w-full pb-[40px] bg-[#F6FAF8] font-inter">
       <div className="w-full max-w-[1180px] mx-auto px-[20px]">
-
         <div>
           {/* Заголовок секції */}
           <h2 className="font-manrope text-[24px] font-bold text-[#173B33] mb-[24px] m-0">Про товар</h2>
@@ -11,63 +34,20 @@ export function About() {
           <div className="bg-white border border-[rgba(38,84,71,0.08)] rounded-[16px] p-[24px] mb-[16px]">
             <h3 className="font-manrope text-[24px] font-[200] leading-[31.2px] text-[#173B33] m-0 mb-[16px]">Опис товару</h3>
             <p className="font-inter text-[16px] text-[#173B33] leading-[24px] m-0">
-              Молоко коров'яче питне пастеризоване ТМ «Яготинське» — це високоякісний натуральний продукт, виготовлений виключно з <br /> коров'ячого молока, яке проходить відповідну термічну обробку.
+              {generatedDescription}
             </p>
-          </div>
-
-          {/* Nutrition */}
-          <div className="bg-white border border-[rgba(38,84,71,0.08)] rounded-[16px] p-[24px] mb-[16px]">
-            <h3 className="font-manrope text-[24px] font-[200] leading-[31.2px] text-[#173B33] m-0 mb-[16px]">Харчові властивості, 100г</h3>
-            <div className="grid grid-cols-4 gap-[16px]">
-              {[
-                { label: 'Калорійність', value: '53.00 ккал' },
-                { label: 'Білки',        value: '2.80 г'     },
-                { label: 'Жири',         value: '2.60 г'     },
-                { label: 'Вуглеводи',    value: '4.70 г'     },
-              ].map(({ label, value }) => (
-                <div key={label} className="bg-[#F6FAF8] p-[16px] rounded-[12px] flex flex-col justify-center">
-                  <span className="block font-inter font-bold text-[16px] text-[#265447] mb-[4px] leading-tight">{value}</span>
-                  <span className="font-inter text-[13px] text-[#6B7280] font-normal leading-tight">{label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Composition */}
-          <div className="bg-white border border-[rgba(38,84,71,0.08)] rounded-[16px] p-[24px] mb-[16px]">
-            <h3 className="font-manrope text-[24px] font-[200] leading-[31.2px] text-[#173B33] m-0 mb-[16px]">Склад</h3>
-            <p className="font-inter text-[16px] text-[#173B33] leading-[24px] m-0">Молоко коров'яче незбиране, молоко знежирене.</p>
           </div>
 
           {/* General info */}
           <div className="bg-white border border-[rgba(38,84,71,0.08)] rounded-[16px] p-[24px] mb-[16px]">
             <h3 className="font-manrope text-[24px] font-[200] leading-[31.2px] text-[#173B33] m-0 mb-[16px]">Загальна інформація</h3>
             <div className="flex flex-col">
-              {[
-                [
-                  { label: 'Бренд',      val: 'Яготинське' },
-                  { label: 'Виробник',   val: 'ТДВ "Яготинський маслозавод"' },
-                  { label: 'Вага',       val: '870г' },
-                  { label: 'Жирність',   val: '2.6%' },
-                ],
-                [
-                  { label: 'Термін придатності',    val: '9 діб' },
-                  { label: 'Температура зберігання', val: '2...6 °C' },
-                  { label: 'Країна-виробник',        val: 'Україна' },
-                  { label: 'Метод обробки',          val: 'пастеризоване' },
-                ],
-                [
-                  { label: 'Основа',    val: "коров'яче молоко" },
-                  { label: 'Упаковка',  val: 'пластикова пляшка' },
-                  { label: '', val: '' },
-                  { label: '', val: '' },
-                ],
-              ].map((row, ri, arr) => (
+              {infoRows.map((row, ri) => (
                 <div key={ri} className="grid grid-cols-4 gap-x-[24px]">
                   {row.map(({ label, val }, ci) => (
                     <div
                       key={ci}
-                      className={`flex justify-between items-start gap-[12px] py-[16px] ${ri < arr.length - 1 ? 'border-b border-[rgba(38,84,71,0.08)]' : ''}`}
+                      className={`flex justify-between items-start gap-[12px] py-[16px] ${ri < infoRows.length - 1 ? 'border-b border-[rgba(38,84,71,0.08)]' : ''}`}
                     >
                       {label && (
                         <>
@@ -82,8 +62,8 @@ export function About() {
             </div>
           </div>
         </div>
-
       </div>
     </section>
   );
 }
+
