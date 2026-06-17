@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useGoogleLogin } from '@react-oauth/google';
 import { apiClient } from '@/shared/api/apiClient';
@@ -390,7 +390,7 @@ export function Create() {
                             </button>
 
                             <p className="text-center text-[14px] mt-[24px] text-[#6B7280]">
-                                Вже маєте акаунт? <a href="/auth" className="text-[#265447] font-semibold no-underline hover:underline">Увійти</a>
+                                Вже маєте акаунт? <Link to="/auth" className="text-[#265447] font-semibold no-underline hover:underline">Увійти</Link>
                             </p>
                         </form>
                     </div>
