@@ -29,7 +29,7 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      migration_job:
+      auth_migration_job:
         condition: service_completed_successfully # Ждём завершения Alembic-миграций
     networks:
       - smarket-network
@@ -48,7 +48,7 @@ services:
     networks:
       - smarket-network
 
-  migration_job:
+  auth_migration_job:
     build:
       context: ..
       dockerfile: services/auth_service/Dockerfile
@@ -56,6 +56,51 @@ services:
       sh -c "cd /app/services/auth_service && alembic upgrade head"
     env_file:
       - ../services/auth_service/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - smarket-network
+
+  cart_migration_job:
+    build:
+      context: ..
+      dockerfile: services/cart_service/DockerFile
+    command: >
+      sh -c "cd /app/services/cart_service && alembic upgrade head"
+    env_file:
+      - ../services/cart_service/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - smarket-network
+
+  product_migration_job:
+    build:
+      context: ..
+      dockerfile: services/product_service/DockerFile
+    command: >
+      sh -c "cd /app/services/product_service && alembic upgrade head"
+    env_file:
+      - ../services/product_service/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - smarket-network
+
+  reviews_migration_job:
+    build:
+      context: ..
+      dockerfile: services/reviews_service/Dockerfile
+    command: >
+      sh -c "cd /app/services/reviews_service && alembic upgrade head"
+    env_file:
+      - ../services/reviews_service/.env
     depends_on:
       db:
         condition: service_healthy
@@ -99,6 +144,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      product_migration_job:
+        condition: service_completed_successfully
     restart: on-failure
     networks:
       - smarket-network
@@ -184,6 +231,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      cart_migration_job:
+        condition: service_completed_successfully
     restart: on-failure
     networks:
       - smarket-network
@@ -199,6 +248,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      reviews_migration_job:
+        condition: service_completed_successfully
     restart: on-failure
     networks:
       - smarket-network
