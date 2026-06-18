@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { apiClient } from '../../../shared/api/apiClient';
 import { type Product } from '../type';
+import axios from 'axios';
 
 import mainMilk from '@/shared/assets/milk.svg';
 import starIcon from '@/shared/assets/gold-star.svg';
