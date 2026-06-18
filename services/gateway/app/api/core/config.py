@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     #  Адреси внутрішніх мікросервісів
     # -------------------------------------------------------
     AUTH_SERVICE_URL: str = "http://auth_service:8001"
-    PRODUCT_SERVICE_URL: str = "http://business_logic_service:8000"
+    PRODUCT_SERVICE_URL: str = "http://product_service:8000"
     STORES_SERVICE_URL: str = "http://product_service:8000/api/v1/stores"
     CART_SERVICE_URL: str = "http://cart_service:8002"
 
