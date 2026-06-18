@@ -119,4 +119,3 @@ func InitInfrastructure(ctx context.Context, cfg *config.Config) (*Infrastructur
 		RabbitConn:  rabbitConn,
 	}, nil
 }
-

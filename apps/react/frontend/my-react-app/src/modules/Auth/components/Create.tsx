@@ -98,7 +98,7 @@ export function Create() {
     const googleOAuthMutation = useGoogleOAuth();
 
     const handleGoogleLogin = useGoogleLogin({
-        onSuccess: (tokenResponse: any) => {
+        onSuccess: (tokenResponse: { access_token: string }) => {
             googleOAuthMutation.mutate(tokenResponse.access_token);
         },
         flow: 'implicit',

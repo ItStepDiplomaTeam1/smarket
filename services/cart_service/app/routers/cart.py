@@ -1,10 +1,6 @@
 import uuid
-from fastapi import APIRouter, Depends, Query, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-
-
-def get_user_id(x_user_id: uuid.UUID = Header(..., alias="X-User-Id")) -> uuid.UUID:
-    return x_user_id
 
 
 from app.database.session import get_db
@@ -16,6 +12,11 @@ from app.shared.schemas import (
 )
 from app import crud
 from app.external_api import fetch_product_details, fetch_product_offers
+
+
+def get_user_id(x_user_id: uuid.UUID = Header(..., alias="X-User-Id")) -> uuid.UUID:
+    return x_user_id
+
 
 router = APIRouter(prefix="/cart", tags=["Cart"])
 

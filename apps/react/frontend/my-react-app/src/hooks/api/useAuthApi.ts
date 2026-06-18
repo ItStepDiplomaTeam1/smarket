@@ -29,9 +29,9 @@ export const useGoogleOAuth = () => {
                 return response.data;
             } catch (error) {
                 if (axios.isAxiosError(error) && error.response?.data?.detail) {
-                    throw new Error(error.response.data.detail);
+                    throw new Error(error.response.data.detail, { cause: error });
                 }
-                throw new Error('Помилка Google авторизації. Спробуйте ще раз.');
+                throw new Error('Помилка Google авторизації. Спробуйте ще раз.', { cause: error });
             }
         },
         onSuccess: (data) => {

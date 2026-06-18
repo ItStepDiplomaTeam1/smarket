@@ -36,15 +36,17 @@ export function ProductHero({ product }: ProductHeroProps) {
             alert('Товар успішно додано до кошика!');
             setQuantity(1);
             
-        } catch (error: any) {
+        } catch (error: unknown) {
             // РОЗШИРЕНИЙ ВІДЛОВ ПОМИЛОК
             console.error('Повна помилка кошика:', error);
-            console.log('Відповідь бекенду:', error.response?.data);
-            
-            const backendMessage = error.response?.data?.detail || error.response?.data?.message || 'Помилка мережі (CORS або бекенд недоступний)';
-            const statusCode = error.response?.status || 'Без коду';
-            
-            alert(`Помилка: ${backendMessage}\nКод: ${statusCode}\n(Подивись консоль для деталей)`);
+            if (axios.isAxiosError(error)) {
+                console.log('Відповідь бекенду:', error.response?.data);
+                const backendMessage = error.response?.data?.detail || error.response?.data?.message || 'Помилка мережі (CORS або бекенд недоступний)';
+                const statusCode = error.response?.status || 'Без коду';
+                alert(`Помилка: ${backendMessage}\nКод: ${statusCode}\n(Подивись консоль для деталей)`);
+            } else {
+                alert(`Помилка: Невідома помилка\n(Подивись консоль для деталей)`);
+            }
         } finally {
             setIsAdding(false);
         }

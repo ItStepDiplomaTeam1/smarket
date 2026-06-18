@@ -1,5 +1,4 @@
 import httpx
-import uuid
 from app.config import settings
 
 

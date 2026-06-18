@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 
 from app.config import settings
-from app.database.models import Base, Cart, CartItem
+from app.database.models import Base
 
 config = context.config
 

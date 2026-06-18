@@ -40,9 +40,9 @@ export const LoginForm = () => {
             } catch (error) {
                 // Дістаємо текст помилки саме з бекенду
                 if (axios.isAxiosError(error) && error.response?.data?.message) {
-                    throw new Error(error.response.data.message);
+                    throw new Error(error.response.data.message, { cause: error });
                 }
-                throw new Error('Помилка авторизації. Спробуйте ще раз.');
+                throw new Error('Помилка авторизації. Спробуйте ще раз.', { cause: error });
             }
         },
         onSuccess: (data) => {
