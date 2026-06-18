@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from './apiClient';
+import { apiClient } from '@/shared/api/apiClient';
 import type { CartListItem, CartDetailResponse } from '@/mocks/cartData';
 
 // We map the backend responses to the frontend types.
@@ -15,7 +15,7 @@ export const useFetchCarts = () => {
   return useQuery<CartListItem[]>({
     queryKey: ['carts'],
     queryFn: async () => {
-      const { data } = await apiClient.get('/cart/');
+      const { data } = await apiClient.get('/api/v1/cart/');
       // Map backend response to CartListItem
       return data.map((cart: any) => ({
         id: cart.id,
@@ -34,12 +34,12 @@ export const useFetchCartDetails = (cartId: string | null) => {
   return useQuery<any>({
     queryKey: ['cart', cartId],
     queryFn: async () => {
-      const { data } = await apiClient.get(`/cart/${cartId}`);
+      const { data } = await apiClient.get(`/api/v1/cart/${cartId}`);
       
       // Fetch comparison to populate the summary
       let comparisonData = [];
       try {
-        const compRes = await apiClient.get(`/cart/${cartId}/compare`);
+        const compRes = await apiClient.get(`/api/v1/cart/${cartId}/compare`);
         comparisonData = compRes.data.map((c: any) => ({
           storeName: c.store_name,
           totalPrice: c.total_price,
@@ -81,7 +81,7 @@ export const useUpdateCartItem = () => {
 
   return useMutation({
     mutationFn: async ({ cartId, productId, quantity }: { cartId: string; productId: string; quantity: number }) => {
-      const { data } = await apiClient.post(`/cart/${cartId}/items`, {
+      const { data } = await apiClient.post(`/api/v1/cart/${cartId}/items`, {
         product_id: parseInt(productId, 10),
         quantity: quantity
       });
@@ -99,7 +99,7 @@ export const useDeleteCartItem = () => {
 
   return useMutation({
     mutationFn: async ({ cartId, itemId }: { cartId: string; itemId: string }) => {
-      const { data } = await apiClient.delete(`/cart/${cartId}/items/${itemId}`);
+      const { data } = await apiClient.delete(`/api/v1/cart/${cartId}/items/${itemId}`);
       return data;
     },
     onSuccess: (data, variables) => {
@@ -114,7 +114,7 @@ export const useDeleteCart = () => {
 
   return useMutation({
     mutationFn: async (cartId: string) => {
-      await apiClient.delete(`/cart/${cartId}`);
+      await apiClient.delete(`/api/v1/cart/${cartId}`);
       return cartId;
     },
     onSuccess: () => {
@@ -128,7 +128,7 @@ export const useCreateCart = () => {
 
   return useMutation({
     mutationFn: async (name: string) => {
-      const { data } = await apiClient.post('/cart/', { name });
+      const { data } = await apiClient.post('/api/v1/cart/', { name });
       return data.id;
     },
     onSuccess: () => {
@@ -142,7 +142,7 @@ export const useClearCart = () => {
 
   return useMutation({
     mutationFn: async (cartId: string) => {
-      await apiClient.delete(`/cart/${cartId}/items`);
+      await apiClient.delete(`/api/v1/cart/${cartId}/items`);
       return cartId;
     },
     onSuccess: (_, cartId) => {
