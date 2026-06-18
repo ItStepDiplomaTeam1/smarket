@@ -20,7 +20,7 @@ export const CartUnauthState: React.FC = () => {
         onClick={() => navigate('/auth')}
         className="px-8 py-3 bg-[#265447] text-white rounded-xl font-medium font-['Inter'] hover:bg-[#1A3E2F] transition-colors"
       >
-        Увійти
+        Перейти до кошика
       </button>
     </div>
   );
