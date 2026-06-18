@@ -7,7 +7,7 @@ import { apiClient } from '@/shared/api/apiClient';
 import { Loader2, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
-import { useGoogleOAuth } from '@/hooks/api/useAuthApi';
+import { useGoogleOAuth, type MeResponse } from '@/hooks/api/useAuthApi';
 
 import eyeIcon from '@/shared/assets/ButtonEye.svg';
 import btngoogle from '@/shared/assets/google.svg';
@@ -181,8 +181,16 @@ export function Create() {
                 throw new Error('Помилка реєстрації. Спробуйте ще раз.', { cause: error });
             }
         },
-        onSuccess: (data) => {
+        onSuccess: async (data) => {
             setAuth(data.access_token, data.user);
+            try {
+                const { data: me } = await apiClient.get<MeResponse>('/api/v1/auth/me');
+                useAuthStore.setState((state) => ({
+                    user: state.user ? { ...state.user, name: me.username } : state.user,
+                }));
+            } catch {
+                // fallback — ім'я залишиться undefined
+            }
             toast.success(`Вітаємо, ${name}! Ви успішно зареєструвались.`);
             navigate('/');
         },

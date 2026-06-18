@@ -307,9 +307,11 @@ async def get_me(current_user: User = Depends(_get_current_user)):
     logger.info(
         f"Користувач {current_user.email} (ID: {current_user.id}) запитав інформацію про себе"
     )
+    username = current_user.email.split("@")[0] if "@" in current_user.email else current_user.email
     return {
         "id": str(current_user.id),
         "email": current_user.email,
+        "username": username,
         "role": current_user.role,
     }
 

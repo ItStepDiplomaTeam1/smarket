@@ -7,48 +7,45 @@ import { Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import eyeIcon from '@/shared/assets/ButtonEye.svg';
 import { apiClient } from '@/shared/api/apiClient';
-// useAuthStore лежить поруч у модулі, тому тут можна залишити відносний шлях:
 import { useAuthStore } from '../store/authStore';
-
-// Інтерфейси для типізації відповіді сервера
-interface User {
-    id: string;
-    email: string;
-    // Додайте інші поля, якщо вони є у вашій моделі (наприклад, name, role)
-}
+import { type MeResponse } from '@/hooks/api/useAuthApi';
 
 interface LoginResponse {
     access_token: string;
-    user: User;
+    user: { id: string; email: string; role?: string };
 }
 
 export const LoginForm = () => {
     const navigate = useNavigate();
 
-    // 1. Локальний стан для UI та полів
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
 
-    // 2. Глобальний стан Zustand
     const setAuth = useAuthStore((state) => state.setAuth);
 
-    // 3. Серверний стан TanStack Query
     const loginMutation = useMutation<LoginResponse, Error>({
         mutationFn: async () => {
             try {
                 const response = await apiClient.post<LoginResponse>('/api/v1/auth/login', { email, password });
                 return response.data;
             } catch (error) {
-                // Дістаємо текст помилки саме з бекенду
                 if (axios.isAxiosError(error) && error.response?.data?.message) {
                     throw new Error(error.response.data.message, { cause: error });
                 }
                 throw new Error('Помилка авторизації. Спробуйте ще раз.', { cause: error });
             }
         },
-        onSuccess: (data) => {
+        onSuccess: async (data) => {
             setAuth(data.access_token, data.user);
+            try {
+                const { data: me } = await apiClient.get<MeResponse>('/api/v1/auth/me');
+                useAuthStore.setState((state) => ({
+                    user: state.user ? { ...state.user, name: me.username } : state.user,
+                }));
+            } catch {
+                // якщо /me не відповів — ім'я залишиться undefined, дефолтний fallback спрацює на бекенді
+            }
             toast.success(`З поверненням! Ви успішно увійшли.`);
             navigate('/');
         },
