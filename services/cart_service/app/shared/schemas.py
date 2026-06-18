@@ -1,6 +1,10 @@
 import uuid
+from datetime import datetime
 from typing import List, Optional
 from pydantic import BaseModel, Field, ConfigDict
+
+class CartCreate(BaseModel):
+    name: str = Field(..., description="Назва кошика")
 
 class CartItemCreate(BaseModel):
     product_id: int
@@ -21,6 +25,8 @@ class CartItemResponse(BaseModel):
 class CartResponse(BaseModel):
     id: uuid.UUID
     user_id: uuid.UUID
+    name: str
+    updated_at: datetime
     items: List[CartItemResponse] = []
     total_price: float = 0.0
     

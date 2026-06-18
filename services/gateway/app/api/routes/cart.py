@@ -15,7 +15,7 @@ async def proxy_to_cart(
     token_payload: dict = Depends(verify_jwt),
 ):
     client: httpx.AsyncClient = request.app.state.http_client
-    target_url = f"{settings.CART_SERVICE_URL}/{path}"
+    target_url = f"{settings.CART_SERVICE_URL}/cart/{path}"
 
     headers = dict(request.headers)
     headers.pop("host", None)
