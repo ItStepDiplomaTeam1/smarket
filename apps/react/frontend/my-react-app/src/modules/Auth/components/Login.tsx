@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
+import { Loader2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import eyeIcon from '@/shared/assets/ButtonEye.svg';
 import { apiClient } from '@/shared/api/apiClient';
 // useAuthStore лежить поруч у модулі, тому тут можна залишити відносний шлях:
@@ -47,6 +49,7 @@ export const LoginForm = () => {
         },
         onSuccess: (data) => {
             setAuth(data.access_token, data.user);
+            toast.success(`З поверненням! Ви успішно увійшли.`);
             navigate('/');
         },
     });
@@ -64,6 +67,7 @@ export const LoginForm = () => {
             <input
                 type="email"
                 placeholder="smarket@gmail.com"
+                autoFocus
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loginMutation.isPending}
@@ -96,18 +100,17 @@ export const LoginForm = () => {
             </div>
 
             {/* Виведення помилки від сервера */}
-            {loginMutation.isError && (
-                <div className="mb-[16px] text-red-500 text-[13px]">
-                    {loginMutation.error?.message}
-                </div>
-            )}
+            <div className={`overflow-hidden transition-all duration-300 ${loginMutation.isError ? 'max-h-[40px] opacity-100 mb-[16px]' : 'max-h-0 opacity-0'}`}>
+                <p className="text-red-500 text-[13px] font-medium">{loginMutation.error?.message}</p>
+            </div>
 
             <button 
                 type="submit" 
                 disabled={loginMutation.isPending}
-                className="w-full h-[46px] bg-[#265447] text-white rounded-[10px] border-none cursor-pointer font-inter text-[14px] font-bold transition-colors duration-200 hover:bg-[#1A3E2F] disabled:opacity-50"
+                className="flex items-center justify-center gap-[8px] w-full h-[46px] bg-[#265447] text-white rounded-[10px] border-none cursor-pointer font-inter text-[14px] font-bold transition-all duration-200 hover:bg-[#1A3E2F] hover:shadow-md disabled:opacity-50"
             >
-                {loginMutation.isPending ? 'Завантаження...' : 'Увійти'}
+                {loginMutation.isPending && <Loader2 className="w-[18px] h-[18px] animate-spin" />}
+                <span>{loginMutation.isPending ? 'Завантаження...' : 'Увійти'}</span>
             </button>
 
             <p className="text-center text-[14px] mt-[24px] text-[#6B7280]">
