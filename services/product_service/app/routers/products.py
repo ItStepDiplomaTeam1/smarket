@@ -5,7 +5,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from typing import Optional
 
-from app.database.models import Price, Product, StoreProduct, Store, StoreCategoryMapping
+from app.database.models import (
+    Price,
+    Product,
+    StoreProduct,
+    Store,
+    StoreCategoryMapping,
+)
 from app.shared.schemas import (
     PriceResponse,
     PriceWithStoreResponse,
@@ -19,10 +25,7 @@ from app.shared.schemas import (
 )
 from app.database.session import get_db
 
-router = APIRouter(
-    tags=["Products"],
-    default_response_class=ORJSONResponse
-)
+router = APIRouter(tags=["Products"], default_response_class=ORJSONResponse)
 
 
 @router.get(
@@ -35,10 +38,18 @@ router = APIRouter(
 async def get_products(
     skip: int = Query(0, ge=0, description="Кількість записів для пропуску"),
     limit: int = Query(100, ge=1, le=1000, description="Ліміт записів у відповіді"),
-    brand: Optional[str] = Query(None, description="Фільтр по бренду (часткове співпадіння)"),
-    category_id: Optional[int] = Query(None, description="Фільтр по canonical_category_id"),
-    search: Optional[str] = Query(None, description="Пошук по назві товару (часткове співпадіння)"),
-    store_id: Optional[str] = Query(None, description="Фільтр по магазину (показати тільки товари цього магазину)"),
+    brand: Optional[str] = Query(
+        None, description="Фільтр по бренду (часткове співпадіння)"
+    ),
+    category_id: Optional[int] = Query(
+        None, description="Фільтр по canonical_category_id"
+    ),
+    search: Optional[str] = Query(
+        None, description="Пошук по назві товару (часткове співпадіння)"
+    ),
+    store_id: Optional[str] = Query(
+        None, description="Фільтр по магазину (показати тільки товари цього магазину)"
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     stmt = select(Product)
@@ -80,7 +91,9 @@ async def get_products_by_store(
     db: AsyncSession = Depends(get_db),
 ):
     # Перевіряємо що магазин існує
-    store_exists = await db.execute(select(Store.external_id).where(Store.external_id == store_id))
+    store_exists = await db.execute(
+        select(Store.external_id).where(Store.external_id == store_id)
+    )
     if store_exists.scalar_one_or_none() is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -99,12 +112,12 @@ async def get_products_by_store(
     )
 
     # Основний запит: товари, які є у цьому магазині (через store_products)
-    stmt = (
-        select(Product)
-        .join(StoreProduct, and_(
+    stmt = select(Product).join(
+        StoreProduct,
+        and_(
             StoreProduct.product_id == Product.id,
             StoreProduct.store_id == store_id,
-        ))
+        ),
     )
 
     if category_id is not None:
@@ -166,10 +179,14 @@ async def get_products_by_store(
                     product_id=latest_price.product_id,
                     store_id=latest_price.store_id,
                     price=float(latest_price.price),
-                    old_price=float(latest_price.old_price) if latest_price.old_price else None,
+                    old_price=float(latest_price.old_price)
+                    if latest_price.old_price
+                    else None,
                     in_stock=latest_price.in_stock,
                     recorded_at=latest_price.recorded_at,
-                ) if latest_price else None,
+                )
+                if latest_price
+                else None,
             )
         )
 
@@ -279,7 +296,9 @@ async def get_product_stores(
 )
 async def get_product_offers(
     product_id: int,
-    in_stock: Optional[bool] = Query(None, description="Обмежити пропозиції лише товарами в наявності"),
+    in_stock: Optional[bool] = Query(
+        None, description="Обмежити пропозиції лише товарами в наявності"
+    ),
     db: AsyncSession = Depends(get_db),
 ):
     # 1. Знаходимо товар

@@ -130,14 +130,18 @@ async def oauth_google_login(
         db.add(user)
         await db.commit()
         await db.refresh(user)
-        logger.success(f"Google OAuth: новий користувач {_mask_email(email)} зареєстрований, ID: {user.id}")
+        logger.success(
+            f"Google OAuth: новий користувач {_mask_email(email)} зареєстрований, ID: {user.id}"
+        )
     else:
         if not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="User account is disabled",
             )
-        logger.info(f"Google OAuth: існуючий користувач {_mask_email(email)} (ID: {user.id}) увійшов")
+        logger.info(
+            f"Google OAuth: існуючий користувач {_mask_email(email)} (ID: {user.id}) увійшов"
+        )
 
     access_token = create_access_token(str(user.id), user.role, user.email)
     refresh_token = create_refresh_token(str(user.id), user.role, user.email)

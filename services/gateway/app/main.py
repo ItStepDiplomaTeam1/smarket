@@ -37,13 +37,21 @@ app.add_middleware(
 API_V1_STR = "/api/v1"
 
 app.include_router(auth.router, prefix=f"{API_V1_STR}/auth", tags=["Auth Proxy v1"])
-app.include_router(products.router, prefix=f"{API_V1_STR}/products", tags=["Products Proxy v1"])
-app.include_router(stores.router, prefix=f"{API_V1_STR}/stores", tags=["Stores Proxy v1"])
+app.include_router(
+    products.router, prefix=f"{API_V1_STR}/products", tags=["Products Proxy v1"]
+)
+app.include_router(
+    stores.router, prefix=f"{API_V1_STR}/stores", tags=["Stores Proxy v1"]
+)
 app.include_router(cart.router, prefix=f"{API_V1_STR}/cart", tags=["Cart Proxy v1"])
-app.include_router(reviews.router, prefix=f"{API_V1_STR}/reviews", tags=["Reviews Proxy v1"])
+app.include_router(
+    reviews.router, prefix=f"{API_V1_STR}/reviews", tags=["Reviews Proxy v1"]
+)
+
 
 @app.get("/health", tags=["System"])
 async def root():
     return {"status": "ok", "service": "Api Gateway", "version": "v1"}
+
 
 # -------------------------------------------------

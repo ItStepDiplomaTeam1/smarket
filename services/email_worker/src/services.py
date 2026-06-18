@@ -12,6 +12,7 @@ jinja_env = Environment(loader=FileSystemLoader(templates_dir))
 # Передаємо ключ з наших налаштувань в бібліотеку Resend
 resend.api_key = settings.resend_api_key
 
+
 def _send_email(email_to: str, token: str, action: str):
     """Синхронна функція для відправки листа через Resend API."""
 
@@ -19,24 +20,24 @@ def _send_email(email_to: str, token: str, action: str):
     if action == "activation":
         subject = "Активація акаунту"
         # Для активації можна створити окремий файл activation.html пізніше
-        template_name = "reset_password.html" 
+        template_name = "reset_password.html"
     elif action == "reset_password":
         subject = "Відновлення паролю"
         template_name = "reset_password.html"
     else:
         raise ValueError(f"Невідома дія: {action}")
-    
+
     # 2. Завантажуємо шаблон і рендеримо його з нашим токеном
     template = jinja_env.get_template(template_name)
     html_content = template.render(token=token)
 
     # 3. Формуємо параметри для Resend
-    # Важливо: Для тестового акаунту Resend дозволяє відправляти листи 
+    # Важливо: Для тестового акаунту Resend дозволяє відправляти листи
     # ТІЛЬКИ на ту пошту, на яку ти зареєстрував акаунт в Resend!
     # Відправник має бути 'onboarding@resend.dev'
     params: resend.Emails.SendParams = {
         "from": "onboarding@resend.dev",
-        "to": [email_to], 
+        "to": [email_to],
         "subject": subject,
         "html": html_content,
     }
@@ -44,6 +45,7 @@ def _send_email(email_to: str, token: str, action: str):
     # Виконуємо відправку
     response = resend.Emails.send(params)
     return response
+
 
 async def process_email_sending(email_to: str, token: str, action: str):
     """Асинхронна обгортка для нашого воркера."""

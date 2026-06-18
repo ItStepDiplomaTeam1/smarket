@@ -12,6 +12,7 @@ target_metadata = None — щоб alembic autogenerate не пропонував
 Якщо в майбутньому product_service матиме власні таблиці (наприклад, favorites, cart),
 їх потрібно оголошувати в окремому Base, НЕ змішуючи з ETL-моделями.
 """
+
 import asyncio
 import logging
 from logging.config import fileConfig

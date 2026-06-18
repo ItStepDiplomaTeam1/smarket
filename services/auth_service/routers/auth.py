@@ -145,7 +145,9 @@ async def register(
             max_age=_REFRESH_TOKEN_MAX_AGE,
         )
 
-        logger.success(f"Користувача {_mask_email(body.email)} успішно зареєстровано з ID: {inner_user.id}")
+        logger.success(
+            f"Користувача {_mask_email(body.email)} успішно зареєстровано з ID: {inner_user.id}"
+        )
         return RegisterResponse(
             access_token=access_token,
             token_type="bearer",
@@ -184,7 +186,9 @@ async def login(
     logger.info(f"Запит на авторизацію користувача з email: {_mask_email(body.email)}")
     token = _extract_bearer_token(request)
     if token and _is_invalid_token(token):
-        logger.warning(f"Спроба авторизації з невалідним токеном у заголовку для {_mask_email(body.email)}")
+        logger.warning(
+            f"Спроба авторизації з невалідним токеном у заголовку для {_mask_email(body.email)}"
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
@@ -195,7 +199,9 @@ async def login(
         user = await get_authenticated_user(db, body.email, body.password)
 
         if user is None:
-            logger.warning(f"Невдала спроба входу: неправильний пароль або email для {_mask_email(body.email)}")
+            logger.warning(
+                f"Невдала спроба входу: неправильний пароль або email для {_mask_email(body.email)}"
+            )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials",
@@ -233,8 +239,6 @@ async def login(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",
         ) from err
-
-
 
 
 @router.post("/refresh", response_model=TokenResponse, status_code=status.HTTP_200_OK)
@@ -277,8 +281,12 @@ async def refresh(request: Request, response: Response):
         )
 
     logger.info(f"Успішно оновлено токени для користувача з ID: {payload.get('sub')}")
-    new_access_token = create_access_token(payload["sub"], payload["role"], payload.get("email", "user@example.com"))
-    new_refresh_token = create_refresh_token(payload["sub"], payload["role"], payload.get("email", "user@example.com"))
+    new_access_token = create_access_token(
+        payload["sub"], payload["role"], payload.get("email", "user@example.com")
+    )
+    new_refresh_token = create_refresh_token(
+        payload["sub"], payload["role"], payload.get("email", "user@example.com")
+    )
 
     response.set_cookie(
         key="refresh_token",
@@ -316,6 +324,7 @@ async def logout(request: Request, response: Response):
             jti = payload.get("jti")
             if jti:
                 from datetime import UTC, datetime
+
                 exp_ts = payload.get("exp")
                 if exp_ts:
                     if isinstance(exp_ts, datetime):
@@ -338,6 +347,7 @@ async def logout(request: Request, response: Response):
 @router.get("/users/{user_id}")
 async def get_user_by_id(user_id: str, db: AsyncSession = Depends(get_db)):
     import uuid
+
     try:
         user_uuid = uuid.UUID(user_id)
     except ValueError as err:
@@ -353,10 +363,4 @@ async def get_user_by_id(user_id: str, db: AsyncSession = Depends(get_db)):
             detail="User not found",
         )
     username = user.email.split("@")[0] if "@" in user.email else user.email
-    return {
-        "id": str(user.id),
-        "email": user.email,
-        "username": username,
-        "role": user.role
-    }
-
+    return {"id": str(user.id), "email": user.email, "username": username, "role": user.role}

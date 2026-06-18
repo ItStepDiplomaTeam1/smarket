@@ -38,6 +38,7 @@ async def proxy_request(request: Request, path: str):
 #  Публічні роути (без токена) — проксуємо напряму до auth_service
 # ---------------------------------------------------------------
 
+
 @router.post("/register")
 async def register(request: Request):
     """Реєстрація нового користувача. Повертає access_token + встановлює httpOnly cookie з refresh_token."""
@@ -74,10 +75,13 @@ async def google_oauth(request: Request):
 #  а потім проксує до auth_service з оригінальним Authorization заголовком.
 # ---------------------------------------------------------------
 
+
 @router.get("/me")
 async def get_current_user(
     request: Request,
-    _: dict = Depends(verify_jwt),  # локальна перевірка токена — відсікаємо невалідні запити
+    _: dict = Depends(
+        verify_jwt
+    ),  # локальна перевірка токена — відсікаємо невалідні запити
 ):
     """
     Повертає дані поточного користувача з БД через auth_service.
@@ -91,4 +95,3 @@ async def get_current_user(
 async def get_user_by_id(request: Request, user_id: str):
     """Отримати інформацію про користувача за його ID (включаючи ім'я)."""
     return await proxy_request(request, f"users/{user_id}")
-
