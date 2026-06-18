@@ -71,6 +71,30 @@ function validateName(value: string): string {
 function validateEmail(value: string): string {
     if (!value) return 'Email є обов\'язковим.';
     if (!emailRegex.test(value)) return 'Будь ласка, введіть дійсний email.';
+    if (value.includes('..')) return 'Email не може містити дві крапки підряд.';
+
+    const parts = value.split('@');
+    if (parts.length === 2) {
+        const domain = parts[1].toLowerCase();
+        const domainName = domain.split('.')[0];
+        const tld = domain.split('.').slice(1).join('.');
+
+        // Popular domains typo prevention
+        const popularDomains = ['gmail', 'yahoo', 'hotmail', 'outlook', 'icloud'];
+        if (popularDomains.includes(domainName)) {
+            if (['c', 'co', 'con', 'comn', 'xom', 'cpm'].includes(tld)) {
+                return `Можливо, ви мали на увазі ${domainName}.com?`;
+            }
+            if (tld === 'ua' || tld === 'net') {
+                 // That's fine, although gmail.ua is rare, ukr.net is common.
+            }
+        }
+        
+        if (domainName === 'ukr' && ['ne', 'nrt', 'ner'].includes(tld)) {
+             return 'Можливо, ви мали на увазі ukr.net?';
+        }
+    }
+
     return '';
 }
 
