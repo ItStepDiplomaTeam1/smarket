@@ -17,7 +17,7 @@ export const useFetchCarts = () => {
     queryFn: async () => {
       const { data } = await apiClient.get('/api/v1/cart/');
       // Map backend response to CartListItem
-      return data.map((cart: any) => ({
+      return data.map((cart: { id: string; name: string; items?: unknown[]; total_price?: number; updated_at: string }) => ({
         id: cart.id,
         title: cart.name,
         itemsCount: cart.items?.length || 0,
@@ -31,7 +31,7 @@ export const useFetchCarts = () => {
 };
 
 export const useFetchCartDetails = (cartId: string | null) => {
-  return useQuery<any>({
+  return useQuery<CartDetailResponse | null>({
     queryKey: ['cart', cartId],
     queryFn: async () => {
       const { data } = await apiClient.get(`/api/v1/cart/${cartId}`);
@@ -40,7 +40,7 @@ export const useFetchCartDetails = (cartId: string | null) => {
       let comparisonData = [];
       try {
         const compRes = await apiClient.get(`/api/v1/cart/${cartId}/compare`);
-        comparisonData = compRes.data.map((c: any) => ({
+        comparisonData = compRes.data.map((c: { store_name: string; total_price: number; is_complete: boolean }) => ({
           storeName: c.store_name,
           totalPrice: c.total_price,
           isBest: c.is_complete,
@@ -57,7 +57,7 @@ export const useFetchCartDetails = (cartId: string | null) => {
         bestPrice: comparisonData[0]?.totalPrice || data.total_price,
         potentialSavings: 0,
         updatedAt: data.updated_at,
-        items: data.items.map((item: any) => ({
+        items: data.items.map((item: { product_id: string; product_name: string; quantity: number; price: number; id: string }) => ({
           productId: item.product_id,
           name: item.product_name,
           quantity: item.quantity,

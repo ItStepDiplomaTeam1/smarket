@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -39,11 +40,12 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
+    debug = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
     app = FastAPI(
         title="Auth Service",
         version="1.0.0",
-        docs_url="/docs",
-        redoc_url="/redoc",
+        docs_url="/docs" if debug else None,
+        redoc_url="/redoc" if debug else None,
         default_response_class=ORJSONResponse,
         lifespan=lifespan,
     )

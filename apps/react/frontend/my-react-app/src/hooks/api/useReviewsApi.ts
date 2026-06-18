@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/shared/api/apiClient';
+import { useAuthStore } from '@/modules/Auth/store/authStore';
 
 // -------------------------------------------------------
 //  Типи для відгуків (відповідають ReviewResponse з бекенду)
@@ -19,6 +20,7 @@ export interface ReviewCreatePayload {
   product_id: number;
   rating: number;
   text?: string;
+  user_name?: string;
 }
 
 // -------------------------------------------------------
@@ -47,17 +49,14 @@ export const useCreateReview = () => {
 
   return useMutation<Review, Error, ReviewCreatePayload>({
     mutationFn: async (payload) => {
-      // Gateway сам підставить user_id та user_name з JWT-токена,
-      // тому фронтенд передає лише тіло запиту
+      const userName = useAuthStore.getState().user?.name;
       const response = await apiClient.post<Review>(
         '/api/v1/reviews/',
-        payload
+        { ...payload, user_name: userName || undefined }
       );
       return response.data;
     },
     onSuccess: (data) => {
-      // Інвалідуємо кеш відгуків для цього товару,
-      // щоб список оновився без перезавантаження сторінки
       queryClient.invalidateQueries({ queryKey: ['reviews', data.product_id] });
     },
   });

@@ -12,6 +12,7 @@ target_metadata = None — щоб alembic autogenerate не пропонував
 Якщо в майбутньому product_service матиме власні таблиці (наприклад, favorites, cart),
 їх потрібно оголошувати в окремому Base, НЕ змішуючи з ETL-моделями.
 """
+
 import asyncio
 import logging
 from logging.config import fileConfig
@@ -51,6 +52,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        version_table="alembic_version_product",
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -58,7 +60,11 @@ def run_migrations_offline() -> None:
 
 def do_run_migrations(connection: Connection) -> None:
     """Функція для виконання самих міграцій."""
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        version_table="alembic_version_product",
+    )
     with context.begin_transaction():
         context.run_migrations()
 

@@ -14,6 +14,14 @@ class RegisterRequest(BaseModel):
             raise ValueError("Password must be at least 8 characters")
         if len(v.encode("utf-8")) > 72:
             raise ValueError("Password must be at most 72 bytes when UTF-8 encoded")
+        if not any(c.isupper() for c in v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not any(c.islower() for c in v):
+            raise ValueError("Password must contain at least one lowercase letter")
+        if not any(c.isdigit() for c in v):
+            raise ValueError("Password must contain at least one digit")
+        if not any(c in "!@#$%^&*()-_=+[]{}|;:,.<>?/~`" for c in v):
+            raise ValueError("Password must contain at least one special character")
         return v
 
 

@@ -19,7 +19,9 @@ router = APIRouter(default_response_class=ORJSONResponse)
     description="Повертає список магазинів, синхронізованих ETL-воркером із Zakaz.ua.",
 )
 async def get_stores(
-    retail_chain: Optional[str] = Query(None, description="Фільтр по мережі (auchan, novus, metro...)"),
+    retail_chain: Optional[str] = Query(
+        None, description="Фільтр по мережі (auchan, novus, metro...)"
+    ),
     city: Optional[str] = Query(None, description="Фільтр по місту"),
     is_active: Optional[bool] = Query(None, description="Тільки активні магазини"),
     skip: int = Query(0, ge=0),

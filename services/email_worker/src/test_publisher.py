@@ -2,10 +2,11 @@ import asyncio
 from faststream.rabbit import RabbitBroker
 from config import settings
 
+
 async def main():
     # 1. Створюємо брокер з тими ж налаштуваннями, що й у воркера
     broker = RabbitBroker(settings.rabbitmq_url)
-    
+
     # 2. Відкриваємо з'єднання (воркер робить це автоматично, а тут ми маємо викликати явно)
     await broker.connect()
 
@@ -16,13 +17,13 @@ async def main():
         {
             "email": "shevamax.ua@gmail.com",
             "token": "super-secret-token-123",
-            "action": "reset_password"
+            "action": "reset_password",
         },
-        queue="email_queue"
+        queue="email_queue",
     )
 
     print("Повідомлення успішно відправлено!")
-    
+
     # 4. Закриваємо з'єднання
     await broker.close()
 

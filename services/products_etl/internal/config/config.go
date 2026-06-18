@@ -58,11 +58,10 @@ func dotEnvCandidates() []string {
 	if exe, err := os.Executable(); err == nil {
 		exeDir := filepath.Dir(exe)
 		candidates = append(candidates,
-			filepath.Join(exeDir, ".env"),           // поруч з бінарником
+			filepath.Join(exeDir, ".env"),             // поруч з бінарником
 			filepath.Join(exeDir, "..", "..", ".env"), // два рівні вгору
 		)
 	}
 
 	return candidates
 }
-

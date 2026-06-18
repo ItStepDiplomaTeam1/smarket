@@ -223,17 +223,17 @@ type rawProduct struct {
 	SKU      string   `json:"sku"`
 	Title    string   `json:"title"`
 	EAN      string   `json:"ean"`
-	Price    float64  `json:"price"`       // ціна в КОПІЙКАХ (10890 = 108.90 грн)
-	OldPrice *float64 `json:"old_price"`   // стара ціна (плоске поле, fallback)
+	Price    float64  `json:"price"`     // ціна в КОПІЙКАХ (10890 = 108.90 грн)
+	OldPrice *float64 `json:"old_price"` // стара ціна (плоске поле, fallback)
 	InStock  bool     `json:"in_stock"`
 	Unit     string   `json:"unit"`
 	Weight   float64  `json:"weight"`
-	Brand    string   `json:"brand"`       // бренд (плоске поле, fallback)
+	Brand    string   `json:"brand"` // бренд (плоске поле, fallback)
 
 	// Вкладені об'єкти — API Zakaz.ua може повертати дані у вкладених структурах
-	Producer *rawProducer     `json:"producer"`
-	Discount *rawDiscount     `json:"discount"`
-	Img      json.RawMessage  `json:"img"` // може бути рядком або об'єктом
+	Producer *rawProducer    `json:"producer"`
+	Discount *rawDiscount    `json:"discount"`
+	Img      json.RawMessage `json:"img"` // може бути рядком або об'єктом
 }
 
 // resolvedBrand повертає бренд: спочатку плоске поле, потім producer.trademark.

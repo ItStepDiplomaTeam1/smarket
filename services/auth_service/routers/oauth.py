@@ -16,6 +16,7 @@ from services.auth_service.plugins.security.jwt_handler import (
     create_refresh_token,
 )
 from services.auth_service.plugins.security.secrets.load_secret import get_secret
+from services.auth_service.routers.auth import _mask_email
 from services.auth_service.shared.DTO import GoogleOAuthRequest, LoginResponse, UserResponse
 
 router = APIRouter(
@@ -112,7 +113,7 @@ async def oauth_google_login(
             detail="Google account has no email",
         )
 
-    logger.info(f"Google OAuth: запит від {email}")
+    logger.info(f"Google OAuth: запит від {_mask_email(email)}")
 
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
@@ -129,17 +130,21 @@ async def oauth_google_login(
         db.add(user)
         await db.commit()
         await db.refresh(user)
-        logger.success(f"Google OAuth: новий користувач {email} зареєстрований, ID: {user.id}")
+        logger.success(
+            f"Google OAuth: новий користувач {_mask_email(email)} зареєстрований, ID: {user.id}"
+        )
     else:
         if not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="User account is disabled",
             )
-        logger.info(f"Google OAuth: існуючий користувач {email} (ID: {user.id}) увійшов")
+        logger.info(
+            f"Google OAuth: існуючий користувач {_mask_email(email)} (ID: {user.id}) увійшов"
+        )
 
-    access_token = create_access_token(str(user.id), user.role)
-    refresh_token = create_refresh_token(str(user.id), user.role)
+    access_token = create_access_token(str(user.id), user.role, user.email)
+    refresh_token = create_refresh_token(str(user.id), user.role, user.email)
 
     response.set_cookie(
         key="refresh_token",
