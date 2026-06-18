@@ -85,3 +85,10 @@ async def get_current_user(
     потім проксує до /auth/me auth_service для отримання актуальних даних з БД.
     """
     return await proxy_request(request, "me")
+
+
+@router.get("/users/{user_id}")
+async def get_user_by_id(request: Request, user_id: str):
+    """Отримати інформацію про користувача за його ID (включаючи ім'я)."""
+    return await proxy_request(request, f"users/{user_id}")
+

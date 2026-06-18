@@ -25,3 +25,25 @@ async def get_current_user_id(
             detail="Direct access denied. Use API Gateway.",
         )
     return x_user_id
+
+
+async def require_admin(
+    x_user_id: str | None = Header(None, alias="X-User-Id"),
+    x_user_role: str | None = Header(None, alias="X-User-Role"),
+) -> str:
+    """
+    FastAPI dependency that ensures the request originates from the Gateway
+    with admin privileges. Second line of defense — the Gateway already checks
+    roles, but we verify here too to protect against direct access.
+    """
+    if not x_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Direct access denied. Use API Gateway.",
+        )
+    if x_user_role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin privileges required.",
+        )
+    return x_user_id

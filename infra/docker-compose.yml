@@ -2,11 +2,11 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: smarket
-      POSTGRES_PASSWORD: smarket
-      POSTGRES_DB: smarket
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-smarket}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_db_pass_123}
+      POSTGRES_DB: ${POSTGRES_DB:-smarket}
+    expose:
+      - "5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -22,8 +22,8 @@ services:
     build:
       context: ..
       dockerfile: services/auth_service/Dockerfile
-    ports:
-      - "8001:8001"
+    expose:
+      - "8001"
     env_file:
       - ../services/auth_service/.env
     depends_on:
@@ -71,8 +71,8 @@ services:
       - "sh"
       - "-c"
       - "granian --interface asgi --host 0.0.0.0 --port 8000 --workers 4 services.api.main:app"
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     env_file:
       - ../services/api/.env
     depends_on:
@@ -90,12 +90,12 @@ services:
       dockerfile: Dockerfile
     environment:
       - ENV=production
-      - RABBITMQ_URL=amqp://smarket:smarket@rabbitmq:5672/
-      - MONGO_URI=mongodb://mongodb:27017/
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/
+      - MONGO_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-secure_mongo_pass_123}@mongodb:27017/
     env_file:
       - ../services/products_etl/.env
-    ports:
-      - "8082:8082"
+    expose:
+      - "8082"
     depends_on:
       db:
         condition: service_healthy
@@ -111,8 +111,8 @@ services:
     build:
       context: ..
       dockerfile: services/product_service/DockerFile
-    ports:
-      - "8003:8000"
+    expose:
+      - "8000"
     env_file:
       - ../services/product_service/.env
     depends_on:
@@ -125,8 +125,11 @@ services:
   mongodb:
     image: mongo:8.3
     container_name: smarket-mongodb
-    ports:
-      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASS:-secure_mongo_pass_123}
+    expose:
+      - "27017"
     volumes:
       - mongodb_data:/data/db
     healthcheck:
@@ -142,12 +145,12 @@ services:
   rabbitmq:
     image: rabbitmq:3-management
     container_name: smarket-rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
+    expose:
+      - "5672"
+      - "15672"
     environment:
-      RABBITMQ_DEFAULT_USER: smarket
-      RABBITMQ_DEFAULT_PASS: smarket
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-smarket}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-secure_rmq_pass_123}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
@@ -162,8 +165,8 @@ services:
   redis:
     image: redis:7-alpine
     container_name: smarket-redis
-    ports:
-      - "6379:6379"
+    expose:
+      - "6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -179,7 +182,7 @@ services:
       context: ../services/email_worker
       dockerfile: Dockerfile
     environment:
-      - RABBITMQ_URL=amqp://smarket:smarket@rabbitmq:5672/
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/
     env_file:
       - ../services/email_worker/.env
     depends_on:
@@ -193,8 +196,8 @@ services:
     build:
       context: ..
       dockerfile: services/cart_service/DockerFile
-    ports:
-      - "8002:8002"
+    expose:
+      - "8002"
     env_file:
       - ../services/cart_service/.env
     depends_on:
@@ -208,8 +211,8 @@ services:
     build:
       context: ..
       dockerfile: services/reviews_service/Dockerfile
-    ports:
-      - "8004:8004"
+    expose:
+      - "8004"
     env_file:
       - ../services/reviews_service/.env
     depends_on:

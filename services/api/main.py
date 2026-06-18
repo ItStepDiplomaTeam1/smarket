@@ -1,3 +1,4 @@
+import os
 import uuid
 from contextlib import asynccontextmanager
 
@@ -11,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from services.api.database.services.models import Product
 from services.api.database.session import get_db
 from services.api.plugins.logger import setup_logger
+from services.api.plugins.security.proxy_auth import require_admin
 
 setup_logger()
 
@@ -36,9 +38,12 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
+    debug = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
     app = FastAPI(
         title="Product Core API",
         version="0.1.0",
+        docs_url="/docs" if debug else None,
+        redoc_url="/redoc" if debug else None,
         default_response_class=ORJSONResponse,
         lifespan=lifespan,
     )
@@ -54,7 +59,11 @@ def create_app() -> FastAPI:
         status_code=status.HTTP_201_CREATED,
         tags=["products"],
     )
-    async def add_product(body: ProductCreateRequest, db: AsyncSession = Depends(get_db)):
+    async def add_product(
+        body: ProductCreateRequest,
+        db: AsyncSession = Depends(get_db),
+        _admin: str = Depends(require_admin),
+    ):
         logger.info(f"Додавання нового продукту: {body.name}")
         try:
             new_product = Product(
@@ -79,7 +88,11 @@ def create_app() -> FastAPI:
             ) from e
 
     @app.delete("/products/{product_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["products"])
-    async def delete_product(product_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    async def delete_product(
+        product_id: uuid.UUID,
+        db: AsyncSession = Depends(get_db),
+        _admin: str = Depends(require_admin),
+    ):
         logger.info(f"Реквест на видалення продукту з ID: {product_id}")
 
         stmt = delete(Product).where(Product.id == product_id)

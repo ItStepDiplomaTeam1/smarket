@@ -61,22 +61,35 @@ async def proxy_reviews_protected(
     headers = dict(request.headers)
     headers.pop("host", None)
 
-    # Передаємо user_id та user_name з токена в query-параметри,
-    # як того очікує reviews_service
+    # Передаємо user_id та user_name з токена в заголовках X-User-Id та X-User-Name
     user_id = str(token_payload.get("sub"))
-    user_name = str(token_payload.get("name", "Користувач"))
+    user_name = token_payload.get("name")
 
-    # Додаємо user_id у query params (reviews_service очікує це)
-    params = dict(request.query_params)
-    params["user_id"] = user_id
-    params["user_name"] = user_name
+    if not user_name:
+        # Резервний варіант: запитуємо інформацію про користувача через auth_service
+        try:
+            auth_url = f"{settings.AUTH_SERVICE_URL}/auth/users/{user_id}"
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(auth_url, timeout=2.0)
+                if resp.status_code == 200:
+                    user_info = resp.json()
+                    user_name = user_info.get("username")
+        except Exception:
+            pass
+
+    if not user_name:
+        user_name = "Користувач"
+
+    # Додаємо user_id та user_name у заголовки (reviews_service очікує це)
+    headers["X-User-Id"] = user_id
+    headers["X-User-Name"] = user_name
 
     try:
         req = client.build_request(
             method=request.method,
             url=target_url,
             headers=headers,
-            params=params,
+            params=request.query_params,
             content=request.stream(),
         )
         response = await client.send(req, stream=True)

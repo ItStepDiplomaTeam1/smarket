@@ -1,0 +1,33 @@
+setup:
+  - project: smarket
+    config: dev_gateway
+    path: services/gateway
+
+  - project: smarket
+    config: dev_auth_service
+    path: services/auth_service
+
+  - project: smarket
+    config: dev_migration_api
+    path: services/api
+
+
+  - project: smarket
+    config: dev_products_etl
+    path: services/products_etl
+
+  - project: smarket
+    config: dev_product_service
+    path: services/product_service
+
+  - project: smarket
+    config: dev_email_worker
+    path: services/email_worker
+
+  - project: smarket
+    config: dev_cart_service
+    path: services/cart_service
+
+  - project: smarket
+    config: dev_reviews_service
+    path: services/reviews_service
