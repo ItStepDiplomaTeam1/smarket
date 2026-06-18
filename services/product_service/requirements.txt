@@ -1,6 +1,6 @@
 fastapi
 granian[reload]
-sqlalchemy
+SQLAlchemy>=2.0.0
 alembic
 asyncpg
 pydantic-settings

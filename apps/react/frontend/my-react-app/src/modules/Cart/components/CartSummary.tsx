@@ -47,39 +47,28 @@ export const CartSummary: React.FC = () => {
         <h3 className="font-medium text-gray-900 mb-3 text-sm">Порівняння магазинів</h3>
         <div className="flex flex-col gap-2">
           {activeCart.summary.comparison.map((store) => (
-            <div 
-              key={store.storeName}
-              className={`flex justify-between items-center p-3 rounded-lg border ${
-                store.isBest ? 'border-emerald-200 bg-emerald-50' : 'border-gray-100 bg-gray-50'
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <span className={`font-${store.isBest ? 'semibold text-gray-900' : 'medium text-gray-700'}`}>
-                  {store.storeName}
-                </span>
-                {store.isBest && (
-                  <span className="text-[10px] uppercase font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">
-                    Найкраща ціна
-                  </span>
-                )}
-              </div>
-              <span className={`font-${store.isBest ? 'bold text-emerald-700' : 'medium text-gray-700'}`}>
-                {store.totalPrice} грн
-              </span>
+            <div key={store.storeName} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+              <span className="text-[#6D8279] font-['Inter']">{store.storeName}</span>
+              <span className="font-semibold text-[#173B33] font-['Inter']">{store.totalPrice} ₴</span>
             </div>
           ))}
         </div>
       </div>
-
-      {/* Actions */}
-      <div className="flex flex-col gap-3 mt-2">
-        <button className="w-full py-3 bg-[#305C50] text-white rounded-lg font-medium hover:bg-[#25473e] transition-colors">
-          Зберегти кошик
-        </button>
-        <button className="w-full py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors">
-          Поділитися кошиком
-        </button>
+      
+      <div className="flex justify-between items-center py-4 mb-6 border-t border-gray-100">
+        <span className="font-bold font-['Inter'] text-[#173B33] text-lg">Найкраща ціна:</span>
+        <div className="text-right">
+          <div className="font-bold font-['Inter'] text-[#265447] text-2xl">{activeCart.bestPrice} ₴</div>
+          <div className="text-xs text-[#6D8279] font-['Inter'] mt-1">В {activeCart.bestStore}</div>
+        </div>
       </div>
+      
+      <button className="w-full py-3 bg-[#265447] text-white rounded-xl font-medium font-['Inter'] hover:bg-[#1A3E2F] transition-colors mb-3">
+        Створити список покупок
+      </button>
+      <button className="w-full py-3 border border-[#265447]/20 text-[#265447] rounded-xl font-medium font-['Inter'] hover:bg-[#F6FAF8] transition-colors">
+        Поділитися кошиком
+      </button>
       
       <p className="text-xs text-center text-gray-400 mt-2">
         Ціни є орієнтовними і можуть відрізнятися в залежності від обраного магазину

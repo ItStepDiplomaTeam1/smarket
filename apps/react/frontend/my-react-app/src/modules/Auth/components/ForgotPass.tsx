@@ -1,13 +1,10 @@
 import checkIcon from '@/shared/assets/checkgreen.svg';
 import logo from '@/shared/assets/logo.svg';
 import basketImage from '@/shared/assets/logindefault.svg';
-import { Header } from '@/shared/ui/Header';
-import { Footer } from '@/shared/ui/Footer';
 
 export function ForgotPass() {
     return (
         <section className="flex flex-col w-full min-h-screen bg-[#F6FAF8] font-inter">
-            <Header />
             <div className="flex flex-1 justify-center items-center p-[40px]">
 
             {/* MAIN CARD */}
@@ -75,8 +72,7 @@ export function ForgotPass() {
                     </div>
                 </div>
             </div>
-            </div>
-            <Footer />
+        </div>
         </section>
     );
 }

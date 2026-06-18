@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { Header } from '@/shared/ui/Header'
 import { ProductHero, About, FBT, SMProduct, Reviews, BottomCti } from '@/modules/Product'
 import { apiClient } from '@/shared/api/apiClient';
 import { type Product } from '@/modules/Product/type';
@@ -38,7 +37,6 @@ export default function ProductDetail() {
 
   return (
     <>
-      <Header />
       <ProductHero product={product} />
       <About product={product} />
       <FBT />
@@ -48,4 +46,3 @@ export default function ProductDetail() {
     </>
   )
 }
-
