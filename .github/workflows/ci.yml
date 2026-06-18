@@ -193,6 +193,37 @@ jobs:
       - name: Build
         run: npm run build --if-present || true
 
+  python-auto-format:
+    name: 🪄 Python Auto-Format
+    needs: detect
+    if: needs.detect.outputs.has_python == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install ruff
+        run: pip install ruff --quiet
+      - name: Format all python services
+        run: |
+          services="services/auth_service services/cart_service services/email_worker services/gateway services/product_service services/reviews_service"
+          for srv in $services; do
+            if [ -d "$srv" ]; then
+              echo "Formatting $srv..."
+              ruff check --fix "$srv" || true
+              ruff format "$srv" || true
+            fi
+          done
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "style: auto-format python code"
+
   python-quality:
     name: 🔍 Python Quality — ${{ matrix.service.name }}
     needs: detect
@@ -203,10 +234,18 @@ jobs:
       fail-fast: false
       matrix:
         service:
-          - path: services/api
-            name: api
           - path: services/auth_service
             name: auth_service
+          - path: services/cart_service
+            name: cart_service
+          - path: services/email_worker
+            name: email_worker
+          - path: services/gateway
+            name: gateway
+          - path: services/product_service
+            name: product_service
+          - path: services/reviews_service
+            name: reviews_service
 
     steps:
       - uses: actions/checkout@v4
@@ -257,10 +296,18 @@ jobs:
       fail-fast: false
       matrix:
         service:
-          - path: services/api
-            name: api
           - path: services/auth_service
             name: auth_service
+          - path: services/cart_service
+            name: cart_service
+          - path: services/email_worker
+            name: email_worker
+          - path: services/gateway
+            name: gateway
+          - path: services/product_service
+            name: product_service
+          - path: services/reviews_service
+            name: reviews_service
 
     steps:
       - uses: actions/checkout@v4
@@ -510,6 +557,7 @@ jobs:
       - detect
       - security
       - node-ci
+      - python-auto-format
       - python-quality
       - python-test
       - go-ci
