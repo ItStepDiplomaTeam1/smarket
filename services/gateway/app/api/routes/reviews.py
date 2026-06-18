@@ -64,7 +64,6 @@ async def proxy_reviews_protected(
     headers.pop("content-length", None)
     headers.pop("Content-Length", None)
 
-
     # Передаємо user_id та user_name з токена в заголовках X-User-Id та X-User-Name
     user_id = str(token_payload.get("sub"))
     user_name = token_payload.get("name")
