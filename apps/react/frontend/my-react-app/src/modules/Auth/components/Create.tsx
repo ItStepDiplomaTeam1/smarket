@@ -80,7 +80,9 @@ function validatePassword(value: string): string {
     if (!value) return 'Пароль є обов\'язковим.';
     if (value.length < 8) return 'Мінімум 8 символів.';
     if (!/[A-Z]/.test(value)) return 'Потрібна хоча б 1 велика літера.';
+    if (!/[a-z]/.test(value)) return 'Потрібна хоча б 1 мала літера.';
     if (!/\d/.test(value)) return 'Потрібна хоча б 1 цифра.';
+    if (!/[!@#$%^&*()\-_=+[\]{}|;:,.<>?/~`]/.test(value)) return 'Потрібен хоча б 1 спецсимвол.';
     return '';
 }
 
@@ -144,8 +146,17 @@ export function Create() {
                 });
                 return response.data;
             } catch (error) {
-                if (axios.isAxiosError(error) && error.response?.data?.message) {
-                    throw new Error(error.response.data.message, { cause: error });
+                if (axios.isAxiosError(error)) {
+                    if (error.response?.data?.detail) {
+                        const detail = error.response.data.detail;
+                        if (Array.isArray(detail) && detail.length > 0 && detail[0].msg) {
+                            throw new Error(detail[0].msg, { cause: error });
+                        } else if (typeof detail === 'string') {
+                            throw new Error(detail, { cause: error });
+                        }
+                    } else if (error.response?.data?.message) {
+                        throw new Error(error.response.data.message, { cause: error });
+                    }
                 }
                 throw new Error('Помилка реєстрації. Спробуйте ще раз.', { cause: error });
             }
