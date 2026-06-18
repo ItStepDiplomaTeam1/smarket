@@ -3,6 +3,11 @@ import { useParams } from 'react-router-dom';
 import { apiClient } from '../../../shared/api/apiClient';
 import { type Product } from '../type';
 import axios from 'axios';
+import { useAuthStore } from '@/modules/Auth/store/authStore';
+import { useFetchProductReviews } from '@/hooks/api/useReviewsApi';
+import zeroStar from '@/shared/assets/star-for-review.svg';
+
+
 
 import mainMilk from '@/shared/assets/milk.svg';
 import starIcon from '@/shared/assets/gold-star.svg';
@@ -16,20 +21,64 @@ export function ProductHero({ product }: ProductHeroProps) {
     const { id } = useParams<{ id: string }>();
     const productId = id || "dddb52b5-fce8-4fde-947d-25625a429690";
 
-    // --- СТЕЙТИ ---
     const [quantity, setQuantity] = useState<number>(1);
     const [isAdding, setIsAdding] = useState<boolean>(false);
 
-    // --- ЛОГІКА КНОПОК ---
+    const { user } = useAuthStore();
+    const userId = user?.id;
+
+    const targetId = product?.id || Number(productId) || 1;
+    const { data: reviews = [] } = useFetchProductReviews(targetId);
+
+    const reviewsCount = reviews.length;
+    const avgRating = reviewsCount > 0
+        ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviewsCount)
+        : 0;
+    const avgRatingDisplay = avgRating.toFixed(1);
+    const filledStarsAvg = Math.round(avgRating);
+
+    const getReviewsWord = (count: number) => {
+        const mod10 = count % 10;
+        const mod100 = count % 100;
+        if (mod100 >= 11 && mod100 <= 19) {
+            return 'відгуків';
+        }
+        if (mod10 === 1) {
+            return 'відгук';
+        }
+        if (mod10 >= 2 && mod10 <= 4) {
+            return 'відгуки';
+        }
+        return 'відгуків';
+    };
+
     const handleIncrease = () => setQuantity((prev) => prev + 1);
     const handleDecrease = () => setQuantity((prev) => (prev > 1 ? prev - 1 : 1));
 
     const handleAddToCart = async () => {
         const targetId = product?.id || productId;
 
+        if (!userId) {
+            alert('Будь ласка, увійдіть в систему, щоб додавати товари до кошика.');
+            return;
+        }
+
         try {
             setIsAdding(true);
-            await apiClient.post('/api/v1/cart/cart/items', {
+
+            let cartId = localStorage.getItem('cart_id');
+
+            if (!cartId) {
+                const cartResponse = await apiClient.post('/api/v1/cart/', {
+                    user_id: userId,
+                    name: "Default Cart" 
+                });
+                
+                cartId = cartResponse.data.id;
+                localStorage.setItem('cart_id', cartId!);
+            }
+
+            await apiClient.post(`/api/v1/cart/${cartId}/items`, {
                 product_id: targetId,
                 quantity: quantity
             });
@@ -38,15 +87,19 @@ export function ProductHero({ product }: ProductHeroProps) {
             setQuantity(1);
             
         } catch (error: unknown) {
-            // РОЗШИРЕНИЙ ВІДЛОВ ПОМИЛОК
             console.error('Повна помилка кошика:', error);
             if (axios.isAxiosError(error)) {
-                console.log('Відповідь бекенду:', error.response?.data);
-                const backendMessage = error.response?.data?.detail || error.response?.data?.message || 'Помилка мережі (CORS або бекенд недоступний)';
-                const statusCode = error.response?.status || 'Без коду';
-                alert(`Помилка: ${backendMessage}\nКод: ${statusCode}\n(Подивись консоль для деталей)`);
+                const detail = error.response?.data?.detail;
+                
+                if (Array.isArray(detail)) {
+                    const errorMessages = detail.map((err: any) => `Поле: [${err.loc.join(' -> ')}] | Проблема: ${err.msg}`).join('\n');
+                    alert(`Помилка даних (422):\n${errorMessages}`);
+                } else {
+                    const backendMessage = detail || error.response?.data?.message || 'Помилка мережі';
+                    alert(`Помилка: ${backendMessage}\nКод: ${error.response?.status}`);
+                }
             } else {
-                alert(`Помилка: Невідома помилка\n(Подивись консоль для деталей)`);
+                alert(`Помилка: Невідома помилка`);
             }
         } finally {
             setIsAdding(false);
@@ -61,7 +114,6 @@ export function ProductHero({ product }: ProductHeroProps) {
         );
     }
 
-    // --- ГРУПУВАННЯ ЦІН ПО МАГАЗИНАХ (ОСТАННЯ ЗА ЧАСОМ) ---
     const getLatestPrices = () => {
         if (!product.prices || product.prices.length === 0) return [];
         const latestMap: Record<string, typeof product.prices[0]> = {};
@@ -169,11 +221,16 @@ export function ProductHero({ product }: ProductHeroProps) {
                             <div className="flex items-center gap-[8px] font-inter">
                                 <div className="flex gap-[4px]">
                                     {[0, 1, 2, 3, 4].map(i => (
-                                        <img key={i} src={starIcon} alt="star" className="w-[16px] h-[16px]" />
+                                        <img 
+                                            key={i} 
+                                            src={i < filledStarsAvg ? starIcon : zeroStar} 
+                                            alt="star" 
+                                            className="w-[16px] h-[16px]" 
+                                        />
                                     ))}
                                 </div>
                                 <span className="text-[13px] font-normal leading-[19.5px] text-[#6D8279]">
-                                    <strong className="font-semibold text-[#265447]">4.8</strong> · 12 відгуків
+                                    <strong className="font-semibold text-[#265447]">{avgRatingDisplay}</strong> · {reviewsCount} {getReviewsWord(reviewsCount)}
                                 </span>
                             </div>
                         </div>
