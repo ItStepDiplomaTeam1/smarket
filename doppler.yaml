@@ -8,11 +8,6 @@ setup:
     path: services/auth_service
 
   - project: smarket
-    config: dev_migration_api
-    path: services/api
-
-
-  - project: smarket
     config: dev_products_etl
     path: services/products_etl
 

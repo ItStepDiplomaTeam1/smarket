@@ -51,11 +51,11 @@ services:
   migration_job:
     build:
       context: ..
-      dockerfile: services/api/Dockerfile
+      dockerfile: services/auth_service/Dockerfile
     command: >
-      sh -c "cd /app/services/api && alembic upgrade head && cd /app && python -m services.api.seed_data"
+      sh -c "cd /app/services/auth_service && alembic upgrade head"
     env_file:
-      - ../services/api/.env
+      - ../services/auth_service/.env
     depends_on:
       db:
         condition: service_healthy
@@ -63,25 +63,6 @@ services:
     networks:
       - smarket-network
 
-  business_logic_service:
-    build:
-      context: ..
-      dockerfile: services/api/Dockerfile
-    command:
-      - "sh"
-      - "-c"
-      - "granian --interface asgi --host 0.0.0.0 --port 8000 --workers 4 services.api.main:app"
-    expose:
-      - "8000"
-    env_file:
-      - ../services/api/.env
-    depends_on:
-      db:
-        condition: service_healthy
-      migration_job:
-        condition: service_completed_successfully
-    networks:
-      - smarket-network
 
   products_etl:
     platform: linux/amd64   # явно фіксуємо x86_64, щоб уникнути "exec format error" на будь-конкретному хості
