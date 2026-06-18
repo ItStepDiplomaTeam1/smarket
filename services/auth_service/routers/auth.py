@@ -45,10 +45,7 @@ def _mask_email(email: str) -> str:
     if "@" not in email:
         return "***"
     local, domain = email.rsplit("@", 1)
-    if len(local) <= 2:
-        masked_local = local[0] + "***"
-    else:
-        masked_local = local[0] + "***" + local[-1]
+    masked_local = local[0] + "***" if len(local) <= 2 else local[0] + "***" + local[-1]
     return f"{masked_local}@{domain}"
 
 
@@ -166,13 +163,13 @@ async def register(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email already registered",
         ) from err
-    except Exception:
+    except Exception as err:
         await db.rollback()
         logger.exception("Критична помилка під час реєстрації користувача")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",
-        )
+        ) from err
 
 
 @router.post("/login", response_model=LoginResponse, status_code=status.HTTP_200_OK)
@@ -230,13 +227,14 @@ async def login(
 
     except HTTPException:
         raise
-    except Exception:
+    except Exception as err:
         logger.exception("Критична помилка під час входу користувача")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",
-        )
-    
+        ) from err
+
+
 
 
 @router.post("/refresh", response_model=TokenResponse, status_code=status.HTTP_200_OK)
@@ -342,11 +340,11 @@ async def get_user_by_id(user_id: str, db: AsyncSession = Depends(get_db)):
     import uuid
     try:
         user_uuid = uuid.UUID(user_id)
-    except ValueError:
+    except ValueError as err:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid user ID format",
-        )
+        ) from err
     result = await db.execute(select(User).where(User.id == user_uuid))
     user = result.scalar_one_or_none()
     if not user:
