@@ -85,13 +85,13 @@ export const CartSavedList: React.FC = () => {
             
             <div className="flex justify-between items-end">
               <div>
-                <div className="text-xs text-[#6D8279] font-['Inter'] mb-1">Економія {cart.potentialSavings} ₴</div>
+                <div className="text-xs text-[#6D8279] font-['Inter'] mb-1">Економія {Number(cart.potentialSavings).toFixed(2)} ₴</div>
                 <div className="inline-flex items-center px-2 py-1 bg-[#ffcc00]/20 text-[#173B33] text-xs font-bold rounded">
                   {cart.bestStore}
                 </div>
               </div>
               <div className="font-[600] font-['Inter'] text-lg text-[#173B33]">
-                {cart.bestPrice} ₴
+                {Number(cart.bestPrice).toFixed(2)} ₴
               </div>
             </div>
           </div>

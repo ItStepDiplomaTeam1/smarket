@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { apiClient } from '../../../shared/api/apiClient';
 import { type Product } from '../type';
@@ -6,6 +6,8 @@ import axios from 'axios';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { useFetchProductReviews } from '@/hooks/api/useReviewsApi';
 import zeroStar from '@/shared/assets/star-for-review.svg';
+import { useFetchCarts, useUpdateCartItem } from '@/hooks/api/useCartApi';
+import { useCartStore } from '@/modules/Cart/store/useCartStore';
 
 
 
@@ -21,10 +23,25 @@ export function ProductHero({ product }: ProductHeroProps) {
     const { id } = useParams<{ id: string }>();
     const productId = id || "dddb52b5-fce8-4fde-947d-25625a429690";
 
+    const { isAuthenticated, user } = useAuthStore();
+    const { data: carts } = useFetchCarts();
+    const { mutateAsync: updateCartItem } = useUpdateCartItem();
+    const { activeCartId } = useCartStore();
+
     const [quantity, setQuantity] = useState<number>(1);
     const [isAdding, setIsAdding] = useState<boolean>(false);
+    const [selectedCart, setSelectedCart] = useState<string | null>(null);
 
-    const { user } = useAuthStore();
+    useEffect(() => {
+        if (carts && carts.length > 0) {
+            if (activeCartId && carts.find(c => c.id === activeCartId)) {
+                setSelectedCart(activeCartId);
+            } else {
+                setSelectedCart(carts[0].id);
+            }
+        }
+    }, [carts, activeCartId]);
+
     const userId = user?.id;
 
     const targetId = product?.id || Number(productId) || 1;
@@ -58,6 +75,13 @@ export function ProductHero({ product }: ProductHeroProps) {
     const handleAddToCart = async () => {
         const targetId = product?.id || productId;
 
+        if (isAuthenticated && carts && carts.length > 1 && !selectedCart) {
+            alert('Будь ласка, оберіть кошик');
+            return;
+        }
+
+        const targetCartId = selectedCart || (carts && carts[0]?.id);
+
         if (!userId) {
             alert('Будь ласка, увійдіть в систему, щоб додавати товари до кошика.');
             return;
@@ -66,22 +90,27 @@ export function ProductHero({ product }: ProductHeroProps) {
         try {
             setIsAdding(true);
 
-            let cartId = localStorage.getItem('cart_id');
-
-            if (!cartId) {
-                const cartResponse = await apiClient.post('/api/v1/cart/', {
-                    user_id: userId,
-                    name: "Default Cart" 
+            if (isAuthenticated && targetCartId) {
+                await updateCartItem({
+                    cartId: targetCartId,
+                    productId: String(targetId),
+                    quantity: quantity
                 });
-                
-                cartId = cartResponse.data.id;
-                localStorage.setItem('cart_id', cartId!);
+            } else {
+                let cartId = localStorage.getItem('cart_id');
+                if (!cartId) {
+                    const cartResponse = await apiClient.post('/api/v1/cart/', {
+                        user_id: userId,
+                        name: "Default Cart" 
+                    });
+                    cartId = cartResponse.data.id;
+                    localStorage.setItem('cart_id', cartId!);
+                }
+                await apiClient.post(`/api/v1/cart/${cartId}/items`, {
+                    product_id: targetId,
+                    quantity: quantity
+                });
             }
-
-            await apiClient.post(`/api/v1/cart/${cartId}/items`, {
-                product_id: targetId,
-                quantity: quantity
-            });
             
             alert('Товар успішно додано до кошика!');
             setQuantity(1);
@@ -284,7 +313,7 @@ export function ProductHero({ product }: ProductHeroProps) {
                             {/* ДОДАТИ В КОШИК */}
                             <button 
                                 onClick={handleAddToCart}
-                                disabled={isAdding || !primaryPriceObj?.in_stock}
+                                disabled={isAdding || !primaryPriceObj?.in_stock || (isAuthenticated && carts && carts.length > 1 && !selectedCart)}
                                 className="h-[44px] px-[24px] rounded-[10px] border-none bg-[#265447] font-inter text-[13px] font-semibold text-white whitespace-nowrap cursor-pointer transition-colors duration-200 hover:bg-[#1A3E2F] disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isAdding ? 'Додаємо...' : 'Додати до кошика'}
@@ -295,9 +324,32 @@ export function ProductHero({ product }: ProductHeroProps) {
                             </button>
                         </div>
 
-                        <p className="max-w-[480px] m-0 mb-[32px] font-inter text-[12px] leading-[18px] text-[#6D8279]">
+                        <p className="max-w-[480px] m-0 mb-[16px] font-inter text-[12px] leading-[18px] text-[#6D8279]">
                             Ціни можуть відрізнятися залежно від магазину та часу оновлення.
                         </p>
+
+                        {/* Блок вибору кошика (якщо кошиків більше одного) */}
+                        {isAuthenticated && carts && carts.length > 1 && (
+                            <div className="flex flex-col gap-[8px] mb-[32px] max-w-[320px]">
+                                <label className="font-inter text-[13px] font-semibold text-[#173B33]">
+                                    Оберіть кошик для додавання:
+                                </label>
+                                <select 
+                                    className="h-[44px] px-[16px] rounded-[10px] border border-[rgba(38,84,71,0.16)] bg-white font-inter text-[13px] text-[#173B33] outline-none"
+                                    value={selectedCart || ''}
+                                    onChange={(e) => setSelectedCart(e.target.value)}
+                                >
+                                    <option value="" disabled>-- Оберіть кошик --</option>
+                                    {carts.map(c => (
+                                        <option key={c.id} value={c.id}>{c.title}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+                        {/* Відступ для віджета, якщо немає вибору кошика */}
+                        {!(isAuthenticated && carts && carts.length > 1) && (
+                            <div className="mb-[32px]"></div>
+                        )}
 
                         {/* Віджет порівняння цін */}
                         <div className="flex flex-col gap-[16px] p-[24px] rounded-[16px] border border-[rgba(38,84,71,0.08)] bg-white">
