@@ -28,7 +28,7 @@ export const CartSummary: React.FC = () => {
         </div>
         <div className="flex justify-between">
           <span className="text-gray-500">Орієнтовна сума</span>
-          <span className="font-medium">{activeCart.bestPrice} грн</span>
+          <span className="font-medium">{Number(activeCart.bestPrice).toFixed(2)} грн</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-500">Найвигідніший магазин</span>
@@ -37,7 +37,7 @@ export const CartSummary: React.FC = () => {
         <div className="flex justify-between items-center pt-2 border-t border-gray-100">
           <span className="font-medium text-gray-900">Можлива економія</span>
           <span className="px-2 py-1 bg-[#ffcc00] text-yellow-900 font-bold rounded">
-            {activeCart.summary.maxPossibleSavings} грн
+            {Number(activeCart.summary.maxPossibleSavings).toFixed(2)} грн
           </span>
         </div>
       </div>
@@ -49,7 +49,7 @@ export const CartSummary: React.FC = () => {
           {activeCart.summary.comparison.map((store) => (
             <div key={store.storeName} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
               <span className="text-[#6D8279] font-['Inter']">{store.storeName}</span>
-              <span className="font-semibold text-[#173B33] font-['Inter']">{store.totalPrice} ₴</span>
+              <span className="font-semibold text-[#173B33] font-['Inter']">{Number(store.totalPrice).toFixed(2)} ₴</span>
             </div>
           ))}
         </div>
@@ -58,7 +58,7 @@ export const CartSummary: React.FC = () => {
       <div className="flex justify-between items-center py-4 mb-6 border-t border-gray-100">
         <span className="font-bold font-['Inter'] text-[#173B33] text-lg">Найкраща ціна:</span>
         <div className="text-right">
-          <div className="font-bold font-['Inter'] text-[#265447] text-2xl">{activeCart.bestPrice} ₴</div>
+          <div className="font-bold font-['Inter'] text-[#265447] text-2xl">{Number(activeCart.bestPrice).toFixed(2)} ₴</div>
           <div className="text-xs text-[#6D8279] font-['Inter'] mt-1">В {activeCart.bestStore}</div>
         </div>
       </div>
