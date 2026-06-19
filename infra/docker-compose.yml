@@ -1,23 +1,4 @@
 services:
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-smarket}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_db_pass_123}
-      POSTGRES_DB: ${POSTGRES_DB:-smarket}
-    expose:
-      - "5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U smarket -d smarket" ]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
-    networks:
-      - smarket-network
-
   auth_service:
     build:
       context: ..
@@ -27,8 +8,6 @@ services:
     env_file:
       - ../services/auth_service/.env
     depends_on:
-      db:
-        condition: service_healthy
       auth_migration_job:
         condition: service_completed_successfully # Ждём завершения Alembic-миграций
     networks:
@@ -42,9 +21,7 @@ services:
       - "8080:8080"
     env_file:
       - ../services/gateway/.env
-    depends_on:
-      db:
-        condition: service_healthy
+
     networks:
       - smarket-network
 
@@ -56,9 +33,7 @@ services:
       sh -c "cd /app/services/auth_service && alembic upgrade head"
     env_file:
       - ../services/auth_service/.env
-    depends_on:
-      db:
-        condition: service_healthy
+
     restart: "no"
     networks:
       - smarket-network
@@ -71,9 +46,7 @@ services:
       sh -c "cd /app/services/cart_service && alembic upgrade head"
     env_file:
       - ../services/cart_service/.env
-    depends_on:
-      db:
-        condition: service_healthy
+
     restart: "no"
     networks:
       - smarket-network
@@ -86,9 +59,7 @@ services:
       sh -c "cd /app/services/product_service && alembic upgrade head"
     env_file:
       - ../services/product_service/.env
-    depends_on:
-      db:
-        condition: service_healthy
+
     restart: "no"
     networks:
       - smarket-network
@@ -101,9 +72,7 @@ services:
       sh -c "cd /app/services/reviews_service && alembic upgrade head"
     env_file:
       - ../services/reviews_service/.env
-    depends_on:
-      db:
-        condition: service_healthy
+
     restart: "no"
     networks:
       - smarket-network
@@ -123,8 +92,6 @@ services:
     expose:
       - "8082"
     depends_on:
-      db:
-        condition: service_healthy
       rabbitmq:
         condition: service_healthy
       mongodb:
@@ -142,8 +109,6 @@ services:
     env_file:
       - ../services/product_service/.env
     depends_on:
-      db:
-        condition: service_healthy
       product_migration_job:
         condition: service_completed_successfully
     restart: on-failure
@@ -229,8 +194,6 @@ services:
     env_file:
       - ../services/cart_service/.env
     depends_on:
-      db:
-        condition: service_healthy
       cart_migration_job:
         condition: service_completed_successfully
     restart: on-failure
@@ -246,8 +209,6 @@ services:
     env_file:
       - ../services/reviews_service/.env
     depends_on:
-      db:
-        condition: service_healthy
       reviews_migration_job:
         condition: service_completed_successfully
     restart: on-failure
@@ -255,7 +216,6 @@ services:
       - smarket-network
 
 volumes:
-  postgres_data:
   rabbitmq_data:
   mongodb_data:
 

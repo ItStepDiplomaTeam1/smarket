@@ -13,7 +13,7 @@ import (
 //
 // Таблиці ETL-бази (окрема від основного додатку):
 //   - stores                  — магазини з Zakaz.ua
-//   - store_categories_mapping — маппинг slug категорії → internal ID
+//   - categories              — плоский список категорій верхнього рівня з Zakaz (slug + name)
 //   - products                — глобальний каталог товарів (дедупліковано по EAN)
 //   - prices                  — іммутабельний лог цін
 //   - store_products          — зв'язок товарів з магазинами
@@ -37,12 +37,13 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 				)`,
 		},
 		{
-			name: "create store_categories_mapping",
+			name: "create categories",
 			sql: `
-				CREATE TABLE IF NOT EXISTS store_categories_mapping (
-					id                    SERIAL  PRIMARY KEY,
-					slug                  TEXT    UNIQUE NOT NULL,  -- slug категорії з API (наприклад "fresh-meat")
-					canonical_category_id INTEGER NOT NULL           -- наш внутрішній ID (наприклад 15)
+				CREATE TABLE IF NOT EXISTS categories (
+					id         SERIAL      PRIMARY KEY,
+					slug       TEXT        UNIQUE NOT NULL,   -- slug верхнього рівня з API Zakaz (напр. "fresh-meat")
+					name       TEXT        NOT NULL,          -- українська назва з поля title (напр. "Свіже м'ясо")
+					created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 				)`,
 		},
 		{
@@ -208,6 +209,50 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 				ALTER TABLE store_products
 					ADD COLUMN IF NOT EXISTS last_seen_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 			`,
+		},
+		// ---------------------------------------------------------------
+		// Переробка системи категорій (див. docs/categories-reworking-plan.md).
+		// ---------------------------------------------------------------
+		{
+			// Перетворюємо products.canonical_category_id на FK → categories(id).
+			// Стара колонка була голим INTEGER зі значеннями-сміттям (999).
+			// Охоронний блок: повторне додавання FK виконується лише якщо
+			// FK-обмеження на categories ще відсутнє — завдяки цьому міграція
+			// ідемпотентна і не затирає категорії товарів при кожному старті.
+			name: "products.canonical_category_id FK to categories",
+			sql: `
+				DO $$
+				BEGIN
+					IF NOT EXISTS (
+						SELECT 1
+						FROM information_schema.table_constraints tc
+						JOIN information_schema.key_column_usage kcu
+						  ON tc.constraint_name = kcu.constraint_name
+						 AND tc.table_schema  = kcu.table_schema
+						JOIN information_schema.constraint_column_usage ccu
+						  ON ccu.constraint_name = tc.constraint_name
+						 AND ccu.table_schema   = tc.table_schema
+						WHERE tc.table_name      = 'products'
+						  AND tc.constraint_type = 'FOREIGN KEY'
+						  AND kcu.column_name    = 'canonical_category_id'
+						  AND ccu.table_name     = 'categories'
+					) THEN
+						-- Скидаємо сміття (999 та інші «привиди») перед DROP колонки.
+						UPDATE products SET canonical_category_id = NULL
+							WHERE canonical_category_id IS NOT NULL;
+						ALTER TABLE products DROP COLUMN IF EXISTS canonical_category_id;
+						ALTER TABLE products
+							ADD COLUMN canonical_category_id INTEGER
+							REFERENCES categories(id) ON DELETE SET NULL;
+					END IF;
+				END $$;
+			`,
+		},
+		{
+			// Стара таблиця-маппінг більше не потрібна: slug тепер живе у categories.slug,
+			// а products.canonical_category_id — це FK на categories(id).
+			name: "drop store_categories_mapping",
+			sql:  `DROP TABLE IF EXISTS store_categories_mapping`,
 		},
 	}
 

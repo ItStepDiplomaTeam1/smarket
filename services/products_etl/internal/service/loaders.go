@@ -30,7 +30,8 @@ type ETLTask struct {
 // API віддає голий масив: [{"id": "fresh-meat", ...}, ...].
 // Поле називається "id", а не "slug" — саме воно використовується як slug у URL продуктів.
 type categoryItem struct {
-	Slug string `json:"id"` // в API це поле "id", але семантично — slug для URL
+	Slug  string `json:"id"`    // в API це поле "id", але семантично — slug для URL
+	Title string `json:"title"` // українська назва категорії (напр. "Свіже м'ясо")
 }
 
 // productsPageMeta — мінімальні поля сторінки продуктів (для пагінації).
@@ -213,8 +214,11 @@ func updatedRunExtractLoad(storeID string, mongoDB *mongo.Database) error {
 		}(w)
 	}
 
-	for _, slug := range slugs {
-		jobs <- slug
+	for _, c := range slugs {
+		if c.Slug == "" {
+			continue
+		}
+		jobs <- c.Slug
 	}
 
 	close(jobs)
@@ -257,9 +261,11 @@ func saveCompletionMarker(collection *mongo.Collection, storeID string, startedA
 // Допоміжні функції — HTTP-запити до Zakaz.ua API
 // ---------------------------------------------------------------------------
 
-// fetchCategorySlugs повертає плоский список slug-ів усіх категорій магазину.
-// Zakaz.ua API повертає голий JSON-масив: [{"slug":"fruits",...}, ...]
-func fetchCategorySlugs(storeID string) ([]string, error) {
+// fetchCategorySlugs повертає плоский список категорій магазину (лише верхній рівень).
+// Zakaz.ua API повертає голий JSON-масив: [{"id":"fruits","title":"Фрукти",...}, ...]
+// Кожен елемент містить slug (поле "id") та українську назву (поле "title").
+// Обхід children не виконується — категорії зберігаємо плоским списком.
+func fetchCategorySlugs(storeID string) ([]categoryItem, error) {
 	url := fmt.Sprintf("https://stores-api.zakaz.ua/stores/%s/categories/", storeID)
 
 	resp, err := usefulMethods.MakeRequest("GET", url, nil, true)
@@ -283,13 +289,7 @@ func fetchCategorySlugs(storeID string) ([]string, error) {
 		return nil, fmt.Errorf("розбір JSON категорій: %w", err)
 	}
 
-	slugs := make([]string, 0, len(categories))
-	for _, item := range categories {
-		if item.Slug != "" {
-			slugs = append(slugs, item.Slug)
-		}
-	}
-	return slugs, nil
+	return categories, nil
 }
 
 // fetchAndStoreAllPages пробігає всі сторінки однієї категорії та зберігає

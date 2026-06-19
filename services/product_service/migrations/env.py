@@ -2,7 +2,7 @@
 migrations/env.py — конфігурація Alembic для product_service.
 
 ВАЖЛИВО: product_service є READ-ONLY клієнтом спільної бази даних.
-Таблиці products, prices, stores, store_categories_mapping СТВОРЮЄ та УПРАВЛЯЄ ними
+Таблиці products, prices, stores, categories СТВОРЮЄ та УПРАВЛЯЄ ними
 ETL-воркер (products_etl, Go) через database/migrate.go.
 
 Alembic у цьому сервісі НЕ повинен торкатися ETL-таблиць.

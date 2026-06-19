@@ -90,6 +90,89 @@ func SeedStores(ctx context.Context, pool *pgxpool.Pool) error {
 }
 
 // ---------------------------------------------------------------------------
+// SeedCategories — завантажує категорії верхнього рівня з Zakaz.ua та зберігає в БД
+// ---------------------------------------------------------------------------
+
+// SeedCategories обходить усі активні магазини, завантажує їхні верхньорівневі
+// категорії та виконує UPSERT у таблицю categories.
+//
+// Слаги категорій у Zakaz.ua є специфічними для кожної мережі (напр.
+// "fruits-and-vegetables-auchan", "fruits-and-vegetables-novus"), тому для
+// отримання назв усіх категорій потрібно обійти всі активні магазини.
+//
+// Логіка:
+//   - INSERT ... ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name —
+//     гарантує актуальність української назви при зміні title в API Zakaz.
+//   - Нові слаги, створені ліниво у ResolveCategoryID з порожнім name,
+//     заповнюються тут при наступному старті сервісу.
+//
+// Викликається після SeedStores (потребує хоча б одного active store).
+func SeedCategories(ctx context.Context, pool *pgxpool.Pool) error {
+	log.Println("[seed] Синхронізація категорій із Zakaz.ua...")
+
+	// Слаги специфічні для мережі — обходимо всі активні магазини.
+	rows, err := pool.Query(ctx,
+		`SELECT external_id FROM stores WHERE is_active = true ORDER BY external_id`,
+	)
+	if err != nil {
+		return fmt.Errorf("отримання активних магазинів: %w", err)
+	}
+	defer rows.Close()
+
+	var storeIDs []string
+	for rows.Next() {
+		var sid string
+		if err := rows.Scan(&sid); err != nil {
+			return fmt.Errorf("scan store_id: %w", err)
+		}
+		storeIDs = append(storeIDs, sid)
+	}
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("after store rows: %w", err)
+	}
+	if len(storeIDs) == 0 {
+		return fmt.Errorf("немає активних магазинів для сайду категорій")
+	}
+	log.Printf("[seed] Сид категорій: %d активних магазинів", len(storeIDs))
+
+	totalInserted, totalUpdated := 0, 0
+	for _, storeID := range storeIDs {
+		categories, err := fetchCategorySlugs(storeID)
+		if err != nil {
+			log.Printf("[seed] WARN: не вдалось отримати категорії для магазину %s: %v", storeID, err)
+			continue
+		}
+		log.Printf("[seed] Магазин %s: отримано %d категорій", storeID, len(categories))
+
+		for _, c := range categories {
+			if c.Slug == "" {
+				continue
+			}
+
+			const query = `
+				INSERT INTO categories (slug, name) VALUES ($1, $2)
+				ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
+			`
+			tag, err := pool.Exec(ctx, query, c.Slug, c.Title)
+			if err != nil {
+				log.Printf("[seed] WARN: не вдалось зберегти категорію %s: %v", c.Slug, err)
+				continue
+			}
+
+			// RowsAffected = 1 — insert, 2 — update (postgres UPSERT поведінка)
+			if tag.RowsAffected() == 1 {
+				totalInserted++
+			} else {
+				totalUpdated++
+			}
+		}
+	}
+
+	log.Printf("[seed] ✓ Категорії синхронізовано: %d нових, %d оновлено.", totalInserted, totalUpdated)
+	return nil
+}
+
+// ---------------------------------------------------------------------------
 // fetchAllStores — HTTP-запит до GET /stores/
 // ---------------------------------------------------------------------------
 

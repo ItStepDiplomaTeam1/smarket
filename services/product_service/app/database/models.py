@@ -7,7 +7,7 @@ Alembic-міграції в цьому сервісі НЕ повинні ств
 
 Схема таблиць відповідає database/migrate.go із products_etl:
   - stores                   (PRIMARY KEY: external_id TEXT)
-  - store_categories_mapping (slug → canonical_category_id)
+  - categories               (slug → name; плоский список верхнього рівня з Zakaz)
   - products                 (PRIMARY KEY: BIGSERIAL id, UNIQUE ean)
   - prices                   (лог цін: product_id → store_id → price)
   - store_products           (зв'язок товар ↔ магазин)
@@ -62,17 +62,25 @@ class Store(Base):
     )
 
 
-class StoreCategoryMapping(Base):
+class Category(Base):
     """
-    Маппінг: slug категорії з API Zakaz → наш внутрішній canonical_category_id.
-    Наповнюється ETL-воркером при першому зіткненні з новою категорією.
+    Категорія товару з Zakaz.ua (плоский список верхнього рівня).
+    Наповнюється ETL-воркером: SeedCategories (при старті) + ліниве створення
+    у ResolveCategoryID при зустрічі нового slug.
     """
 
-    __tablename__ = "store_categories_mapping"
+    __tablename__ = "categories"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     slug: Mapped[str] = mapped_column(String, unique=True, nullable=False)
-    canonical_category_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        "created_at", DateTime(timezone=True), nullable=False
+    )
+
+    products: Mapped[list["Product"]] = relationship(
+        "Product", back_populates="category"
+    )
 
 
 class Product(Base):
@@ -96,7 +104,9 @@ class Product(Base):
     unit: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     weight: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     image_url: Mapped[Optional[str]] = mapped_column("image_url", Text, nullable=True)
-    canonical_category_id: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    canonical_category_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey("categories.id", ondelete="SET NULL"), nullable=True
+    )
     # ID магазину, до якого прив'язаний товар без EAN.
     # Для товарів з EAN це поле NULL (вони глобальні та можуть бути у будь-якому магазині).
     store_id: Mapped[Optional[str]] = mapped_column(
@@ -109,6 +119,9 @@ class Product(Base):
     prices: Mapped[list["Price"]] = relationship("Price", back_populates="product")
     store_products: Mapped[list["StoreProduct"]] = relationship(
         "StoreProduct", back_populates="product"
+    )
+    category: Mapped[Optional["Category"]] = relationship(
+        "Category", back_populates="products"
     )
 
 
