@@ -123,6 +123,3 @@ class ProductFilters(BaseModel):
     search: Optional[str] = None
     skip: int = 0
     limit: int = 100
-
-
-

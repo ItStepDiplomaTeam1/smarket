@@ -112,12 +112,16 @@ async def get_products_by_store(
     )
 
     # Основний запит: товари, які є у цьому магазині (через store_products)
-    stmt = select(Product).options(selectinload(Product.category)).join(
-        StoreProduct,
-        and_(
-            StoreProduct.product_id == Product.id,
-            StoreProduct.store_id == store_id,
-        ),
+    stmt = (
+        select(Product)
+        .options(selectinload(Product.category))
+        .join(
+            StoreProduct,
+            and_(
+                StoreProduct.product_id == Product.id,
+                StoreProduct.store_id == store_id,
+            ),
+        )
     )
 
     if category_id is not None:
