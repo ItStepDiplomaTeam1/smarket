@@ -2,15 +2,15 @@ services:
   db:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: smarket
-      POSTGRES_PASSWORD: smarket
-      POSTGRES_DB: smarket
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${POSTGRES_USER:-smarket}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_db_pass_123}
+      POSTGRES_DB: ${POSTGRES_DB:-smarket}
+    expose:
+      - "5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U smarket -d smarket"]
+      test: [ "CMD-SHELL", "pg_isready -U smarket -d smarket" ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -22,22 +22,22 @@ services:
     build:
       context: ..
       dockerfile: services/auth_service/Dockerfile
-    ports:
-      - "8001:8001"
+    expose:
+      - "8001"
     env_file:
       - ../services/auth_service/.env
     depends_on:
       db:
         condition: service_healthy
-      migration_job:
+      auth_migration_job:
         condition: service_completed_successfully # Ждём завершения Alembic-миграций
     networks:
       - smarket-network
 
   gateway_service:
     build:
-      context: ..
-      dockerfile: services/gateway/Dockerfile
+      context: ../services/gateway
+      dockerfile: Dockerfile
     ports:
       - "8080:8080"
     env_file:
@@ -48,14 +48,14 @@ services:
     networks:
       - smarket-network
 
-  migration_job:
+  auth_migration_job:
     build:
       context: ..
-      dockerfile: services/api/Dockerfile
+      dockerfile: services/auth_service/Dockerfile
     command: >
-      sh -c "cd /app/services/api && alembic upgrade head && cd /app && python -m services.api.seed_data"
+      sh -c "cd /app/services/auth_service && alembic upgrade head"
     env_file:
-      - ../services/api/.env
+      - ../services/auth_service/.env
     depends_on:
       db:
         condition: service_healthy
@@ -63,42 +63,109 @@ services:
     networks:
       - smarket-network
 
-  business_logic_service:
+  cart_migration_job:
     build:
       context: ..
-      dockerfile: services/api/Dockerfile
-    command:
-      - "sh"
-      - "-c"
-      - "granian --interface asgi --host 0.0.0.0 --port 8000 --workers 4 services.api.main:app"
-    ports:
-      - "8000:8000"
+      dockerfile: services/cart_service/DockerFile
+    command: >
+      sh -c "cd /app/services/cart_service && alembic upgrade head"
     env_file:
-      - ../services/api/.env
+      - ../services/cart_service/.env
     depends_on:
       db:
         condition: service_healthy
-      migration_job:
-        condition: service_completed_successfully
+    restart: "no"
     networks:
       - smarket-network
 
+  product_migration_job:
+    build:
+      context: ..
+      dockerfile: services/product_service/DockerFile
+    command: >
+      sh -c "cd /app/services/product_service && alembic upgrade head"
+    env_file:
+      - ../services/product_service/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - smarket-network
+
+  reviews_migration_job:
+    build:
+      context: ..
+      dockerfile: services/reviews_service/Dockerfile
+    command: >
+      sh -c "cd /app/services/reviews_service && alembic upgrade head"
+    env_file:
+      - ../services/reviews_service/.env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+    networks:
+      - smarket-network
+
+
   products_etl:
+    platform: linux/amd64   # явно фіксуємо x86_64, щоб уникнути "exec format error" на будь-конкретному хості
     build:
       context: ../services/products_etl
       dockerfile: Dockerfile
     environment:
       - ENV=production
-      - RABBITMQ_URL=amqp://smarket:smarket@rabbitmq:5672/
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/
+      - MONGO_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-secure_mongo_pass_123}@mongodb:27017/
     env_file:
       - ../services/products_etl/.env
-    ports:
-      - "8082:8082"
+    expose:
+      - "8082"
     depends_on:
       db:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    restart: on-failure
+    networks:
+      - smarket-network
+
+  product_service:
+    build:
+      context: ..
+      dockerfile: services/product_service/DockerFile
+    expose:
+      - "8000"
+    env_file:
+      - ../services/product_service/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      product_migration_job:
+        condition: service_completed_successfully
+    restart: on-failure
+    networks:
+      - smarket-network
+
+  mongodb:
+    image: mongo:8.3
+    container_name: smarket-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASS:-secure_mongo_pass_123}
+    expose:
+      - "27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     restart: on-failure
     networks:
       - smarket-network
@@ -106,16 +173,16 @@ services:
   rabbitmq:
     image: rabbitmq:3-management
     container_name: smarket-rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
+    expose:
+      - "5672"
+      - "15672"
     environment:
-      RABBITMQ_DEFAULT_USER: smarket
-      RABBITMQ_DEFAULT_PASS: smarket
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-smarket}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-secure_rmq_pass_123}
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
       interval: 10s
       timeout: 10s
       retries: 10
@@ -123,9 +190,74 @@ services:
     networks:
       - smarket-network
 
+  redis:
+    image: redis:7-alpine
+    container_name: smarket-redis
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: on-failure
+    networks:
+      - smarket-network
+
+  email_worker:
+    build:
+      context: ../services/email_worker
+      dockerfile: Dockerfile
+    environment:
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/
+    env_file:
+      - ../services/email_worker/.env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    restart: on-failure
+    networks:
+      - smarket-network
+
+  cart_service:
+    build:
+      context: ..
+      dockerfile: services/cart_service/DockerFile
+    expose:
+      - "8002"
+    env_file:
+      - ../services/cart_service/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      cart_migration_job:
+        condition: service_completed_successfully
+    restart: on-failure
+    networks:
+      - smarket-network
+
+  reviews_service:
+    build:
+      context: ..
+      dockerfile: services/reviews_service/Dockerfile
+    expose:
+      - "8004"
+    env_file:
+      - ../services/reviews_service/.env
+    depends_on:
+      db:
+        condition: service_healthy
+      reviews_migration_job:
+        condition: service_completed_successfully
+    restart: on-failure
+    networks:
+      - smarket-network
+
 volumes:
   postgres_data:
   rabbitmq_data:
+  mongodb_data:
 
 networks:
   smarket-network:

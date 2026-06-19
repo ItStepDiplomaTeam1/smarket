@@ -1,1 +1,1 @@
-export { Catalog } from './ui/Catalog'
+export { default as Catalog } from './ui/Catalog'

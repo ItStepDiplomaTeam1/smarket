@@ -18,7 +18,7 @@ async def proxy_to_product(request: Request, path: str):
     client: httpx.AsyncClient = request.app.state.http_client
 
     # Формуємо кінцеву URL-адресу до мікросервісу товарів
-    target_url = f"{settings.PRODUCT_SERVICE_URL}/{path}"
+    target_url = f"{settings.PRODUCT_SERVICE_URL}/api/v1/products/{path}"
 
     headers = dict(request.headers)
     headers.pop("host", None)

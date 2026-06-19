@@ -2,7 +2,9 @@ package database
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"time"
 
 	"smarket/services/products_etl/internal/config"
 	"smarket/services/products_etl/internal/queue"
@@ -35,26 +37,80 @@ func (infra *Infrastructure) Close(ctx context.Context) {
 }
 
 func InitInfrastructure(ctx context.Context, cfg *config.Config) (*Infrastructure, error) {
-	mongoClient, err := ConnectMongoDB(cfg.MongoURI)
-	if err != nil {
-		return nil, err
+	var mongoClient *mongo.Client
+	var err error
+	// Кожна спроба отримує власний 5-секундний таймаут.
+	// Батьківський ctx використовується ЛИШЕ для перевірки скасування (ctrl+c тощо).
+	// Це запобігає ситуації, коли один повільний Ping з'їдає весь бюджет часу.
+	pingTimeout := 5 * time.Second
+	retryInterval := 3 * time.Second
+	maxRetries := 30 // 30 × 3s = до 90 секунд очікування
+
+	// 1. MongoDB
+	for i := 1; i <= maxRetries; i++ {
+		mongoClient, err = ConnectMongoDB(cfg.MongoURI)
+		if err == nil {
+			pingCtx, pingCancel := context.WithTimeout(context.Background(), pingTimeout)
+			err = mongoClient.Ping(pingCtx, nil)
+			pingCancel()
+			if err == nil {
+				break
+			}
+			_ = mongoClient.Disconnect(context.Background())
+		}
+		log.Printf("[Init] MongoDB спроба %d/%d: %v. Повторна спроба через %v...", i, maxRetries, err, retryInterval)
+		select {
+		case <-ctx.Done():
+			return nil, fmt.Errorf("ініціалізація скасована: %w", ctx.Err())
+		case <-time.After(retryInterval):
+		}
 	}
-	if err := mongoClient.Ping(ctx, nil); err != nil {
-		_ = mongoClient.Disconnect(ctx)
-		return nil, err
+	if err != nil {
+		return nil, fmt.Errorf("не вдалось підключитись до MongoDB після %d спроб: %w", maxRetries, err)
 	}
 
-	pgPool, err := ConnectPostgres(ctx, cfg.DatabaseURL)
+	// 2. PostgreSQL
+	var pgPool *pgxpool.Pool
+	for i := 1; i <= maxRetries; i++ {
+		pgCtx, pgCancel := context.WithTimeout(context.Background(), pingTimeout)
+		pgPool, err = ConnectPostgres(pgCtx, cfg.DatabaseURL)
+		pgCancel()
+		if err == nil {
+			break
+		}
+		log.Printf("[Init] PostgreSQL спроба %d/%d: %v. Повторна спроба через %v...", i, maxRetries, err, retryInterval)
+		select {
+		case <-ctx.Done():
+			_ = mongoClient.Disconnect(context.Background())
+			return nil, fmt.Errorf("ініціалізація скасована: %w", ctx.Err())
+		case <-time.After(retryInterval):
+		}
+	}
 	if err != nil {
-		_ = mongoClient.Disconnect(ctx)
-		return nil, err
+		_ = mongoClient.Disconnect(context.Background())
+		return nil, fmt.Errorf("не вдалось підключитись до PostgreSQL після %d спроб: %w", maxRetries, err)
 	}
 
-	rabbitConn, err := queue.ConnectRabbitMQ(cfg.RabbitMQURL)
+	// 3. RabbitMQ
+	var rabbitConn *amqp.Connection
+	for i := 1; i <= maxRetries; i++ {
+		rabbitConn, err = queue.ConnectRabbitMQ(cfg.RabbitMQURL)
+		if err == nil {
+			break
+		}
+		log.Printf("[Init] RabbitMQ спроба %d/%d: %v. Повторна спроба через %v...", i, maxRetries, err, retryInterval)
+		select {
+		case <-ctx.Done():
+			pgPool.Close()
+			_ = mongoClient.Disconnect(context.Background())
+			return nil, fmt.Errorf("ініціалізація скасована: %w", ctx.Err())
+		case <-time.After(retryInterval):
+		}
+	}
 	if err != nil {
 		pgPool.Close()
-		_ = mongoClient.Disconnect(ctx)
-		return nil, err
+		_ = mongoClient.Disconnect(context.Background())
+		return nil, fmt.Errorf("не вдалось підключитись до RabbitMQ після %d спроб: %w", maxRetries, err)
 	}
 
 	return &Infrastructure{

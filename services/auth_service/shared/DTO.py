@@ -1,7 +1,9 @@
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
 
 class RegisterRequest(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
     email: EmailStr
     password: str
 
@@ -12,18 +14,33 @@ class RegisterRequest(BaseModel):
             raise ValueError("Password must be at least 8 characters")
         if len(v.encode("utf-8")) > 72:
             raise ValueError("Password must be at most 72 bytes when UTF-8 encoded")
+        if not any(c.isupper() for c in v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not any(c.islower() for c in v):
+            raise ValueError("Password must contain at least one lowercase letter")
+        if not any(c.isdigit() for c in v):
+            raise ValueError("Password must contain at least one digit")
+        if not any(c in "!@#$%^&*()-_=+[]{}|;:,.<>?/~`" for c in v):
+            raise ValueError("Password must contain at least one special character")
         return v
+
+
+class UserResponse(BaseModel):
+    id: str
+    email: str
+    role: str
 
 
 class RegisterResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
-    email: str
+    user: UserResponse
 
 
 class LoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    user: UserResponse
 
 
 class RefreshTokenRequest(BaseModel):
@@ -33,3 +50,8 @@ class RefreshTokenRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+
+
+class GoogleOAuthRequest(BaseModel):
+    credential: str | None = None
+    access_token: str | None = None

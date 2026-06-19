@@ -1,0 +1,8 @@
+fastapi
+granian[reload]
+SQLAlchemy>=2.0.0
+alembic
+asyncpg
+pydantic-settings
+greenlet
+orjson

@@ -1,8 +1,10 @@
 // src/modules/Auth/store/authStore.ts
 import { create } from 'zustand';
+import {persist} from 'zustand/middleware';
 
 interface User {
   id: string;
+  name?: string;
   email: string;
   role?: string;
 }
@@ -15,15 +17,21 @@ interface AuthState {
   logout: () => void;
 }
 
-// Створюємо хук-стор. Зверни увагу: жодних провайдерів не потрібно!
-export const useAuthStore = create<AuthState>((set) => ({
+
+const initialAuthState = {
   token: null,
-  user: null,
-  isAuthenticated: false,
-  
-  // Екшен для збереження даних при успішному вході
-  setAuth: (token, user) => set({ token, user, isAuthenticated: true }),
-  
-  // Екшен для виходу з системи
-  logout: () => set({ token: null, user: null, isAuthenticated: false }),
-}));
+  user: null, isAuthenticated: false,
+}
+
+
+export const useAuthStore = create<AuthState> () (
+    persist(
+        (set) => ({
+          ...initialAuthState,
+
+          setAuth: (token, user) => set({token, user, isAuthenticated: true}),
+
+          logout: () => set(initialAuthState),
+        }), {name: 'auth-storage'}
+    )
+)

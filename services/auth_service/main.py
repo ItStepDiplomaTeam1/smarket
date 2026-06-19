@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -15,6 +16,7 @@ from services.auth_service.plugins.logger import setup_logger
 from services.auth_service.plugins.security.limiters.auth_limiter import auth_limiter
 from services.auth_service.plugins.security.secrets.load_secret import get_secret
 from services.auth_service.routers.auth import router as auth_router
+from services.auth_service.routers.oauth import router as oauth_router
 
 setup_logger()
 
@@ -38,11 +40,12 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
+    debug = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
     app = FastAPI(
         title="Auth Service",
         version="1.0.0",
-        docs_url="/docs",
-        redoc_url="/redoc",
+        docs_url="/docs" if debug else None,
+        redoc_url="/redoc" if debug else None,
         default_response_class=ORJSONResponse,
         lifespan=lifespan,
     )
@@ -53,6 +56,7 @@ def create_app() -> FastAPI:
     app.add_middleware(SlowAPIMiddleware)
 
     app.include_router(auth_router, prefix="/auth", tags=["auth"])
+    app.include_router(oauth_router, prefix="/auth", tags=["oauth"])
 
     @app.get("/health", tags=["system"])
     async def health() -> dict:
