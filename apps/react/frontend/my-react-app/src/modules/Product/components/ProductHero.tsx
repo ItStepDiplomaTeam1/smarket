@@ -31,6 +31,7 @@ export function ProductHero({ product }: ProductHeroProps) {
     const [quantity, setQuantity] = useState<number>(1);
     const [isAdding, setIsAdding] = useState<boolean>(false);
     const [selectedCart, setSelectedCart] = useState<string | null>(null);
+    const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
 
     useEffect(() => {
         if (carts && carts.length > 0) {
@@ -96,17 +97,13 @@ export function ProductHero({ product }: ProductHeroProps) {
                     productId: String(targetId),
                     quantity: quantity
                 });
-            } else {
-                let cartId = localStorage.getItem('cart_id');
-                if (!cartId) {
-                    const cartResponse = await apiClient.post('/api/v1/cart/', {
-                        user_id: userId,
-                        name: "Default Cart" 
-                    });
-                    cartId = cartResponse.data.id;
-                    localStorage.setItem('cart_id', cartId!);
-                }
-                await apiClient.post(`/api/v1/cart/${cartId}/items`, {
+            } else if (isAuthenticated) {
+                // No cart exists yet — create one first
+                const cartResponse = await apiClient.post('/api/v1/cart/', {
+                    name: "Мій кошик"
+                });
+                const newCartId = cartResponse.data.id;
+                await apiClient.post(`/api/v1/cart/${newCartId}/items`, {
                     product_id: targetId,
                     quantity: quantity
                 });
@@ -158,11 +155,21 @@ export function ProductHero({ product }: ProductHeroProps) {
 
     const latestPrices = getLatestPrices();
     const sortedPrices = [...latestPrices].sort((a, b) => a.price - b.price);
-    const primaryPriceObj = sortedPrices[0] || null;
+    const cheapestPriceObj = sortedPrices[0] || null;
+
+    // Determine the active price object based on selected store
+    const activePriceObj = selectedStoreId
+        ? sortedPrices.find(p => p.store_id === selectedStoreId) || cheapestPriceObj
+        : cheapestPriceObj;
 
     const maxPrice = sortedPrices.length > 0 ? sortedPrices[sortedPrices.length - 1].price : 0;
     const minPrice = sortedPrices.length > 0 ? sortedPrices[0].price : 0;
     const savings = maxPrice - minPrice;
+
+    const handleSelectStore = (storeId: string) => {
+        setSelectedStoreId(storeId);
+        setQuantity(1);
+    };
 
     const formatRetailChainName = (chain: string) => {
         if (!chain) return '';
@@ -203,7 +210,7 @@ export function ProductHero({ product }: ProductHeroProps) {
                         <div className="relative w-[453px] h-[453px] rounded-[24px] bg-white border border-[rgba(38,84,71,0.08)] flex justify-center items-center p-[24px]">
                             {/* Бейджі */}
                             <div className="absolute top-[21px] left-[21px] flex flex-col items-start gap-[8px] z-[2]">
-                                {primaryPriceObj?.old_price && (
+                                {activePriceObj?.old_price && (
                                     <span className="inline-flex items-center gap-[4px] h-[26px] px-[12px] rounded-[16px] bg-[#FACC14] text-[#173B33] font-inter text-[12px] font-semibold leading-[18px]">
                                         Акція
                                     </span>
@@ -268,23 +275,26 @@ export function ProductHero({ product }: ProductHeroProps) {
                         <div className="flex flex-col items-start gap-[8px] mb-[32px]">
                             <div className="flex items-baseline gap-[12px]">
                                 <div className="font-manrope text-[30px] font-[200] leading-[45px] text-[#173B33]">
-                                    {primaryPriceObj ? `${primaryPriceObj.price.toFixed(2)} ₴` : 'Немає в наявності'}
+                                    {activePriceObj ? `${activePriceObj.price.toFixed(2)} ₴` : 'Немає в наявності'}
                                 </div>
-                                {primaryPriceObj?.old_price && (
+                                {activePriceObj?.old_price && (
                                     <div className="font-inter text-[18px] line-through text-[#9CA3AF]">
-                                        {primaryPriceObj.old_price.toFixed(2)} ₴
+                                        {activePriceObj.old_price.toFixed(2)} ₴
                                     </div>
                                 )}
                             </div>
-                            {primaryPriceObj && (
+                            {activePriceObj && (
                                 <div className="font-inter text-[13px] font-medium leading-[19.5px] text-[#6D8279]">
-                                    Найкраща ціна в <strong className="font-bold text-[13px] leading-[19.5px] text-[#173B33]">{primaryPriceObj.store.name}</strong>
+                                    {activePriceObj === cheapestPriceObj
+                                        ? <>Найкраща ціна в <strong className="font-bold text-[13px] leading-[19.5px] text-[#173B33]">{activePriceObj.store.name}</strong></>
+                                        : <>Ціна в <strong className="font-bold text-[13px] leading-[19.5px] text-[#173B33]">{activePriceObj.store.name}</strong></>
+                                    }
                                 </div>
                             )}
                             <div className={`px-[10px] py-[4px] rounded-[6px] font-inter text-[13px] font-semibold leading-[19.5px] ${
-                                primaryPriceObj?.in_stock ? 'bg-[#EAF7F2] text-[#265447]' : 'bg-[#FFF2F1] text-[#D94841]'
+                                activePriceObj?.in_stock ? 'bg-[#EAF7F2] text-[#265447]' : 'bg-[#FFF2F1] text-[#D94841]'
                             }`}>
-                                {primaryPriceObj?.in_stock ? 'В наявності' : 'Немає в наявності'}
+                                {activePriceObj?.in_stock ? 'В наявності' : 'Немає в наявності'}
                             </div>
                         </div>
 
@@ -293,7 +303,7 @@ export function ProductHero({ product }: ProductHeroProps) {
                             <div className="flex items-center h-[44px] px-[8px] rounded-[10px] border border-[rgba(38,84,71,0.16)]">
                                 <button 
                                     onClick={handleDecrease}
-                                    disabled={quantity <= 1 || !primaryPriceObj?.in_stock}
+                                    disabled={quantity <= 1 || !activePriceObj?.in_stock}
                                     className="w-[36px] h-full bg-transparent border-none text-[20px] text-[#4B5563] cursor-pointer disabled:opacity-30 transition-opacity"
                                 >
                                     -
@@ -303,7 +313,7 @@ export function ProductHero({ product }: ProductHeroProps) {
                                 </span>
                                 <button 
                                     onClick={handleIncrease}
-                                    disabled={!primaryPriceObj?.in_stock}
+                                    disabled={!activePriceObj?.in_stock}
                                     className="w-[36px] h-full bg-transparent border-none text-[20px] text-[#4B5563] cursor-pointer hover:text-[#173B33] transition-colors disabled:opacity-30"
                                 >
                                     +
@@ -313,7 +323,7 @@ export function ProductHero({ product }: ProductHeroProps) {
                             {/* ДОДАТИ В КОШИК */}
                             <button 
                                 onClick={handleAddToCart}
-                                disabled={isAdding || !primaryPriceObj?.in_stock || (isAuthenticated && carts && carts.length > 1 && !selectedCart)}
+                                disabled={isAdding || !activePriceObj?.in_stock || (isAuthenticated && carts && carts.length > 1 && !selectedCart)}
                                 className="h-[44px] px-[24px] rounded-[10px] border-none bg-[#265447] font-inter text-[13px] font-semibold text-white whitespace-nowrap cursor-pointer transition-colors duration-200 hover:bg-[#1A3E2F] disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isAdding ? 'Додаємо...' : 'Додати до кошика'}
@@ -370,13 +380,19 @@ export function ProductHero({ product }: ProductHeroProps) {
                                 ) : (
                                     sortedPrices.map((priceObj, index) => {
                                         const isCheapest = index === 0 && sortedPrices.length > 1;
+                                        const isSelected = selectedStoreId
+                                            ? priceObj.store_id === selectedStoreId
+                                            : index === 0;
                                         return (
                                             <div 
-                                                key={priceObj.id} 
-                                                className={`flex justify-between items-center h-[50px] px-[16px] rounded-[10px] ${
-                                                    isCheapest 
-                                                    ? 'bg-[#EAF7F2] border border-[#6FE3C2]' 
-                                                    : 'bg-white border border-[rgba(38,84,71,0.08)]'
+                                                key={priceObj.id}
+                                                onClick={() => handleSelectStore(priceObj.store_id)}
+                                                className={`flex justify-between items-center h-[50px] px-[16px] rounded-[10px] cursor-pointer transition-all duration-200 ${
+                                                    isSelected 
+                                                    ? 'bg-[#EAF7F2] border-[2px] border-[#265447] shadow-[0_0_0_1px_rgba(38,84,71,0.12)]' 
+                                                    : isCheapest
+                                                    ? 'bg-[#EAF7F2] border border-[#6FE3C2] hover:border-[#265447] hover:shadow-[0_2px_8px_rgba(38,84,71,0.1)]'
+                                                    : 'bg-white border border-[rgba(38,84,71,0.08)] hover:border-[#6FE3C2] hover:shadow-[0_2px_8px_rgba(38,84,71,0.1)]'
                                                 }`}
                                             >
                                                 <div className="flex items-center gap-[12px]">

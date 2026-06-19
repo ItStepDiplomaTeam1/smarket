@@ -3,12 +3,17 @@ import axios from 'axios';
 import zagluska from '@/shared/assets/products-zaglushka.svg';
 import { apiClient } from '../../../shared/api/apiClient';
 import { type Product } from '../type';
-import { useAuthStore } from '@/modules/Auth/store/authStore'; 
+import { useAuthStore } from '@/modules/Auth/store/authStore';
+import { useFetchCarts, useUpdateCartItem } from '@/hooks/api/useCartApi';
+import { useCartStore } from '@/modules/Cart/store/useCartStore';
 
 const FbtCard = ({ product }: { product: Product }) => {
+    const { isAuthenticated, user } = useAuthStore();
+    const { data: carts } = useFetchCarts();
+    const { mutateAsync: updateCartItem } = useUpdateCartItem();
+    const { activeCartId } = useCartStore();
+
     const [isAdding, setIsAdding] = useState<boolean>(false);
-    
-    const { user } = useAuthStore();
     const userId = user?.id;
 
     const minPrice = product.prices && product.prices.length > 0 
@@ -22,6 +27,8 @@ const FbtCard = ({ product }: { product: Product }) => {
    const handleAddToCart = async (e: React.MouseEvent) => {
         e.stopPropagation(); 
         
+        const targetCartId = activeCartId || (carts && carts[0]?.id);
+
         if (!userId) {
             alert('Будь ласка, увійдіть в систему, щоб додавати товари до кошика.');
             return;
@@ -30,22 +37,23 @@ const FbtCard = ({ product }: { product: Product }) => {
         try {
             setIsAdding(true);
 
-            let cartId = localStorage.getItem('cart_id');
-
-            if (!cartId) {
-                const cartResponse = await apiClient.post('/api/v1/cart/', {
-                    user_id: userId,
-                    name: "Default Cart" 
+            if (isAuthenticated && targetCartId) {
+                await updateCartItem({
+                    cartId: targetCartId,
+                    productId: String(product.id),
+                    quantity: 1
                 });
-                
-                cartId = cartResponse.data.id;
-                localStorage.setItem('cart_id', cartId!);
+            } else if (isAuthenticated) {
+                // No cart exists yet — create one first
+                const cartResponse = await apiClient.post('/api/v1/cart/', {
+                    name: "Мій кошик"
+                });
+                const newCartId = cartResponse.data.id;
+                await apiClient.post(`/api/v1/cart/${newCartId}/items`, {
+                    product_id: product.id,
+                    quantity: 1
+                });
             }
-            
-            await apiClient.post(`/api/v1/cart/${cartId}/items`, {
-                product_id: product.id,
-                quantity: 1
-            });
             
             alert('Товар успішно додано до кошика!');
             
@@ -55,7 +63,7 @@ const FbtCard = ({ product }: { product: Product }) => {
                 const detail = error.response?.data?.detail;
                 
                 if (Array.isArray(detail)) {
-                    const errorMessages = detail.map(err => `Поле: [${err.loc.join(' -> ')}] | Проблема: ${err.msg}`).join('\n');
+                    const errorMessages = detail.map((err: any) => `Поле: [${err.loc.join(' -> ')}] | Проблема: ${err.msg}`).join('\n');
                     alert(`Помилка даних (422):\n${errorMessages}`);
                 } else {
                     const backendMessage = detail || error.response?.data?.message || 'Помилка мережі';

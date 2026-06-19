@@ -8,7 +8,7 @@ interface CartStore {
 }
 
 export const useCartStore = create<CartStore>((set) => ({
-  activeCartId: '1', // Default to first cart for mockup purposes
+  activeCartId: null,
   openMenuId: null,
 
   setActiveCart: (id) => set({ activeCartId: id }),

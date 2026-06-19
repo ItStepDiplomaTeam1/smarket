@@ -39,9 +39,9 @@ export default function ProductDetail() {
     <>
       <ProductHero product={product} />
       <About product={product} />
-      <FBT />
-      <SMProduct />
       <Reviews productId={productId} />
+      <FBT />
+      <SMProduct currentProduct={product}/>
       <BottomCti />
     </>
   )
