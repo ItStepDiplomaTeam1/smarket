@@ -63,4 +63,3 @@ async def refresh(request: Request):
 @router.post("/logout")
 async def logout(request: Request):
     return await proxy_request(request, "logout")
-
