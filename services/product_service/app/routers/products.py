@@ -10,7 +10,7 @@ from app.database.models import (
     Product,
     StoreProduct,
     Store,
-    StoreCategoryMapping,
+    Category,
 )
 from app.shared.schemas import (
     PriceResponse,
@@ -435,18 +435,6 @@ async def get_product_prices(
 async def get_categories(
     db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(StoreCategoryMapping)
+    stmt = select(Category).order_by(Category.name)
     result = await db.execute(stmt)
-    mappings = result.scalars().all()
-    response = []
-    seen = set()
-    for m in mappings:
-        if m.canonical_category_id not in seen:
-            seen.add(m.canonical_category_id)
-            response.append(
-                CategoryResponse(
-                    id=m.canonical_category_id,
-                    slug=m.slug,
-                )
-            )
-    return response
+    return list(result.scalars().all())
