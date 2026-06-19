@@ -52,7 +52,7 @@ async def get_products(
     ),
     db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(Product)
+    stmt = select(Product).options(selectinload(Product.category))
 
     if brand:
         stmt = stmt.where(Product.brand.ilike(f"%{brand}%"))
@@ -112,7 +112,7 @@ async def get_products_by_store(
     )
 
     # Основний запит: товари, які є у цьому магазині (через store_products)
-    stmt = select(Product).join(
+    stmt = select(Product).options(selectinload(Product.category)).join(
         StoreProduct,
         and_(
             StoreProduct.product_id == Product.id,
@@ -173,6 +173,7 @@ async def get_products_by_store(
                 weight=product.weight,
                 image_url=product.image_url,
                 canonical_category_id=product.canonical_category_id,
+                category=product.category,
                 created_at=product.created_at,
                 latest_price=PriceResponse(
                     id=latest_price.id,
@@ -204,7 +205,11 @@ async def get_product(
     product_id: int,
     db: AsyncSession = Depends(get_db),
 ):
-    product = await db.scalar(select(Product).where(Product.id == product_id))
+    product = await db.scalar(
+        select(Product)
+        .options(selectinload(Product.category))
+        .where(Product.id == product_id)
+    )
     if not product:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -249,6 +254,7 @@ async def get_product(
         weight=product.weight,
         image_url=product.image_url,
         canonical_category_id=product.canonical_category_id,
+        category=product.category,
         created_at=product.created_at,
         prices=latest_prices,
     )
@@ -269,6 +275,7 @@ async def get_product_stores(
         select(Product)
         .options(
             selectinload(Product.store_products).selectinload(StoreProduct.store),
+            selectinload(Product.category),
         )
         .where(Product.id == product_id)
     )
@@ -302,7 +309,11 @@ async def get_product_offers(
     db: AsyncSession = Depends(get_db),
 ):
     # 1. Знаходимо товар
-    product = await db.scalar(select(Product).where(Product.id == product_id))
+    product = await db.scalar(
+        select(Product)
+        .options(selectinload(Product.category))
+        .where(Product.id == product_id)
+    )
     if product is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -363,6 +374,7 @@ async def get_product_offers(
         weight=product.weight,
         image_url=product.image_url,
         canonical_category_id=product.canonical_category_id,
+        category=product.category,
         created_at=product.created_at,
         offers=offers,
     )
