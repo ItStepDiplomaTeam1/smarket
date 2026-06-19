@@ -1,5 +1,7 @@
+import React from 'react';
+import { useQuery } from '@tanstack/react-query';
+
 // ================= SVG ІКОНКИ ДЛЯ МАКЕТУ =================
-// Допоміжний компонент для галочки в чекбоксі
 const CheckIcon = () => (
   <svg width="10" height="8" viewBox="0 0 10 8" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M1 4L3.5 6.5L9 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -45,7 +47,43 @@ const CloseIcon = () => (
   </svg>
 );
 
+// ================= ТИПІЗАЦІЯ ДАНИХ З БЕКЕНДУ =================
+interface StoreOffer {
+  store_id: string;
+  price: number;
+  old_price: number | null;
+  in_stock: boolean;
+}
+
+interface Product {
+  id: number;
+  title: string;
+  brand: string | null;
+  unit: string;
+  weight: number;
+  image_url: string | null;
+  canonical_category_id: number;
+  offers?: StoreOffer[]; 
+  latest_price?: {
+    price: number;
+    old_price: number | null;
+  };
+}
+
+// ================= ФУНКЦІЯ ОТРИМАННЯ ДАНИХ =================
+const fetchProducts = async (): Promise<Product[]> => {
+  // Звертаємося до API Gateway за 12 товарами
+  const res = await fetch('http://localhost:8080/api/v1/products?limit=12');
+  if (!res.ok) throw new Error('Помилка завантаження товарів');
+  return res.json();
+};
+
 export function MainContent() {
+  const { data: products = [], isLoading } = useQuery({
+    queryKey: ['productsList'],
+    queryFn: fetchProducts,
+  });
+
   return (
     <div className="w-full max-w-[1228px] mx-auto px-[20px] py-[40px] flex gap-[40px] items-start mobile:flex-col">
       
@@ -60,10 +98,9 @@ export function MainContent() {
         <hr className="border-t border-[#F3F4F6] mb-[16px]" />
         
         <ul className="flex flex-col gap-[4px]">
-          {/* Активна категорія */}
           <li className="flex items-center justify-between p-[8px_12px] bg-[#EAF7F2] rounded-[8px] cursor-pointer">
             <div className="flex items-center gap-[10px] font-semibold text-[#173B33] text-[14px]">
-              <span className="text-[16px]">🥦</span> {/* Заміни на іконку */}
+              <span className="text-[16px]">🥦</span>
               <span>Продукти</span>
             </div>
             <span className="bg-[#D1E8DD] text-[#173B33] text-[12px] font-bold px-[8px] py-[2px] rounded-[100px]">
@@ -71,7 +108,6 @@ export function MainContent() {
             </span>
           </li>
 
-          {/* Неактивні категорії */}
           {[
             { icon: '🥤', name: 'Напої', count: '380' },
             { icon: '🍼', name: 'Дитячі товари', count: '214' },
@@ -82,7 +118,7 @@ export function MainContent() {
           ].map((cat, idx) => (
             <li key={idx} className="flex items-center justify-between p-[8px_12px] rounded-[8px] cursor-pointer hover:bg-[#F9FAFB] transition-colors">
               <div className="flex items-center gap-[10px] font-semibold text-[#4B6358] text-[14px]">
-                <span className="text-[16px] grayscale opacity-70">{cat.icon}</span> {/* Заміни на іконки */}
+                <span className="text-[16px] grayscale opacity-70">{cat.icon}</span>
                 <span>{cat.name}</span>
               </div>
               <span className="bg-[#F3F4F6] text-[#6D8279] text-[12px] font-semibold px-[8px] py-[2px] rounded-[100px]">
@@ -113,17 +149,11 @@ export function MainContent() {
             />
           </div>
           
-          {/* Кастомний повзунок ціни (візуальна імітація макету) */}
           <div className="relative h-[4px] bg-[#F3F4F6] rounded-[2px] flex items-center mx-[10px]">
-            {/* Активна лінія */}
             <div className="absolute left-[5%] right-[25%] h-full bg-[#438870] rounded-[2px]"></div>
-            
-            {/* Лівий повзунок */}
             <div className="absolute left-[5%] w-[18px] h-[18px] bg-white border-[2.5px] border-[#173B33] rounded-full transform -translate-x-1/2 flex items-center justify-center cursor-pointer shadow-sm">
               <div className="w-[6px] h-[6px] bg-[#173B33] rounded-full"></div>
             </div>
-            
-            {/* Правий повзунок */}
             <div className="absolute left-[75%] w-[18px] h-[18px] bg-white border-[2.5px] border-[#173B33] rounded-full transform -translate-x-1/2 flex items-center justify-center cursor-pointer shadow-sm">
               <div className="w-[6px] h-[6px] bg-[#173B33] rounded-full"></div>
             </div>
@@ -136,21 +166,11 @@ export function MainContent() {
             Магазини
           </h4>
           <div className="flex flex-wrap gap-[8px]">
-            <button className="border border-[#173B33] bg-[#EAF7F2] text-[#173B33] px-[14px] py-[6px] rounded-[100px] text-[13px] font-semibold cursor-pointer">
-              АТБ
-            </button>
-            <button className="border border-[#173B33] bg-[#EAF7F2] text-[#173B33] px-[14px] py-[6px] rounded-[100px] text-[13px] font-semibold cursor-pointer">
-              Сільпо
-            </button>
-            <button className="border border-[#E5E7EB] bg-white text-[#6D8279] px-[14px] py-[6px] rounded-[100px] text-[13px] font-medium cursor-pointer hover:border-[#D1D5DB]">
-              Novus
-            </button>
-            <button className="border border-[#E5E7EB] bg-white text-[#6D8279] px-[14px] py-[6px] rounded-[100px] text-[13px] font-medium cursor-pointer hover:border-[#D1D5DB]">
-              Metro
-            </button>
-            <button className="border border-[#E5E7EB] bg-white text-[#6D8279] px-[14px] py-[6px] rounded-[100px] text-[13px] font-medium cursor-pointer hover:border-[#D1D5DB]">
-              Ашан
-            </button>
+            <button className="border border-[#173B33] bg-[#EAF7F2] text-[#173B33] px-[14px] py-[6px] rounded-[100px] text-[13px] font-semibold cursor-pointer">АТБ</button>
+            <button className="border border-[#173B33] bg-[#EAF7F2] text-[#173B33] px-[14px] py-[6px] rounded-[100px] text-[13px] font-semibold cursor-pointer">Сільпо</button>
+            <button className="border border-[#E5E7EB] bg-white text-[#6D8279] px-[14px] py-[6px] rounded-[100px] text-[13px] font-medium cursor-pointer hover:border-[#D1D5DB]">Novus</button>
+            <button className="border border-[#E5E7EB] bg-white text-[#6D8279] px-[14px] py-[6px] rounded-[100px] text-[13px] font-medium cursor-pointer hover:border-[#D1D5DB]">Metro</button>
+            <button className="border border-[#E5E7EB] bg-white text-[#6D8279] px-[14px] py-[6px] rounded-[100px] text-[13px] font-medium cursor-pointer hover:border-[#D1D5DB]">Ашан</button>
           </div>
         </div>
 
@@ -171,18 +191,13 @@ export function MainContent() {
               { name: 'Консерви', count: '112', active: false },
             ].map((item, idx) => (
               <label key={idx} className="flex items-center gap-[10px] cursor-pointer group">
-                {/* Кастомний чекбокс */}
                 <div className={`w-[18px] h-[18px] rounded-[4px] flex items-center justify-center shrink-0 transition-colors ${
                   item.active ? 'bg-[#173B33] border-none' : 'border border-[#D1D5DB] bg-white group-hover:border-[#9CA3AF]'
                 }`}>
                   {item.active && <CheckIcon />}
                 </div>
-                <span className="flex-1 text-[13px] font-medium text-[#374151]">
-                  {item.name}
-                </span>
-                <span className="text-[12px] text-[#9CA3AF]">
-                  {item.count}
-                </span>
+                <span className="flex-1 text-[13px] font-medium text-[#374151]">{item.name}</span>
+                <span className="text-[12px] text-[#9CA3AF]">{item.count}</span>
               </label>
             ))}
           </div>
@@ -205,18 +220,13 @@ export function MainContent() {
                 }`}>
                   {item.active && <CheckIcon />}
                 </div>
-                <span className="flex-1 text-[13px] font-medium text-[#374151]">
-                  {item.name}
-                </span>
-                <span className="text-[12px] text-[#9CA3AF]">
-                  {item.count}
-                </span>
+                <span className="flex-1 text-[13px] font-medium text-[#374151]">{item.name}</span>
+                <span className="text-[12px] text-[#9CA3AF]">{item.count}</span>
               </label>
             ))}
           </div>
         </div>
 
-        {/* Кнопка "Скинути фільтри" */}
         <button className="w-full border border-[#E5E7EB] bg-white rounded-[8px] py-[10px] font-inter text-[14px] font-semibold text-[#6D8279] transition-colors hover:bg-[#F9FAFB] cursor-pointer">
           Скинути фільтри
         </button>
@@ -225,7 +235,7 @@ export function MainContent() {
     </aside>
 
       {/* ================= RIGHT MAIN CONTENT ================= */}
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 flex flex-col min-w-0">
         
         {/* Акційний баннер */}
         <div className="bg-[#265447] rounded-[12px] p-[20px_24px] flex justify-between items-center mb-[24px]">
@@ -284,383 +294,108 @@ export function MainContent() {
           </div>
         </div>
 
-        {/* ================= СІТКА З 12 КАРТОК ПРОДУКТІВ ================= */}
+        {/* ================= СІТКА ПРОДУКТІВ (ДИНАМІЧНА) ================= */}
         <div className="grid grid-cols-4 gap-[16px]">
-          
-          {/* РЯД 1 */}
-          {/* Картка 1: Зі знижкою */}
-          <div className="border border-[#E5E7EB] rounded-[12px] p-[16px] flex flex-col bg-white hover:shadow-sm transition-shadow">
-            <div className="flex justify-between items-start mb-[12px] min-h-[24px]">
-              <span className="text-[10px] font-bold px-[6px] py-[2px] rounded-[4px] bg-[#FFD600] text-[#111827]">-22%</span>
-              <button className="bg-transparent border-none cursor-pointer"><HeartIcon /></button>
+          {isLoading ? (
+            <div className="col-span-4 text-center py-10 font-medium text-[#6D8279]">
+              Завантаження каталогу...
             </div>
-            <div className="w-full h-[140px] bg-[#F9FAFB] rounded-[8px] flex items-center justify-center mb-[16px]">
-              <div className="w-[40px] h-[40px] bg-[#E5E7EB] rounded-[6px] opacity-40" />
-            </div>
-            <div className="flex flex-col flex-1">
-              <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.05em] mb-[4px]">молочна продукція</span>
-              <h3 className="font-manrope text-[14px] font-bold text-[#111827] leading-[1.3] mb-[4px] line-clamp-2 min-h-[36px]">Молоко пастеризоване 2,5%</h3>
-              <span className="text-[12px] text-[#6D8279] mb-[12px]">Яготинське · 1 л</span>
-              <div className="flex items-center gap-[6px] mb-[16px]">
-                <div className="flex gap-[2px]"><span className="w-[4px] h-[4px] bg-[#10B981] rounded-full"></span><span className="w-[4px] h-[4px] bg-[#10B981] rounded-full"></span><span className="w-[4px] h-[4px] bg-[#D1D5DB] rounded-full"></span></div>
-                <span className="text-[12px] text-[#6D8279]">3 магазини</span>
-              </div>
-              <div className="mt-auto flex flex-col gap-[16px]">
-                <div className="flex justify-between items-end">
-                  <div className="flex flex-col">
-                    <span className="text-[11px] text-[#6D8279] mb-[2px]">від</span>
-                    <span className="font-manrope text-[20px] font-extrabold text-[#111827] leading-none">34 ₴</span>
+          ) : (
+            products.map((product) => {
+              // Отримуємо актуальну ціну. Якщо це роут /by-store/, беремо latest_price, інакше першу ціну з offers
+              const currentPrice = product.latest_price?.price || product.offers?.[0]?.price || 0;
+              const oldPrice = product.latest_price?.old_price || product.offers?.[0]?.old_price || null;
+              
+              const discountPercent = oldPrice ? Math.round(((oldPrice - currentPrice) / oldPrice) * 100) : 0;
+              const discountAmount = oldPrice ? Math.round(oldPrice - currentPrice) : 0;
+              
+              // Кількість магазинів
+              const storesCount = product.offers?.length || 1; 
+
+              return (
+                <div key={product.id} className="border border-[#E5E7EB] rounded-[12px] p-[16px] flex flex-col bg-white hover:shadow-sm transition-shadow">
+                  {/* Беджі та вподобане */}
+                  <div className="flex justify-between items-start mb-[12px] min-h-[24px]">
+                    <div className="flex gap-[4px]">
+                      {discountPercent > 0 && (
+                        <span className="text-[10px] font-bold px-[6px] py-[2px] rounded-[4px] bg-[#FFD600] text-[#111827]">
+                          -{discountPercent}%
+                        </span>
+                      )}
+                    </div>
+                    <button className="bg-transparent border-none cursor-pointer hover:text-red-500 transition-colors text-[#111827]">
+                      <HeartIcon />
+                    </button>
                   </div>
-                  <div className="flex flex-col items-end gap-[4px]">
-                    <span className="text-[11px] text-[#9CA3AF] line-through leading-none">44 ₴</span>
-                    <span className="bg-[#EAF7F2] text-[#265447] text-[10px] font-bold px-[4px] py-[2px] rounded-[4px] leading-none">-10 ₴</span>
+                  
+                  {/* Фото товару */}
+                  <div className="w-full h-[140px] bg-[#F9FAFB] rounded-[8px] flex items-center justify-center mb-[16px] overflow-hidden p-[8px]">
+                    {product.image_url ? (
+                      <img src={product.image_url} alt={product.title} className="max-w-full max-h-full object-contain mix-blend-multiply" />
+                    ) : (
+                      <div className="w-[40px] h-[40px] bg-[#E5E7EB] rounded-[6px] opacity-40" />
+                    )}
+                  </div>
+                  
+                  {/* Інформація */}
+                  <div className="flex flex-col flex-1">
+                    <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.05em] mb-[4px]">
+                      {product.canonical_category_id ? `Категорія ${product.canonical_category_id}` : 'Продукти'}
+                    </span>
+                    <h3 className="font-manrope text-[14px] font-bold text-[#111827] leading-[1.3] mb-[4px] line-clamp-2 min-h-[36px]">
+                      {product.title}
+                    </h3>
+                    <span className="text-[12px] text-[#6D8279] mb-[12px]">
+                      {product.brand || 'Без бренду'} · {product.weight} {product.unit === 'pcs' ? 'шт' : 'г'}
+                    </span>
+                    
+                    {/* Наявність */}
+                    <div className="flex items-center gap-[6px] mb-[16px]">
+                      <div className="flex gap-[2px]">
+                        <span className={`w-[4px] h-[4px] rounded-full ${storesCount >= 1 ? 'bg-[#10B981]' : 'bg-[#D1D5DB]'}`}></span>
+                        <span className={`w-[4px] h-[4px] rounded-full ${storesCount >= 2 ? 'bg-[#10B981]' : 'bg-[#D1D5DB]'}`}></span>
+                        <span className={`w-[4px] h-[4px] rounded-full ${storesCount >= 3 ? 'bg-[#10B981]' : 'bg-[#D1D5DB]'}`}></span>
+                      </div>
+                      <span className="text-[12px] text-[#6D8279]">
+                        {storesCount} {storesCount === 1 ? 'магазин' : storesCount < 5 ? 'магазини' : 'магазинів'}
+                      </span>
+                    </div>
+                    
+                    {/* Ціни та кнопка */}
+                    <div className="mt-auto flex flex-col gap-[16px]">
+                      <div className="flex justify-between items-end min-h-[36px]">
+                        <div className="flex flex-col">
+                          <span className="text-[11px] text-[#6D8279] mb-[2px]">від</span>
+                          <span className="font-manrope text-[20px] font-extrabold text-[#111827] leading-none">
+                            {currentPrice} ₴
+                          </span>
+                        </div>
+                        {oldPrice && (
+                          <div className="flex flex-col items-end gap-[4px]">
+                            <span className="text-[11px] text-[#9CA3AF] line-through leading-none">
+                              {oldPrice} ₴
+                            </span>
+                            <span className="bg-[#EAF7F2] text-[#265447] text-[10px] font-bold px-[4px] py-[2px] rounded-[4px] leading-none">
+                              -{discountAmount} ₴
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <button 
+                        className={`w-full py-[8px] rounded-[6px] font-semibold text-[13px] border cursor-pointer transition-colors ${
+                          oldPrice 
+                            ? 'bg-[#265447] text-white border-[#265447] hover:bg-[#1A3E2F]' 
+                            : 'bg-white text-[#265447] border-[#E5E7EB] hover:border-[#265447]'
+                        }`}
+                      >
+                        Порівняти
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <button className="w-full py-[8px] rounded-[6px] font-semibold text-[13px] bg-[#265447] text-white border border-[#265447] hover:bg-[#1A3E2F] cursor-pointer">Порівняти</button>
-              </div>
-            </div>
-          </div>
-
-          {/* Картка 2: Новинка (Без знижки) */}
-          <div className="border border-[#E5E7EB] rounded-[12px] p-[16px] flex flex-col bg-white hover:shadow-sm transition-shadow">
-            <div className="flex justify-between items-start mb-[12px] min-h-[24px]">
-              <span className="text-[10px] font-bold px-[6px] py-[2px] rounded-[4px] bg-[#EAF7F2] text-[#173B33]">Новинка</span>
-              <button className="bg-transparent border-none cursor-pointer"><HeartIcon /></button>
-            </div>
-            <div className="w-full h-[140px] bg-[#F9FAFB] rounded-[8px] flex items-center justify-center mb-[16px]">
-              <div className="w-[40px] h-[40px] bg-[#E5E7EB] rounded-[6px] opacity-40" />
-            </div>
-            <div className="flex flex-col flex-1">
-              <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.05em] mb-[4px]">молочна продукція</span>
-              <h3 className="font-manrope text-[14px] font-bold text-[#111827] leading-[1.3] mb-[4px] line-clamp-2 min-h-[36px]">Кефір 2,5% жирності</h3>
-              <span className="text-[12px] text-[#6D8279] mb-[12px]">Простоквашино · 900 г</span>
-              <div className="flex items-center gap-[6px] mb-[16px]">
-                <div className="flex gap-[2px]"><span className="w-[4px] h-[4px] bg-[#10B981] rounded-full"></span><span className="w-[4px] h-[4px] bg-[#D1D5DB] rounded-full"></span><span className="w-[4px] h-[4px] bg-[#D1D5DB] rounded-full"></span></div>
-                <span className="text-[12px] text-[#6D8279]">2 магазини</span>
-              </div>
-              <div className="mt-auto flex flex-col gap-[16px]">
-                <div className="flex justify-between items-end">
-                  <div className="flex flex-col">
-                    <span className="text-[11px] text-[#6D8279] mb-[2px]">від</span>
-                    <span className="font-manrope text-[20px] font-extrabold text-[#111827] leading-none">39 ₴</span>
-                  </div>
-                </div>
-                <button className="w-full py-[8px] rounded-[6px] font-semibold text-[13px] bg-white text-[#265447] border border-[#E5E7EB] hover:border-[#265447] cursor-pointer">Порівняти</button>
-              </div>
-            </div>
-          </div>
-
-          {/* Картка 3: Подвійний бейдж (Зі знижкою) */}
-          <div className="border border-[#E5E7EB] rounded-[12px] p-[16px] flex flex-col bg-white hover:shadow-sm transition-shadow">
-            <div className="flex justify-between items-start mb-[12px] min-h-[24px]">
-              <div className="flex gap-[4px]">
-                <span className="text-[10px] font-bold px-[6px] py-[2px] rounded-[4px] bg-[#FFD600] text-[#111827]">-30%</span>
-                <span className="text-[10px] font-bold px-[6px] py-[2px] rounded-[4px] bg-[#EAF7F2] text-[#173B33]">Топ</span>
-              </div>
-              <button className="bg-transparent border-none cursor-pointer"><HeartIcon /></button>
-            </div>
-            <div className="w-full h-[140px] bg-[#F9FAFB] rounded-[8px] flex items-center justify-center mb-[16px]">
-              <div className="w-[40px] h-[40px] bg-[#E5E7EB] rounded-[6px] opacity-40" />
-            </div>
-            <div className="flex flex-col flex-1">
-              <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.05em] mb-[4px]">м'ясо та птиця</span>
-              <h3 className="font-manrope text-[14px] font-bold text-[#111827] leading-[1.3] mb-[4px] line-clamp-2 min-h-[36px]">Філе курячої грудки охолоджене</h3>
-              <span className="text-[12px] text-[#6D8279] mb-[12px]">Наша Ряба · 1 кг</span>
-              <div className="flex items-center gap-[6px] mb-[16px]">
-                <div className="flex gap-[2px]"><span className="w-[4px] h-[4px] bg-[#10B981] rounded-full"></span><span className="w-[4px] h-[4px] bg-[#10B981] rounded-full"></span><span className="w-[4px] h-[4px] bg-[#10B981] rounded-full"></span></div>
-                <span className="text-[12px] text-[#6D8279]">4 магазини</span>
-              </div>
-              <div className="mt-auto flex flex-col gap-[16px]">
-                <div className="flex justify-between items-end">
-                  <div className="flex flex-col">
-                    <span className="text-[11px] text-[#6D8279] mb-[2px]">від</span>
-                    <span className="font-manrope text-[20px] font-extrabold text-[#111827] leading-none">119 ₴</span>
-                  </div>
-                  <div className="flex flex-col items-end gap-[4px]">
-                    <span className="text-[11px] text-[#9CA3AF] line-through leading-none">169 ₴</span>
-                    <span className="bg-[#EAF7F2] text-[#265447] text-[10px] font-bold px-[4px] py-[2px] rounded-[4px] leading-none">-50 ₴</span>
-                  </div>
-                </div>
-                <button className="w-full py-[8px] rounded-[6px] font-semibold text-[13px] bg-[#265447] text-white border border-[#265447] hover:bg-[#1A3E2F] cursor-pointer">Порівняти</button>
-              </div>
-            </div>
-          </div>
-
-          {/* Картка 4: Базовий стан (Без знижки) */}
-          <div className="border border-[#E5E7EB] rounded-[12px] p-[16px] flex flex-col bg-white hover:shadow-sm transition-shadow">
-            <div className="flex justify-between items-start mb-[12px] min-h-[24px]">
-              <div />
-              <button className="bg-transparent border-none cursor-pointer"><HeartIcon /></button>
-            </div>
-            <div className="w-full h-[140px] bg-[#F9FAFB] rounded-[8px] flex items-center justify-center mb-[16px]">
-              <div className="w-[40px] h-[40px] bg-[#E5E7EB] rounded-[6px] opacity-40" />
-            </div>
-            <div className="flex flex-col flex-1">
-              <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.05em] mb-[4px]">молочна продукція</span>
-              <h3 className="font-manrope text-[14px] font-bold text-[#111827] leading-[1.3] mb-[4px] line-clamp-2 min-h-[36px]">Масло вершкове 82,5%</h3>
-              <span className="text-[12px] text-[#6D8279] mb-[12px]">Президент · 200 г</span>
-              <div className="flex items-center gap-[6px] mb-[16px]">
-                <div className="flex gap-[2px]"><span className="w-[4px] h-[4px] bg-[#10B981] rounded-full"></span><span className="w-[4px] h-[4px] bg-[#10B981] rounded-full"></span><span className="w-[4px] h-[4px] bg-[#D1D5DB] rounded-full"></span></div>
-                <span className="text-[12px] text-[#6D8279]">3 магазини</span>
-              </div>
-              <div className="mt-auto flex flex-col gap-[16px]">
-                <div className="flex justify-between items-end">
-                  <div className="flex flex-col">
-                    <span className="text-[11px] text-[#6D8279] mb-[2px]">від</span>
-                    <span className="font-manrope text-[20px] font-extrabold text-[#111827] leading-none">89 ₴</span>
-                  </div>
-                </div>
-                <button className="w-full py-[8px] rounded-[6px] font-semibold text-[13px] bg-white text-[#265447] border border-[#E5E7EB] hover:border-[#265447] cursor-pointer">Порівняти</button>
-              </div>
-            </div>
-          </div>
-
-          {/* РЯД 2 */}
-          {/* Картка 5: Зі знижкою */}
-          <div className="border border-[#E5E7EB] rounded-[12px] p-[16px] flex flex-col bg-white hover:shadow-sm transition-shadow">
-            <div className="flex justify-between items-start mb-[12px] min-h-[24px]">
-              <span className="text-[10px] font-bold px-[6px] py-[2px] rounded-[4px] bg-[#FFD600] text-[#111827]">-15%</span>
-              <button className="bg-transparent border-none cursor-pointer"><HeartIcon /></button>
-            </div>
-            <div className="w-full h-[140px] bg-[#F9FAFB] rounded-[8px] flex items-center justify-center mb-[16px]">
-              <div className="w-[40px] h-[40px] bg-[#E5E7EB] rounded-[6px] opacity-40" />
-            </div>
-            <div className="flex flex-col flex-1">
-              <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.05em] mb-[4px]">м'ясо та птиця</span>
-              <h3 className="font-manrope text-[14px] font-bold text-[#111827] leading-[1.3] mb-[4px] line-clamp-2 min-h-[36px]">Яловичина на кісточці охолоджена</h3>
-              <span className="text-[12px] text-[#6D8279] mb-[12px]">М'ясна лавка · 1 кг</span>
-              <div className="flex items-center gap-[6px] mb-[16px]">
-                <div className="flex gap-[2px]"><span className="w-[4px] h-[4px] bg-[#10B981] rounded-full"></span><span className="w-[4px] h-[4px] bg-[#D1D5DB] rounded-full"></span><span className="w-[4px] h-[4px] bg-[#D1D5DB] rounded-full"></span></div>
-                <span className="text-[12px] text-[#6D8279]">2 магазини</span>
-              </div>
-              <div className="mt-auto flex flex-col gap-[16px]">
-                <div className="flex justify-between items-end">
-                  <div className="flex flex-col">
-                    <span className="text-[11px] text-[#6D8279] mb-[2px]">від</span>
-                    <span className="font-manrope text-[20px] font-extrabold text-[#111827] leading-none">219 ₴</span>
-                  </div>
-                  <div className="flex flex-col items-end gap-[4px]">
-                    <span className="text-[11px] text-[#9CA3AF] line-through leading-none">259 ₴</span>
-                    <span className="bg-[#EAF7F2] text-[#265447] text-[10px] font-bold px-[4px] py-[2px] rounded-[4px] leading-none">-40 ₴</span>
-                  </div>
-                </div>
-                <button className="w-full py-[8px] rounded-[6px] font-semibold text-[13px] bg-[#265447] text-white border border-[#265447] hover:bg-[#1A3E2F] cursor-pointer">Порівняти</button>
-              </div>
-            </div>
-          </div>
-
-          {/* Картка 6: Тільки Топ бейдж (Без знижки) */}
-          <div className="border border-[#E5E7EB] rounded-[12px] p-[16px] flex flex-col bg-white hover:shadow-sm transition-shadow">
-            <div className="flex justify-between items-start mb-[12px] min-h-[24px]">
-              <span className="text-[10px] font-bold px-[6px] py-[2px] rounded-[4px] bg-[#EAF7F2] text-[#173B33]">Топ</span>
-              <button className="bg-transparent border-none cursor-pointer"><HeartIcon /></button>
-            </div>
-            <div className="w-full h-[140px] bg-[#F9FAFB] rounded-[8px] flex items-center justify-center mb-[16px]">
-              <div className="w-[40px] h-[40px] bg-[#E5E7EB] rounded-[6px] opacity-40" />
-            </div>
-            <div className="flex flex-col flex-1">
-              <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.05em] mb-[4px]">молочна продукція</span>
-              <h3 className="font-manrope text-[14px] font-bold text-[#111827] leading-[1.3] mb-[4px] line-clamp-2 min-h-[36px]">Сир твердий Ементаль 45%</h3>
-              <span className="text-[12px] text-[#6D8279] mb-[12px]">Zvitok · 200 г</span>
-              <div className="flex items-center gap-[6px] mb-[16px]">
-                <div className="flex gap-[2px]"><span className="w-[4px] h-[4px] bg-[#10B981] rounded-full"></span><span className="w-[4px] h-[4px] bg-[#10B981] rounded-full"></span><span className="w-[4px] h-[4px] bg-[#D1D5DB] rounded-full"></span></div>
-                <span className="text-[12px] text-[#6D8279]">3 магазини</span>
-              </div>
-              <div className="mt-auto flex flex-col gap-[16px]">
-                <div className="flex justify-between items-end">
-                  <div className="flex flex-col">
-                    <span className="text-[11px] text-[#6D8279] mb-[2px]">від</span>
-                    <span className="font-manrope text-[20px] font-extrabold text-[#111827] leading-none">74 ₴</span>
-                  </div>
-                </div>
-                <button className="w-full py-[8px] rounded-[6px] font-semibold text-[13px] bg-white text-[#265447] border border-[#E5E7EB] hover:border-[#265447] cursor-pointer">Порівняти</button>
-              </div>
-            </div>
-          </div>
-
-          {/* Картка 7: Велика знижка */}
-          <div className="border border-[#E5E7EB] rounded-[12px] p-[16px] flex flex-col bg-white hover:shadow-sm transition-shadow">
-            <div className="flex justify-between items-start mb-[12px] min-h-[24px]">
-              <span className="text-[10px] font-bold px-[6px] py-[2px] rounded-[4px] bg-[#FFD600] text-[#111827]">-25%</span>
-              <button className="bg-transparent border-none cursor-pointer"><HeartIcon /></button>
-            </div>
-            <div className="w-full h-[140px] bg-[#F9FAFB] rounded-[8px] flex items-center justify-center mb-[16px]">
-              <div className="w-[40px] h-[40px] bg-[#E5E7EB] rounded-[6px] opacity-40" />
-            </div>
-            <div className="flex flex-col flex-1">
-              <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.05em] mb-[4px]">м'ясо та птиця</span>
-              <h3 className="font-manrope text-[14px] font-bold text-[#111827] leading-[1.3] mb-[4px] line-clamp-2 min-h-[36px]">Свинячий карбонат охолоджений</h3>
-              <span className="text-[12px] text-[#6D8279] mb-[12px]">Укрпромпостач · 1 кг</span>
-              <div className="flex items-center gap-[6px] mb-[16px]">
-                <div className="flex gap-[2px]"><span className="w-[4px] h-[4px] bg-[#10B981] rounded-full"></span><span className="w-[4px] h-[4px] bg-[#10B981] rounded-full"></span><span className="w-[4px] h-[4px] bg-[#D1D5DB] rounded-full"></span></div>
-                <span className="text-[12px] text-[#6D8279]">3 магазини</span>
-              </div>
-              <div className="mt-auto flex flex-col gap-[16px]">
-                <div className="flex justify-between items-end">
-                  <div className="flex flex-col">
-                    <span className="text-[11px] text-[#6D8279] mb-[2px]">від</span>
-                    <span className="font-manrope text-[20px] font-extrabold text-[#111827] leading-none">179 ₴</span>
-                  </div>
-                  <div className="flex flex-col items-end gap-[4px]">
-                    <span className="text-[11px] text-[#9CA3AF] line-through leading-none">239 ₴</span>
-                    <span className="bg-[#EAF7F2] text-[#265447] text-[10px] font-bold px-[4px] py-[2px] rounded-[4px] leading-none">-60 ₴</span>
-                  </div>
-                </div>
-                <button className="w-full py-[8px] rounded-[6px] font-semibold text-[13px] bg-[#265447] text-white border border-[#265447] hover:bg-[#1A3E2F] cursor-pointer">Порівняти</button>
-              </div>
-            </div>
-          </div>
-
-          {/* Картка 8: Новинка без знижки */}
-          <div className="border border-[#E5E7EB] rounded-[12px] p-[16px] flex flex-col bg-white hover:shadow-sm transition-shadow">
-            <div className="flex justify-between items-start mb-[12px] min-h-[24px]">
-              <span className="text-[10px] font-bold px-[6px] py-[2px] rounded-[4px] bg-[#EAF7F2] text-[#173B33]">Новинка</span>
-              <button className="bg-transparent border-none cursor-pointer"><HeartIcon /></button>
-            </div>
-            <div className="w-full h-[140px] bg-[#F9FAFB] rounded-[8px] flex items-center justify-center mb-[16px]">
-              <div className="w-[40px] h-[40px] bg-[#E5E7EB] rounded-[6px] opacity-40" />
-            </div>
-            <div className="flex flex-col flex-1">
-              <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.05em] mb-[4px]">молочна продукція</span>
-              <h3 className="font-manrope text-[14px] font-bold text-[#111827] leading-[1.3] mb-[4px] line-clamp-2 min-h-[36px]">Йогурт натуральний без цукру</h3>
-              <span className="text-[12px] text-[#6D8279] mb-[12px]">Активіа · 400 г</span>
-              <div className="flex items-center gap-[6px] mb-[16px]">
-                <div className="flex gap-[2px]"><span className="w-[4px] h-[4px] bg-[#10B981] rounded-full"></span><span className="w-[4px] h-[4px] bg-[#D1D5DB] rounded-full"></span><span className="w-[4px] h-[4px] bg-[#D1D5DB] rounded-full"></span></div>
-                <span className="text-[12px] text-[#6D8279]">2 магазини</span>
-              </div>
-              <div className="mt-auto flex flex-col gap-[16px]">
-                <div className="flex justify-between items-end">
-                  <div className="flex flex-col">
-                    <span className="text-[11px] text-[#6D8279] mb-[2px]">від</span>
-                    <span className="font-manrope text-[20px] font-extrabold text-[#111827] leading-none">47 ₴</span>
-                  </div>
-                </div>
-                <button className="w-full py-[8px] rounded-[6px] font-semibold text-[13px] bg-white text-[#265447] border border-[#E5E7EB] hover:border-[#265447] cursor-pointer">Порівняти</button>
-              </div>
-            </div>
-          </div>
-
-          {/* РЯД 3 */}
-          {/* Картка 9: Звичайна база */}
-          <div className="border border-[#E5E7EB] rounded-[12px] p-[16px] flex flex-col bg-white hover:shadow-sm transition-shadow">
-            <div className="flex justify-between items-start mb-[12px] min-h-[24px]">
-              <div />
-              <button className="bg-transparent border-none cursor-pointer"><HeartIcon /></button>
-            </div>
-            <div className="w-full h-[140px] bg-[#F9FAFB] rounded-[8px] flex items-center justify-center mb-[16px]">
-              <div className="w-[40px] h-[40px] bg-[#E5E7EB] rounded-[6px] opacity-40" />
-            </div>
-            <div className="flex flex-col flex-1">
-              <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.05em] mb-[4px]">молочна продукція</span>
-              <h3 className="font-manrope text-[14px] font-bold text-[#111827] leading-[1.3] mb-[4px] line-clamp-2 min-h-[36px]">Сметана 15% жирності</h3>
-              <span className="text-[12px] text-[#6D8279] mb-[12px]">Галичина · 350 г</span>
-              <div className="flex items-center gap-[6px] mb-[16px]">
-                <div className="flex gap-[2px]"><span className="w-[4px] h-[4px] bg-[#10B981] rounded-full"></span><span className="w-[4px] h-[4px] bg-[#10B981] rounded-full"></span><span className="w-[4px] h-[4px] bg-[#10B981] rounded-full"></span></div>
-                <span className="text-[12px] text-[#6D8279]">4 магазини</span>
-              </div>
-              <div className="mt-auto flex flex-col gap-[16px]">
-                <div className="flex justify-between items-end">
-                  <div className="flex flex-col">
-                    <span className="text-[11px] text-[#6D8279] mb-[2px]">від</span>
-                    <span className="font-manrope text-[20px] font-extrabold text-[#111827] leading-none">42 ₴</span>
-                  </div>
-                </div>
-                <button className="w-full py-[8px] rounded-[6px] font-semibold text-[13px] bg-white text-[#265447] border border-[#E5E7EB] hover:border-[#265447] cursor-pointer">Порівняти</button>
-              </div>
-            </div>
-          </div>
-
-          {/* Картка 10: Невелика знижка */}
-          <div className="border border-[#E5E7EB] rounded-[12px] p-[16px] flex flex-col bg-white hover:shadow-sm transition-shadow">
-            <div className="flex justify-between items-start mb-[12px] min-h-[24px]">
-              <span className="text-[10px] font-bold px-[6px] py-[2px] rounded-[4px] bg-[#FFD600] text-[#111827]">-10%</span>
-              <button className="bg-transparent border-none cursor-pointer"><HeartIcon /></button>
-            </div>
-            <div className="w-full h-[140px] bg-[#F9FAFB] rounded-[8px] flex items-center justify-center mb-[16px]">
-              <div className="w-[40px] h-[40px] bg-[#E5E7EB] rounded-[6px] opacity-40" />
-            </div>
-            <div className="flex flex-col flex-1">
-              <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.05em] mb-[4px]">продукти</span>
-              <h3 className="font-manrope text-[14px] font-bold text-[#111827] leading-[1.3] mb-[4px] line-clamp-2 min-h-[36px]">Яйця курячі С0 білі</h3>
-              <span className="text-[12px] text-[#6D8279] mb-[12px]">Ясенсвіт · 10 шт</span>
-              <div className="flex items-center gap-[6px] mb-[16px]">
-                <div className="flex gap-[2px]"><span className="w-[4px] h-[4px] bg-[#10B981] rounded-full"></span><span className="w-[4px] h-[4px] bg-[#10B981] rounded-full"></span><span className="w-[4px] h-[4px] bg-[#D1D5DB] rounded-full"></span></div>
-                <span className="text-[12px] text-[#6D8279]">3 магазини</span>
-              </div>
-              <div className="mt-auto flex flex-col gap-[16px]">
-                <div className="flex justify-between items-end">
-                  <div className="flex flex-col">
-                    <span className="text-[11px] text-[#6D8279] mb-[2px]">від</span>
-                    <span className="font-manrope text-[20px] font-extrabold text-[#111827] leading-none">54 ₴</span>
-                  </div>
-                  <div className="flex flex-col items-end gap-[4px]">
-                    <span className="text-[11px] text-[#9CA3AF] line-through leading-none">60 ₴</span>
-                    <span className="bg-[#EAF7F2] text-[#265447] text-[10px] font-bold px-[4px] py-[2px] rounded-[4px] leading-none">-6 ₴</span>
-                  </div>
-                </div>
-                <button className="w-full py-[8px] rounded-[6px] font-semibold text-[13px] bg-[#265447] text-white border border-[#265447] hover:bg-[#1A3E2F] cursor-pointer">Порівняти</button>
-              </div>
-            </div>
-          </div>
-
-          {/* Картка 11: Топ делікатес */}
-          <div className="border border-[#E5E7EB] rounded-[12px] p-[16px] flex flex-col bg-white hover:shadow-sm transition-shadow">
-            <div className="flex justify-between items-start mb-[12px] min-h-[24px]">
-              <span className="text-[10px] font-bold px-[6px] py-[2px] rounded-[4px] bg-[#EAF7F2] text-[#173B33]">Топ</span>
-              <button className="bg-transparent border-none cursor-pointer"><HeartIcon /></button>
-            </div>
-            <div className="w-full h-[140px] bg-[#F9FAFB] rounded-[8px] flex items-center justify-center mb-[16px]">
-              <div className="w-[40px] h-[40px] bg-[#E5E7EB] rounded-[6px] opacity-40" />
-            </div>
-            <div className="flex flex-col flex-1">
-              <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.05em] mb-[4px]">м'ясо та птиця</span>
-              <h3 className="font-manrope text-[14px] font-bold text-[#111827] leading-[1.3] mb-[4px] line-clamp-2 min-h-[36px]">Ковбаса салямі фует преміум</h3>
-              <span className="text-[12px] text-[#6D8279] mb-[12px]">Алан · 240 г</span>
-              <div className="flex items-center gap-[6px] mb-[16px]">
-                <div className="flex gap-[2px]"><span className="w-[4px] h-[4px] bg-[#10B981] rounded-full"></span><span className="w-[4px] h-[4px] bg-[#D1D5DB] rounded-full"></span><span className="w-[4px] h-[4px] bg-[#D1D5DB] rounded-full"></span></div>
-                <span className="text-[12px] text-[#6D8279]">2 магазини</span>
-              </div>
-              <div className="mt-auto flex flex-col gap-[16px]">
-                <div className="flex justify-between items-end">
-                  <div className="flex flex-col">
-                    <span className="text-[11px] text-[#6D8279] mb-[2px]">від</span>
-                    <span className="font-manrope text-[20px] font-extrabold text-[#111827] leading-none">145 ₴</span>
-                  </div>
-                </div>
-                <button className="w-full py-[8px] rounded-[6px] font-semibold text-[13px] bg-white text-[#265447] border border-[#E5E7EB] hover:border-[#265447] cursor-pointer">Порівняти</button>
-              </div>
-            </div>
-          </div>
-
-          {/* Картка 12: Звичайна база */}
-          <div className="border border-[#E5E7EB] rounded-[12px] p-[16px] flex flex-col bg-white hover:shadow-sm transition-shadow">
-            <div className="flex justify-between items-start mb-[12px] min-h-[24px]">
-              <div />
-              <button className="bg-transparent border-none cursor-pointer"><HeartIcon /></button>
-            </div>
-            <div className="w-full h-[140px] bg-[#F9FAFB] rounded-[8px] flex items-center justify-center mb-[16px]">
-              <div className="w-[40px] h-[40px] bg-[#E5E7EB] rounded-[6px] opacity-40" />
-            </div>
-            <div className="flex flex-col flex-1">
-              <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.05em] mb-[4px]">молочна продукція</span>
-              <h3 className="font-manrope text-[14px] font-bold text-[#111827] leading-[1.3] mb-[4px] line-clamp-2 min-h-[36px]">Сир кисломолочний 5%</h3>
-              <span className="text-[12px] text-[#6D8279] mb-[12px]">Простоквашино · 300 г</span>
-              <div className="flex items-center gap-[6px] mb-[16px]">
-                <div className="flex gap-[2px]"><span className="w-[4px] h-[4px] bg-[#10B981] rounded-full"></span><span className="w-[4px] h-[4px] bg-[#10B981] rounded-full"></span><span className="w-[4px] h-[4px] bg-[#D1D5DB] rounded-full"></span></div>
-                <span className="text-[12px] text-[#6D8279]">3 магазини</span>
-              </div>
-              <div className="mt-auto flex flex-col gap-[16px]">
-                <div className="flex justify-between items-end">
-                  <div className="flex flex-col">
-                    <span className="text-[11px] text-[#6D8279] mb-[2px]">від</span>
-                    <span className="font-manrope text-[20px] font-extrabold text-[#111827] leading-none">68 ₴</span>
-                  </div>
-                </div>
-                <button className="w-full py-[8px] rounded-[6px] font-semibold text-[13px] bg-white text-[#265447] border border-[#E5E7EB] hover:border-[#265447] cursor-pointer">Порівняти</button>
-              </div>
-            </div>
-          </div>
-
+              );
+            })
+          )}
         </div>
 
         {/* Блок пагінації */}
@@ -676,7 +411,6 @@ export function MainContent() {
         </div>
 
       </main>
-
     </div>
   );
 }

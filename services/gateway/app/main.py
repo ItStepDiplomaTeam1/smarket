@@ -49,6 +49,7 @@ app.include_router(
 )
 
 
+
 @app.get("/health", tags=["System"])
 async def root():
     return {"status": "ok", "service": "Api Gateway", "version": "v1"}
