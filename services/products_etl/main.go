@@ -215,9 +215,13 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	mux.Handle("/docs/", httpSwagger.Handler(
-		httpSwagger.URL("/docs/doc.json"),
-	))
+	// Swagger UI доступний тільки в development середовищі
+	if cfg.Environment == "development" {
+		mux.Handle("/docs/", httpSwagger.Handler(
+			httpSwagger.URL("/docs/doc.json"),
+		))
+		log.Println("[main] Swagger UI увімкнено (development mode)")
+	}
 
 	mux.HandleFunc("/health", healthHandler)
 	mux.HandleFunc("GET /product/get", getProductsHandler)
@@ -229,7 +233,9 @@ func main() {
 
 	go func() {
 		log.Println("HTTP сервер запущено на порті ", server.Addr)
-		log.Println("Swagger UI: http://localhost:8082/docs/index.html")
+		if cfg.Environment == "development" {
+			log.Println("Swagger UI: http://localhost:8082/docs/index.html")
+		}
 		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			log.Fatalf("Помилка HTTP сервера: %v", err)
 		}

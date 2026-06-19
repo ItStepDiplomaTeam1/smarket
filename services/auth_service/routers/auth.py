@@ -21,6 +21,10 @@ from services.auth_service.plugins.security.jwt_handler import (
     decode_token,
 )
 from services.auth_service.plugins.security.limiters.auth_limiter import auth_limiter
+from services.auth_service.plugins.security.token_blacklist import (
+    blacklist_token,
+    is_token_blacklisted,
+)
 from services.auth_service.shared.DTO import (
     LoginResponse,
     RegisterRequest,
@@ -34,6 +38,15 @@ router = APIRouter(default_response_class=ORJSONResponse)
 _REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60
 _COOKIE_SECURE = os.getenv("DEBUG", "False").lower() not in ("true", "1", "yes")
 _security = HTTPBearer()
+
+
+def _mask_email(email: str) -> str:
+    """Mask email for safe logging (GDPR compliance)."""
+    if "@" not in email:
+        return "***"
+    local, domain = email.rsplit("@", 1)
+    masked_local = local[0] + "***" if len(local) <= 2 else local[0] + "***" + local[-1]
+    return f"{masked_local}@{domain}"
 
 
 async def _get_current_user(
@@ -105,7 +118,7 @@ async def register(
     body: RegisterRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    logger.info(f"Запит на реєстрацію нового користувача з email: {body.email}")
+    logger.info(f"Запит на реєстрацію нового користувача з email: {_mask_email(body.email)}")
     try:
         inner_user = User(
             email=body.email,
@@ -120,8 +133,8 @@ async def register(
         await db.commit()
         await db.refresh(inner_user)
 
-        access_token = create_access_token(str(inner_user.id), inner_user.role)
-        refresh_token = create_refresh_token(str(inner_user.id), inner_user.role)
+        access_token = create_access_token(str(inner_user.id), inner_user.role, inner_user.email)
+        refresh_token = create_refresh_token(str(inner_user.id), inner_user.role, inner_user.email)
 
         response.set_cookie(
             key="refresh_token",
@@ -132,7 +145,9 @@ async def register(
             max_age=_REFRESH_TOKEN_MAX_AGE,
         )
 
-        logger.success(f"Користувача {body.email} успішно зареєстровано з ID: {inner_user.id}")
+        logger.success(
+            f"Користувача {_mask_email(body.email)} успішно зареєстровано з ID: {inner_user.id}"
+        )
         return RegisterResponse(
             access_token=access_token,
             token_type="bearer",
@@ -145,15 +160,18 @@ async def register(
 
     except IntegrityError as err:
         await db.rollback()
-        logger.warning(f"Помилка реєстрації: email {body.email} вже існує в системі")
+        logger.warning(f"Помилка реєстрації: email {_mask_email(body.email)} вже існує в системі")
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email already registered",
         ) from err
-    except Exception as e:
+    except Exception as err:
         await db.rollback()
-        logger.exception(f"Критична помилка під час реєстрації користувача {body.email}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
+        logger.exception("Критична помилка під час реєстрації користувача")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
+        ) from err
 
 
 @router.post("/login", response_model=LoginResponse, status_code=status.HTTP_200_OK)
@@ -165,10 +183,12 @@ async def login(
     body: RegisterRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    logger.info(f"Запит на авторизацію користувача з email: {body.email}")
+    logger.info(f"Запит на авторизацію користувача з email: {_mask_email(body.email)}")
     token = _extract_bearer_token(request)
     if token and _is_invalid_token(token):
-        logger.warning(f"Спроба авторизації з невалідним токеном у заголовку для {body.email}")
+        logger.warning(
+            f"Спроба авторизації з невалідним токеном у заголовку для {_mask_email(body.email)}"
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",
@@ -179,15 +199,17 @@ async def login(
         user = await get_authenticated_user(db, body.email, body.password)
 
         if user is None:
-            logger.warning(f"Невдала спроба входу: неправильний пароль або email для {body.email}")
+            logger.warning(
+                f"Невдала спроба входу: неправильний пароль або email для {_mask_email(body.email)}"
+            )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid credentials",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        access_token = create_access_token(str(user.id), user.role)
-        refresh_token = create_refresh_token(str(user.id), user.role)
+        access_token = create_access_token(str(user.id), user.role, user.email)
+        refresh_token = create_refresh_token(str(user.id), user.role, user.email)
 
         response.set_cookie(
             key="refresh_token",
@@ -198,7 +220,7 @@ async def login(
             max_age=_REFRESH_TOKEN_MAX_AGE,
         )
 
-        logger.success(f"Користувач {body.email} успішно авторизований. ID: {user.id}")
+        logger.success(f"Користувач {_mask_email(body.email)} успішно авторизований. ID: {user.id}")
         return LoginResponse(
             access_token=access_token,
             token_type="bearer",
@@ -211,13 +233,12 @@ async def login(
 
     except HTTPException:
         raise
-    except Exception as e:
-        logger.exception(f"Критична помилка під час входу користувача {body.email}")
+    except Exception as err:
+        logger.exception("Критична помилка під час входу користувача")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(e),
-        ) from e
-    
+            detail="Internal server error",
+        ) from err
 
 
 @router.post("/refresh", response_model=TokenResponse, status_code=status.HTTP_200_OK)
@@ -250,9 +271,22 @@ async def refresh(request: Request, response: Response):
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    jti = payload.get("jti")
+    if jti and await is_token_blacklisted(jti):
+        logger.warning(f"Спроба оновлення з анульованим refresh токеном (jti: {jti})")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token has been revoked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     logger.info(f"Успішно оновлено токени для користувача з ID: {payload.get('sub')}")
-    new_access_token = create_access_token(payload["sub"], payload["role"])
-    new_refresh_token = create_refresh_token(payload["sub"], payload["role"])
+    new_access_token = create_access_token(
+        payload["sub"], payload["role"], payload.get("email", "user@example.com")
+    )
+    new_refresh_token = create_refresh_token(
+        payload["sub"], payload["role"], payload.get("email", "user@example.com")
+    )
 
     response.set_cookie(
         key="refresh_token",
@@ -273,16 +307,36 @@ async def get_me(current_user: User = Depends(_get_current_user)):
     logger.info(
         f"Користувач {current_user.email} (ID: {current_user.id}) запитав інформацію про себе"
     )
+    username = current_user.email.split("@")[0] if "@" in current_user.email else current_user.email
     return {
         "id": str(current_user.id),
         "email": current_user.email,
+        "username": username,
         "role": current_user.role,
     }
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def logout(response: Response):
+async def logout(request: Request, response: Response):
     logger.info("Запит на вихід із системи, видалення refresh токена з кук")
+    refresh_token = request.cookies.get("refresh_token")
+    if refresh_token:
+        try:
+            payload = decode_token(refresh_token)
+            jti = payload.get("jti")
+            if jti:
+                from datetime import UTC, datetime
+
+                exp_ts = payload.get("exp")
+                if exp_ts:
+                    if isinstance(exp_ts, datetime):
+                        ttl = int((exp_ts - datetime.now(UTC)).total_seconds())
+                    else:
+                        ttl = int(exp_ts - datetime.now(UTC).timestamp())
+                    if ttl > 0:
+                        await blacklist_token(jti, ttl)
+        except Exception:
+            logger.exception("Не вдалося заблокувати refresh токен при logout")
     response.delete_cookie(
         key="refresh_token",
         httponly=True,
@@ -290,3 +344,25 @@ async def logout(response: Response):
         samesite="lax",
     )
     return
+
+
+@router.get("/users/{user_id}")
+async def get_user_by_id(user_id: str, db: AsyncSession = Depends(get_db)):
+    import uuid
+
+    try:
+        user_uuid = uuid.UUID(user_id)
+    except ValueError as err:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid user ID format",
+        ) from err
+    result = await db.execute(select(User).where(User.id == user_uuid))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    username = user.email.split("@")[0] if "@" in user.email else user.email
+    return {"id": str(user.id), "email": user.email, "username": username, "role": user.role}

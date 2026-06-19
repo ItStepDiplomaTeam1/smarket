@@ -4,8 +4,10 @@ import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useGoogleLogin } from '@react-oauth/google';
 import { apiClient } from '@/shared/api/apiClient';
+import { Loader2, Check } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
-import { useGoogleOAuth } from '@/hooks/api/useAuthApi';
+import { useGoogleOAuth, type MeResponse } from '@/hooks/api/useAuthApi';
 
 import eyeIcon from '@/shared/assets/ButtonEye.svg';
 import btngoogle from '@/shared/assets/google.svg';
@@ -25,39 +27,35 @@ interface RegisterResponse {
     user: User;
 }
 
-// --- Password strength helpers ---
+// --- Password checklist component ---
+const PasswordChecklist = ({ password }: { password: string }) => {
+    const rules = [
+        { label: 'Мінімум 8 символів', check: () => password.length >= 8 },
+        { label: 'Велика літера', check: () => /[A-Z]/.test(password) },
+        { label: 'Мала літера', check: () => /[a-z]/.test(password) },
+        { label: 'Цифра', check: () => /\d/.test(password) },
+        { label: 'Спецсимвол (!@#$%^&*)', check: () => /[!@#$%^&*()\-_=+[\]{}|;:,.<>?/~`]/.test(password) },
+    ];
 
-type StrengthLevel = 'weak' | 'medium' | 'strong';
+    if (!password) return null;
 
-interface PasswordStrength {
-    level: StrengthLevel;
-    score: number; // 0–3
-    label: string;
-}
-
-function getPasswordStrength(password: string): PasswordStrength {
-    if (!password) return { level: 'weak', score: 0, label: '' };
-
-    let score = 0;
-    if (password.length >= 8) score++;
-    if (/[A-Z]/.test(password)) score++;
-    if (/\d/.test(password)) score++;
-
-    if (score === 3) return { level: 'strong', score: 3, label: 'Надійний' };
-    if (score === 2) return { level: 'medium', score: 2, label: 'Середній' };
-    return { level: 'weak', score: 1, label: 'Слабкий' };
-}
-
-const strengthColors: Record<StrengthLevel, string[]> = {
-    weak:   ['bg-red-400',    'bg-[rgba(38,84,71,0.08)]', 'bg-[rgba(38,84,71,0.08)]'],
-    medium: ['bg-yellow-400', 'bg-yellow-400',             'bg-[rgba(38,84,71,0.08)]'],
-    strong: ['bg-[#265447]',  'bg-[#265447]',              'bg-[#265447]'],
-};
-
-const strengthTextColors: Record<StrengthLevel, string> = {
-    weak:   'text-red-500',
-    medium: 'text-yellow-500',
-    strong: 'text-[#265447]',
+    return (
+        <div className="mt-[8px] flex flex-col gap-[4px] mb-[8px]">
+            {rules.map((rule, idx) => {
+                const isValid = rule.check();
+                return (
+                    <div key={idx} className={`flex items-center gap-[6px] text-[12px] font-medium transition-colors duration-300 ${isValid ? 'text-[#265447]' : 'text-gray-400'}`}>
+                        {isValid ? (
+                            <Check className="w-[14px] h-[14px] shrink-0" strokeWidth={3} />
+                        ) : (
+                            <div className="w-[14px] h-[14px] shrink-0 rounded-full border border-gray-300 flex items-center justify-center" />
+                        )}
+                        <span>{rule.label}</span>
+                    </div>
+                );
+            })}
+        </div>
+    );
 };
 
 // --- Field validation helpers ---
@@ -73,6 +71,30 @@ function validateName(value: string): string {
 function validateEmail(value: string): string {
     if (!value) return 'Email є обов\'язковим.';
     if (!emailRegex.test(value)) return 'Будь ласка, введіть дійсний email.';
+    if (value.includes('..')) return 'Email не може містити дві крапки підряд.';
+
+    const parts = value.split('@');
+    if (parts.length === 2) {
+        const domain = parts[1].toLowerCase();
+        const domainName = domain.split('.')[0];
+        const tld = domain.split('.').slice(1).join('.');
+
+        // Popular domains typo prevention
+        const popularDomains = ['gmail', 'yahoo', 'hotmail', 'outlook', 'icloud'];
+        if (popularDomains.includes(domainName)) {
+            if (['c', 'co', 'con', 'comn', 'xom', 'cpm'].includes(tld)) {
+                return `Можливо, ви мали на увазі ${domainName}.com?`;
+            }
+            if (tld === 'ua' || tld === 'net') {
+                 // That's fine, although gmail.ua is rare, ukr.net is common.
+            }
+        }
+        
+        if (domainName === 'ukr' && ['ne', 'nrt', 'ner'].includes(tld)) {
+             return 'Можливо, ви мали на увазі ukr.net?';
+        }
+    }
+
     return '';
 }
 
@@ -80,7 +102,9 @@ function validatePassword(value: string): string {
     if (!value) return 'Пароль є обов\'язковим.';
     if (value.length < 8) return 'Мінімум 8 символів.';
     if (!/[A-Z]/.test(value)) return 'Потрібна хоча б 1 велика літера.';
+    if (!/[a-z]/.test(value)) return 'Потрібна хоча б 1 мала літера.';
     if (!/\d/.test(value)) return 'Потрібна хоча б 1 цифра.';
+    if (!/[!@#$%^&*()\-_=+[\]{}|;:,.<>?/~`]/.test(value)) return 'Потрібен хоча б 1 спецсимвол.';
     return '';
 }
 
@@ -98,7 +122,7 @@ export function Create() {
     const googleOAuthMutation = useGoogleOAuth();
 
     const handleGoogleLogin = useGoogleLogin({
-        onSuccess: (tokenResponse: any) => {
+        onSuccess: (tokenResponse: { access_token: string }) => {
             googleOAuthMutation.mutate(tokenResponse.access_token);
         },
         flow: 'implicit',
@@ -128,8 +152,6 @@ export function Create() {
     const passwordError = touched.password ? validatePassword(password)                 : '';
     const confirmError = touched.confirm  ? validateConfirm(password, confirmPassword)  : '';
 
-    const strength = getPasswordStrength(password);
-
     const handleBlur = useCallback((field: keyof typeof touched) => {
         setTouched((prev) => ({ ...prev, [field]: true }));
     }, []);
@@ -144,14 +166,32 @@ export function Create() {
                 });
                 return response.data;
             } catch (error) {
-                if (axios.isAxiosError(error) && error.response?.data?.message) {
-                    throw new Error(error.response.data.message, { cause: error });
+                if (axios.isAxiosError(error)) {
+                    if (error.response?.data?.detail) {
+                        const detail = error.response.data.detail;
+                        if (Array.isArray(detail) && detail.length > 0 && detail[0].msg) {
+                            throw new Error(detail[0].msg, { cause: error });
+                        } else if (typeof detail === 'string') {
+                            throw new Error(detail, { cause: error });
+                        }
+                    } else if (error.response?.data?.message) {
+                        throw new Error(error.response.data.message, { cause: error });
+                    }
                 }
                 throw new Error('Помилка реєстрації. Спробуйте ще раз.', { cause: error });
             }
         },
-        onSuccess: (data) => {
+        onSuccess: async (data) => {
             setAuth(data.access_token, data.user);
+            try {
+                const { data: me } = await apiClient.get<MeResponse>('/api/v1/auth/me');
+                useAuthStore.setState((state) => ({
+                    user: state.user ? { ...state.user, name: me.username } : state.user,
+                }));
+            } catch {
+                // fallback — ім'я залишиться undefined
+            }
+            toast.success(`Вітаємо, ${name}! Ви успішно зареєструвались.`);
             navigate('/');
         },
         onError: (error) => {
@@ -240,12 +280,16 @@ export function Create() {
                             type="button"
                             onClick={() => handleGoogleLogin()}
                             disabled={googleOAuthMutation.isPending}
-                            className="flex items-center justify-center gap-[8px] w-full h-[44px] bg-white border border-[rgba(38,84,71,0.16)] rounded-[10px] mb-[12px] cursor-pointer font-inter text-[13px] font-semibold text-[#111827] transition-colors duration-200 hover:bg-[#F9FAFB] disabled:opacity-50"
+                            className="flex items-center justify-center gap-[8px] w-full h-[44px] bg-white border border-[rgba(38,84,71,0.16)] rounded-[10px] mb-[12px] cursor-pointer font-inter text-[13px] font-semibold text-[#111827] transition-all duration-200 hover:bg-[#F9FAFB] hover:shadow-sm disabled:opacity-50"
                         >
-                            <img src={btngoogle} alt="Google" className="w-[20px] h-[20px]" />
+                            {googleOAuthMutation.isPending ? (
+                                <Loader2 className="w-[20px] h-[20px] animate-spin text-[#265447]" />
+                            ) : (
+                                <img src={btngoogle} alt="Google" className="w-[20px] h-[20px]" />
+                            )}
                             <span>{googleOAuthMutation.isPending ? 'Завантаження...' : 'Продовжити з Google'}</span>
                         </button>
-                        <button className="flex items-center justify-center gap-[8px] w-full h-[44px] bg-white border border-[rgba(38,84,71,0.16)] rounded-[10px] mb-[12px] cursor-pointer font-inter text-[13px] font-semibold text-[#111827] transition-colors duration-200 hover:bg-[#F9FAFB]">
+                        <button className="flex items-center justify-center gap-[8px] w-full h-[44px] bg-white border border-[rgba(38,84,71,0.16)] rounded-[10px] mb-[12px] cursor-pointer font-inter text-[13px] font-semibold text-[#111827] transition-all duration-200 hover:bg-[#F9FAFB] hover:shadow-sm">
                             <img src={btnfacebook} alt="Facebook" className="w-[20px] h-[20px]" />
                             <span>Продовжити з Facebook</span>
                         </button>
@@ -263,16 +307,16 @@ export function Create() {
                                 id="reg-name"
                                 type="text"
                                 placeholder="Олена"
+                                autoFocus
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 onBlur={() => handleBlur('name')}
                                 disabled={registerMutation.isPending}
                                 className={`w-full h-[44px] border rounded-[10px] px-[16px] bg-white font-inter text-[14px] text-[#111827] outline-none transition-colors duration-200 ${fieldBorder(nameError, touched.name)}`}
                             />
-                            {nameError && (
-                                <p className="mt-[4px] mb-[8px] text-[12px] text-red-500 font-medium">{nameError}</p>
-                            )}
-                            {!nameError && <div className="mb-[16px]" />}
+                            <div className={`overflow-hidden transition-all duration-300 ${nameError ? 'max-h-[40px] opacity-100 mt-[4px] mb-[8px]' : 'max-h-0 opacity-0 mb-[16px]'}`}>
+                                <p className="text-[12px] text-red-500 font-medium">{nameError}</p>
+                            </div>
 
                             {/* Email */}
                             <label htmlFor="reg-email" className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Email</label>
@@ -286,10 +330,9 @@ export function Create() {
                                 disabled={registerMutation.isPending}
                                 className={`w-full h-[44px] border rounded-[10px] px-[16px] bg-white font-inter text-[14px] text-[#111827] outline-none transition-colors duration-200 ${fieldBorder(emailError, touched.email)}`}
                             />
-                            {emailError && (
-                                <p className="mt-[4px] mb-[8px] text-[12px] text-red-500 font-medium">{emailError}</p>
-                            )}
-                            {!emailError && <div className="mb-[16px]" />}
+                            <div className={`overflow-hidden transition-all duration-300 ${emailError ? 'max-h-[40px] opacity-100 mt-[4px] mb-[8px]' : 'max-h-0 opacity-0 mb-[16px]'}`}>
+                                <p className="text-[12px] text-red-500 font-medium">{emailError}</p>
+                            </div>
 
                             {/* Password */}
                             <label htmlFor="reg-password" className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Пароль</label>
@@ -313,24 +356,12 @@ export function Create() {
                                 </button>
                             </div>
 
-                            {/* Strength bar */}
-                            {password && (
-                                <div className="mt-[8px]">
-                                    <div className="flex gap-[4px] mb-[4px]">
-                                        <div className={`flex-1 h-[4px] rounded-full transition-colors duration-300 ${strengthColors[strength.level][0]}`} />
-                                        <div className={`flex-1 h-[4px] rounded-full transition-colors duration-300 ${strengthColors[strength.level][1]}`} />
-                                        <div className={`flex-1 h-[4px] rounded-full transition-colors duration-300 ${strengthColors[strength.level][2]}`} />
-                                    </div>
-                                    <p className={`text-[11px] font-semibold ${strengthTextColors[strength.level]}`}>
-                                        {strength.label}
-                                    </p>
-                                </div>
-                            )}
+                            {/* Strength Checklist */}
+                            <PasswordChecklist password={password} />
 
-                            {passwordError && (
-                                <p className="mt-[4px] mb-[8px] text-[12px] text-red-500 font-medium">{passwordError}</p>
-                            )}
-                            {!passwordError && <div className="mb-[16px]" />}
+                            <div className={`overflow-hidden transition-all duration-300 ${passwordError ? 'max-h-[40px] opacity-100 mt-[4px] mb-[8px]' : 'max-h-0 opacity-0 mb-[16px]'}`}>
+                                <p className="text-[12px] text-red-500 font-medium">{passwordError}</p>
+                            </div>
 
                             {/* Confirm password */}
                             <label htmlFor="reg-confirm" className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Підтвердьте пароль</label>
@@ -356,10 +387,9 @@ export function Create() {
                                     <img src={eyeIcon} alt="toggle" className="w-[18px] h-[18px]" />
                                 </button>
                             </div>
-                            {confirmError && (
-                                <p className="mt-[4px] mb-[8px] text-[12px] text-red-500 font-medium">{confirmError}</p>
-                            )}
-                            {!confirmError && <div className="mb-[16px]" />}
+                            <div className={`overflow-hidden transition-all duration-300 ${confirmError ? 'max-h-[40px] opacity-100 mt-[4px] mb-[8px]' : 'max-h-0 opacity-0 mb-[16px]'}`}>
+                                <p className="text-[12px] text-red-500 font-medium">{confirmError}</p>
+                            </div>
 
                             {/* Agree */}
                             <div className="flex items-start gap-[12px] mb-[24px]">
@@ -377,16 +407,17 @@ export function Create() {
                             </div>
 
                             {/* Server error */}
-                            {serverError && (
-                                <div className="mb-[16px] text-red-500 text-[13px] font-medium">{serverError}</div>
-                            )}
+                            <div className={`overflow-hidden transition-all duration-300 ${serverError ? 'max-h-[40px] opacity-100 mb-[16px]' : 'max-h-0 opacity-0'}`}>
+                                <p className="text-red-500 text-[13px] font-medium">{serverError}</p>
+                            </div>
 
                             <button
                                 type="submit"
                                 disabled={registerMutation.isPending}
-                                className="w-full h-[46px] mt-[8px] bg-[#265447] text-white rounded-[10px] border-none cursor-pointer font-inter text-[14px] font-bold transition-colors duration-200 hover:bg-[#1A3E2F] disabled:opacity-50"
+                                className="flex items-center justify-center gap-[8px] w-full h-[46px] mt-[8px] bg-[#265447] text-white rounded-[10px] border-none cursor-pointer font-inter text-[14px] font-bold transition-all duration-200 hover:bg-[#1A3E2F] hover:shadow-md disabled:opacity-50"
                             >
-                                {registerMutation.isPending ? 'Завантаження...' : 'Зареєструватися'}
+                                {registerMutation.isPending && <Loader2 className="w-[18px] h-[18px] animate-spin" />}
+                                <span>{registerMutation.isPending ? 'Завантаження...' : 'Зареєструватися'}</span>
                             </button>
 
                             <p className="text-center text-[14px] mt-[24px] text-[#6B7280]">

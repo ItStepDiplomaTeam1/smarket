@@ -1,4 +1,3 @@
-
 import asyncio
 import json
 import logging
@@ -46,7 +45,9 @@ async def run_pg_listener(dsn: str) -> None:
             conn = await asyncpg.connect(dsn, timeout=10)
 
             await conn.add_listener("products_updated", _on_products_updated)
-            logger.info("[PgListener] ✅ LISTEN products_updated — очікуємо нотифікацій.")
+            logger.info(
+                "[PgListener] ✅ LISTEN products_updated — очікуємо нотифікацій."
+            )
 
             backoff = 1
 
@@ -57,7 +58,11 @@ async def run_pg_listener(dsn: str) -> None:
             logger.info("[PgListener] Отримано CancelledError — завершуємо роботу.")
             break
 
-        except (asyncpg.PostgresConnectionStatusError, OSError, ConnectionRefusedError) as exc:
+        except (
+            asyncpg.PostgresConnectionStatusError,
+            OSError,
+            ConnectionRefusedError,
+        ) as exc:
             logger.warning(
                 "[PgListener] З'єднання перервано: %s. Reconnect через %ds...",
                 exc,
@@ -67,7 +72,11 @@ async def run_pg_listener(dsn: str) -> None:
             backoff = min(backoff * 2, max_backoff)
 
         except Exception as exc:
-            logger.error("[PgListener] Неочікувана помилка: %s. Reconnect через %ds...", exc, backoff)
+            logger.error(
+                "[PgListener] Неочікувана помилка: %s. Reconnect через %ds...",
+                exc,
+                backoff,
+            )
             await asyncio.sleep(backoff)
             backoff = min(backoff * 2, max_backoff)
 

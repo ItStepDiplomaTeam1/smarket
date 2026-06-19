@@ -34,7 +34,7 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: '/create',
+        path: '/register',
         element: (
           <Suspense fallback={<div>Завантаження реєстрації...</div>}>
             <Registerform />

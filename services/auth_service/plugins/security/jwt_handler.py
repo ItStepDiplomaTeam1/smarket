@@ -24,11 +24,14 @@ def _get_secret_key() -> str:
     return get_secret("SECRET_KEY")
 
 
-def create_access_token(user_id: str, role: str) -> str:
+def create_access_token(user_id: str, role: str, email: str) -> str:
     now = datetime.now(UTC)
+    username = email.split("@")[0] if "@" in email else email
     payload = {
         "sub": user_id,
         "role": role,
+        "email": email,
+        "name": username,
         "type": "access",
         "iat": now,
         "jti": str(uuid.uuid4()),
@@ -37,11 +40,12 @@ def create_access_token(user_id: str, role: str) -> str:
     return jwt.encode(payload, _get_secret_key(), algorithm=ALGORITHM)
 
 
-def create_refresh_token(user_id: str, role: str) -> str:
+def create_refresh_token(user_id: str, role: str, email: str) -> str:
     now = datetime.now(UTC)
     payload = {
         "sub": user_id,
         "role": role,
+        "email": email,
         "type": "refresh",
         "iat": now,
         "jti": str(uuid.uuid4()),

@@ -12,12 +12,20 @@ Alembic-міграції в цьому сервісі НЕ повинні ств
   - prices                   (лог цін: product_id → store_id → price)
   - store_products           (зв'язок товар ↔ магазин)
 """
+
 import datetime
 from typing import Optional
 
 from sqlalchemy import (
-    BigInteger, Boolean, Float, ForeignKey,
-    Integer, Numeric, String, Text, DateTime
+    BigInteger,
+    Boolean,
+    Float,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+    DateTime,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -31,6 +39,7 @@ class Store(Base):
     Магазин з Zakaz.ua.
     PRIMARY KEY — external_id (рядок виду "48215610"), тобто зовнішній ID з Zakaz.
     """
+
     __tablename__ = "stores"
 
     external_id: Mapped[str] = mapped_column(String, primary_key=True)
@@ -48,7 +57,9 @@ class Store(Base):
     )
 
     prices: Mapped[list["Price"]] = relationship("Price", back_populates="store")
-    store_products: Mapped[list["StoreProduct"]] = relationship("StoreProduct", back_populates="store")
+    store_products: Mapped[list["StoreProduct"]] = relationship(
+        "StoreProduct", back_populates="store"
+    )
 
 
 class StoreCategoryMapping(Base):
@@ -56,6 +67,7 @@ class StoreCategoryMapping(Base):
     Маппінг: slug категорії з API Zakaz → наш внутрішній canonical_category_id.
     Наповнюється ETL-воркером при першому зіткненні з новою категорією.
     """
+
     __tablename__ = "store_categories_mapping"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
@@ -69,11 +81,16 @@ class Product(Base):
     Записується лише ETL-воркером (INSERT ... ON CONFLICT DO UPDATE).
     product_service лише читає.
     """
+
     __tablename__ = "products"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
-    ean: Mapped[Optional[str]] = mapped_column("canonical_ean", String, unique=True, nullable=True)
-    store_product_id: Mapped[Optional[str]] = mapped_column("store_product_id", String, nullable=True)
+    ean: Mapped[Optional[str]] = mapped_column(
+        "canonical_ean", String, unique=True, nullable=True
+    )
+    store_product_id: Mapped[Optional[str]] = mapped_column(
+        "store_product_id", String, nullable=True
+    )
     title: Mapped[str] = mapped_column(Text, nullable=False)
     brand: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     unit: Mapped[Optional[str]] = mapped_column(String, nullable=True)
@@ -90,7 +107,9 @@ class Product(Base):
     )
 
     prices: Mapped[list["Price"]] = relationship("Price", back_populates="product")
-    store_products: Mapped[list["StoreProduct"]] = relationship("StoreProduct", back_populates="product")
+    store_products: Mapped[list["StoreProduct"]] = relationship(
+        "StoreProduct", back_populates="product"
+    )
 
 
 class StoreProduct(Base):
@@ -99,6 +118,7 @@ class StoreProduct(Base):
     Показує, які товари продаються в яких магазинах.
     Наповнюється ETL-воркером при кожному парсингу.
     """
+
     __tablename__ = "store_products"
 
     product_id: Mapped[int] = mapped_column(
@@ -112,7 +132,9 @@ class StoreProduct(Base):
         "first_seen_at", DateTime(timezone=True), nullable=False
     )
 
-    product: Mapped["Product"] = relationship("Product", back_populates="store_products")
+    product: Mapped["Product"] = relationship(
+        "Product", back_populates="store_products"
+    )
     store: Mapped["Store"] = relationship("Store", back_populates="store_products")
 
 
@@ -122,6 +144,7 @@ class Price(Base):
     в момент часу recorded_at. Старі записи не видаляються — лише додаються нові.
     Ціни зберігаються в гривнях (UAH), наприклад 71.90.
     """
+
     __tablename__ = "prices"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)

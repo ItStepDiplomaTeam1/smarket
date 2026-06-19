@@ -14,7 +14,6 @@ class StoreResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-
 class PriceResponse(BaseModel):
     id: int
     product_id: int
@@ -29,6 +28,7 @@ class PriceResponse(BaseModel):
 
 class PriceWithStoreResponse(PriceResponse):
     """Ціна з інформацією про магазин (для фронтенду — не потрібен окремий запит)."""
+
     store: StoreResponse
 
     model_config = ConfigDict(from_attributes=True)
@@ -51,6 +51,7 @@ class ProductResponse(BaseModel):
 
 class ProductDetail(ProductResponse):
     """Товар з усіма цінами (включно з інформацією про магазин)."""
+
     prices: list[PriceWithStoreResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
@@ -58,6 +59,7 @@ class ProductDetail(ProductResponse):
 
 class StoreProductResponse(BaseModel):
     """Зв'язок товар ↔ магазин (в якому магазині є товар)."""
+
     store_id: str
     store_product_id: Optional[str] = None
     first_seen_at: datetime.datetime
@@ -68,6 +70,7 @@ class StoreProductResponse(BaseModel):
 
 class ProductWithStoresResponse(ProductResponse):
     """Товар зі списком магазинів, де він продається."""
+
     store_products: list[StoreProductResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
@@ -75,6 +78,7 @@ class ProductWithStoresResponse(ProductResponse):
 
 class ProductInStoreResponse(ProductResponse):
     """Товар з актуальною ціною для конкретного магазину."""
+
     latest_price: Optional[PriceResponse] = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -82,6 +86,7 @@ class ProductInStoreResponse(ProductResponse):
 
 class ProductOfferResponse(BaseModel):
     """Актуальна пропозиція товару в одному магазині (ціна + магазин)."""
+
     store: StoreResponse
     price: float
     old_price: Optional[float] = None
@@ -93,6 +98,7 @@ class ProductOfferResponse(BaseModel):
 
 class ProductOffersResponse(ProductResponse):
     """Товар з актуальними цінами в усіх магазинах — зручний агрегат для фронтенду."""
+
     offers: list[ProductOfferResponse] = []
 
     model_config = ConfigDict(from_attributes=True)

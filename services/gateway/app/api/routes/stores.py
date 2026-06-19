@@ -31,4 +31,6 @@ async def proxy_to_stores(request: Request, path: str):
             headers=dict(response.headers),
         )
     except httpx.ConnectError:
-        raise HTTPException(status_code=503, detail="Сервіс магазинів (Product Service) недоступний")
+        raise HTTPException(
+            status_code=503, detail="Сервіс магазинів (Product Service) недоступний"
+        )

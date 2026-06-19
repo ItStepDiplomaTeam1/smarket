@@ -6,6 +6,7 @@ from app.config import settings
 
 _IS_DEBUG = os.getenv("DEBUG", "False") == "True"
 
+
 @lru_cache
 def _get_engine():
     return create_async_engine(
@@ -17,6 +18,7 @@ def _get_engine():
         pool_timeout=30,
     )
 
+
 @lru_cache
 def _get_session_factory():
     return async_sessionmaker(
@@ -25,6 +27,7 @@ def _get_session_factory():
         expire_on_commit=False,
         autoflush=False,
     )
+
 
 async def get_db():
     async with _get_session_factory()() as session:

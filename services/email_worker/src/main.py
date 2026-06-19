@@ -20,39 +20,34 @@ dlq = RabbitQueue("email_dead_letter_queue")
 # 2.2 Налаштовуємо основну чергу
 main_queue = RabbitQueue(
     "email_queue",
-    arguments={
-        "x-dead-letter-exchange": "",
-        "x-dead-letter-routing-key": dlq.name
-    }
+    arguments={"x-dead-letter-exchange": "", "x-dead-letter-routing-key": dlq.name},
 )
-        
+
 
 @broker.subscriber("email_queue")
 async def handle_email(event: EmailEvent):
     # FastStream вже перетворив JSON з черги на об'єкт EmailEvent
 
-    print("="*40)
+    print("=" * 40)
     print(f"[!] СТАРТ ОБРОБКИ: {event.action} -> {event.email}")
 
-    # Викликаємо функцію відправки. 
+    # Викликаємо функцію відправки.
     # Якщо тут виникне помилка (raise e), FastStream автоматично зробить
     # Nack (Negative Acknowledgement) і повідомлення повернеться в чергу.
 
     try:
         await process_email_sending(
-            email_to=event.email,
-            token=event.token,
-            action=event.action
+            email_to=event.email, token=event.token, action=event.action
         )
         print("[!] ЗАВДАННЯ ВИКОНАНО")
 
     except Exception as e:
         print(f"[X] КРИТИЧНА ПОМИЛКА: {e}")
 
-        # RejectMessage - це спеціальна помилка FastStream. 
+        # RejectMessage - це спеціальна помилка FastStream.
         # Вона каже брокеру зробити NACK (відхилити) і НЕ повертати в поточну чергу.
         # Оскільки ми налаштували DLQ вище, RabbitMQ автоматично перекине його туди.
-        
+
         raise RejectMessage()
-    
-    print("="*40)
+
+    print("=" * 40)
