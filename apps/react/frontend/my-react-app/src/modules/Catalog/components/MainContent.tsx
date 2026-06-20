@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 // ================= SVG ІКОНКИ ДЛЯ МАКЕТУ =================
@@ -70,19 +70,40 @@ interface Product {
   };
 }
 
+interface ProductsResponse {
+  data: Product[];
+  total: number;
+}
+
+
 // ================= ФУНКЦІЯ ОТРИМАННЯ ДАНИХ =================
-const fetchProducts = async (): Promise<Product[]> => {
-  // Звертаємося до API Gateway за 12 товарами
-  const res = await fetch('http://localhost:8080/api/v1/products?limit=12');
-  if (!res.ok) throw new Error('Помилка завантаження товарів');
-  return res.json();
+const fetchProducts = async (page: number): Promise<Product[]> => {
+    const limit = 12;
+    const skip = (page - 1) * limit;
+    
+    const res = await fetch(
+      `http://localhost:8080/api/v1/products?limit=${limit}&skip=${skip}`
+    );
+  
+    if (!res.ok) {
+      throw new Error('Помилка завантаження товарів');
+    }
+  
+    return res.json();
 };
 
 export function MainContent() {
-  const { data: products = [], isLoading } = useQuery({
-    queryKey: ['productsList'],
-    queryFn: fetchProducts,
-  });
+  const [page, setPage] = useState(1);
+
+    const { data, isLoading } = useQuery<Product[]>({
+        queryKey: ['productsList', page],
+        queryFn: () => fetchProducts(page),
+    });
+
+  // Якщо API повертає об'єкт з total, беремо його. 
+  // Якщо тільки масив, total можна імітувати або взяти довжину (якщо API повертає всі)
+    const products = data ?? [];
+    const totalProducts = products.length;
 
   return (
     <div className="w-full max-w-[1228px] mx-auto px-[20px] py-[40px] flex gap-[40px] items-start mobile:flex-col">
@@ -283,7 +304,7 @@ export function MainContent() {
         {/* Активні теги та лічильник результатів */}
         <div className="flex items-center flex-wrap gap-[12px] mb-[24px]">
           <p className="text-[13px] text-[#6D8279] m-0">
-            Знайдено <span className="font-bold text-[#111827]">393 товари</span> - Молочна продукція, М'ясо та птиця 
+              Знайдено <span className="font-bold text-[#111827]">{totalProducts} товарів</span>
           </p>
           <div className="flex gap-[8px]">
             {['АТБ', 'Сільпо', 'Тільки акції', 'Молочна продукція'].map((tag, idx) => (
@@ -398,16 +419,40 @@ export function MainContent() {
           )}
         </div>
 
-        {/* Блок пагінації */}
-        <div className="flex justify-center items-center gap-[4px] mt-[32px]">
-          <button className="w-[32px] h-[32px] flex items-center justify-center border border-[#E5E7EB] rounded-[8px] bg-white text-[#9CA3AF] cursor-not-allowed">‹</button>
-          <button className="w-[32px] h-[32px] flex items-center justify-center border-none rounded-[8px] bg-[#265447] text-white font-semibold text-[13px] cursor-pointer">1</button>
-          <button className="w-[32px] h-[32px] flex items-center justify-center border border-[#E5E7EB] rounded-[8px] bg-white text-[#374151] font-medium text-[13px] cursor-pointer hover:bg-[#F9FAFB]">2</button>
-          <button className="w-[32px] h-[32px] flex items-center justify-center border border-[#E5E7EB] rounded-[8px] bg-white text-[#374151] font-medium text-[13px] cursor-pointer hover:bg-[#F9FAFB]">3</button>
-          <button className="w-[32px] h-[32px] flex items-center justify-center border border-[#E5E7EB] rounded-[8px] bg-white text-[#374151] font-medium text-[13px] cursor-pointer hover:bg-[#F9FAFB]">4</button>
-          <span className="w-[32px] h-[32px] flex items-center justify-center text-[#9CA3AF] text-[13px]">...</span>
-          <button className="w-[32px] h-[32px] flex items-center justify-center border border-[#E5E7EB] rounded-[8px] bg-white text-[#374151] font-medium text-[13px] cursor-pointer hover:bg-[#F9FAFB]">33</button>
-          <button className="w-[32px] h-[32px] flex items-center justify-center border border-[#E5E7EB] rounded-[8px] bg-white text-[#374151] cursor-pointer hover:bg-[#F9FAFB]">›</button>
+        {/* Блок пагінації (ДИНАМІЧНИЙ) */}
+        <div className="flex justify-center items-center gap-[8px] mt-[32px]">
+          
+          {/* Кнопка НАЗАД */}
+          <button 
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className={`w-[32px] h-[32px] flex items-center justify-center border rounded-[8px] text-[13px] transition-colors ${
+              page === 1 
+                ? 'border-[#E5E7EB] bg-[#F9FAFB] text-[#9CA3AF] cursor-not-allowed' 
+                : 'border-[#E5E7EB] bg-white text-[#374151] cursor-pointer hover:bg-[#F3F4F6]'
+            }`}
+          >
+            ‹
+          </button>
+
+          {/* Поточна сторінка */}
+          <span className="w-[32px] h-[32px] flex items-center justify-center border-none rounded-[8px] bg-[#265447] text-white font-semibold text-[13px]">
+            {page}
+          </span>
+
+          {/* Кнопка ВПЕРЕД */}
+          <button 
+            onClick={() => setPage(p => p + 1)}
+            disabled={products.length < 12} // Якщо прийшло менше 12 товарів, далі пустих сторінок немає
+            className={`w-[32px] h-[32px] flex items-center justify-center border rounded-[8px] text-[13px] transition-colors ${
+              products.length < 12 
+                ? 'border-[#E5E7EB] bg-[#F9FAFB] text-[#9CA3AF] cursor-not-allowed' 
+                : 'border-[#E5E7EB] bg-white text-[#374151] cursor-pointer hover:bg-[#F3F4F6]'
+            }`}
+          >
+            ›
+          </button>
+
         </div>
 
       </main>
