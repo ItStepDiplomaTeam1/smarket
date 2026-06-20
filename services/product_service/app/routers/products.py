@@ -19,9 +19,9 @@ from app.shared.schemas import (
     ProductInStoreResponse,
     ProductOfferResponse,
     ProductOffersResponse,
-    ProductResponse,
     ProductWithStoresResponse,
     CategoryResponse,
+    PaginatedProductsResponse,
 )
 from app.database.session import get_db
 
@@ -30,10 +30,10 @@ router = APIRouter(tags=["Products"], default_response_class=ORJSONResponse)
 
 @router.get(
     "/",
-    response_model=list[ProductResponse],
+    response_model=PaginatedProductsResponse,
     status_code=status.HTTP_200_OK,
     summary="Список товарів",
-    description="Повертає каталог товарів з можливістю фільтрації, пошуку та пагінації.",
+    description="Повертає каталог товарів з можливістю фільтрації, пошуку та пагінації разом з актуальними цінами та загальною кількістю.",
 )
 async def get_products(
     skip: int = Query(0, ge=0, description="Кількість записів для пропуску"),
@@ -52,23 +52,100 @@ async def get_products(
     ),
     db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(Product).options(selectinload(Product.category))
+    base_stmt = select(Product).options(selectinload(Product.category))
 
     if brand:
-        stmt = stmt.where(Product.brand.ilike(f"%{brand}%"))
+        base_stmt = base_stmt.where(Product.brand.ilike(f"%{brand}%"))
     if category_id is not None:
-        stmt = stmt.where(Product.canonical_category_id == category_id)
+        base_stmt = base_stmt.where(Product.canonical_category_id == category_id)
     if search:
-        stmt = stmt.where(Product.title.ilike(f"%{search}%"))
+        base_stmt = base_stmt.where(Product.title.ilike(f"%{search}%"))
     if store_id:
         # Фільтр через junction-таблицю store_products
-        stmt = stmt.join(StoreProduct, StoreProduct.product_id == Product.id).where(
-            StoreProduct.store_id == store_id
+        base_stmt = base_stmt.join(
+            StoreProduct, StoreProduct.product_id == Product.id
+        ).where(StoreProduct.store_id == store_id)
+
+    # Розраховуємо загальну кількість товарів, що відповідають фільтрам (ігноруємо skip/limit)
+    count_stmt = select(func.count()).select_from(base_stmt.subquery())
+    total = await db.scalar(count_stmt)
+
+    stmt = base_stmt.order_by(Product.id).offset(skip).limit(limit)
+    result = await db.execute(stmt)
+    products = list(result.scalars().all())
+
+    if not products:
+        return PaginatedProductsResponse(total=total or 0, items=[])
+
+    product_ids = [p.id for p in products]
+
+    # Підзапит: остання записана ціна для кожного товару та магазину
+    latest_price_subq = select(
+        Price.product_id,
+        Price.store_id,
+        func.max(Price.recorded_at).label("max_recorded_at"),
+    ).where(Price.product_id.in_(product_ids))
+    if store_id:
+        latest_price_subq = latest_price_subq.where(Price.store_id == store_id)
+
+    latest_price_subq = latest_price_subq.group_by(
+        Price.product_id, Price.store_id
+    ).subquery()
+
+    # Вибираємо ціни з інформацією про магазини
+    prices_stmt = (
+        select(Price)
+        .options(selectinload(Price.store))
+        .join(
+            latest_price_subq,
+            and_(
+                Price.product_id == latest_price_subq.c.product_id,
+                Price.store_id == latest_price_subq.c.store_id,
+                Price.recorded_at == latest_price_subq.c.max_recorded_at,
+            ),
+        )
+    )
+    prices_result = await db.execute(prices_stmt)
+    prices = list(prices_result.scalars().all())
+
+    # Групуємо ціни за product_id
+    prices_by_product = {}
+    for price in prices:
+        prices_by_product.setdefault(price.product_id, []).append(price)
+
+    # Формуємо результат
+    response_items = []
+    for product in products:
+        product_prices = prices_by_product.get(product.id, [])
+        offers = [
+            ProductOfferResponse(
+                store=p_price.store,
+                price=float(p_price.price),
+                old_price=float(p_price.old_price) if p_price.old_price else None,
+                in_stock=p_price.in_stock,
+                recorded_at=p_price.recorded_at,
+            )
+            for p_price in product_prices
+        ]
+
+        response_items.append(
+            ProductOffersResponse(
+                id=product.id,
+                ean=product.ean,
+                store_product_id=product.store_product_id,
+                title=product.title,
+                brand=product.brand,
+                unit=product.unit,
+                weight=product.weight,
+                image_url=product.image_url,
+                canonical_category_id=product.canonical_category_id,
+                category=product.category,
+                created_at=product.created_at,
+                offers=offers,
+            )
         )
 
-    stmt = stmt.order_by(Product.id).offset(skip).limit(limit)
-    result = await db.execute(stmt)
-    return list(result.scalars().all())
+    return PaginatedProductsResponse(total=total or 0, items=response_items)
 
 
 @router.get(

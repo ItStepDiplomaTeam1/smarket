@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 // ================= SVG ІКОНКИ ДЛЯ МАКЕТУ =================
@@ -43,196 +43,356 @@ const ListIcon = () => (
 
 const CloseIcon = () => (
   <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M8.33333 1.66667L1.66667 8.33333M1.66667 1.66667L8.33333 8.33333" stroke="#265447" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M8.33333 1.66667L1.66667 8.33333M1.66667 1.66667L8.33333 8.33333" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
 // ================= ТИПІЗАЦІЯ ДАНИХ З БЕКЕНДУ =================
+interface StoreInfo {
+  external_id: string;
+  name: string;
+  retail_chain: string;
+  city: string;
+  is_active: boolean;
+  synced_at: string;
+}
+
 interface StoreOffer {
-  store_id: string;
+  store: StoreInfo;
   price: number;
   old_price: number | null;
   in_stock: boolean;
+  recorded_at: string;
+}
+
+interface Category {
+  id: number;
+  slug: string;
+  name: string;
 }
 
 interface Product {
   id: number;
+  ean: string;
+  store_product_id: string;
   title: string;
   brand: string | null;
   unit: string;
   weight: number;
   image_url: string | null;
   canonical_category_id: number;
+  category: Category;
+  created_at: string;
   offers?: StoreOffer[]; 
-  latest_price?: {
-    price: number;
-    old_price: number | null;
-  };
 }
 
+interface ProductsResponse {
+  items: Product[];
+  total: number;
+}
+
+// ================= КОНСТАНТИ ФІЛЬТРІВ (ДИНАМІЧНІ МАСИВИ) =================
+const CATEGORY_OPTIONS = [
+  { id: 'products', icon: '🥦', name: 'Продукти', count: '1 240' },
+  { id: 'drinks', icon: '🥤', name: 'Напої', count: '380' },
+  { id: 'baby', icon: '🍼', name: 'Дитячі товари', count: '214' },
+  { id: 'chemistry', icon: '🧴', name: 'Побутова хімія', count: '176' },
+  { id: 'beauty', icon: '💄', name: 'Краса та догляд', count: '290' },
+  { id: 'home', icon: '🪴', name: 'Товари для дому', count: '134' },
+  { id: 'zoo', icon: '🐾', name: 'Зоотовари', count: '98' },
+];
+
+const STORE_OPTIONS = [
+  { id: 'atb', label: 'АТБ' },
+  { id: 'silpo', label: 'Сільпо' },
+  { id: 'novus', label: 'Novus' },
+  { id: 'metro', label: 'Metro' },
+  { id: 'auchan', label: 'Ашан' }
+];
+
+const SUBCATEGORY_OPTIONS = [
+  { id: 'dairy', name: 'Молочна продукція', count: '218' },
+  { id: 'meat', name: "М'ясо та птиця", count: '175' },
+  { id: 'bread', name: 'Хліб та випічка', count: '140' },
+  { id: 'vegetables', name: 'Овочі та фрукти', count: '209' },
+  { id: 'fish', name: 'Риба та морепродукти', count: '88' },
+  { id: 'grains', name: 'Крупи та бобові', count: '124' },
+  { id: 'frozen', name: 'Заморожені продукти', count: '96' },
+  { id: 'cans', name: 'Консерви', count: '112' },
+];
+
+const PROPOSAL_OPTIONS = [
+  { id: 'promo', name: 'Тільки акції', count: '340' },
+  { id: 'new', name: 'Нові надходження', count: '58' },
+  { id: 'save', name: 'Найбільша економія', count: '120' },
+];
+
 // ================= ФУНКЦІЯ ОТРИМАННЯ ДАНИХ =================
-const fetchProducts = async (): Promise<Product[]> => {
-  // Звертаємося до API Gateway за 12 товарами
-  const res = await fetch('http://localhost:8080/api/v1/products?limit=12');
-  if (!res.ok) throw new Error('Помилка завантаження товарів');
-  return res.json();
+const fetchProducts = async (page: number, stores: string[]): Promise<ProductsResponse> => {
+    const limit = 12;
+    const skip = (page - 1) * limit;
+    
+    let url = new URL('http://localhost:8080/api/v1/products');
+    url.searchParams.append('limit', limit.toString());
+    url.searchParams.append('skip', skip.toString());
+    
+    if (stores.length > 0) {
+        url.searchParams.append('stores', stores.join(','));
+    }
+  
+    const res = await fetch(url.toString());
+  
+    if (!res.ok) {
+        throw new Error('Помилка завантаження товарів');
+    }
+    
+    return res.json();
 };
 
 export function MainContent() {
-  const { data: products = [], isLoading } = useQuery({
-    queryKey: ['productsList'],
-    queryFn: fetchProducts,
+  const [page, setPage] = useState(1);
+  
+  // Клієнтські стейти для всіх типів фільтрів
+  const [maxPrice, setMaxPrice] = useState<number>(1000); // 1000 - початковий максимум
+  const [selectedCategory, setSelectedCategory] = useState<string>('products'); // за замовчуванням вибрані Продукти
+  const [selectedStores, setSelectedStores] = useState<string[]>([]);
+  const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>(['dairy', 'meat']); // початкові активні для візуалу як на макеті
+  const [selectedOffers, setSelectedOffers] = useState<string[]>(['promo']); // початкова активна акція для візуалу
+
+  // Синхронізація запиту з реактивними ключами стейтів
+  const { data, isLoading } = useQuery<ProductsResponse>({
+      queryKey: ['productsList', page, selectedStores, selectedCategory, selectedSubcategories, selectedOffers, maxPrice],
+      queryFn: () => fetchProducts(page, selectedStores),
   });
+
+  const products = data?.items ?? [];
+  const totalProducts = data?.total ?? 0;
+
+  // Хендлери перемикання фільтрів
+  const toggleCategory = (categoryId: string) => {
+    setSelectedCategory(categoryId);
+    setPage(1);
+  };
+
+  const toggleStore = (storeId: string) => {
+    setSelectedStores(prev => 
+      prev.includes(storeId) ? prev.filter(id => id !== storeId) : [...prev, storeId]
+    );
+    setPage(1);
+  };
+
+  const toggleSubcategory = (subId: string) => {
+    setSelectedSubcategories(prev => 
+      prev.includes(subId) ? prev.filter(id => id !== subId) : [...prev, subId]
+    );
+    setPage(1);
+  };
+
+  const toggleOffer = (offerId: string) => {
+    setSelectedOffers(prev => 
+      prev.includes(offerId) ? prev.filter(id => id !== offerId) : [...prev, offerId]
+    );
+    setPage(1);
+  };
+
+  // Повне скидання абсолютно всіх фільтрів
+  const resetFilters = () => {
+    setSelectedCategory('products');
+    setSelectedStores([]);
+    setSelectedSubcategories([]);
+    setSelectedOffers([]);
+    setMaxPrice(1000);
+    setPage(1);
+  };
+
+  // Розрахунок загальної кількості сторінок
+  const totalPages = Math.ceil(totalProducts / 12);
+  
+  // Логіка генерації масиву пагінації (з трьома крапками)
+  let paginationNumbers = [];
+  if (totalPages <= 7) {
+    paginationNumbers = Array.from({ length: totalPages }, (_, i) => i + 1);
+  } else {
+    if (page <= 3) {
+      paginationNumbers = [1, 2, 3, 4, '...', totalPages - 1, totalPages];
+    } else if (page >= totalPages - 2) {
+      paginationNumbers = [1, 2, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    } else {
+      paginationNumbers = [1, '...', page - 1, page, page + 1, '...', totalPages];
+    }
+  }
 
   return (
     <div className="w-full max-w-[1228px] mx-auto px-[20px] py-[40px] flex gap-[40px] items-start mobile:flex-col">
       
       {/* ================= LEFT SIDEBAR ================= */}
-      <aside className="w-[280px] bg-white rounded-[16px] border border-[#E5E7EB] p-[24px] flex flex-col font-inter">
+      <aside className="w-[280px] bg-white rounded-[16px] border border-[#E5E7EB] p-[24px] flex flex-col font-inter shrink-0">
       
-      {/* ================= КАТЕГОРІЇ ================= */}
-      <div className="mb-[32px]">
-        <h3 className="font-manrope text-[13px] font-bold text-[#6D8279] tracking-[0.06em] uppercase mb-[12px]">
-          Категорії
-        </h3>
-        <hr className="border-t border-[#F3F4F6] mb-[16px]" />
-        
-        <ul className="flex flex-col gap-[4px]">
-          <li className="flex items-center justify-between p-[8px_12px] bg-[#EAF7F2] rounded-[8px] cursor-pointer">
-            <div className="flex items-center gap-[10px] font-semibold text-[#173B33] text-[14px]">
-              <span className="text-[16px]">🥦</span>
-              <span>Продукти</span>
-            </div>
-            <span className="bg-[#D1E8DD] text-[#173B33] text-[12px] font-bold px-[8px] py-[2px] rounded-[100px]">
-              1 240
-            </span>
-          </li>
-
-          {[
-            { icon: '🥤', name: 'Напої', count: '380' },
-            { icon: '🍼', name: 'Дитячі товари', count: '214' },
-            { icon: '🧴', name: 'Побутова хімія', count: '176' },
-            { icon: '💄', name: 'Краса та догляд', count: '290' },
-            { icon: '🪴', name: 'Товари для дому', count: '134' },
-            { icon: '🐾', name: 'Зоотовари', count: '98' },
-          ].map((cat, idx) => (
-            <li key={idx} className="flex items-center justify-between p-[8px_12px] rounded-[8px] cursor-pointer hover:bg-[#F9FAFB] transition-colors">
-              <div className="flex items-center gap-[10px] font-semibold text-[#4B6358] text-[14px]">
-                <span className="text-[16px] grayscale opacity-70">{cat.icon}</span>
-                <span>{cat.name}</span>
-              </div>
-              <span className="bg-[#F3F4F6] text-[#6D8279] text-[12px] font-semibold px-[8px] py-[2px] rounded-[100px]">
-                {cat.count}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* ================= ФІЛЬТРИ ================= */}
-      <div>
-        <h3 className="font-manrope text-[13px] font-bold text-[#6D8279] tracking-[0.06em] uppercase mb-[12px]">
-          Фільтри
-        </h3>
-        <hr className="border-t border-[#F3F4F6] mb-[20px]" />
-
-        {/* 1. ЦІНА */}
-        <div className="mb-[24px]">
-          <h4 className="font-manrope text-[12px] font-bold text-[#6D8279] tracking-[0.06em] uppercase mb-[12px]">
-            Ціна (ГРН)
-          </h4>
-          <div className="border border-[#E5E7EB] rounded-[8px] px-[12px] py-[10px] mb-[16px]">
-            <input 
-              type="text" 
-              defaultValue="20" 
-              className="w-full border-none outline-none text-[#111827] text-[14px] bg-transparent"
-            />
-          </div>
+        {/* ================= КАТЕГОРІЇ (ДИНАМІЧНІ) ================= */}
+        <div className="mb-[32px]">
+          <h3 className="font-manrope text-[13px] font-bold text-[#6D8279] tracking-[0.06em] uppercase mb-[12px]">
+            Категорії
+          </h3>
+          <hr className="border-t border-[#F3F4F6] mb-[16px]" />
           
-          <div className="relative h-[4px] bg-[#F3F4F6] rounded-[2px] flex items-center mx-[10px]">
-            <div className="absolute left-[5%] right-[25%] h-full bg-[#438870] rounded-[2px]"></div>
-            <div className="absolute left-[5%] w-[18px] h-[18px] bg-white border-[2.5px] border-[#173B33] rounded-full transform -translate-x-1/2 flex items-center justify-center cursor-pointer shadow-sm">
-              <div className="w-[6px] h-[6px] bg-[#173B33] rounded-full"></div>
+          <ul className="flex flex-col gap-[4px]">
+            {CATEGORY_OPTIONS.map((cat) => {
+              const isCatActive = selectedCategory === cat.id;
+              return (
+                <li 
+                  key={cat.id} 
+                  onClick={() => toggleCategory(cat.id)}
+                  className={`flex items-center justify-between p-[8px_12px] rounded-[8px] cursor-pointer transition-colors ${
+                    isCatActive ? 'bg-[#EAF7F2]' : 'hover:bg-[#F9FAFB]'
+                  }`}
+                >
+                  <div className={`flex items-center gap-[10px] text-[14px] ${
+                    isCatActive ? 'font-semibold text-[#173B33]' : 'font-semibold text-[#4B6358]'
+                  }`}>
+                    <span className={`text-[16px] ${!isCatActive && 'grayscale opacity-70'}`}>
+                      {cat.icon}
+                    </span>
+                    <span>{cat.name}</span>
+                  </div>
+                  <span className={`text-[12px] px-[8px] py-[2px] rounded-[100px] ${
+                    isCatActive ? 'bg-[#D1E8DD] text-[#173B33] font-bold' : 'bg-[#F3F4F6] text-[#6D8279] font-semibold'
+                  }`}>
+                    {cat.count}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        {/* ================= ФІЛЬТРИ ================= */}
+        <div>
+          <h3 className="font-manrope text-[13px] font-bold text-[#6D8279] tracking-[0.06em] uppercase mb-[12px]">
+            Фільтри
+          </h3>
+          <hr className="border-t border-[#F3F4F6] mb-[20px]" />
+
+            {/* 1. ЦІНА */}
+            <div className="mb-[24px]">
+            <h4 className="font-manrope text-[12px] font-bold text-[#6D8279] tracking-[0.06em] uppercase mb-[12px]">
+                Ціна до (ГРН)
+            </h4>
+            <div className="border border-[#E5E7EB] rounded-[8px] px-[12px] py-[10px] mb-[16px]">
+                <input 
+                type="number" 
+                value={maxPrice}
+                onChange={(e) => {
+                    setMaxPrice(Number(e.target.value));
+                    setPage(1); // Оновлюємо пагінацію при зміні фільтра
+                }}
+                className="w-full border-none outline-none text-[#111827] text-[14px] bg-transparent"
+                />
             </div>
-            <div className="absolute left-[75%] w-[18px] h-[18px] bg-white border-[2.5px] border-[#173B33] rounded-full transform -translate-x-1/2 flex items-center justify-center cursor-pointer shadow-sm">
-              <div className="w-[6px] h-[6px] bg-[#173B33] rounded-full"></div>
+            
+            {/* Робочий повзунок */}
+            <div className="relative flex items-center mx-[4px]">
+                <input 
+                type="range" 
+                min="0" 
+                max="2000" 
+                value={maxPrice}
+                onChange={(e) => {
+                    setMaxPrice(Number(e.target.value));
+                    setPage(1);
+                }}
+                className="w-full h-[4px] bg-[#F3F4F6] rounded-[2px] appearance-none cursor-pointer accent-[#173B33]"
+                />
+            </div>
+            </div>
+
+          {/* 2. МАГАЗИНИ (РОБОЧІ) */}
+          <div className="mb-[24px]">
+            <h4 className="font-manrope text-[12px] font-bold text-[#6D8279] tracking-[0.06em] uppercase mb-[12px]">
+              Магазини
+            </h4>
+            <div className="flex flex-wrap gap-[8px]">
+              {STORE_OPTIONS.map(store => {
+                const isActive = selectedStores.includes(store.id);
+                return (
+                  <button 
+                    key={store.id}
+                    onClick={() => toggleStore(store.id)}
+                    className={`border px-[14px] py-[6px] rounded-[100px] text-[13px] font-medium cursor-pointer transition-colors ${
+                      isActive 
+                        ? 'border-[#173B33] bg-[#EAF7F2] text-[#173B33] font-semibold' 
+                        : 'border-[#E5E7EB] bg-white text-[#6D8279] hover:border-[#D1D5DB]'
+                    }`}
+                  >
+                    {store.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
-        </div>
 
-        {/* 2. МАГАЗИНИ */}
-        <div className="mb-[24px]">
-          <h4 className="font-manrope text-[12px] font-bold text-[#6D8279] tracking-[0.06em] uppercase mb-[12px]">
-            Магазини
-          </h4>
-          <div className="flex flex-wrap gap-[8px]">
-            <button className="border border-[#173B33] bg-[#EAF7F2] text-[#173B33] px-[14px] py-[6px] rounded-[100px] text-[13px] font-semibold cursor-pointer">АТБ</button>
-            <button className="border border-[#173B33] bg-[#EAF7F2] text-[#173B33] px-[14px] py-[6px] rounded-[100px] text-[13px] font-semibold cursor-pointer">Сільпо</button>
-            <button className="border border-[#E5E7EB] bg-white text-[#6D8279] px-[14px] py-[6px] rounded-[100px] text-[13px] font-medium cursor-pointer hover:border-[#D1D5DB]">Novus</button>
-            <button className="border border-[#E5E7EB] bg-white text-[#6D8279] px-[14px] py-[6px] rounded-[100px] text-[13px] font-medium cursor-pointer hover:border-[#D1D5DB]">Metro</button>
-            <button className="border border-[#E5E7EB] bg-white text-[#6D8279] px-[14px] py-[6px] rounded-[100px] text-[13px] font-medium cursor-pointer hover:border-[#D1D5DB]">Ашан</button>
+          {/* 3. ПІДКАТЕГОРІЯ (ДИНАМІЧНА) */}
+          <div className="mb-[24px]">
+            <h4 className="font-manrope text-[12px] font-bold text-[#6D8279] tracking-[0.06em] uppercase mb-[12px]">
+              Підкатегорія
+            </h4>
+            <div className="flex flex-col gap-[12px]">
+              {SUBCATEGORY_OPTIONS.map((item) => {
+                const isSubActive = selectedSubcategories.includes(item.id);
+                return (
+                  <label 
+                    key={item.id} 
+                    onClick={() => toggleSubcategory(item.id)}
+                    className="flex items-center gap-[10px] cursor-pointer group"
+                  >
+                    <div className={`w-[18px] h-[18px] rounded-[4px] flex items-center justify-center shrink-0 transition-colors ${
+                      isSubActive ? 'bg-[#173B33] border-none' : 'border border-[#D1D5DB] bg-white group-hover:border-[#9CA3AF]'
+                    }`}>
+                      {isSubActive && <CheckIcon />}
+                    </div>
+                    <span className="flex-1 text-[13px] font-medium text-[#374151]">{item.name}</span>
+                    <span className="text-[12px] text-[#9CA3AF]">{item.count}</span>
+                  </label>
+                );
+              })}
+            </div>
           </div>
-        </div>
 
-        {/* 3. ПІДКАТЕГОРІЯ */}
-        <div className="mb-[24px]">
-          <h4 className="font-manrope text-[12px] font-bold text-[#6D8279] tracking-[0.06em] uppercase mb-[12px]">
-            Підкатегорія
-          </h4>
-          <div className="flex flex-col gap-[12px]">
-            {[
-              { name: 'Молочна продукція', count: '218', active: true },
-              { name: "М'ясо та птиця", count: '175', active: true },
-              { name: 'Хліб та випічка', count: '140', active: false },
-              { name: 'Овочі та фрукти', count: '209', active: false },
-              { name: 'Риба та морепродукти', count: '88', active: false },
-              { name: 'Крупи та бобові', count: '124', active: false },
-              { name: 'Заморожені продукти', count: '96', active: false },
-              { name: 'Консерви', count: '112', active: false },
-            ].map((item, idx) => (
-              <label key={idx} className="flex items-center gap-[10px] cursor-pointer group">
-                <div className={`w-[18px] h-[18px] rounded-[4px] flex items-center justify-center shrink-0 transition-colors ${
-                  item.active ? 'bg-[#173B33] border-none' : 'border border-[#D1D5DB] bg-white group-hover:border-[#9CA3AF]'
-                }`}>
-                  {item.active && <CheckIcon />}
-                </div>
-                <span className="flex-1 text-[13px] font-medium text-[#374151]">{item.name}</span>
-                <span className="text-[12px] text-[#9CA3AF]">{item.count}</span>
-              </label>
-            ))}
+          {/* 4. ПРОПОЗИЦІЇ (ДИНАМІЧНІ) */}
+          <div className="mb-[24px]">
+            <h4 className="font-manrope text-[12px] font-bold text-[#6D8279] tracking-[0.06em] uppercase mb-[12px]">
+              Пропозиції
+            </h4>
+            <div className="flex flex-col gap-[12px]">
+              {PROPOSAL_OPTIONS.map((item) => {
+                const isOfferActive = selectedOffers.includes(item.id);
+                return (
+                  <label 
+                    key={item.id} 
+                    onClick={() => toggleOffer(item.id)}
+                    className="flex items-center gap-[10px] cursor-pointer group"
+                  >
+                    <div className={`w-[18px] h-[18px] rounded-[4px] flex items-center justify-center shrink-0 transition-colors ${
+                      isOfferActive ? 'bg-[#173B33] border-none' : 'border border-[#D1D5DB] bg-white group-hover:border-[#9CA3AF]'
+                    }`}>
+                      {isOfferActive && <CheckIcon />}
+                    </div>
+                    <span className="flex-1 text-[13px] font-medium text-[#374151]">{item.name}</span>
+                    <span className="text-[12px] text-[#9CA3AF]">{item.count}</span>
+                  </label>
+                );
+              })}
+            </div>
           </div>
+
+          <button 
+            onClick={resetFilters}
+            className="w-full border border-[#E5E7EB] bg-white rounded-[8px] py-[10px] font-inter text-[14px] font-semibold text-[#6D8279] transition-colors hover:bg-[#F9FAFB] cursor-pointer"
+          >
+            Скинути фільтри
+          </button>
+
         </div>
-
-        {/* 4. ПРОПОЗИЦІЇ */}
-        <div className="mb-[24px]">
-          <h4 className="font-manrope text-[12px] font-bold text-[#6D8279] tracking-[0.06em] uppercase mb-[12px]">
-            Пропозиції
-          </h4>
-          <div className="flex flex-col gap-[12px]">
-            {[
-              { name: 'Тільки акції', count: '340', active: true },
-              { name: 'Нові надходження', count: '58', active: false },
-              { name: 'Найбільша економія', count: '120', active: false },
-            ].map((item, idx) => (
-              <label key={idx} className="flex items-center gap-[10px] cursor-pointer group">
-                <div className={`w-[18px] h-[18px] rounded-[4px] flex items-center justify-center shrink-0 transition-colors ${
-                  item.active ? 'bg-[#173B33] border-none' : 'border border-[#D1D5DB] bg-white group-hover:border-[#9CA3AF]'
-                }`}>
-                  {item.active && <CheckIcon />}
-                </div>
-                <span className="flex-1 text-[13px] font-medium text-[#374151]">{item.name}</span>
-                <span className="text-[12px] text-[#9CA3AF]">{item.count}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <button className="w-full border border-[#E5E7EB] bg-white rounded-[8px] py-[10px] font-inter text-[14px] font-semibold text-[#6D8279] transition-colors hover:bg-[#F9FAFB] cursor-pointer">
-          Скинути фільтри
-        </button>
-
-      </div>
-    </aside>
+      </aside>
 
       {/* ================= RIGHT MAIN CONTENT ================= */}
       <main className="flex-1 flex flex-col min-w-0">
@@ -280,36 +440,98 @@ export function MainContent() {
           </div>
         </div>
 
-        {/* Активні теги та лічильник результатів */}
+        {/* ================= АКТИВНІ ТЕГИ (ПОВНІСТЮ ДИНАМІЧНІ) ================= */}
         <div className="flex items-center flex-wrap gap-[12px] mb-[24px]">
           <p className="text-[13px] text-[#6D8279] m-0">
-            Знайдено <span className="font-bold text-[#111827]">393 товари</span> - Молочна продукція, М'ясо та птиця 
+              Знайдено <span className="font-bold text-[#111827]">{totalProducts} товарів</span>
           </p>
-          <div className="flex gap-[8px]">
-            {['АТБ', 'Сільпо', 'Тільки акції', 'Молочна продукція'].map((tag, idx) => (
-              <span key={idx} className="flex items-center gap-[6px] bg-[#EAF7F2] text-[#265447] px-[10px] py-[4px] rounded-[100px] text-[12px] font-medium cursor-pointer">
-                {tag} <CloseIcon />
+          
+          <div className="flex gap-[8px] flex-wrap">
+            {/* Теги категорій (показуємо, якщо це не дефолтні продукти, або виводимо поточну активну) */}
+            {selectedCategory && selectedCategory !== 'products' && (
+              <span 
+                onClick={() => setSelectedCategory('products')}
+                className="flex items-center gap-[6px] bg-[#EAF7F2] text-[#265447] px-[10px] py-[4px] rounded-[100px] text-[12px] font-medium cursor-pointer hover:bg-[#D1E8DD] transition-colors group"
+              >
+                Категорія: {CATEGORY_OPTIONS.find(c => c.id === selectedCategory)?.name}
+                <span className="text-[#A6C4B9] group-hover:text-[#265447] transition-colors">
+                  <CloseIcon />
+                </span>
               </span>
-            ))}
+            )}
+
+            {/* Теги магазинів */}
+            {selectedStores.map(storeId => {
+              const storeLabel = STORE_OPTIONS.find(s => s.id === storeId)?.label;
+              return (
+                <span 
+                  key={`tag-store-${storeId}`} 
+                  onClick={() => toggleStore(storeId)}
+                  className="flex items-center gap-[6px] bg-[#EAF7F2] text-[#265447] px-[10px] py-[4px] rounded-[100px] text-[12px] font-medium cursor-pointer hover:bg-[#D1E8DD] transition-colors group"
+                >
+                  {storeLabel}
+                  <span className="text-[#A6C4B9] group-hover:text-[#265447] transition-colors">
+                    <CloseIcon />
+                  </span>
+                </span>
+              );
+            })}
+
+            {/* Теги підкатегорій */}
+            {selectedSubcategories.map(subId => {
+              const subLabel = SUBCATEGORY_OPTIONS.find(s => s.id === subId)?.name;
+              return (
+                <span 
+                  key={`tag-sub-${subId}`} 
+                  onClick={() => toggleSubcategory(subId)}
+                  className="flex items-center gap-[6px] bg-[#EAF7F2] text-[#265447] px-[10px] py-[4px] rounded-[100px] text-[12px] font-medium cursor-pointer hover:bg-[#D1E8DD] transition-colors group"
+                >
+                  {subLabel}
+                  <span className="text-[#A6C4B9] group-hover:text-[#265447] transition-colors">
+                    <CloseIcon />
+                  </span>
+                </span>
+              );
+            })}
+
+            {/* Теги пропозицій */}
+            {selectedOffers.map(offerId => {
+              const offerLabel = PROPOSAL_OPTIONS.find(o => o.id === offerId)?.name;
+              return (
+                <span 
+                  key={`tag-offer-${offerId}`} 
+                  onClick={() => toggleOffer(offerId)}
+                  className="flex items-center gap-[6px] bg-[#EAF7F2] text-[#265447] px-[10px] py-[4px] rounded-[100px] text-[12px] font-medium cursor-pointer hover:bg-[#D1E8DD] transition-colors group"
+                >
+                  {offerLabel}
+                  <span className="text-[#A6C4B9] group-hover:text-[#265447] transition-colors">
+                    <CloseIcon />
+                  </span>
+                </span>
+              );
+            })}
           </div>
         </div>
 
-        {/* ================= СІТКА ПРОДУКТІВ (ДИНАМІЧНА) ================= */}
+        {/* ================= СІТКА ПРОДУКТІВ ================= */}
         <div className="grid grid-cols-4 gap-[16px]">
           {isLoading ? (
             <div className="col-span-4 text-center py-10 font-medium text-[#6D8279]">
               Завантаження каталогу...
             </div>
+          ) : products.length === 0 ? (
+            <div className="col-span-4 text-center py-10 font-medium text-[#111827]">
+              За вибраними фільтрами нічого не знайдено.
+            </div>
           ) : (
             products.map((product) => {
-              // Отримуємо актуальну ціну. Якщо це роут /by-store/, беремо latest_price, інакше першу ціну з offers
-              const currentPrice = product.latest_price?.price || product.offers?.[0]?.price || 0;
-              const oldPrice = product.latest_price?.old_price || product.offers?.[0]?.old_price || null;
+              const offer = product.offers?.[0];
+              const currentPrice = offer?.price || 0;
+              const oldPrice = offer?.old_price || null;
               
               const discountPercent = oldPrice ? Math.round(((oldPrice - currentPrice) / oldPrice) * 100) : 0;
               const discountAmount = oldPrice ? Math.round(oldPrice - currentPrice) : 0;
               
-              // Кількість магазинів
               const storesCount = product.offers?.length || 1; 
 
               return (
@@ -339,8 +561,8 @@ export function MainContent() {
                   
                   {/* Інформація */}
                   <div className="flex flex-col flex-1">
-                    <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.05em] mb-[4px]">
-                      {product.canonical_category_id ? `Категорія ${product.canonical_category_id}` : 'Продукти'}
+                    <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.05em] mb-[4px] truncate">
+                      {product.category?.name || 'Продукти'}
                     </span>
                     <h3 className="font-manrope text-[14px] font-bold text-[#111827] leading-[1.3] mb-[4px] line-clamp-2 min-h-[36px]">
                       {product.title}
@@ -399,16 +621,65 @@ export function MainContent() {
         </div>
 
         {/* Блок пагінації */}
-        <div className="flex justify-center items-center gap-[4px] mt-[32px]">
-          <button className="w-[32px] h-[32px] flex items-center justify-center border border-[#E5E7EB] rounded-[8px] bg-white text-[#9CA3AF] cursor-not-allowed">‹</button>
-          <button className="w-[32px] h-[32px] flex items-center justify-center border-none rounded-[8px] bg-[#265447] text-white font-semibold text-[13px] cursor-pointer">1</button>
-          <button className="w-[32px] h-[32px] flex items-center justify-center border border-[#E5E7EB] rounded-[8px] bg-white text-[#374151] font-medium text-[13px] cursor-pointer hover:bg-[#F9FAFB]">2</button>
-          <button className="w-[32px] h-[32px] flex items-center justify-center border border-[#E5E7EB] rounded-[8px] bg-white text-[#374151] font-medium text-[13px] cursor-pointer hover:bg-[#F9FAFB]">3</button>
-          <button className="w-[32px] h-[32px] flex items-center justify-center border border-[#E5E7EB] rounded-[8px] bg-white text-[#374151] font-medium text-[13px] cursor-pointer hover:bg-[#F9FAFB]">4</button>
-          <span className="w-[32px] h-[32px] flex items-center justify-center text-[#9CA3AF] text-[13px]">...</span>
-          <button className="w-[32px] h-[32px] flex items-center justify-center border border-[#E5E7EB] rounded-[8px] bg-white text-[#374151] font-medium text-[13px] cursor-pointer hover:bg-[#F9FAFB]">33</button>
-          <button className="w-[32px] h-[32px] flex items-center justify-center border border-[#E5E7EB] rounded-[8px] bg-white text-[#374151] cursor-pointer hover:bg-[#F9FAFB]">›</button>
-        </div>
+        {products.length > 0 && (
+          <div className="flex items-center justify-between border-t border-[#E5E7EB] pt-[20px] mt-[32px] w-full">
+            
+            {/* Кнопка Попередня */}
+            <button 
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className={`flex items-center gap-[8px] px-[14px] py-[8px] border rounded-[8px] text-[14px] font-medium transition-colors ${
+                page === 1 
+                  ? 'border-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed bg-white' 
+                  : 'border-[#D1D5DB] text-[#374151] hover:bg-[#F9FAFB] cursor-pointer bg-white'
+              }`}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M8.75 10.5L5.25 7L8.75 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Попередня
+            </button>
+
+            {/* Номери сторінок */}
+            <div className="flex items-center gap-[4px] hidden sm:flex">
+              {paginationNumbers.map((p, index) => (
+                p === '...' ? (
+                  <span key={`dots-${index}`} className="px-[12px] py-[8px] text-[14px] font-medium text-[#6B7280]">
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p as number)}
+                    className={`min-w-[36px] h-[36px] flex items-center justify-center rounded-[8px] text-[14px] font-medium transition-colors cursor-pointer ${
+                      page === p
+                        ? 'bg-[#265447] text-white border-none'
+                        : 'bg-transparent text-[#6B7280] hover:bg-[#F3F4F6] border-none'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                )
+              ))}
+            </div>
+
+            {/* Кнопка Наступна */}
+            <button 
+              onClick={() => setPage(p => p + 1)}
+              disabled={page >= totalPages} 
+              className={`flex items-center gap-[8px] px-[14px] py-[8px] border rounded-[8px] text-[14px] font-medium transition-colors ${
+                page >= totalPages 
+                  ? 'border-[#E5E7EB] text-[#9CA3AF] cursor-not-allowed bg-white' 
+                  : 'border-[#D1D5DB] text-[#374151] hover:bg-[#F9FAFB] cursor-pointer bg-white'
+              }`}
+            >
+              Наступна
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M5.25 3.5L8.75 7L5.25 10.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        )}
 
       </main>
     </div>
