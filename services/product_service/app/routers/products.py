@@ -19,7 +19,6 @@ from app.shared.schemas import (
     ProductInStoreResponse,
     ProductOfferResponse,
     ProductOffersResponse,
-    ProductResponse,
     ProductWithStoresResponse,
     CategoryResponse,
     PaginatedProductsResponse,
@@ -63,9 +62,9 @@ async def get_products(
         base_stmt = base_stmt.where(Product.title.ilike(f"%{search}%"))
     if store_id:
         # Фільтр через junction-таблицю store_products
-        base_stmt = base_stmt.join(StoreProduct, StoreProduct.product_id == Product.id).where(
-            StoreProduct.store_id == store_id
-        )
+        base_stmt = base_stmt.join(
+            StoreProduct, StoreProduct.product_id == Product.id
+        ).where(StoreProduct.store_id == store_id)
 
     # Розраховуємо загальну кількість товарів, що відповідають фільтрам (ігноруємо skip/limit)
     count_stmt = select(func.count()).select_from(base_stmt.subquery())
@@ -81,22 +80,17 @@ async def get_products(
     product_ids = [p.id for p in products]
 
     # Підзапит: остання записана ціна для кожного товару та магазину
-    latest_price_subq = (
-        select(
-            Price.product_id,
-            Price.store_id,
-            func.max(Price.recorded_at).label("max_recorded_at"),
-        )
-        .where(Price.product_id.in_(product_ids))
-    )
+    latest_price_subq = select(
+        Price.product_id,
+        Price.store_id,
+        func.max(Price.recorded_at).label("max_recorded_at"),
+    ).where(Price.product_id.in_(product_ids))
     if store_id:
         latest_price_subq = latest_price_subq.where(Price.store_id == store_id)
-    
-    latest_price_subq = (
-        latest_price_subq
-        .group_by(Price.product_id, Price.store_id)
-        .subquery()
-    )
+
+    latest_price_subq = latest_price_subq.group_by(
+        Price.product_id, Price.store_id
+    ).subquery()
 
     # Вибираємо ціни з інформацією про магазини
     prices_stmt = (
