@@ -113,6 +113,11 @@ class ProductOffersResponse(ProductResponse):
     model_config = ConfigDict(from_attributes=True)
 
 
+class PaginatedProductsResponse(BaseModel):
+    total: int
+    items: list[ProductOffersResponse]
+
+
 class ProductFilters(BaseModel):
     category_id: Optional[int] = None
     brand: Optional[str] = None
