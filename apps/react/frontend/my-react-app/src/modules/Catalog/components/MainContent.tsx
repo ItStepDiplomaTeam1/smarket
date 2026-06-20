@@ -71,13 +71,13 @@ interface Product {
 }
 
 interface ProductsResponse {
-  data: Product[];
+  items: Product[]; // data на items
   total: number;
 }
 
 
 // ================= ФУНКЦІЯ ОТРИМАННЯ ДАНИХ =================
-const fetchProducts = async (page: number): Promise<Product[]> => {
+const fetchProducts = async (page: number): Promise<ProductsResponse> => {
     const limit = 12;
     const skip = (page - 1) * limit;
     
@@ -93,17 +93,17 @@ const fetchProducts = async (page: number): Promise<Product[]> => {
 };
 
 export function MainContent() {
-  const [page, setPage] = useState(1);
+    const [page, setPage] = useState(1);
 
-    const { data, isLoading } = useQuery<Product[]>({
+    // Змінили дженерик на ProductsResponse
+    const { data, isLoading } = useQuery<ProductsResponse>({
         queryKey: ['productsList', page],
         queryFn: () => fetchProducts(page),
     });
 
-  // Якщо API повертає об'єкт з total, беремо його. 
-  // Якщо тільки масив, total можна імітувати або взяти довжину (якщо API повертає всі)
-    const products = data ?? [];
-    const totalProducts = products.length;
+    // Тепер беремо items та total прямо з відповіді бекенду
+    const products = data?.items ?? [];
+    const totalProducts = data?.total ?? 0;
 
   return (
     <div className="w-full max-w-[1228px] mx-auto px-[20px] py-[40px] flex gap-[40px] items-start mobile:flex-col">
@@ -443,9 +443,10 @@ export function MainContent() {
           {/* Кнопка ВПЕРЕД */}
           <button 
             onClick={() => setPage(p => p + 1)}
-            disabled={products.length < 12} // Якщо прийшло менше 12 товарів, далі пустих сторінок немає
+            // Блокуємо, якщо поточна сторінка * ліміт >= загальної кількості
+            disabled={(page * 12) >= totalProducts} 
             className={`w-[32px] h-[32px] flex items-center justify-center border rounded-[8px] text-[13px] transition-colors ${
-              products.length < 12 
+              (page * 12) >= totalProducts 
                 ? 'border-[#E5E7EB] bg-[#F9FAFB] text-[#9CA3AF] cursor-not-allowed' 
                 : 'border-[#E5E7EB] bg-white text-[#374151] cursor-pointer hover:bg-[#F3F4F6]'
             }`}
