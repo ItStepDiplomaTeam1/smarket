@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 // ================= SVG ІКОНКИ ДЛЯ МАКЕТУ =================
@@ -23,21 +23,21 @@ const HeartIcon = () => (
 
 const GridIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M6.66667 2H2V6.66667H6.66667V2Z" fill="#111827"/>
-    <path d="M14 2H9.33333V6.66667H14V2Z" fill="#111827"/>
-    <path d="M6.66667 9.33333H2V14H6.66667V9.33333Z" fill="#111827"/>
-    <path d="M14 9.33333H9.33333V14H14V9.33333Z" fill="#111827"/>
+    <path d="M6.66667 2H2V6.66667H6.66667V2Z" fill="currentColor"/>
+    <path d="M14 2H9.33333V6.66667H14V2Z" fill="currentColor"/>
+    <path d="M6.66667 9.33333H2V14H6.66667V9.33333Z" fill="currentColor"/>
+    <path d="M14 9.33333H9.33333V14H14V9.33333Z" fill="currentColor"/>
   </svg>
 );
 
 const ListIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M14 4H5.33333" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M14 8H5.33333" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M14 12H5.33333" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M2.66667 4H2" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M2.66667 8H2" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M2.66667 12H2" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M14 4H5.33333" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M14 8H5.33333" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M14 12H5.33333" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M2.66667 4H2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M2.66667 8H2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M2.66667 12H2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 );
 
@@ -91,6 +91,18 @@ interface ProductsResponse {
   total: number;
 }
 
+// Інтерфейс для передачі всіх фільтрів у функцію fetchProducts
+interface FetchFilters {
+  page: number;
+  category: string;
+  stores: string[];
+  subcategories: string[];
+  offers: string[];
+  maxPrice: number;
+  search: string;
+  sortBy: string;
+}
+
 // ================= КОНСТАНТИ ФІЛЬТРІВ (ДИНАМІЧНІ МАСИВИ) =================
 const CATEGORY_OPTIONS = [
   { id: 'products', icon: '🥦', name: 'Продукти', count: '1 240' },
@@ -111,9 +123,9 @@ const STORE_OPTIONS = [
 ];
 
 const SUBCATEGORY_OPTIONS = [
-  { id: 'dairy', name: 'Молочна продукція', count: '218' },
-  { id: 'meat', name: "М'ясо та птиця", count: '175' },
-  { id: 'bread', name: 'Хліб та випічка', count: '140' },
+  { id: 'molochni-produkty', name: 'Молочна продукція', count: '218' },
+  { id: 'myaso-ta-ptytsya', name: "М'ясо та птиця", count: '175' },
+  { id: 'hlib-ta-vypichka', name: 'Хліб та випічка', count: '140' },
   { id: 'vegetables', name: 'Овочі та фрукти', count: '209' },
   { id: 'fish', name: 'Риба та морепродукти', count: '88' },
   { id: 'grains', name: 'Крупи та бобові', count: '124' },
@@ -128,16 +140,37 @@ const PROPOSAL_OPTIONS = [
 ];
 
 // ================= ФУНКЦІЯ ОТРИМАННЯ ДАНИХ =================
-const fetchProducts = async (page: number, stores: string[]): Promise<ProductsResponse> => {
+const fetchProducts = async (filters: FetchFilters): Promise<ProductsResponse> => {
     const limit = 12;
-    const skip = (page - 1) * limit;
+    const skip = (filters.page - 1) * limit;
     
     let url = new URL('http://localhost:8080/api/v1/products');
+    
+    // Додаємо пагінацію
     url.searchParams.append('limit', limit.toString());
     url.searchParams.append('skip', skip.toString());
     
-    if (stores.length > 0) {
-        url.searchParams.append('stores', stores.join(','));
+    // Додаємо всі можливі фільтри до URL
+    if (filters.stores.length > 0) {
+        url.searchParams.append('stores', filters.stores.join(','));
+    }
+    if (filters.category !== 'products') {
+        url.searchParams.append('category', filters.category);
+    }
+    if (filters.subcategories.length > 0) {
+        url.searchParams.append('subcategories', filters.subcategories.join(','));
+    }
+    if (filters.offers.length > 0) {
+        url.searchParams.append('offers', filters.offers.join(','));
+    }
+    if (filters.maxPrice < 2000) {
+        url.searchParams.append('max_price', filters.maxPrice.toString());
+    }
+    if (filters.search.trim() !== '') {
+        url.searchParams.append('search', filters.search.trim());
+    }
+    if (filters.sortBy !== 'best_price') {
+        url.searchParams.append('sort_by', filters.sortBy);
     }
   
     const res = await fetch(url.toString());
@@ -153,16 +186,42 @@ export function MainContent() {
   const [page, setPage] = useState(1);
   
   // Клієнтські стейти для всіх типів фільтрів
-  const [maxPrice, setMaxPrice] = useState<number>(1000); // 1000 - початковий максимум
-  const [selectedCategory, setSelectedCategory] = useState<string>('products'); // за замовчуванням вибрані Продукти
-  const [selectedStores, setSelectedStores] = useState<string[]>([]);
-  const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>(['dairy', 'meat']); // початкові активні для візуалу як на макеті
-  const [selectedOffers, setSelectedOffers] = useState<string[]>(['promo']); // початкова активна акція для візуалу
+    const [maxPrice, setMaxPrice] = useState<number>(1000); 
+    const [selectedCategory, setSelectedCategory] = useState<string>('products'); 
+    const [selectedStores, setSelectedStores] = useState<string[]>([]);
+    const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>([]); 
+    const [selectedOffers, setSelectedOffers] = useState<string[]>([]);
+
+  // НОВІ СТЕЙТИ: пошук, сортування, вигляд
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [debouncedSearch, setDebouncedSearch] = useState<string>('');
+  const [sortBy, setSortBy] = useState<string>('best_price');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+  // Debounce ефект для пошуку
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 500); // 500мс затримка перед запитом на бекенд
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  // Об'єднуємо всі параметри в один об'єкт для React Query
+  const filterParams: FetchFilters = {
+    page,
+    category: selectedCategory,
+    stores: selectedStores,
+    subcategories: selectedSubcategories,
+    offers: selectedOffers,
+    maxPrice,
+    search: debouncedSearch,
+    sortBy
+  };
 
   // Синхронізація запиту з реактивними ключами стейтів
   const { data, isLoading } = useQuery<ProductsResponse>({
-      queryKey: ['productsList', page, selectedStores, selectedCategory, selectedSubcategories, selectedOffers, maxPrice],
-      queryFn: () => fetchProducts(page, selectedStores),
+      queryKey: ['productsList', filterParams],
+      queryFn: () => fetchProducts(filterParams),
   });
 
   const products = data?.items ?? [];
@@ -202,6 +261,8 @@ export function MainContent() {
     setSelectedSubcategories([]);
     setSelectedOffers([]);
     setMaxPrice(1000);
+    setSearchQuery(''); // Скидаємо пошук
+    setSortBy('everything'); // Скидаємо сортування
     setPage(1);
   };
 
@@ -249,7 +310,7 @@ export function MainContent() {
                   <div className={`flex items-center gap-[10px] text-[14px] ${
                     isCatActive ? 'font-semibold text-[#173B33]' : 'font-semibold text-[#4B6358]'
                   }`}>
-                    <span className={`text-[16px] ${!isCatActive && 'grayscale opacity-70'}`}>
+                    <span className={`text-[16px] ${!isCatActive ? 'grayscale opacity-70' : ''}`}>
                       {cat.icon}
                     </span>
                     <span>{cat.name}</span>
@@ -283,7 +344,7 @@ export function MainContent() {
                 value={maxPrice}
                 onChange={(e) => {
                     setMaxPrice(Number(e.target.value));
-                    setPage(1); // Оновлюємо пагінацію при зміні фільтра
+                    setPage(1);
                 }}
                 className="w-full border-none outline-none text-[#111827] text-[14px] bg-transparent"
                 />
@@ -416,26 +477,55 @@ export function MainContent() {
         <div className="flex justify-between items-center mb-[16px]">
           <div className="flex items-center gap-[10px] border border-[#E5E7EB] rounded-[8px] px-[12px] py-[10px] w-[320px] bg-white focus-within:border-[#265447] transition-colors">
             <SearchIcon />
-            <input type="text" placeholder="Пошук товарів..." className="flex-1 border-none outline-none text-[14px] text-[#111827] placeholder:text-[#9CA3AF] bg-transparent" />
+            <input 
+              type="text" 
+              placeholder="Пошук товарів..." 
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setPage(1);
+              }}
+              className="flex-1 border-none outline-none text-[14px] text-[#111827] placeholder:text-[#9CA3AF] bg-transparent" 
+            />
           </div>
 
           <div className="flex items-center gap-[16px]">
             <select 
+              value={sortBy}
+              onChange={(e) => {
+                setSortBy(e.target.value);
+                setPage(1);
+              }}
               className="border border-[#E5E7EB] rounded-[8px] px-[14px] py-[10px] text-[13px] font-medium text-[#374151] outline-none cursor-pointer bg-white appearance-none pr-[30px]" 
               style={{ 
                 backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2212%22%20height%3D%228%22%20viewBox%3D%220%200%2012%208%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M1%201.5L6%206.5L11%201.5%22%20stroke%3D%22%236B7280%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E")', 
                 backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' 
               }}
             >
-              <option>Найкраща ціна</option>
-              <option>Спочатку дешевші</option>
-              <option>За популярністю</option>
+              <option value="everything">Все</option>
+              <option value="best_price">Найкраща ціна</option>
+              <option value="cheapest_first">Спочатку дешевші</option>
+              <option value="popular">За популярністю</option>
             </select>
 
             <div className="flex items-center border border-[#E5E7EB] rounded-[8px] overflow-hidden bg-white">
-              <button className="p-[10px] bg-[#F3F4F6] border-none cursor-pointer flex items-center justify-center"><GridIcon /></button>
+              <button 
+                onClick={() => setViewMode('grid')}
+                className={`p-[10px] border-none cursor-pointer flex items-center justify-center transition-colors ${
+                  viewMode === 'grid' ? 'bg-[#F3F4F6] text-[#111827]' : 'bg-white text-[#9CA3AF] hover:bg-[#F9FAFB]'
+                }`}
+              >
+                <GridIcon />
+              </button>
               <div className="w-[1px] h-[20px] bg-[#E5E7EB]"></div>
-              <button className="p-[10px] bg-white border-none cursor-pointer flex items-center justify-center hover:bg-[#F9FAFB]"><ListIcon /></button>
+              <button 
+                onClick={() => setViewMode('list')}
+                className={`p-[10px] border-none cursor-pointer flex items-center justify-center transition-colors ${
+                  viewMode === 'list' ? 'bg-[#F3F4F6] text-[#111827]' : 'bg-white text-[#9CA3AF] hover:bg-[#F9FAFB]'
+                }`}
+              >
+                <ListIcon />
+              </button>
             </div>
           </div>
         </div>
@@ -514,13 +604,14 @@ export function MainContent() {
         </div>
 
         {/* ================= СІТКА ПРОДУКТІВ ================= */}
-        <div className="grid grid-cols-4 gap-[16px]">
+        {/* Застосовуємо зміну сітки в залежності від viewMode */}
+        <div className={`grid gap-[16px] ${viewMode === 'grid' ? 'grid-cols-4' : 'grid-cols-1'}`}>
           {isLoading ? (
-            <div className="col-span-4 text-center py-10 font-medium text-[#6D8279]">
+            <div className="col-span-full text-center py-10 font-medium text-[#6D8279]">
               Завантаження каталогу...
             </div>
           ) : products.length === 0 ? (
-            <div className="col-span-4 text-center py-10 font-medium text-[#111827]">
+            <div className="col-span-full text-center py-10 font-medium text-[#111827]">
               За вибраними фільтрами нічого не знайдено.
             </div>
           ) : (
