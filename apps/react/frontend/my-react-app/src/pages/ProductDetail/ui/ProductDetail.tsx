@@ -5,8 +5,11 @@ import { apiClient } from '@/shared/api/apiClient';
 import { type Product } from '@/modules/Product/type';
 
 export default function ProductDetail() {
-  const { id } = useParams<{ id: string }>();
-  const productId = Number(id) || 1;
+  const { idAndSlug } = useParams<{ idAndSlug: string }>();
+  
+  const extractedId = idAndSlug ? idAndSlug.split('-')[0] : null;
+  const productId = Number(extractedId) || 1;
+  
   const [product, setProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
