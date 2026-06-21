@@ -231,12 +231,6 @@ export function ProductHero({ product }: ProductHeroProps) {
 
                         {/* Мініатюри */}
                         <div className="flex flex-row justify-between w-full gap-[12px]">
-                            <div className="w-[143px] h-[143px] rounded-[16px] bg-[#EAF7F2] border border-[#265447] flex justify-center items-center cursor-pointer shrink-0 p-[12px]">
-                                <img src={product.image_url || mainMilk} alt="thumb" className="max-w-full max-h-full object-contain" />
-                            </div>
-                            <div className="w-[143px] h-[143px] rounded-[16px] bg-[#F6FAF8] border border-[rgba(38,84,71,0.08)] flex justify-center items-center cursor-pointer shrink-0 p-[12px]">
-                                <img src={product.image_url || mainMilk} alt="thumb" className="max-w-full max-h-full object-contain opacity-70" />
-                            </div>
                             <div className="w-[143px] h-[143px] rounded-[16px] bg-[#F6FAF8] border border-[rgba(38,84,71,0.08)] flex justify-center items-center cursor-pointer shrink-0 p-[12px]">
                                 <img src={product.image_url || mainMilk} alt="thumb" className="max-w-full max-h-full object-contain opacity-70" />
                             </div>
@@ -362,6 +356,7 @@ export function ProductHero({ product }: ProductHeroProps) {
                         )}
 
                         {/* Віджет порівняння цін */}
+                        {/* Віджет порівняння цін */}
                         <div className="flex flex-col gap-[16px] p-[24px] rounded-[16px] border border-[rgba(38,84,71,0.08)] bg-white">
                             <div className="flex justify-between items-center">
                                 <h3 className="m-0 font-manrope text-[18px] font-[200] leading-[25.2px] text-[#173B33]">Де дешевше?</h3>
@@ -372,7 +367,7 @@ export function ProductHero({ product }: ProductHeroProps) {
                                 )}
                             </div>
 
-                            <div className="flex flex-col gap-[8px]">
+                            <div className="flex flex-col gap-[8px] max-h-[166px] overflow-y-auto">
                                 {sortedPrices.length === 0 ? (
                                     <div className="font-inter text-[14px] text-[#6D8279] text-center py-4">
                                         Дані про ціни в інших магазинах відсутні.
@@ -387,7 +382,7 @@ export function ProductHero({ product }: ProductHeroProps) {
                                             <div 
                                                 key={priceObj.id}
                                                 onClick={() => handleSelectStore(priceObj.store_id)}
-                                                className={`flex justify-between items-center h-[50px] px-[16px] rounded-[10px] cursor-pointer transition-all duration-200 ${
+                                                className={`shrink-0 flex justify-between items-center h-[50px] px-[16px] rounded-[10px] cursor-pointer transition-all duration-200 ${
                                                     isSelected 
                                                     ? 'bg-[#EAF7F2] border-[2px] border-[#265447] shadow-[0_0_0_1px_rgba(38,84,71,0.12)]' 
                                                     : isCheapest

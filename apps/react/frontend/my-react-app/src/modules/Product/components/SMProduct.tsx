@@ -46,7 +46,6 @@ const SmCard = ({ product }: { product: Product }) => {
                     quantity: 1
                 });
             } else if (isAuthenticated) {
-                // No cart exists yet — create one first
                 const cartResponse = await apiClient.post('/api/v1/cart/', {
                     name: "Мій кошик"
                 });
