@@ -40,6 +40,7 @@ jobs:
       has_node: ${{ steps.langs.outputs.has_node }}
       has_docker: ${{ steps.langs.outputs.has_docker }}
       services_matrix: ${{ steps.matrix.outputs.services }}
+      python_services_matrix: ${{ steps.py-matrix.outputs.services }}
 
     steps:
       - uses: actions/checkout@v4
@@ -49,24 +50,107 @@ jobs:
       - name: Detect languages
         id: langs
         run: |
-          has() { find . -name "$1" -not -path '*/node_modules/*' -not -path '*/.venv/*' | grep -q .; }
-          echo "has_python=$(has 'pyproject.toml' && echo true || echo false)" >> $GITHUB_OUTPUT
-          echo "has_go=$(has 'go.mod' && echo true || echo false)"             >> $GITHUB_OUTPUT
-          echo "has_node=$(has 'package.json' && echo true || echo false)"     >> $GITHUB_OUTPUT
-          echo "has_docker=$(has 'Dockerfile' && echo true || echo false)"     >> $GITHUB_OUTPUT
+          BASE=${{ github.event.pull_request.base.sha || 'HEAD~1' }}
+          
+          # Fallback check
+          git diff --name-only "$BASE" HEAD &>/dev/null
+          if [ $? -ne 0 ]; then
+            echo "has_python=true" >> $GITHUB_OUTPUT
+            echo "has_go=true"     >> $GITHUB_OUTPUT
+            echo "has_node=true"   >> $GITHUB_OUTPUT
+            echo "has_docker=true" >> $GITHUB_OUTPUT
+          else
+            has_python="false"
+            if git diff --name-only "$BASE" HEAD -- "services/" "libs/" "packages/" 2>/dev/null | grep -E 'pyproject\.toml$|\.py$' &>/dev/null; then
+              has_python="true"
+            fi
+            
+            has_go="false"
+            if git diff --name-only "$BASE" HEAD -- "services/products_etl" 2>/dev/null | grep -q .; then
+              has_go="true"
+            fi
+            
+            has_node="false"
+            if git diff --name-only "$BASE" HEAD -- "apps/react/frontend/my-react-app" 2>/dev/null | grep -q .; then
+              has_node="true"
+            fi
+            
+            has_docker="false"
+            if git diff --name-only "$BASE" HEAD 2>/dev/null | grep -i "Dockerfile" &>/dev/null; then
+              has_docker="true"
+            fi
+            
+            echo "has_python=$has_python" >> $GITHUB_OUTPUT
+            echo "has_go=$has_go"         >> $GITHUB_OUTPUT
+            echo "has_node=$has_node"     >> $GITHUB_OUTPUT
+            echo "has_docker=$has_docker" >> $GITHUB_OUTPUT
+          fi
 
       - name: Build services matrix
         id: matrix
         run: |
           BASE=${{ github.event.pull_request.base.sha || 'HEAD~1' }}
           result="[]"
-          for d in services/*/; do
-            name=$(basename "$d")
-            [ ! -f "$d/Dockerfile" ] && [ ! -f "$d/DockerFile" ] && continue
-            if git diff --name-only "$BASE" HEAD -- "$d" "libs/" "packages/" 2>/dev/null | grep -q .; then
+          
+          git diff --name-only "$BASE" HEAD &>/dev/null
+          if [ $? -ne 0 ]; then
+            # fallback: all services with Dockerfile
+            for d in services/*/; do
+              name=$(basename "$d")
+              [ ! -f "$d/Dockerfile" ] && [ ! -f "$d/DockerFile" ] && continue
               result=$(echo "$result" | jq --arg n "$name" --arg p "$d" '. += [{"name": $n, "path": $p}]')
+            done
+          else
+            for d in services/*/; do
+              name=$(basename "$d")
+              [ ! -f "$d/Dockerfile" ] && [ ! -f "$d/DockerFile" ] && continue
+              if git diff --name-only "$BASE" HEAD -- "$d" "libs/" "packages/" 2>/dev/null | grep -q .; then
+                result=$(echo "$result" | jq --arg n "$name" --arg p "$d" '. += [{"name": $n, "path": $p}]')
+              fi
+            done
+          fi
+          echo "services<<EOF" >> $GITHUB_OUTPUT
+          echo "$result"       >> $GITHUB_OUTPUT
+          echo "EOF"           >> $GITHUB_OUTPUT
+
+      - name: Build python services matrix
+        id: py-matrix
+        run: |
+          BASE=${{ github.event.pull_request.base.sha || 'HEAD~1' }}
+          result="[]"
+          
+          git diff --name-only "$BASE" HEAD &>/dev/null
+          if [ $? -ne 0 ]; then
+            # fallback: all services
+            result='[
+              {"name": "auth_service", "path": "services/auth_service"},
+              {"name": "cart_service", "path": "services/cart_service"},
+              {"name": "email_worker", "path": "services/email_worker"},
+              {"name": "gateway", "path": "services/gateway"},
+              {"name": "product_service", "path": "services/product_service"},
+              {"name": "reviews_service", "path": "services/reviews_service"}
+            ]'
+          else
+            # check if libs or packages or global config changed -> if so, run all services
+            if git diff --name-only "$BASE" HEAD -- "libs/" "packages/" 2>/dev/null | grep -q .; then
+              result='[
+                {"name": "auth_service", "path": "services/auth_service"},
+                {"name": "cart_service", "path": "services/cart_service"},
+                {"name": "email_worker", "path": "services/email_worker"},
+                {"name": "gateway", "path": "services/gateway"},
+                {"name": "product_service", "path": "services/product_service"},
+                {"name": "reviews_service", "path": "services/reviews_service"}
+              ]'
+            else
+              for d in services/*/; do
+                name=$(basename "$d")
+                [ ! -f "$d/pyproject.toml" ] && [ ! -f "$d/requirements.txt" ] && continue
+                if git diff --name-only "$BASE" HEAD -- "$d" 2>/dev/null | grep -q .; then
+                  result=$(echo "$result" | jq --arg n "$name" --arg p "$d" '. += [{"name": $n, "path": $p}]')
+                fi
+              done
             fi
-          done
+          fi
           echo "services<<EOF" >> $GITHUB_OUTPUT
           echo "$result"       >> $GITHUB_OUTPUT
           echo "EOF"           >> $GITHUB_OUTPUT
@@ -128,18 +212,15 @@ jobs:
   python-quality:
     name: 🔍 Python Quality — ${{ matrix.service.name }}
     needs: [detect, setup-python]
-    if: needs.detect.outputs.has_python == 'true'
+    if: |
+      needs.detect.outputs.has_python == 'true' &&
+      needs.detect.outputs.python_services_matrix != '[]' &&
+      needs.detect.outputs.python_services_matrix != ''
     runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
-        service:
-          - { name: auth_service,    path: services/auth_service    }
-          - { name: cart_service,    path: services/cart_service    }
-          - { name: email_worker,    path: services/email_worker    }
-          - { name: gateway,         path: services/gateway         }
-          - { name: product_service, path: services/product_service }
-          - { name: reviews_service, path: services/reviews_service }
+        service: ${{ fromJson(needs.detect.outputs.python_services_matrix || '[]') }}
 
     steps:
       - uses: actions/checkout@v4
@@ -185,18 +266,15 @@ jobs:
   python-test:
     name: 🧪 Python Tests — ${{ matrix.service.name }}
     needs: [detect, python-quality]
-    if: needs.detect.outputs.has_python == 'true'
+    if: |
+      needs.detect.outputs.has_python == 'true' &&
+      needs.detect.outputs.python_services_matrix != '[]' &&
+      needs.detect.outputs.python_services_matrix != ''
     runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
-        service:
-          - { name: auth_service,    path: services/auth_service    }
-          - { name: cart_service,    path: services/cart_service    }
-          - { name: email_worker,    path: services/email_worker    }
-          - { name: gateway,         path: services/gateway         }
-          - { name: product_service, path: services/product_service }
-          - { name: reviews_service, path: services/reviews_service }
+        service: ${{ fromJson(needs.detect.outputs.python_services_matrix || '[]') }}
 
     steps:
       - uses: actions/checkout@v4
@@ -429,7 +507,7 @@ jobs:
             config="${configs[$path]}"
             echo "⬇️  $config → $path/.env"
             doppler secrets download \
-              --project smarket \
+              --project smarket-services-secrets \
               --config "$config" \
               --token "$DOPPLER_TOKEN" \
               --no-file --format env \

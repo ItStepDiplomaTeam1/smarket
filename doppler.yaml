@@ -1,28 +1,28 @@
 setup:
-  - project: smarket
+  - project: smarket-services-secrets
     config: dev_gateway
     path: services/gateway
 
-  - project: smarket
+  - project: smarket-services-secrets
     config: dev_auth_service
     path: services/auth_service
 
-  - project: smarket
+  - project: smarket-services-secrets
     config: dev_products_etl
     path: services/products_etl
 
-  - project: smarket
+  - project: smarket-services-secrets
     config: dev_product_service
     path: services/product_service
 
-  - project: smarket
+  - project: smarket-services-secrets
     config: dev_email_worker
     path: services/email_worker
 
-  - project: smarket
+  - project: smarket-services-secrets
     config: dev_cart_service
     path: services/cart_service
 
-  - project: smarket
+  - project: smarket-services-secrets
     config: dev_reviews_service
     path: services/reviews_service
