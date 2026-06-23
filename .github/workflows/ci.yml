@@ -159,6 +159,9 @@ jobs:
           key: uv-${{ matrix.service.name }}-${{ hashFiles(format('{0}/pyproject.toml', matrix.service.path)) }}
           restore-keys: uv-${{ matrix.service.name }}-
 
+      - name: Ensure uv is available
+        run: command -v uv || pip install uv --quiet --break-system-packages
+
       - name: Install service dependencies
         working-directory: ${{ matrix.service.path }}
         run: |
@@ -205,6 +208,9 @@ jobs:
           path: /root/.cache/uv
           key: uv-${{ matrix.service.name }}-${{ hashFiles(format('{0}/pyproject.toml', matrix.service.path)) }}
           restore-keys: uv-${{ matrix.service.name }}-
+
+      - name: Ensure uv is available
+        run: command -v uv || pip install uv --quiet --break-system-packages
 
       - name: Install service + test dependencies
         working-directory: ${{ matrix.service.path }}
