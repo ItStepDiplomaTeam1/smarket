@@ -382,6 +382,7 @@ jobs:
       !contains(needs.docker-build.result, 'cancelled')
     runs-on: self-hosted
     env:
+      HOME: /root
       DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
 
     steps:
