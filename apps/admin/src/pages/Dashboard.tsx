@@ -139,7 +139,7 @@ const Dashboard: React.FC = () => {
           {/* 4-col bottom widgets */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <NeedsAttentionWidget items={data.needsAttention} />
-            <NewUsersWidget users={data.newUsers} />
+            <NewUsersWidget />
             <PopularCategoriesWidget categories={data.popularCategories} />
             <SearchQueriesWidget queries={data.searchQueries} />
           </div>
