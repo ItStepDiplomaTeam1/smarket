@@ -105,39 +105,6 @@ jobs:
   #  STAGE 3 — LINT & TEST (parallel)
   # ═══════════════════════════════════════════
 
-  # ── Python Auto-Format ────────────────────
-  python-auto-format:
-    name: 🪄 Python Auto-Format
-    needs: detect
-    if: needs.detect.outputs.has_python == 'true'
-    runs-on: self-hosted
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref || github.ref }}
-
-      # ruff вже встановлений на сервері — не качаємо
-      - name: Ensure ruff is available
-        run: |
-          export PATH="/root/.local/bin:$PATH"
-          command -v ruff || pip3 install ruff --break-system-packages --quiet
-
-      - name: Format all Python services
-        run: |
-          for srv in ${{ env.PYTHON_SERVICES }}; do
-            [ -d "$srv" ] || continue
-            export PATH="/root/.local/bin:$PATH"
-            ruff check --fix "$srv" || true
-            ruff format "$srv"      || true
-          done
-
-      - name: Commit auto-format changes
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "style: auto-format python code"
-
   # ── Python Quality (один джоб для всіх) ──
   python-quality:
     name: 🔍 Python Quality — ${{ matrix.service.name }}
@@ -460,7 +427,6 @@ jobs:
     needs:
       - detect
       - security
-      - python-auto-format
       - python-quality
       - python-test
       - node-ci
