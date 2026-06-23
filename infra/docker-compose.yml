@@ -270,7 +270,7 @@ services:
       - mongodb_data:/data/db
     healthcheck:
       <<: *healthcheck-defaults
-      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      test: ["CMD-SHELL", "mongosh --quiet -u $$MONGO_INITDB_ROOT_USERNAME -p $$MONGO_INITDB_ROOT_PASSWORD --authenticationDatabase admin --eval \"db.adminCommand('ping').ok\""]
       timeout: "${MONGO_HEALTH_TIMEOUT:-10s}"
       start_period: "${MONGO_HEALTH_START_PERIOD:-30s}"
     mem_limit: "${SMARKET_MONGO_MEM_LIMIT:-512m}"
