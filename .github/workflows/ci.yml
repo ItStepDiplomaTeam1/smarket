@@ -39,7 +39,7 @@ jobs:
       has_go: 'true'
       has_node: 'true'
       has_docker: 'true'
-      services_matrix: '[{"name": "auth_service", "path": "services/auth_service", "dockerfile": "services/auth_service/Dockerfile"}, {"name": "cart_service", "path": "services/cart_service", "dockerfile": "services/cart_service/DockerFile"}, {"name": "email_worker", "path": "services/email_worker", "dockerfile": "services/email_worker/Dockerfile"}, {"name": "gateway", "path": "services/gateway", "dockerfile": "services/gateway/Dockerfile"}, {"name": "product_service", "path": "services/product_service", "dockerfile": "services/product_service/DockerFile"}, {"name": "reviews_service", "path": "services/reviews_service", "dockerfile": "services/reviews_service/Dockerfile"}, {"name": "products_etl", "path": "services/products_etl", "dockerfile": "services/products_etl/Dockerfile"}]'
+      services_matrix: '[{"name": "auth_service", "path": "services/auth_service", "dockerfile": "services/auth_service/Dockerfile", "context": "."}, {"name": "cart_service", "path": "services/cart_service", "dockerfile": "services/cart_service/DockerFile", "context": "."}, {"name": "email_worker", "path": "services/email_worker", "dockerfile": "services/email_worker/Dockerfile", "context": "services/email_worker"}, {"name": "gateway", "path": "services/gateway", "dockerfile": "services/gateway/Dockerfile", "context": "services/gateway"}, {"name": "product_service", "path": "services/product_service", "dockerfile": "services/product_service/DockerFile", "context": "."}, {"name": "reviews_service", "path": "services/reviews_service", "dockerfile": "services/reviews_service/Dockerfile", "context": "."}, {"name": "products_etl", "path": "services/products_etl", "dockerfile": "services/products_etl/Dockerfile", "context": "services/products_etl"}]'
       python_services_matrix: '[{"name": "auth_service", "path": "services/auth_service"}, {"name": "cart_service", "path": "services/cart_service"}, {"name": "email_worker", "path": "services/email_worker"}, {"name": "gateway", "path": "services/gateway"}, {"name": "product_service", "path": "services/product_service"}, {"name": "reviews_service", "path": "services/reviews_service"}]'
 
     steps:
@@ -100,7 +100,12 @@ jobs:
               [ ! -f "${d}Dockerfile" ] && [ ! -f "${d}DockerFile" ] && continue
               df="${d}Dockerfile"
               [ ! -f "$df" ] && df="${d}DockerFile"
-              result=$(echo "$result" | jq --arg n "$name" --arg p "$d" --arg df "$df" '. += [{"name": $n, "path": $p, "dockerfile": $df}]')
+              if [ "$name" = "email_worker" ] || [ "$name" = "gateway" ] || [ "$name" = "products_etl" ]; then
+                ctx="services/${name}"
+              else
+                ctx="."
+              fi
+              result=$(echo "$result" | jq --arg n "$name" --arg p "$d" --arg df "$df" --arg ctx "$ctx" '. += [{"name": $n, "path": $p, "dockerfile": $df, "context": $ctx}]')
             done
           else
             for d in services/*/; do
@@ -109,7 +114,12 @@ jobs:
               df="${d}Dockerfile"
               [ ! -f "$df" ] && df="${d}DockerFile"
               if git diff --name-only "$BASE" HEAD -- "$d" "libs/" "packages/" 2>/dev/null | grep -q .; then
-                result=$(echo "$result" | jq --arg n "$name" --arg p "$d" --arg df "$df" '. += [{"name": $n, "path": $p, "dockerfile": $df}]')
+                if [ "$name" = "email_worker" ] || [ "$name" = "gateway" ] || [ "$name" = "products_etl" ]; then
+                  ctx="services/${name}"
+                else
+                  ctx="."
+                fi
+                result=$(echo "$result" | jq --arg n "$name" --arg p "$d" --arg df "$df" --arg ctx "$ctx" '. += [{"name": $n, "path": $p, "dockerfile": $df, "context": $ctx}]')
               fi
             done
           fi
@@ -438,7 +448,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ${{ matrix.service.context }}
           file: ${{ matrix.service.dockerfile }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
