@@ -285,7 +285,7 @@ services:
 
   mongodb:
     <<: *runtime-defaults
-    image: mongo:8.3
+    image: mongo:7.0
     command:
       - mongod
       - --bind_ip_all
