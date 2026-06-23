@@ -39,7 +39,7 @@ jobs:
       has_go: 'true'
       has_node: 'true'
       has_docker: 'true'
-      services_matrix: '[{"name": "auth_service", "path": "services/auth_service"}, {"name": "cart_service", "path": "services/cart_service"}, {"name": "email_worker", "path": "services/email_worker"}, {"name": "gateway", "path": "services/gateway"}, {"name": "product_service", "path": "services/product_service"}, {"name": "reviews_service", "path": "services/reviews_service"}, {"name": "products_etl", "path": "services/products_etl"}]'
+      services_matrix: '[{"name": "auth_service", "path": "services/auth_service", "dockerfile": "services/auth_service/Dockerfile"}, {"name": "cart_service", "path": "services/cart_service", "dockerfile": "services/cart_service/DockerFile"}, {"name": "email_worker", "path": "services/email_worker", "dockerfile": "services/email_worker/Dockerfile"}, {"name": "gateway", "path": "services/gateway", "dockerfile": "services/gateway/Dockerfile"}, {"name": "product_service", "path": "services/product_service", "dockerfile": "services/product_service/DockerFile"}, {"name": "reviews_service", "path": "services/reviews_service", "dockerfile": "services/reviews_service/Dockerfile"}, {"name": "products_etl", "path": "services/products_etl", "dockerfile": "services/products_etl/Dockerfile"}]'
       python_services_matrix: '[{"name": "auth_service", "path": "services/auth_service"}, {"name": "cart_service", "path": "services/cart_service"}, {"name": "email_worker", "path": "services/email_worker"}, {"name": "gateway", "path": "services/gateway"}, {"name": "product_service", "path": "services/product_service"}, {"name": "reviews_service", "path": "services/reviews_service"}]'
 
     steps:
@@ -97,15 +97,19 @@ jobs:
             # fallback: all services with Dockerfile
             for d in services/*/; do
               name=$(basename "$d")
-              [ ! -f "$d/Dockerfile" ] && [ ! -f "$d/DockerFile" ] && continue
-              result=$(echo "$result" | jq --arg n "$name" --arg p "$d" '. += [{"name": $n, "path": $p}]')
+              [ ! -f "${d}Dockerfile" ] && [ ! -f "${d}DockerFile" ] && continue
+              df="${d}Dockerfile"
+              [ ! -f "$df" ] && df="${d}DockerFile"
+              result=$(echo "$result" | jq --arg n "$name" --arg p "$d" --arg df "$df" '. += [{"name": $n, "path": $p, "dockerfile": $df}]')
             done
           else
             for d in services/*/; do
               name=$(basename "$d")
-              [ ! -f "$d/Dockerfile" ] && [ ! -f "$d/DockerFile" ] && continue
+              [ ! -f "${d}Dockerfile" ] && [ ! -f "${d}DockerFile" ] && continue
+              df="${d}Dockerfile"
+              [ ! -f "$df" ] && df="${d}DockerFile"
               if git diff --name-only "$BASE" HEAD -- "$d" "libs/" "packages/" 2>/dev/null | grep -q .; then
-                result=$(echo "$result" | jq --arg n "$name" --arg p "$d" '. += [{"name": $n, "path": $p}]')
+                result=$(echo "$result" | jq --arg n "$name" --arg p "$d" --arg df "$df" '. += [{"name": $n, "path": $p, "dockerfile": $df}]')
               fi
             done
           fi
@@ -434,7 +438,8 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
-          context: ${{ matrix.service.path }}
+          context: .
+          file: ${{ matrix.service.dockerfile }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
