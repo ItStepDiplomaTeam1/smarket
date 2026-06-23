@@ -33,6 +33,7 @@ x-job-defaults: &job-defaults
 services:
   auth_service:
     <<: *api-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/auth_service:${IMAGE_TAG:-develop}
     build:
       context: ..
       dockerfile: services/auth_service/Dockerfile
@@ -59,6 +60,7 @@ services:
 
   gateway_service:
     <<: *api-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/gateway:${IMAGE_TAG:-develop}
     mem_limit: "${SMARKET_GATEWAY_MEM_LIMIT:-192m}"
     cpus: "${SMARKET_GATEWAY_CPUS:-0.50}"
     build:
@@ -82,6 +84,7 @@ services:
 
   auth_migration_job:
     <<: *job-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/auth_service:${IMAGE_TAG:-develop}
     build:
       context: ..
       dockerfile: services/auth_service/Dockerfile
@@ -94,6 +97,7 @@ services:
 
   cart_migration_job:
     <<: *job-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/cart_service:${IMAGE_TAG:-develop}
     build:
       context: ..
       dockerfile: services/cart_service/DockerFile
@@ -106,6 +110,7 @@ services:
 
   product_migration_job:
     <<: *job-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/product_service:${IMAGE_TAG:-develop}
     build:
       context: ..
       dockerfile: services/product_service/DockerFile
@@ -118,6 +123,7 @@ services:
 
   reviews_migration_job:
     <<: *job-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/reviews_service:${IMAGE_TAG:-develop}
     build:
       context: ..
       dockerfile: services/reviews_service/Dockerfile
@@ -130,6 +136,7 @@ services:
 
   product_service:
     <<: *api-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/product_service:${IMAGE_TAG:-develop}
     build:
       context: ..
       dockerfile: services/product_service/DockerFile
@@ -154,6 +161,7 @@ services:
 
   cart_service:
     <<: *api-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/cart_service:${IMAGE_TAG:-develop}
     build:
       context: ..
       dockerfile: services/cart_service/DockerFile
@@ -178,6 +186,7 @@ services:
 
   reviews_service:
     <<: *api-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/reviews_service:${IMAGE_TAG:-develop}
     build:
       context: ..
       dockerfile: services/reviews_service/Dockerfile
@@ -269,7 +278,8 @@ services:
     pids_limit: 256
 
   email_worker:
-    <<: *runtime-defaults
+    <<: *api-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/email_worker:${IMAGE_TAG:-develop}
     build:
       context: ../services/email_worker
       dockerfile: Dockerfile
@@ -286,6 +296,7 @@ services:
 
   products_etl:
     <<: *runtime-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/products_etl:${IMAGE_TAG:-develop}
     build:
       context: ../services/products_etl
       dockerfile: Dockerfile

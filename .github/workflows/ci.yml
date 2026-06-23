@@ -532,6 +532,7 @@ jobs:
             cp "${{ github.workspace }}/$srv/.env" "$srv/.env" 2>/dev/null || true
           done
 
+          export IMAGE_TAG=develop
           docker compose -f infra/docker-compose.yml pull
           docker compose -f infra/docker-compose.yml up -d --remove-orphans
           docker image prune -f
