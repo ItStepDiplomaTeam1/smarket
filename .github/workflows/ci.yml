@@ -169,7 +169,7 @@ jobs:
       - name: Install service dependencies
         working-directory: ${{ matrix.service.path }}
         run: |
-          if   [ -f pyproject.toml ];  then uv pip install --system .
+          if   [ -f pyproject.toml ];   then uv pip install --system .
           elif [ -f requirements.txt ]; then uv pip install --system -r requirements.txt
           fi
 
@@ -225,7 +225,7 @@ jobs:
       - name: Install service + test dependencies
         working-directory: ${{ matrix.service.path }}
         run: |
-          if   [ -f pyproject.toml ];  then uv pip install --system .
+          if   [ -f pyproject.toml ];   then uv pip install --system .
           elif [ -f requirements.txt ]; then uv pip install --system -r requirements.txt
           fi
           uv pip install --system pytest pytest-asyncio pytest-cov httpx
@@ -361,36 +361,75 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.service.name }}
 
   # ═══════════════════════════════════════════
-  #  STAGE 5 — DEPLOY TO HETZNER VIA SSH
+  #  STAGE 5 — DEPLOY TO HETZNER
   # ═══════════════════════════════════════════
   deploy:
     name: 🚀 Deploy to Hetzner
     needs: [docker-build]
     if: github.ref == 'refs/heads/develop'
     runs-on: self-hosted
+    env:
+      DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
 
     steps:
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            set -e
-            cd /app/smarket
+      - uses: actions/checkout@v4
 
-            git checkout develop
-            git pull origin develop
+      - name: Install Doppler CLI
+        run: |
+          if ! command -v doppler &> /dev/null; then
+            curl -Ls --tlsv1.2 --proto "=https" --retry 3 \
+              https://cli.doppler.com/install.sh | sh
+          fi
+          doppler --version
 
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Pull secrets from Doppler → .env files
+        run: |
+          declare -A configs=(
+            ["services/gateway"]="dev_gateway"
+            ["services/auth_service"]="dev_auth_service"
+            ["services/product_service"]="dev_product_service"
+            ["services/cart_service"]="dev_cart_service"
+            ["services/email_worker"]="dev_email_worker"
+            ["services/reviews_service"]="dev_reviews_service"
+            ["services/products_etl"]="dev_products_etl"
+          )
 
-            docker compose -f docker-compose.develop.yml pull
-            docker compose -f docker-compose.develop.yml up -d --remove-orphans
+          for path in "${!configs[@]}"; do
+            config="${configs[$path]}"
+            echo "⬇️  Pulling secrets for $config → $path/.env"
+            doppler secrets download \
+              --project smarket \
+              --config "$config" \
+              --token "$DOPPLER_TOKEN" \
+              --no-file --format env \
+              > "$path/.env"
+          done
 
-            docker image prune -f
+          echo "✅ All .env files generated"
 
-            echo "✅ Deploy completed at $(date)"
+      - name: Login to GHCR
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Pull latest images & restart services
+        working-directory: /app/smarket
+        run: |
+          git checkout develop
+          git pull origin develop
+
+          # Копіюємо свіжі .env файли з workspace
+          for srv in services/gateway services/auth_service services/product_service \
+                     services/cart_service services/email_worker services/reviews_service \
+                     services/products_etl; do
+            cp "${{ github.workspace }}/$srv/.env" "$srv/.env" 2>/dev/null || true
+          done
+
+          docker compose -f docker-compose.develop.yml pull
+          docker compose -f docker-compose.develop.yml up -d --remove-orphans
+          docker image prune -f
+
+          echo "✅ Deploy completed at $(date)"
 
   # ═══════════════════════════════════════════
   #  STAGE 6 — AGGREGATE STATUS
