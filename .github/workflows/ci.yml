@@ -321,7 +321,8 @@ jobs:
       !contains(needs.python-quality.result, 'failure') &&
       !contains(needs.python-test.result, 'failure') &&
       needs.detect.outputs.has_docker == 'true' &&
-      fromJson(needs.detect.outputs.services_matrix || '[]') != fromJson('[]') &&
+      needs.detect.outputs.services_matrix != '[]' &&
+      needs.detect.outputs.services_matrix != '' &&
       (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
     runs-on: self-hosted
     strategy:
@@ -374,12 +375,12 @@ jobs:
   # ═══════════════════════════════════════════
   deploy:
     name: 🚀 Deploy to Hetzner
-    needs: [docker-build]
+    needs: [detect, security, python-quality, python-test, node-ci, go-ci, docker-build]
     if: |
       always() &&
       github.ref == 'refs/heads/develop' &&
-      !contains(needs.docker-build.result, 'failure') &&
-      !contains(needs.docker-build.result, 'cancelled')
+      !contains(needs.*.result, 'failure') &&
+      !contains(needs.*.result, 'cancelled')
     runs-on: self-hosted
     env:
       HOME: /root
