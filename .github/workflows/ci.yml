@@ -532,8 +532,8 @@ jobs:
             cp "${{ github.workspace }}/$srv/.env" "$srv/.env" 2>/dev/null || true
           done
 
-          docker compose -f docker-compose.develop.yml pull
-          docker compose -f docker-compose.develop.yml up -d --remove-orphans
+          docker compose -f infra/docker-compose.yml pull
+          docker compose -f infra/docker-compose.yml up -d --remove-orphans
           docker image prune -f
 
           echo "✅ Deploy completed at $(date)"
