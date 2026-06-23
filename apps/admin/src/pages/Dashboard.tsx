@@ -150,7 +150,7 @@ const Dashboard: React.FC = () => {
           <DataCollectionWidget data={data.dataCollection} />
           <SourceStatusWidget sources={data.sourceStatus} />
           <QuickActions />
-          <SystemStatusWidget status={data.systemStatus} />
+          <SystemStatusWidget />
           <PopularProductsWidget products={data.popularProducts} />
         </div>
         

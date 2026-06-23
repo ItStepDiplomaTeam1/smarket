@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, ORJSONResponse
 import httpx
 import jwt
 
@@ -8,6 +8,9 @@ from app.api.core.config import settings
 router = APIRouter()
 
 _ADMIN_ROLES = {"admin", "superadmin"}
+
+# Service names returned when the product_service is unreachable
+_FALLBACK_SERVICES = ["PostgreSQL", "Redis", "Meilisearch", "RabbitMQ"]
 
 
 def _verify_admin_token(request: Request) -> dict:
@@ -81,3 +84,31 @@ async def get_recent_users(request: Request):
     """
     payload = _verify_admin_token(request)
     return await _proxy_to_auth(request, "recent-users", payload)
+
+
+@router.get("/system-status", response_class=ORJSONResponse)
+async def get_system_status(request: Request):
+    """
+    Returns real-time operational status of all infrastructure services.
+    Probes are performed by product_service (internal network access).
+    Requires admin role — validated locally at the Gateway.
+    Always returns 200 with "Помилка" for unreachable services.
+    """
+    _verify_admin_token(request)
+
+    client: httpx.AsyncClient = request.app.state.http_client
+    probe_url = f"{settings.PRODUCT_SERVICE_URL}/api/v1/internal/health-check"
+
+    try:
+        response = await client.get(probe_url, timeout=10.0)
+        response.raise_for_status()
+        service_statuses: dict = response.json()
+    except Exception:
+        # Product service is unreachable — mark all its databases as failed
+        service_statuses = {name: "Помилка" for name in _FALLBACK_SERVICES}
+
+    # Gateway itself is obviously alive if we reached this point
+    service_statuses["API Gateway"] = "Працює"
+
+    return service_statuses
+

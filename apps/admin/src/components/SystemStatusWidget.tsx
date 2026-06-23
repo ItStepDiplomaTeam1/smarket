@@ -1,45 +1,115 @@
 import React from 'react';
-import type { DashboardData } from '@/hooks/useDashboardData';
+import { useSystemStatus, type ServiceStatus } from '@/hooks/useSystemStatus';
 
-interface SystemStatusWidgetProps {
-  status: DashboardData['systemStatus'];
-}
+// ── Display config ────────────────────────────────────────────────────────────
 
-export const SystemStatusWidget: React.FC<SystemStatusWidgetProps> = ({ status }) => {
+const SERVICE_LABELS: Record<string, string> = {
+  'API Gateway': 'API Gateway',
+  PostgreSQL:    'PostgreSQL',
+  Redis:         'Redis',
+  RabbitMQ:      'RabbitMQ',
+  Meilisearch:   'Meilisearch',
+};
+
+// Ordered list — Gateway always first as it's the "entry point"
+const SERVICE_ORDER = ['API Gateway', 'PostgreSQL', 'Redis', 'RabbitMQ', 'Meilisearch'];
+
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+const StatusDot: React.FC<{ status: ServiceStatus }> = ({ status }) => {
+  const isOk = status === 'Працює';
   return (
-    <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm">
-      <h3 className="font-semibold text-lg mb-4 text-textMain">Статус системи</h3>
-      
-      <div className="space-y-3">
-        {status.map((service, idx) => (
-          <div key={idx} className="flex justify-between items-center text-sm">
-            <span className="font-semibold text-textMain">
-              {service.service}
-            </span>
-            <div className="flex items-center gap-2">
-              <div className="relative flex h-2.5 w-2.5">
-                {service.status === 'operational' && (
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accentGreen"></span>
-                )}
-                {service.status === 'degraded' && (
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accentYellow"></span>
-                )}
-                {service.status === 'down' && (
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accentRed"></span>
-                )}
-              </div>
-              <span className={`text-xs font-medium ${
-                service.status === 'operational' ? 'text-accentGreen' : 
-                service.status === 'degraded' ? 'text-accentYellow' : 'text-accentRed'
-              }`}>
-                {service.status === 'operational' ? 'Працює' : 
-                 service.status === 'degraded' ? 'Проблеми' : 'Не працює'}
-              </span>
-            </div>
-          </div>
-        ))}
-      </div>
+    <div className="relative flex h-2.5 w-2.5 items-center justify-center">
+      {isOk && (
+        <>
+          {/* Pulsing ring for healthy services */}
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-60" />
+          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+        </>
+      )}
+      {!isOk && (
+        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+      )}
     </div>
   );
 };
 
+const StatusText: React.FC<{ status: ServiceStatus }> = ({ status }) => {
+  const isOk = status === 'Працює';
+  return (
+    <span className={`text-xs font-medium ${isOk ? 'text-green-500' : 'text-red-500'}`}>
+      {status}
+    </span>
+  );
+};
+
+// Skeleton row shown while data is loading
+const SkeletonRow: React.FC = () => (
+  <div className="flex justify-between items-center">
+    <div className="h-3 w-24 bg-border rounded animate-pulse" />
+    <div className="h-3 w-14 bg-border rounded animate-pulse" />
+  </div>
+);
+
+// ── Main Widget ───────────────────────────────────────────────────────────────
+
+export const SystemStatusWidget: React.FC = () => {
+  const { data, isLoading, isError, dataUpdatedAt } = useSystemStatus();
+
+  const lastUpdated = dataUpdatedAt
+    ? new Date(dataUpdatedAt).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    : null;
+
+  return (
+    <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-lg text-textMain">Статус системи</h3>
+        {/* Live indicator */}
+        <div className="flex items-center gap-1.5">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+          </span>
+          <span className="text-[10px] text-textMuted font-medium">LIVE</span>
+        </div>
+      </div>
+
+      {/* Service rows */}
+      <div className="space-y-3">
+        {isLoading && SERVICE_ORDER.map((name) => (
+          <SkeletonRow key={name} />
+        ))}
+
+        {isError && !isLoading && (
+          <p className="text-xs text-red-500 text-center py-2">
+            Не вдалося отримати статус системи
+          </p>
+        )}
+
+        {data && SERVICE_ORDER.map((serviceKey) => {
+          const status = data[serviceKey];
+          if (status === undefined) return null;
+          return (
+            <div key={serviceKey} className="flex justify-between items-center text-sm">
+              <span className="font-medium text-textMain">
+                {SERVICE_LABELS[serviceKey] ?? serviceKey}
+              </span>
+              <div className="flex items-center gap-2">
+                <StatusDot status={status} />
+                <StatusText status={status} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Last updated timestamp */}
+      {lastUpdated && (
+        <p className="text-[10px] text-textMuted mt-4 text-right">
+          Оновлено о {lastUpdated}
+        </p>
+      )}
+    </div>
+  );
+};
