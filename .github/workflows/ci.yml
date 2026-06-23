@@ -123,7 +123,7 @@ jobs:
           fi
 
           deploy_infra=false
-          if changed '^(infra/|docker-compose\.yml|doppler\.yaml)$'; then
+          if changed '^infra/|^docker-compose\.yml$|^doppler\.yaml$'; then
             deploy_infra=true
           fi
 
@@ -495,7 +495,6 @@ jobs:
     if: |
       always() &&
       github.ref == 'refs/heads/develop' &&
-      needs.detect.outputs.has_deploy_changes == 'true' &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
     runs-on: self-hosted
