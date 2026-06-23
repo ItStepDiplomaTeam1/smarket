@@ -397,6 +397,23 @@ jobs:
           fi
           doppler --version
 
+      - name: Doppler Diagnostics
+        run: |
+          echo "=== Doppler Token Check ==="
+          if [[ "$DOPPLER_TOKEN" == dp.st.* ]]; then
+            echo "⚠️ WARNING: You are using a Doppler Service Token (starts with 'dp.st.')."
+            echo "Service Tokens are restricted to a single configuration and cannot fetch secrets for other configs."
+            echo "Please use a Personal Access Token (starts with 'dp.pt.') for multi-service builds."
+          elif [[ "$DOPPLER_TOKEN" == dp.pt.* ]]; then
+            echo "✅ Token type: Personal Access Token (dp.pt.)."
+          else
+            echo "Token prefix: ${DOPPLER_TOKEN:0:7}..."
+          fi
+          echo "Running 'doppler me' to verify token details:"
+          doppler me --token "$DOPPLER_TOKEN" || true
+          echo "Running 'doppler projects' to list accessible projects:"
+          doppler projects --token "$DOPPLER_TOKEN" || true
+
       - name: Pull secrets from Doppler → .env files
         run: |
           declare -A configs=(
