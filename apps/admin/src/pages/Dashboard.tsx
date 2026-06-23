@@ -43,111 +43,109 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6">
+      {/* Page title */}
       <div className="mb-6">
-        <h1 className="text-[28px] font-bold text-textMain leading-tight">Головна панель</h1>
-        <p className="text-sm text-textMuted mt-1">Огляд ключових показників</p>
+        <h1 className="font-manrope text-[26px] font-bold text-textMain leading-tight">Головна панель</h1>
+        <p className="text-sm text-textMuted mt-0.5">Огляд ключових показників</p>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <MetricCard 
-          title="Всього товарів" 
-          value={data.metrics.totalProducts.toLocaleString('uk-UA')} 
-          icon={Package} 
-          iconBgColor="rgba(16, 185, 129, 0.15)"
-          iconColor="#10B981"
-          trend={{ value: data.metrics.totalProductsTrend, isPositive: true, text: 'від учора' }} 
-        />
-        <MetricCard 
-          title="Магазинів" 
-          value={data.metrics.totalStores} 
-          icon={Store} 
-          iconBgColor="rgba(245, 158, 11, 0.15)"
-          iconColor="#F59E0B"
-          trend={{ value: data.metrics.totalStoresTrend, isPositive: true, text: 'нових' }} 
-        />
-        <MetricCard 
-          title="Користувачів" 
-          value={data.metrics.totalUsers.toLocaleString('uk-UA')} 
-          icon={Users} 
-          iconBgColor="rgba(139, 92, 246, 0.15)"
-          iconColor="#8B5CF6"
-          trend={{ value: data.metrics.totalUsersTrend, isPositive: true, text: 'від учора' }} 
-        />
-        <MetricCard 
-          title="Цін оновлено сьогодні" 
-          value={data.metrics.pricesUpdatedToday.toLocaleString('uk-UA')} 
-          icon={Tag} 
-          iconBgColor="rgba(59, 130, 246, 0.15)"
-          iconColor="#3B82F6"
-          trend={{ value: data.metrics.pricesUpdatedTrend, isPositive: true, text: 'від учора' }} 
-        />
-      </div>
-
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
+      {/* ─── Main Content Area (Left: 2 cols, Right: 1 col "Sidebar") ─── */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
+        
         {/* Left Column (Main Content) */}
-        <div className="xl:col-span-2 flex flex-col gap-8">
+        <div className="xl:col-span-2 flex flex-col gap-6">
           
-          {/* Chart */}
+          {/* ─── Top section: 4 KPI Cards in a single row ─── */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <MetricCard
+              title="Всього товарів"
+              value={data.metrics.totalProducts.toLocaleString('uk-UA')}
+              icon={Package}
+              iconBgColor="#10B981"
+              trend={{ value: data.metrics.totalProductsTrend, isPositive: true, text: 'від учора' }}
+            />
+            <MetricCard
+              title="Магазинів"
+              value={data.metrics.totalStores}
+              icon={Store}
+              iconBgColor="#F59E0B"
+              trend={{ value: data.metrics.totalStoresTrend, isPositive: true, text: 'нових' }}
+            />
+            <MetricCard
+              title="Користувачів"
+              value={data.metrics.totalUsers.toLocaleString('uk-UA')}
+              icon={Users}
+              iconBgColor="#8B5CF6"
+              trend={{ value: data.metrics.totalUsersTrend, isPositive: true, text: 'від учора' }}
+            />
+            <MetricCard
+              title="Цін оновлено сьогодні"
+              value={data.metrics.pricesUpdatedToday.toLocaleString('uk-UA')}
+              icon={Tag}
+              iconBgColor="#3B82F6"
+              trend={{ value: data.metrics.pricesUpdatedTrend, isPositive: true, text: 'від учора' }}
+            />
+          </div>
+
+          {/* Price dynamics chart */}
           <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm">
-            <h3 className="font-semibold text-lg text-textMain mb-6">Динаміка оновлення цін</h3>
-            <div className="w-full h-[280px]">
+            <h3 className="font-semibold text-lg text-textMain mb-5">Динаміка оновлення цін</h3>
+            <div className="w-full h-[320px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={data.priceDynamics} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-                  <XAxis 
-                    dataKey="name" 
-                    stroke="#9CA3AF" 
-                    tick={{ fill: '#6D8279', fontSize: 11 }} 
-                    axisLine={false} 
-                    tickLine={false} 
+                  <XAxis
+                    dataKey="name"
+                    stroke="#9CA3AF"
+                    tick={{ fill: '#6D8279', fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
                     dy={10}
                   />
-                  <YAxis 
-                    stroke="#9CA3AF" 
-                    tick={{ fill: '#6D8279', fontSize: 11 }} 
-                    axisLine={false} 
-                    tickLine={false} 
+                  <YAxis
+                    stroke="#9CA3AF"
+                    tick={{ fill: '#6D8279', fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
                     tickFormatter={(val) => `${val / 1000} тис`}
                   />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#FFFFFF', borderColor: '#E5E7EB', color: '#111827', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#FFFFFF',
+                      borderColor: '#E5E7EB',
+                      color: '#111827',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+                    }}
                     itemStyle={{ color: '#265447' }}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="value" 
-                    stroke="#265447" 
-                    strokeWidth={2} 
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    stroke="#265447"
+                    strokeWidth={2}
                     dot={false}
-                    activeDot={{ r: 6, fill: '#265447', stroke: '#fff', strokeWidth: 2 }}
+                    activeDot={{ r: 5, fill: '#265447', stroke: '#fff', strokeWidth: 2 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          {/* System Logs Table */}
-          <div className="h-[auto]">
-            <SystemLogsTable logs={data.systemLogs} />
-          </div>
+          {/* System logs */}
+          <SystemLogsTable logs={data.systemLogs} />
 
-          {/* Bottom Left Grids */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="flex flex-col">
-              <NeedsAttentionWidget items={data.needsAttention} />
-              <PopularCategoriesWidget categories={data.popularCategories} />
-            </div>
-            <div className="flex flex-col gap-6">
-              <NewUsersWidget users={data.newUsers} />
-              <SearchQueriesWidget queries={data.searchQueries} />
-            </div>
+          {/* 4-col bottom widgets */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <NeedsAttentionWidget items={data.needsAttention} />
+            <NewUsersWidget users={data.newUsers} />
+            <PopularCategoriesWidget categories={data.popularCategories} />
+            <SearchQueriesWidget queries={data.searchQueries} />
           </div>
-
         </div>
 
-        {/* Right Column (Sidebar Widgets) */}
+        {/* Right Column ("Sidebar" of widgets) */}
         <div className="flex flex-col gap-6">
           <DataCollectionWidget data={data.dataCollection} />
           <SourceStatusWidget sources={data.sourceStatus} />
@@ -155,8 +153,8 @@ const Dashboard: React.FC = () => {
           <SystemStatusWidget status={data.systemStatus} />
           <PopularProductsWidget products={data.popularProducts} />
         </div>
+        
       </div>
-
     </div>
   );
 };

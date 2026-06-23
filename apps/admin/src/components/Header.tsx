@@ -8,7 +8,7 @@ export const Header: React.FC = () => {
   useAuthStore();
 
   return (
-    <header className="h-16 flex items-center justify-between px-6 bg-surface border-b border-border z-10 sticky top-0 shadow-sm">
+    <header className="h-[68px] flex items-center justify-between px-6 bg-surface border border-border rounded-xl shadow-sm z-10 sticky top-0 shrink-0">
       <div className="flex items-center gap-4 flex-1">
         <button 
           onClick={toggleSidebar}
