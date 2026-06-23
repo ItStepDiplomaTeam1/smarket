@@ -26,7 +26,7 @@ jobs:
   # ═══════════════════════════════════════════
   detect:
     name: 🔍 Detect Changes
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     outputs:
       has_python: ${{ steps.langs.outputs.has_python }}
       has_go: ${{ steps.langs.outputs.has_go }}
@@ -69,7 +69,7 @@ jobs:
   # ═══════════════════════════════════════════
   security:
     name: 🔐 Security Scan
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: detect
     steps:
       - uses: actions/checkout@v4
@@ -103,7 +103,7 @@ jobs:
     name: 🪄 Python Auto-Format
     needs: detect
     if: needs.detect.outputs.has_python == 'true'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     permissions:
       contents: write
     steps:
@@ -137,7 +137,7 @@ jobs:
     name: 🔍 Python Quality — ${{ matrix.service.name }}
     needs: detect
     if: needs.detect.outputs.has_python == 'true'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
@@ -193,7 +193,7 @@ jobs:
     name: 🧪 Python Tests — ${{ matrix.service.name }}
     needs: [detect, python-quality]
     if: needs.detect.outputs.has_python == 'true'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     strategy:
       fail-fast: false
       matrix:
@@ -261,7 +261,7 @@ jobs:
     name: ⚛️ Node.js
     needs: detect
     if: needs.detect.outputs.has_node == 'true'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     defaults:
       run:
         working-directory: apps/react/frontend/my-react-app
@@ -284,7 +284,7 @@ jobs:
     name: 🐹 Go ETL
     needs: detect
     if: needs.detect.outputs.has_go == 'true'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     defaults:
       run:
         working-directory: services/products_etl
@@ -316,7 +316,7 @@ jobs:
       !contains(needs.python-test.result, 'failure') &&
       needs.detect.outputs.has_docker == 'true' &&
       (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     strategy:
       matrix:
         service: ${{ fromJson(needs.detect.outputs.services_matrix || '[]') }}
@@ -361,7 +361,7 @@ jobs:
     name: 🚀 Deploy to Hetzner
     needs: [docker-build]
     if: github.ref == 'refs/heads/develop'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - name: Deploy via SSH
@@ -400,7 +400,7 @@ jobs:
       - node-ci
       - go-ci
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Check all results
         run: |
