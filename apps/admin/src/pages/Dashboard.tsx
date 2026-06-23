@@ -91,8 +91,8 @@ const Dashboard: React.FC = () => {
           {/* Price dynamics chart */}
           <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm">
             <h3 className="font-semibold text-lg text-textMain mb-5">Динаміка оновлення цін</h3>
-            <div className="w-full h-[320px]">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="w-full h-[320px] overflow-hidden">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <LineChart data={data.priceDynamics} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
                   <XAxis

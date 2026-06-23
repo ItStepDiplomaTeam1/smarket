@@ -133,11 +133,11 @@ function getMockDashboardData(): DashboardData {
       { service: 'API Gateway', status: 'operational' },
     ],
     popularProducts: [
-      { id: '1', name: 'Молоко Яготинське пастеризоване 2,6%', category: 'Молочні продукти', rating: 4.8, reviews: 400, image: 'https://via.placeholder.com/40x40/E2E8F0/9CA3AF?text=M' },
-      { id: '2', name: 'Вино Marlborough Sun Sauvignon Blanc', category: 'Алкоголь', rating: 4.9, reviews: 340, image: 'https://via.placeholder.com/40x40/E2E8F0/9CA3AF?text=W' },
-      { id: '3', name: 'Напій кокосовий Vega Milk', category: 'Молочні продукти', rating: 4.7, reviews: 250, image: 'https://via.placeholder.com/40x40/E2E8F0/9CA3AF?text=V' },
-      { id: '4', name: 'Заморожені мідії Green Shop м\'ясо 500 г', category: 'Напівфабрикати', rating: 4.1, reviews: 156, image: 'https://via.placeholder.com/40x40/E2E8F0/9CA3AF?text=M' },
-      { id: '5', name: 'Віскі Monkey Shoulder, 40%, 0,7 л', category: 'Алкоголь', rating: 4.8, reviews: 129, image: 'https://via.placeholder.com/40x40/E2E8F0/9CA3AF?text=W' },
+      { id: '1', name: 'Молоко Яготинське пастеризоване 2,6%', category: 'Молочні продукти', rating: 4.8, reviews: 400, image: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="40" height="40"%3E%3Crect width="40" height="40" fill="%23E2E8F0"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dominant-baseline="central" font-size="14" fill="%239CA3AF" font-family="sans-serif"%3EM%3C/text%3E%3C/svg%3E' },
+      { id: '2', name: 'Вино Marlborough Sun Sauvignon Blanc', category: 'Алкоголь', rating: 4.9, reviews: 340, image: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="40" height="40"%3E%3Crect width="40" height="40" fill="%23E2E8F0"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dominant-baseline="central" font-size="14" fill="%239CA3AF" font-family="sans-serif"%3EW%3C/text%3E%3C/svg%3E' },
+      { id: '3', name: 'Напій кокосовий Vega Milk', category: 'Молочні продукти', rating: 4.7, reviews: 250, image: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="40" height="40"%3E%3Crect width="40" height="40" fill="%23E2E8F0"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dominant-baseline="central" font-size="14" fill="%239CA3AF" font-family="sans-serif"%3EV%3C/text%3E%3C/svg%3E' },
+      { id: '4', name: 'Заморожені мідії Green Shop м\'ясо 500 г', category: 'Напівфабрикати', rating: 4.1, reviews: 156, image: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="40" height="40"%3E%3Crect width="40" height="40" fill="%23E2E8F0"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dominant-baseline="central" font-size="14" fill="%239CA3AF" font-family="sans-serif"%3EG%3C/text%3E%3C/svg%3E' },
+      { id: '5', name: 'Віскі Monkey Shoulder, 40%, 0,7 л', category: 'Алкоголь', rating: 4.8, reviews: 129, image: 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="40" height="40"%3E%3Crect width="40" height="40" fill="%23E2E8F0"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dominant-baseline="central" font-size="14" fill="%239CA3AF" font-family="sans-serif"%3EW%3C/text%3E%3C/svg%3E' },
     ]
   };
 }

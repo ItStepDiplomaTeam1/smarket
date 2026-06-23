@@ -1,6 +1,7 @@
 import React from 'react';
-import { ChevronRight, AlertCircle } from 'lucide-react';
+import { ChevronRight, AlertCircle, Lock } from 'lucide-react';
 import { useAdminUsers } from '@/hooks/useAdminUsers';
+import { useAuthStore } from '@/store/useAuthStore';
 
 // ── Skeleton row shown while loading ─────────────────────────────────────────
 
@@ -35,7 +36,26 @@ const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
 // ── Main widget ───────────────────────────────────────────────────────────────
 
 export const NewUsersWidget: React.FC = () => {
+  const isAdmin = useAuthStore((s) => s.isAdmin());
   const { data: users, isLoading, isError } = useAdminUsers(5);
+
+  // ── Insufficient permissions guard ──
+  // Prevents firing a 403 request when the user is not an admin.
+  if (!isAdmin) {
+    return (
+      <div className="bg-surface border border-border rounded-2xl flex flex-col shadow-sm">
+        <div className="p-5 pb-3">
+          <h3 className="font-semibold text-lg text-textMain">Нові користувачі</h3>
+        </div>
+        <div className="flex flex-col items-center justify-center gap-2 py-8 text-center px-5">
+          <Lock size={22} className="text-textMuted opacity-60" />
+          <p className="text-sm text-textMuted">
+            Недостатньо прав для перегляду.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const renderBody = () => {
     // ── Loading state ──
