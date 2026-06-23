@@ -285,6 +285,10 @@ jobs:
     needs: detect
     if: needs.detect.outputs.has_go == 'true'
     runs-on: self-hosted
+    env:
+      GOPATH: /root/go
+      GOMODCACHE: /root/go/pkg/mod
+      PATH: /usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     defaults:
       run:
         working-directory: services/products_etl
