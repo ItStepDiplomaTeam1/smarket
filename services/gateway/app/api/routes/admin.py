@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import StreamingResponse, ORJSONResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 import httpx
 import jwt
 
@@ -86,7 +86,7 @@ async def get_recent_users(request: Request):
     return await _proxy_to_auth(request, "recent-users", payload)
 
 
-@router.get("/system-status", response_class=ORJSONResponse)
+@router.get("/system-status")
 async def get_system_status(request: Request):
     """
     Returns real-time operational status of all infrastructure services.
@@ -100,7 +100,7 @@ async def get_system_status(request: Request):
     probe_url = f"{settings.PRODUCT_SERVICE_URL}/api/v1/internal/health-check"
 
     try:
-        response = await client.get(probe_url, timeout=10.0)
+        response = await client.get(probe_url, timeout=15.0)
         response.raise_for_status()
         service_statuses: dict = response.json()
     except Exception:
@@ -110,5 +110,5 @@ async def get_system_status(request: Request):
     # Gateway itself is obviously alive if we reached this point
     service_statuses["API Gateway"] = "Працює"
 
-    return service_statuses
+    return JSONResponse(content=service_statuses)
 
