@@ -144,7 +144,8 @@ const fetchProducts = async (filters: FetchFilters): Promise<ProductsResponse> =
     const limit = 12;
     const skip = (filters.page - 1) * limit;
     
-    let url = new URL('http://localhost:8080/api/v1/products');
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+    let url = new URL(`${apiBaseUrl}/api/v1/products`);
     
     // Додаємо пагінацію
     url.searchParams.append('limit', limit.toString());
