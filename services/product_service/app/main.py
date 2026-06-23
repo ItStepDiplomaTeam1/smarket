@@ -3,6 +3,7 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 
 from app.config import settings
@@ -62,6 +63,15 @@ def create_app() -> FastAPI:
         version="1.0.0",
         default_response_class=ORJSONResponse,
         lifespan=lifespan,
+    )
+
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[],
+        allow_credentials=False,
+        allow_methods=["GET", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-User-Id"],
     )
 
     # Каталог товарів (read-only, джерело — products_etl)

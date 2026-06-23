@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 from granian import Granian
 from granian.constants import Interfaces
@@ -54,6 +55,15 @@ def create_app() -> FastAPI:
     rate_limit_handler: Any = _rate_limit_exceeded_handler
     app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
     app.add_middleware(SlowAPIMiddleware)
+
+
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[],
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-User-Id"],
+    )
 
     app.include_router(auth_router, prefix="/auth", tags=["auth"])
     app.include_router(oauth_router, prefix="/auth", tags=["oauth"])
