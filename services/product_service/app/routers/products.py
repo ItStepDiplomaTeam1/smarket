@@ -125,7 +125,7 @@ async def get_products(
 
     # Фільтри пропозицій
     if "promo" in offer_list or "save" in offer_list:
-        base_stmt = base_stmt.where(product_stats_subq.c.has_promo == True)
+        base_stmt = base_stmt.where(product_stats_subq.c.has_promo.is_(True))
 
     if "new" in offer_list:
         # Товари, додані за останні 14 днів
