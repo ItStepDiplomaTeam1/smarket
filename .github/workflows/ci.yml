@@ -118,6 +118,9 @@ jobs:
           ref: ${{ github.head_ref || github.ref }}
 
       # ruff вже встановлений на сервері — не качаємо
+      - name: Ensure ruff is available
+        run: command -v ruff || pip3.11 install ruff --quiet || pip3 install ruff --quiet
+
       - name: Format all Python services
         run: |
           for srv in ${{ env.PYTHON_SERVICES }}; do
@@ -160,26 +163,28 @@ jobs:
           restore-keys: uv-${{ matrix.service.name }}-
 
       - name: Ensure uv is available
-        run: command -v uv || pip install uv --quiet --break-system-packages
+        run: command -v uv || pip3.11 install uv --quiet || pip3 install uv --quiet
 
-      - name: Install service dependencies
+      - name: Install service dependencies into venv
         working-directory: ${{ matrix.service.path }}
         run: |
-          if   [ -f pyproject.toml ];   then uv pip install --system -q .
-          elif [ -f requirements.txt ]; then uv pip install --system -q -r requirements.txt
+          uv venv --python python3.11 .venv
+          if   [ -f pyproject.toml ];   then uv pip install --python .venv/bin/python -q .
+          elif [ -f requirements.txt ]; then uv pip install --python .venv/bin/python -q -r requirements.txt
           fi
+          uv pip install --python .venv/bin/python -q ruff mypy
 
       - name: Ruff lint + format check
         working-directory: ${{ matrix.service.path }}
         run: |
-          ruff check . --output-format=github
-          ruff format --check .
+          .venv/bin/ruff check . --output-format=github
+          .venv/bin/ruff format --check .
 
       - name: mypy type check
         working-directory: ${{ matrix.service.path }}
         env:
           PYTHONPATH: ${{ github.workspace }}
-        run: mypy .
+        run: .venv/bin/mypy .
         continue-on-error: true
 
   # ── Python Tests ──────────────────────────
@@ -210,15 +215,16 @@ jobs:
           restore-keys: uv-${{ matrix.service.name }}-
 
       - name: Ensure uv is available
-        run: command -v uv || pip install uv --quiet --break-system-packages
+        run: command -v uv || pip3.11 install uv --quiet || pip3 install uv --quiet
 
-      - name: Install service + test dependencies
+      - name: Install service + test dependencies into venv
         working-directory: ${{ matrix.service.path }}
         run: |
-          if   [ -f pyproject.toml ];   then uv pip install --system -q .
-          elif [ -f requirements.txt ]; then uv pip install --system -q -r requirements.txt
+          uv venv --python python3.11 .venv
+          if   [ -f pyproject.toml ];   then uv pip install --python .venv/bin/python -q .
+          elif [ -f requirements.txt ]; then uv pip install --python .venv/bin/python -q -r requirements.txt
           fi
-          uv pip install --system -q pytest pytest-asyncio pytest-cov httpx
+          uv pip install --python .venv/bin/python -q pytest pytest-asyncio pytest-cov httpx
 
       - name: Run pytest
         working-directory: ${{ matrix.service.path }}
@@ -233,7 +239,7 @@ jobs:
           DEBUG: "False"
         run: |
           if find tests/ -name "test_*.py" 2>/dev/null | grep -q .; then
-            pytest --cov=. --cov-report=xml --cov-report=term-missing -v --tb=short
+            .venv/bin/pytest --cov=. --cov-report=xml --cov-report=term-missing -v --tb=short
           else
             echo "::warning title=No Tests::No tests found in ${{ matrix.service.path }}/tests/"
           fi
