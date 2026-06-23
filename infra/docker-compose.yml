@@ -5,14 +5,15 @@ x-logging: &default-logging
     max-file: "${SMARKET_LOG_MAX_FILES:-2}"
 
 x-healthcheck-defaults: &healthcheck-defaults
-  interval: "${SMARKET_HEALTH_INTERVAL:-30s}"
+  interval: "${SMARKET_HEALTH_INTERVAL:-15s}"
   timeout: "${SMARKET_HEALTH_TIMEOUT:-5s}"
-  retries: 5
-  start_period: "${SMARKET_HEALTH_START_PERIOD:-20s}"
+  retries: 10
+  start_period: "${SMARKET_HEALTH_START_PERIOD:-30s}"
 
 x-runtime-defaults: &runtime-defaults
   init: true
-  restart: on-failure
+  restart: unless-stopped
+  stop_grace_period: 30s
   networks:
     - smarket-network
   logging: *default-logging
@@ -57,6 +58,10 @@ services:
         condition: service_healthy
       auth_migration_job:
         condition: service_completed_successfully
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=3).read()\""]
+      start_period: "${SMARKET_API_HEALTH_START_PERIOD:-30s}"
 
   gateway_service:
     <<: *api-defaults
@@ -81,6 +86,19 @@ services:
       - "8080:8080"
     env_file:
       - ../services/gateway/.env
+    depends_on:
+      auth_service:
+        condition: service_healthy
+      cart_service:
+        condition: service_healthy
+      product_service:
+        condition: service_healthy
+      reviews_service:
+        condition: service_healthy
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3).read()\""]
+      start_period: "${SMARKET_API_HEALTH_START_PERIOD:-30s}"
 
   auth_migration_job:
     <<: *job-defaults
@@ -158,6 +176,10 @@ services:
     depends_on:
       product_migration_job:
         condition: service_completed_successfully
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).read()\""]
+      start_period: "${SMARKET_API_HEALTH_START_PERIOD:-30s}"
 
   cart_service:
     <<: *api-defaults
@@ -183,6 +205,10 @@ services:
     depends_on:
       cart_migration_job:
         condition: service_completed_successfully
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/health', timeout=3).read()\""]
+      start_period: "${SMARKET_API_HEALTH_START_PERIOD:-30s}"
 
   reviews_service:
     <<: *api-defaults
@@ -208,6 +234,10 @@ services:
     depends_on:
       reviews_migration_job:
         condition: service_completed_successfully
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8004/health', timeout=3).read()\""]
+      start_period: "${SMARKET_API_HEALTH_START_PERIOD:-30s}"
 
   redis:
     <<: *runtime-defaults
@@ -258,6 +288,7 @@ services:
     image: mongo:8.3
     command:
       - mongod
+      - --bind_ip_all
       - --wiredTigerCacheSizeGB
       - "${MONGO_CACHE_SIZE_GB:-0.25}"
       - --quiet
@@ -270,11 +301,13 @@ services:
       - mongodb_data:/data/db
     healthcheck:
       <<: *healthcheck-defaults
-      test: ["CMD-SHELL", "mongosh --quiet \"mongodb://$$MONGO_INITDB_ROOT_USERNAME:$$MONGO_INITDB_ROOT_PASSWORD@localhost:27017/admin?authSource=admin\" --eval \"db.adminCommand('ping').ok\" | grep -q 1"]
+      test: ["CMD-SHELL", "mongosh --quiet --host 127.0.0.1 --port 27017 --username \"$$MONGO_INITDB_ROOT_USERNAME\" --password \"$$MONGO_INITDB_ROOT_PASSWORD\" --authenticationDatabase admin --eval 'quit(db.adminCommand({ ping: 1 }).ok ? 0 : 1)'"]
+      interval: "${MONGO_HEALTH_INTERVAL:-10s}"
       timeout: "${MONGO_HEALTH_TIMEOUT:-10s}"
-      start_period: "${MONGO_HEALTH_START_PERIOD:-60s}"
-    mem_limit: 512m
-    cpus: 0.75
+      retries: 30
+      start_period: "${MONGO_HEALTH_START_PERIOD:-120s}"
+    mem_limit: 768m
+    cpus: 1.00
     pids_limit: 256
 
   email_worker:
@@ -303,7 +336,7 @@ services:
     environment:
       ENV: production
       RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
-      MONGO_URI: "mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-secure_mongo_pass_123}@mongodb:27017/"
+      MONGO_URI: "mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-secure_mongo_pass_123}@mongodb:27017/?authSource=admin"
     env_file:
       - ../services/products_etl/.env
     expose:
