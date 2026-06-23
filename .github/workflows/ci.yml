@@ -18,7 +18,13 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_PREFIX: ${{ github.repository_owner }}/${{ github.event.repository.name }}
+  PYTHON_SERVICES: >-
+    services/auth_service
+    services/cart_service
+    services/email_worker
+    services/gateway
+    services/product_service
+    services/reviews_service
 
 jobs:
   # ═══════════════════════════════════════════
@@ -111,17 +117,10 @@ jobs:
         with:
           ref: ${{ github.head_ref || github.ref }}
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install ruff
-        run: pip install ruff --quiet
-
+      # ruff вже встановлений на сервері — не качаємо
       - name: Format all Python services
         run: |
-          for srv in services/auth_service services/cart_service services/email_worker \
-                     services/gateway services/product_service services/reviews_service; do
+          for srv in ${{ env.PYTHON_SERVICES }}; do
             [ -d "$srv" ] || continue
             ruff check --fix "$srv" || true
             ruff format "$srv"      || true
@@ -132,7 +131,7 @@ jobs:
         with:
           commit_message: "style: auto-format python code"
 
-  # ── Python Quality ────────────────────────
+  # ── Python Quality (один джоб для всіх) ──
   python-quality:
     name: 🔍 Python Quality — ${{ matrix.service.name }}
     needs: detect
@@ -152,34 +151,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Cache uv
+      # ── Кеш uv пакетів на диску сервера ──
+      - name: Cache uv packages
         uses: actions/cache@v4
         with:
-          path: ~/.cache/uv
+          path: /root/.cache/uv
           key: uv-${{ matrix.service.name }}-${{ hashFiles(format('{0}/pyproject.toml', matrix.service.path)) }}
           restore-keys: uv-${{ matrix.service.name }}-
-
-      - name: Install uv + lint tools
-        run: pip install uv --quiet && uv pip install --system ruff mypy
 
       - name: Install service dependencies
         working-directory: ${{ matrix.service.path }}
         run: |
-          if   [ -f pyproject.toml ];   then uv pip install --system .
-          elif [ -f requirements.txt ]; then uv pip install --system -r requirements.txt
+          if   [ -f pyproject.toml ];   then uv pip install --system -q .
+          elif [ -f requirements.txt ]; then uv pip install --system -q -r requirements.txt
           fi
 
-      - name: Ruff lint
+      - name: Ruff lint + format check
         working-directory: ${{ matrix.service.path }}
-        run: ruff check . --output-format=github
-
-      - name: Ruff format check
-        working-directory: ${{ matrix.service.path }}
-        run: ruff format --check .
+        run: |
+          ruff check . --output-format=github
+          ruff format --check .
 
       - name: mypy type check
         working-directory: ${{ matrix.service.path }}
@@ -208,27 +199,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Cache uv
+      - name: Cache uv packages
         uses: actions/cache@v4
         with:
-          path: ~/.cache/uv
+          path: /root/.cache/uv
           key: uv-${{ matrix.service.name }}-${{ hashFiles(format('{0}/pyproject.toml', matrix.service.path)) }}
           restore-keys: uv-${{ matrix.service.name }}-
-
-      - name: Install uv + dependencies
-        run: pip install uv --quiet
 
       - name: Install service + test dependencies
         working-directory: ${{ matrix.service.path }}
         run: |
-          if   [ -f pyproject.toml ];   then uv pip install --system .
-          elif [ -f requirements.txt ]; then uv pip install --system -r requirements.txt
+          if   [ -f pyproject.toml ];   then uv pip install --system -q .
+          elif [ -f requirements.txt ]; then uv pip install --system -q -r requirements.txt
           fi
-          uv pip install --system pytest pytest-asyncio pytest-cov httpx
+          uv pip install --system -q pytest pytest-asyncio pytest-cov httpx
 
       - name: Run pytest
         working-directory: ${{ matrix.service.path }}
@@ -268,13 +252,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      # ── Кеш node_modules на диску сервера ──
+      - name: Cache node_modules
+        uses: actions/cache@v4
         with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: apps/react/frontend/my-react-app/package-lock.json
+          path: apps/react/frontend/my-react-app/node_modules
+          key: node-modules-${{ hashFiles('apps/react/frontend/my-react-app/package-lock.json') }}
+          restore-keys: node-modules-
 
-      - run: npm install
+      - run: npm install --prefer-offline
       - run: npm run type-check --if-present || true
       - run: npm test --if-present || true
       - run: npm run build --if-present || true
@@ -297,11 +283,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-go@v5
+      # ── Кеш Go модулів на диску сервера ──
+      - name: Cache Go modules
+        uses: actions/cache@v4
         with:
-          go-version-file: services/products_etl/go.mod
-          cache: true
-          cache-dependency-path: services/products_etl/go.sum
+          path: |
+            /root/go/pkg/mod
+            /root/.cache/go-build
+          key: go-${{ hashFiles('services/products_etl/go.sum') }}
+          restore-keys: go-
 
       - run: go mod download
       - run: go vet ./...
@@ -321,6 +311,7 @@ jobs:
       !contains(needs.python-quality.result, 'failure') &&
       !contains(needs.python-test.result, 'failure') &&
       needs.detect.outputs.has_docker == 'true' &&
+      fromJson(needs.detect.outputs.services_matrix || '[]') != fromJson('[]') &&
       (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
     runs-on: self-hosted
     strategy:
@@ -350,6 +341,7 @@ jobs:
             type=ref,event=branch
             type=sha,prefix=sha-,format=short
 
+      # ── Локальний кеш Docker шарів на диску сервера ──
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -357,8 +349,15 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.service.name }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.service.name }}
+          cache-from: type=local,src=/tmp/buildx-cache/${{ matrix.service.name }}
+          cache-to: type=local,dest=/tmp/buildx-cache/${{ matrix.service.name }}-new,mode=max
+
+      # ── Ротація кешу (щоб не росло безкінечно) ──
+      - name: Rotate Docker cache
+        run: |
+          rm -rf /tmp/buildx-cache/${{ matrix.service.name }}
+          mv /tmp/buildx-cache/${{ matrix.service.name }}-new \
+             /tmp/buildx-cache/${{ matrix.service.name }} 2>/dev/null || true
 
   # ═══════════════════════════════════════════
   #  STAGE 5 — DEPLOY TO HETZNER
@@ -366,7 +365,11 @@ jobs:
   deploy:
     name: 🚀 Deploy to Hetzner
     needs: [docker-build]
-    if: github.ref == 'refs/heads/develop'
+    if: |
+      always() &&
+      github.ref == 'refs/heads/develop' &&
+      !contains(needs.docker-build.result, 'failure') &&
+      !contains(needs.docker-build.result, 'cancelled')
     runs-on: self-hosted
     env:
       DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
@@ -393,10 +396,9 @@ jobs:
             ["services/reviews_service"]="dev_reviews_service"
             ["services/products_etl"]="dev_products_etl"
           )
-
           for path in "${!configs[@]}"; do
             config="${configs[$path]}"
-            echo "⬇️  Pulling secrets for $config → $path/.env"
+            echo "⬇️  $config → $path/.env"
             doppler secrets download \
               --project smarket \
               --config "$config" \
@@ -404,7 +406,6 @@ jobs:
               --no-file --format env \
               > "$path/.env"
           done
-
           echo "✅ All .env files generated"
 
       - name: Login to GHCR
@@ -418,7 +419,6 @@ jobs:
           git checkout develop
           git pull origin develop
 
-          # Копіюємо свіжі .env файли з workspace
           for srv in services/gateway services/auth_service services/product_service \
                      services/cart_service services/email_worker services/reviews_service \
                      services/products_etl; do
