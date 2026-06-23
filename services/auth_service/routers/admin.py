@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Header, status
 from fastapi.responses import ORJSONResponse
 from loguru import logger
 from pydantic import BaseModel
@@ -65,7 +65,7 @@ def _format_user(user: User) -> AdminUserItem:
 @router.get("/recent-users", response_model=list[AdminUserItem])
 async def get_recent_users(
     limit: int = 5,
-    x_user_role: str | None = None,  # injected by Gateway after JWT validation
+    x_user_role: str | None = Header(None, alias="X-User-Role"),  # injected by Gateway after JWT validation
     db: AsyncSession = Depends(get_db),
 ):
     """
