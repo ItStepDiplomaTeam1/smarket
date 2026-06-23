@@ -13,7 +13,7 @@ RUN apk add --no-cache git ca-certificates
 WORKDIR /app
 
 # Use alternative Go proxy to bypass proxy.golang.org 403 errors on Hetzner
-ENV GOPROXY=https://goproxy.io,direct
+ENV GOPROXY=https://goproxy.cn,https://goproxy.io,direct
 
 # Copy go.mod and go.sum to cache dependencies
 COPY go.mod go.sum ./
