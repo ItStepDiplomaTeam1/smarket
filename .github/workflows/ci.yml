@@ -7,43 +7,32 @@ on:
     branches: [main, develop]
 
 permissions:
-  contents: read
+  contents: write
+  packages: write
   pull-requests: write
   security-events: write
-  packages: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-# ─────────────────────────────────────────────
-#  REUSABLE ENVIRONMENT
-# ─────────────────────────────────────────────
 env:
   REGISTRY: ghcr.io
   IMAGE_PREFIX: ${{ github.repository_owner }}/${{ github.event.repository.name }}
 
 jobs:
   # ═══════════════════════════════════════════
-  #  STAGE 1 — DETECT CHANGED WORKSPACES
+  #  STAGE 1 — DETECT CHANGED SERVICES
   # ═══════════════════════════════════════════
   detect:
     name: 🔍 Detect Changes
     runs-on: ubuntu-latest
     outputs:
-      has_node: ${{ steps.langs.outputs.has_node }}
       has_python: ${{ steps.langs.outputs.has_python }}
       has_go: ${{ steps.langs.outputs.has_go }}
-      has_rust: ${{ steps.langs.outputs.has_rust }}
-      has_java: ${{ steps.langs.outputs.has_java }}
+      has_node: ${{ steps.langs.outputs.has_node }}
       has_docker: ${{ steps.langs.outputs.has_docker }}
-      has_terraform: ${{ steps.langs.outputs.has_terraform }}
-      apps_changed: ${{ steps.paths.outputs.apps }}
-      services_changed: ${{ steps.paths.outputs.services }}
-      infra_changed: ${{ steps.paths.outputs.infra }}
-      libs_changed: ${{ steps.paths.outputs.libs }}
       services_matrix: ${{ steps.matrix.outputs.services }}
-      apps_matrix: ${{ steps.matrix.outputs.apps }}
 
     steps:
       - uses: actions/checkout@v4
@@ -54,58 +43,27 @@ jobs:
         id: langs
         run: |
           has() { find . -name "$1" -not -path '*/node_modules/*' -not -path '*/.venv/*' | grep -q .; }
+          echo "has_python=$(has 'pyproject.toml' && echo true || echo false)" >> $GITHUB_OUTPUT
+          echo "has_go=$(has 'go.mod' && echo true || echo false)"             >> $GITHUB_OUTPUT
+          echo "has_node=$(has 'package.json' && echo true || echo false)"     >> $GITHUB_OUTPUT
+          echo "has_docker=$(has 'Dockerfile' && echo true || echo false)"     >> $GITHUB_OUTPUT
 
-          echo "has_node=$(has 'package.json' && echo true || echo false)"             >> $GITHUB_OUTPUT
-          echo "has_python=$(has 'pyproject.toml' && echo true || echo false)"         >> $GITHUB_OUTPUT
-          if ! has 'pyproject.toml'; then
-            echo "has_python=$(find . -name 'requirements*.txt' | grep -q . && echo true || echo false)" >> $GITHUB_OUTPUT
-          fi
-          echo "has_go=$(has 'go.mod' && echo true || echo false)"                     >> $GITHUB_OUTPUT
-          echo "has_rust=$(has 'Cargo.toml' && echo true || echo false)"               >> $GITHUB_OUTPUT
-          echo "has_java=$(has 'pom.xml' || has 'build.gradle' && echo true || echo false)" >> $GITHUB_OUTPUT
-          echo "has_docker=$(has 'Dockerfile' && echo true || echo false)"             >> $GITHUB_OUTPUT
-          echo "has_terraform=$(find . -name '*.tf' | grep -q . && echo true || echo false)" >> $GITHUB_OUTPUT
-
-      - name: Detect changed paths
-        id: paths
-        run: |
-          BASE=${{ github.event.pull_request.base.sha || 'HEAD~1' }}
-          changed() { git diff --name-only "$BASE" HEAD -- "$1" 2>/dev/null | grep -q .; }
-
-          echo "apps=$(changed 'apps/' && echo true || echo false)"         >> $GITHUB_OUTPUT
-          echo "services=$(changed 'services/' && echo true || echo false)" >> $GITHUB_OUTPUT
-          echo "infra=$(changed 'infra/' && echo true || echo false)"       >> $GITHUB_OUTPUT
-          echo "libs=$(changed 'libs/' && echo true || echo false)"         >> $GITHUB_OUTPUT
-
-      - name: Build changed matrices
+      - name: Build services matrix
         id: matrix
         run: |
           BASE=${{ github.event.pull_request.base.sha || 'HEAD~1' }}
-
-          build_matrix() {
-            local dir=$1
-            local result="[]"
-            if [ -d "$dir" ]; then
-              for d in "$dir"/*/; do
-                name=$(basename "$d")
-                [ "$name" = ".gitkeep" ] && continue
-                [ ! -f "$d/Dockerfile" ] && continue
-                if git diff --name-only "$BASE" HEAD -- "$d" "libs/" "packages/" 2>/dev/null | grep -q . || \
-                   [ "${{ steps.paths.outputs.libs }}" = "true" ]; then
-                  result=$(echo "$result" | jq --arg n "$name" --arg p "$d" '. += [{"name": $n, "path": $p}]')
-                fi
-              done
+          result="[]"
+          for d in services/*/; do
+            name=$(basename "$d")
+            [ ! -f "$d/Dockerfile" ] && [ ! -f "$d/DockerFile" ] && continue
+            if git diff --name-only "$BASE" HEAD -- "$d" "libs/" "packages/" 2>/dev/null | grep -q .; then
+              result=$(echo "$result" | jq --arg n "$name" --arg p "$d" '. += [{"name": $n, "path": $p}]')
             fi
-            echo "$result"
-          }
-
+          done
           echo "services<<EOF" >> $GITHUB_OUTPUT
-          build_matrix services >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "$result"       >> $GITHUB_OUTPUT
+          echo "EOF"           >> $GITHUB_OUTPUT
 
-          echo "apps<<EOF" >> $GITHUB_OUTPUT
-          build_matrix apps >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
   # ═══════════════════════════════════════════
   #  STAGE 2 — SECURITY
   # ═══════════════════════════════════════════
@@ -118,7 +76,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Gitleaks via Docker — avoids the git-describe build issue
       - name: Gitleaks — secret detection
         run: |
           docker run --rm \
@@ -126,9 +83,7 @@ jobs:
             zricethezav/gitleaks:latest \
             detect --source /repo --no-git --verbose --redact \
             --exit-code 0
-        # exit-code 0 = warn only, keeps pipeline green; change to 1 to block
 
-      # Trivy filesystem scan for CVEs in dependencies
       - name: Trivy — vulnerability scan
         uses: aquasecurity/trivy-action@v0.36.0
         with:
@@ -137,24 +92,171 @@ jobs:
           severity: CRITICAL,HIGH
           format: table
           exit-code: 1
-        continue-on-error: true   # surface issues without hard-blocking; remove for strict mode
-
-      # pip-audit for Python deps specifically
-      - name: pip-audit — Python dependency audit
-        if: needs.detect.outputs.has_python == 'true'
-        run: |
-          pip install pip-audit --quiet --break-system-packages
-          find . -name 'pyproject.toml' -not -path '*/.venv/*' | while read f; do
-            dir=$(dirname "$f")
-            echo "▶ Auditing $dir"
-            (cd "$dir" && pip-audit --requirement <(pip install . --dry-run --break-system-packages -q 2>/dev/null | grep -oP '(?<=Collecting )\S+') 2>/dev/null || true)
-          done
+        continue-on-error: true
 
   # ═══════════════════════════════════════════
   #  STAGE 3 — LINT & TEST (parallel)
   # ═══════════════════════════════════════════
 
-  # ── Node / React ──────────────────────────
+  # ── Python Auto-Format ────────────────────
+  python-auto-format:
+    name: 🪄 Python Auto-Format
+    needs: detect
+    if: needs.detect.outputs.has_python == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install ruff
+        run: pip install ruff --quiet
+
+      - name: Format all Python services
+        run: |
+          for srv in services/auth_service services/cart_service services/email_worker \
+                     services/gateway services/product_service services/reviews_service; do
+            [ -d "$srv" ] || continue
+            ruff check --fix "$srv" || true
+            ruff format "$srv"      || true
+          done
+
+      - name: Commit auto-format changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "style: auto-format python code"
+
+  # ── Python Quality ────────────────────────
+  python-quality:
+    name: 🔍 Python Quality — ${{ matrix.service.name }}
+    needs: detect
+    if: needs.detect.outputs.has_python == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - { name: auth_service,    path: services/auth_service    }
+          - { name: cart_service,    path: services/cart_service    }
+          - { name: email_worker,    path: services/email_worker    }
+          - { name: gateway,         path: services/gateway         }
+          - { name: product_service, path: services/product_service }
+          - { name: reviews_service, path: services/reviews_service }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ matrix.service.name }}-${{ hashFiles(format('{0}/pyproject.toml', matrix.service.path)) }}
+          restore-keys: uv-${{ matrix.service.name }}-
+
+      - name: Install uv + lint tools
+        run: pip install uv --quiet && uv pip install --system ruff mypy
+
+      - name: Install service dependencies
+        working-directory: ${{ matrix.service.path }}
+        run: |
+          if   [ -f pyproject.toml ];  then uv pip install --system .
+          elif [ -f requirements.txt ]; then uv pip install --system -r requirements.txt
+          fi
+
+      - name: Ruff lint
+        working-directory: ${{ matrix.service.path }}
+        run: ruff check . --output-format=github
+
+      - name: Ruff format check
+        working-directory: ${{ matrix.service.path }}
+        run: ruff format --check .
+
+      - name: mypy type check
+        working-directory: ${{ matrix.service.path }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: mypy .
+        continue-on-error: true
+
+  # ── Python Tests ──────────────────────────
+  python-test:
+    name: 🧪 Python Tests — ${{ matrix.service.name }}
+    needs: [detect, python-quality]
+    if: needs.detect.outputs.has_python == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - { name: auth_service,    path: services/auth_service    }
+          - { name: cart_service,    path: services/cart_service    }
+          - { name: email_worker,    path: services/email_worker    }
+          - { name: gateway,         path: services/gateway         }
+          - { name: product_service, path: services/product_service }
+          - { name: reviews_service, path: services/reviews_service }
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache uv
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/uv
+          key: uv-${{ matrix.service.name }}-${{ hashFiles(format('{0}/pyproject.toml', matrix.service.path)) }}
+          restore-keys: uv-${{ matrix.service.name }}-
+
+      - name: Install uv + dependencies
+        run: pip install uv --quiet
+
+      - name: Install service + test dependencies
+        working-directory: ${{ matrix.service.path }}
+        run: |
+          if   [ -f pyproject.toml ];  then uv pip install --system .
+          elif [ -f requirements.txt ]; then uv pip install --system -r requirements.txt
+          fi
+          uv pip install --system pytest pytest-asyncio pytest-cov httpx
+
+      - name: Run pytest
+        working-directory: ${{ matrix.service.path }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          DATABASE_URL: "postgresql+asyncpg://test:test@localhost/test"
+          REDIS_URL: "redis://localhost:6379"
+          SECRET_KEY: "cafebabe00000000000000000000000000000000000000000000000000000000"
+          APP_HOST: "0.0.0.0"
+          APP_PORT: "8000"
+          APP_WORKERS: "1"
+          DEBUG: "False"
+        run: |
+          if find tests/ -name "test_*.py" 2>/dev/null | grep -q .; then
+            pytest --cov=. --cov-report=xml --cov-report=term-missing -v --tb=short
+          else
+            echo "::warning title=No Tests::No tests found in ${{ matrix.service.path }}/tests/"
+          fi
+
+      - name: Upload coverage
+        if: always() && !env.ACT
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.service.name }}
+          path: ${{ matrix.service.path }}/coverage.xml
+          if-no-files-found: ignore
+
+  # ── Node.js / React ───────────────────────
   node-ci:
     name: ⚛️ Node.js
     needs: detect
@@ -172,228 +274,14 @@ jobs:
           cache: npm
           cache-dependency-path: apps/react/frontend/my-react-app/package-lock.json
 
-      - name: Install
-        run: npm ci
+      - run: npm ci
+      - run: npm run type-check --if-present || true
+      - run: npm test --if-present || true
+      - run: npm run build --if-present || true
 
-
-      - name: Type-check
-        run: npm run type-check --if-present || true
-
-      - name: Test (with coverage)
-        run: npm run test:coverage --if-present || npm test --if-present || true
-
-      - name: Upload coverage
-        if: ${{ !env.ACT }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: node-coverage
-          path: apps/react/frontend/my-react-app/coverage/
-          if-no-files-found: ignore
-
-      - name: Build
-        run: npm run build --if-present || true
-
-  python-auto-format:
-    name: 🪄 Python Auto-Format
-    needs: detect
-    if: needs.detect.outputs.has_python == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref || github.ref }}
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: Install ruff
-        run: pip install ruff --quiet
-      - name: Format all python services
-        run: |
-          services="services/auth_service services/cart_service services/email_worker services/gateway services/product_service services/reviews_service"
-          for srv in $services; do
-            if [ -d "$srv" ]; then
-              echo "Formatting $srv..."
-              ruff check --fix "$srv" || true
-              ruff format "$srv" || true
-            fi
-          done
-      - name: Commit changes
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "style: auto-format python code"
-
-  python-quality:
-    name: 🔍 Python Quality — ${{ matrix.service.name }}
-    needs: detect
-    if: needs.detect.outputs.has_python == 'true'
-    runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        service:
-          - path: services/auth_service
-            name: auth_service
-          - path: services/cart_service
-            name: cart_service
-          - path: services/email_worker
-            name: email_worker
-          - path: services/gateway
-            name: gateway
-          - path: services/product_service
-            name: product_service
-          - path: services/reviews_service
-            name: reviews_service
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Cache uv
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/uv
-          key: uv-${{ matrix.service.name }}-${{ hashFiles(format('{0}/pyproject.toml', matrix.service.path)) }}
-          restore-keys: uv-${{ matrix.service.name }}-
-
-      - name: Install uv + tools
-        run: pip install uv --quiet
-
-      - name: Install lint tools
-        run: uv pip install --system ruff mypy
-
-      - name: Install service dependencies
-        working-directory: ${{ matrix.service.path }}
-        run: |
-          if [ -f pyproject.toml ]; then
-            uv pip install --system .
-          elif [ -f requirements.txt ]; then
-            uv pip install --system -r requirements.txt
-          fi
-
-      - name: Ruff — lint
-        working-directory: ${{ matrix.service.path }}
-        run: ruff check . --output-format=github
-
-      - name: Ruff — format
-        working-directory: ${{ matrix.service.path }}
-        run: ruff format --check .
-
-      - name: mypy — type check
-        working-directory: ${{ matrix.service.path }}
-        env:
-          PYTHONPATH: ${{ github.workspace }}
-        run: mypy .
-        continue-on-error: true
-
-  python-test:
-    name: 🧪 Python Tests — ${{ matrix.service.name }}
-    needs: [detect, python-quality]
-    if: needs.detect.outputs.has_python == 'true'
-    runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        service:
-          - path: services/auth_service
-            name: auth_service
-          - path: services/cart_service
-            name: cart_service
-          - path: services/email_worker
-            name: email_worker
-          - path: services/gateway
-            name: gateway
-          - path: services/product_service
-            name: product_service
-          - path: services/reviews_service
-            name: reviews_service
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Cache uv
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/uv
-          key: uv-${{ matrix.service.name }}-${{ hashFiles(format('{0}/pyproject.toml', matrix.service.path)) }}
-          restore-keys: uv-${{ matrix.service.name }}-
-
-      - name: Install uv
-        run: pip install uv --quiet
-
-      - name: Install service + test dependencies
-        working-directory: ${{ matrix.service.path }}
-        run: |
-          if [ -f pyproject.toml ]; then
-            uv pip install --system .
-          elif [ -f requirements.txt ]; then
-            uv pip install --system -r requirements.txt
-          fi
-          uv pip install --system pytest pytest-asyncio pytest-cov httpx
-
-      - name: Run tests
-        id: pytest
-        working-directory: ${{ matrix.service.path }}
-        env:
-          PYTHONPATH: ${{ github.workspace }}
-          DATABASE_URL: "postgresql+asyncpg://test:test@localhost/test"
-          REDIS_URL: "redis://localhost:6379"
-          SECRET_KEY: "cafebabe00000000000000000000000000000000000000000000000000000000"
-          APP_HOST: "0.0.0.0"
-          APP_PORT: "8000"
-          APP_WORKERS: "1"
-          DEBUG: "False"
-        run: |
-          if find tests/ -name "test_*.py" 2>/dev/null | grep -q .; then
-            pytest \
-              --cov=. \
-              --cov-report=xml \
-              --cov-report=term-missing \
-              --cov-config=pyproject.toml \
-              -v \
-              --tb=short
-          else
-            echo "::warning title=No Tests::No tests found in ${{ matrix.service.path }}/tests/"
-          fi
-
-      - name: Upload coverage report
-        if: always() && !env.ACT
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-${{ matrix.service.name }}
-          path: ${{ matrix.service.path }}/coverage.xml
-          if-no-files-found: ignore
-
-      - name: Coverage summary
-        if: always()
-        working-directory: ${{ matrix.service.path }}
-        run: |
-          if [ -f coverage.xml ]; then
-            python - <<'EOF'
-          import xml.etree.ElementTree as ET
-          tree = ET.parse("coverage.xml")
-          root = tree.getroot()
-          pct = float(root.attrib.get("line-rate", 0)) * 100
-          print(f"### 📊 Coverage: {pct:.1f}%")
-          EOF
-          fi
-
-
-
-
-  # ── Go ────────────────────────────────────
+  # ── Go / ETL ──────────────────────────────
   go-ci:
-    name: 🐹 Go
+    name: 🐹 Go ETL
     needs: detect
     if: needs.detect.outputs.has_go == 'true'
     runs-on: ubuntu-latest
@@ -402,73 +290,23 @@ jobs:
         working-directory: services/products_etl
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-go@v5
         with:
           go-version-file: services/products_etl/go.mod
           cache: true
           cache-dependency-path: services/products_etl/go.sum
+
       - run: go mod download
       - run: go vet ./...
       - run: go test -v -race -coverprofile=coverage.out ./...
       - run: go build ./...
 
-
-  # ── Rust ──────────────────────────────────
-  rust-ci:
-    name: 🦀 Rust
-    needs: detect
-    if: needs.detect.outputs.has_rust == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
-      - uses: Swatinem/rust-cache@v2
-      - run: cargo fmt --all -- --check
-      - run: cargo clippy -- -D warnings
-      - run: cargo test
-      - run: cargo build --release
-
-  # ── Java ──────────────────────────────────
-  java-ci:
-    name: ☕ Java
-    needs: detect
-    if: needs.detect.outputs.has_java == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-          cache: gradle
-      - name: Gradle test
-        if: hashFiles('build.gradle', 'build.gradle.kts') != ''
-        run: ./gradlew test || gradle test
-      - name: Maven test
-        if: hashFiles('pom.xml') != ''
-        run: mvn -B test
-
-  # ── Terraform ─────────────────────────────
-  terraform-ci:
-    name: 🏗 Terraform
-    needs: detect
-    if: needs.detect.outputs.has_terraform == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
-      - run: terraform fmt -check -recursive
-      - run: terraform init -backend=false
-      - run: terraform validate
-
-  # =====================================================================
-#  STAGE 4 — DOCKER BUILD & PUSH (БЕКЕНД СЕРВІСИ)
-# =====================================================================
+  # ═══════════════════════════════════════════
+  #  STAGE 4 — DOCKER BUILD & PUSH → GHCR
+  # ═══════════════════════════════════════════
   docker-build:
-    name: 🐳 Docker Build — ${{ matrix.service.name }}
-    # Залежить ТІЛЬКИ від тестів Python та базового сканування безпеки
+    name: 🐳 Docker — ${{ matrix.service.name }}
     needs: [detect, security, python-quality, python-test]
     if: |
       always() &&
@@ -479,9 +317,6 @@ jobs:
       needs.detect.outputs.has_docker == 'true' &&
       (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write # Дає право запису в ghcr.io
     strategy:
       matrix:
         service: ${{ fromJson(needs.detect.outputs.services_matrix || '[]') }}
@@ -493,7 +328,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Авторизуємося в ghcr.io за допомогою вбудованого сервісного токена GitHub
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
@@ -501,8 +335,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Генеруємо правильні теги (наприклад, :develop)
-      - name: Docker meta
+      - name: Docker meta (tags)
         id: meta
         uses: docker/metadata-action@v5
         with:
@@ -511,7 +344,7 @@ jobs:
             type=ref,event=branch
             type=sha,prefix=sha-,format=short
 
-      - name: Build and Push to GHCR
+      - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: ${{ matrix.service.path }}
@@ -521,71 +354,62 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.service.name }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service.name }}
 
-# =====================================================================
-#  STAGE 5 — AUTOMATIC DEPLOY TO DIGITALOCEAN VIA SSH
-# =====================================================================
-  deploy-to-server:
-    name: 🚀 Deploy to DigitalOcean
-    # Запускається ТІЛЬКИ після того, як бекенд-сервіси успішно зібралися і залетіли в ghcr.io
+  # ═══════════════════════════════════════════
+  #  STAGE 5 — DEPLOY TO HETZNER VIA SSH
+  # ═══════════════════════════════════════════
+  deploy:
+    name: 🚀 Deploy to Hetzner
     needs: [docker-build]
     if: github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
 
     steps:
-      - name: Execute remote SSH commands
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
+            set -e
             cd /app/smarket
-            
-            # Підтягуємо оновлений docker-compose.develop.yml, якщо він мінявся в Git
+
             git checkout develop
             git pull origin develop
-            
-            # Авторизуємо Docker на сервері в реєстрі ghcr.io
+
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            
-            # Стягуємо свіжі готові образи з GitHub Packages
+
             docker compose -f docker-compose.develop.yml pull
-            
-            # Перезапускаємо систему на основі нових контейнерів
-            docker compose -f docker-compose.develop.yml up -d
-            
-            # Видаляємо старі образи-дублікати, щоб не забивати диск Droplet
+            docker compose -f docker-compose.develop.yml up -d --remove-orphans
+
             docker image prune -f
 
+            echo "✅ Deploy completed at $(date)"
+
   # ═══════════════════════════════════════════
-  #  STAGE 6 — AGGREGATE STATUS (required check)
+  #  STAGE 6 — AGGREGATE STATUS
   # ═══════════════════════════════════════════
   ci-status:
     name: ✅ CI Status
     needs:
       - detect
       - security
-      - node-ci
       - python-auto-format
       - python-quality
       - python-test
+      - node-ci
       - go-ci
-      - rust-ci
-      - java-ci
-      - terraform-ci
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: Check results
+      - name: Check all results
         run: |
           results="${{ join(needs.*.result, ' ') }}"
           echo "Job results: $results"
-
           for r in $results; do
             if [[ "$r" == "failure" || "$r" == "cancelled" ]]; then
               echo "❌ CI failed — one or more jobs did not pass"
               exit 1
             fi
           done
-
           echo "✅ All CI checks passed"
