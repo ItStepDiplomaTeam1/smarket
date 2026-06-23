@@ -35,12 +35,12 @@ jobs:
     name: 🔍 Detect Changes
     runs-on: self-hosted
     outputs:
-      has_python: ${{ steps.langs.outputs.has_python }}
-      has_go: ${{ steps.langs.outputs.has_go }}
-      has_node: ${{ steps.langs.outputs.has_node }}
-      has_docker: ${{ steps.langs.outputs.has_docker }}
-      services_matrix: ${{ steps.matrix.outputs.services }}
-      python_services_matrix: ${{ steps.py-matrix.outputs.services }}
+      has_python: 'true'
+      has_go: 'true'
+      has_node: 'true'
+      has_docker: 'true'
+      services_matrix: '[{"name": "auth_service", "path": "services/auth_service"}, {"name": "cart_service", "path": "services/cart_service"}, {"name": "email_worker", "path": "services/email_worker"}, {"name": "gateway", "path": "services/gateway"}, {"name": "product_service", "path": "services/product_service"}, {"name": "reviews_service", "path": "services/reviews_service"}, {"name": "products_etl", "path": "services/products_etl"}]'
+      python_services_matrix: '[{"name": "auth_service", "path": "services/auth_service"}, {"name": "cart_service", "path": "services/cart_service"}, {"name": "email_worker", "path": "services/email_worker"}, {"name": "gateway", "path": "services/gateway"}, {"name": "product_service", "path": "services/product_service"}, {"name": "reviews_service", "path": "services/reviews_service"}]'
 
     steps:
       - uses: actions/checkout@v4
