@@ -7,17 +7,20 @@ export const ProtectedRoute: React.FC = () => {
   const location = useLocation();
 
   if (!token) {
-    // Not logged in
+    // Not logged in → redirect to login, preserve intended destination
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   if (!isAdmin()) {
     // Logged in but not an admin
     return (
-      <div className="flex items-center justify-center h-screen bg-background text-textMain">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold mb-4 text-accentRed">Access Denied</h1>
-          <p className="text-textMuted">You do not have administrative privileges to view this page.</p>
+      <div className="flex items-center justify-center h-screen bg-[#F0F2F5] text-textMain">
+        <div className="text-center bg-white rounded-2xl p-12 shadow-sm border border-border max-w-md">
+          <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
+            <span className="text-accentRed text-3xl">✕</span>
+          </div>
+          <h1 className="font-manrope text-2xl font-bold mb-2 text-textMain">Доступ заборонено</h1>
+          <p className="text-textMuted text-sm">Ви не маєте прав адміністратора для перегляду цієї сторінки.</p>
         </div>
       </div>
     );
