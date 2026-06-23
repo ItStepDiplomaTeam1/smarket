@@ -25,6 +25,7 @@ env:
     services/gateway
     services/product_service
     services/reviews_service
+  UV_BIN: /root/.local/bin/uv
 
 jobs:
   # ═══════════════════════════════════════════
@@ -119,12 +120,15 @@ jobs:
 
       # ruff вже встановлений на сервері — не качаємо
       - name: Ensure ruff is available
-        run: command -v ruff || pip3.11 install ruff --quiet || pip3 install ruff --quiet
+        run: |
+          export PATH="/root/.local/bin:$PATH"
+          command -v ruff || pip3 install ruff --break-system-packages --quiet
 
       - name: Format all Python services
         run: |
           for srv in ${{ env.PYTHON_SERVICES }}; do
             [ -d "$srv" ] || continue
+            export PATH="/root/.local/bin:$PATH"
             ruff check --fix "$srv" || true
             ruff format "$srv"      || true
           done
@@ -163,12 +167,16 @@ jobs:
           restore-keys: uv-${{ matrix.service.name }}-
 
       - name: Ensure uv is available
-        run: command -v uv || pip3.11 install uv --quiet || pip3 install uv --quiet
+        run: |
+          export PATH="/root/.local/bin:$PATH"
+          command -v uv || curl -LsSf https://astral.sh/uv/install.sh | sh
+          ln -sf /root/.local/bin/uv /usr/local/bin/uv
 
       - name: Install service dependencies into venv
         working-directory: ${{ matrix.service.path }}
         run: |
-          uv venv --python python3.11 .venv
+          export PATH="/root/.local/bin:$PATH"
+          uv venv --python python3 .venv
           if   [ -f pyproject.toml ];   then uv pip install --python .venv/bin/python -q .
           elif [ -f requirements.txt ]; then uv pip install --python .venv/bin/python -q -r requirements.txt
           fi
@@ -220,7 +228,8 @@ jobs:
       - name: Install service + test dependencies into venv
         working-directory: ${{ matrix.service.path }}
         run: |
-          uv venv --python python3.11 .venv
+          export PATH="/root/.local/bin:$PATH"
+          uv venv --python python3 .venv
           if   [ -f pyproject.toml ];   then uv pip install --python .venv/bin/python -q .
           elif [ -f requirements.txt ]; then uv pip install --python .venv/bin/python -q -r requirements.txt
           fi
