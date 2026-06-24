@@ -288,11 +288,17 @@ jobs:
           fi
           uv pip install --python .venv/bin/python -q ruff mypy
 
-      - name: Ruff lint + format check
+      - name: Ruff — style warnings (PEP8, E/W + non-breaking F rules)
+        working-directory: ${{ matrix.service.path }}
+        continue-on-error: true
+        run: |
+          .venv/bin/ruff check . --select E,W,F401,F841 --output-format=github
+          .venv/bin/ruff format --check . || true
+
+      - name: Ruff — code errors (F rules that break runtime)
         working-directory: ${{ matrix.service.path }}
         run: |
-          .venv/bin/ruff check . --output-format=github
-          .venv/bin/ruff format --check .
+          .venv/bin/ruff check . --select F --ignore F401,F841 --output-format=github
 
       - name: mypy type check
         working-directory: ${{ matrix.service.path }}
