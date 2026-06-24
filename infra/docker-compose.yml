@@ -309,6 +309,17 @@ services:
     mem_limit: 768m
     cpus: 1.00
     pids_limit: 256
+    labels:
+      ofelia.enabled: "true"
+      # Щодня о 03:00 UTC — видаляємо оброблені/провалені сирі сторінки старші за 24 години
+      ofelia.job-exec.mongo-cleanup.schedule: "0 3 * * *"
+      ofelia.job-exec.mongo-cleanup.no-overlap: "true"
+      ofelia.job-exec.mongo-cleanup.command: >-
+        mongosh
+        "mongodb://$$MONGO_INITDB_ROOT_USERNAME:$$MONGO_INITDB_ROOT_PASSWORD@127.0.0.1:27017/?authSource=admin"
+        --quiet
+        --eval
+        "db.getSiblingDB('smarket_datalake').raw_pages.deleteMany({status:{$in:['processed','failed']},fetched_at:{$lt:new Date(Date.now()-86400000)}})"
 
   email_worker:
     <<: *api-defaults
@@ -349,6 +360,19 @@ services:
     mem_limit: 384m
     cpus: 0.75
     pids_limit: 128
+
+  ofelia:
+    <<: *runtime-defaults
+    image: mcuadros/ofelia:latest
+    command: daemon --docker
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    mem_limit: 64m
+    cpus: 0.10
+    pids_limit: 32
 
 volumes:
   rabbitmq_data:
