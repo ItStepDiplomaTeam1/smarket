@@ -1,3 +1,5 @@
+mod handlers;
+
 use std::env;
 use axum::{routing::get, Router};
 use std::net::SocketAddr;
@@ -45,8 +47,19 @@ async fn main() {
     use axum::{routing::get, Json, Router};
     use serde_json::{json, Value};
 
-    let app = Router::new().route("/health", get(|| async {
-        Json(json!({ "status": "up", "current_time":  Utc::now() }))
-    }));
+    let api_routes = Router::new()
+        .route("/health", get(|| async { Json(json!({ "status": "up", "current_time":  Utc::now() }))}))
+        .route("/search", get(search_handler));
+
+    let app = Router::new()
+        .nest("/api/v1", api_routes);
+
+
+    let port = std::env::var("PORT").unwrap_or_else(|_| "8083".to_string());
+    let addr: SocketAddr = format!("0.0.0.0:{}", port).parse().unwrap();
+    info!("Server starting on {}", addr);
+
+    let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
+    axum::serve(listener, app).await.unwrap();
 }
 
