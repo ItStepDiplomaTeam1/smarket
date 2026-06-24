@@ -3,7 +3,7 @@ import type { AxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080',
+  baseURL: import.meta.env.VITE_API_URL || 'http://157.180.74.21:8080',
   timeout: 10000,
   withCredentials: true,
   headers: {

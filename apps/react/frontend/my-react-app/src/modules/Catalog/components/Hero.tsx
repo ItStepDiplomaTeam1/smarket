@@ -12,7 +12,7 @@ interface ProductsResponse {
 
 // ================= ФУНКЦІЯ ОТРИМАННЯ ДАНИХ =================
 const fetchProducts = async (page: number, stores: string[]): Promise<ProductsResponse> => {
-    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://157.180.74.21:8080';
     let url = new URL(`${apiBaseUrl}/api/v1/products`);
     const res = await fetch(url.toString());
   
