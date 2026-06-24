@@ -67,7 +67,7 @@ services:
       - rabbitmq_data:/var/lib/rabbitmq
     healthcheck:
       <<: *healthcheck-local
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
       timeout: 10s
       start_period: 20s
 

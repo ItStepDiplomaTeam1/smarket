@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     STORES_SERVICE_URL: str = "http://product_service:8000/api/v1/stores"
     CART_SERVICE_URL: str = "http://cart_service:8002"
     REVIEWS_SERVICE_URL: str = "http://reviews_service:8004"
+    ETL_SERVICE_URL: str = "http://products_etl:8082"
 
 
 settings = Settings()

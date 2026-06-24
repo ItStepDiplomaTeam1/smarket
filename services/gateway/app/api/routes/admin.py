@@ -112,3 +112,33 @@ async def get_system_status(request: Request):
 
     return JSONResponse(content=service_statuses)
 
+
+@router.get("/etl/health")
+async def get_etl_health(request: Request):
+    """
+    Проксює запит /health до ETL-воркера (products_etl).
+    Повертає статус Go-сервісу та стан підключень до MongoDB / PostgreSQL.
+    Вимагає роль адміністратора.
+    """
+    _verify_admin_token(request)
+
+    client: httpx.AsyncClient = request.app.state.http_client
+    try:
+        response = await client.get(
+            f"{settings.ETL_SERVICE_URL}/health",
+            timeout=10.0,
+        )
+        return JSONResponse(
+            content=response.json(),
+            status_code=response.status_code,
+        )
+    except httpx.ConnectError:
+        return JSONResponse(
+            content={"status": "unavailable", "error": "ETL service unreachable"},
+            status_code=503,
+        )
+    except httpx.TimeoutException:
+        return JSONResponse(
+            content={"status": "timeout", "error": "ETL service timed out"},
+            status_code=504,
+        )
