@@ -282,6 +282,7 @@ async def refresh(request: Request, response: Response, db: AsyncSession = Depen
 
     user_id = payload.get("sub")
     import uuid
+
     try:
         user_uuid = uuid.UUID(user_id)
     except (ValueError, TypeError) as err:
@@ -310,13 +311,11 @@ async def refresh(request: Request, response: Response, db: AsyncSession = Depen
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    logger.info(f"Успішно оновлено токени для користувача з ID: {payload.get('sub')} (роль: {user.role})")
-    new_access_token = create_access_token(
-        str(user.id), user.role, user.email
+    logger.info(
+        f"Успішно оновлено токени для користувача з ID: {payload.get('sub')} (роль: {user.role})"
     )
-    new_refresh_token = create_refresh_token(
-        str(user.id), user.role, user.email
-    )
+    new_access_token = create_access_token(str(user.id), user.role, user.email)
+    new_refresh_token = create_refresh_token(str(user.id), user.role, user.email)
 
     response.set_cookie(
         key="refresh_token",

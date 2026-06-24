@@ -45,11 +45,7 @@ def _require_admin_from_header(x_user_role: str | None) -> None:
 def _format_user(user: User) -> AdminUserItem:
     name = user.email.split("@")[0] if "@" in user.email else user.email
     status_str = "Активний" if user.is_active else "Неактивний"
-    created_iso = (
-        user.created_at.isoformat()
-        if user.created_at
-        else datetime.now(UTC).isoformat()
-    )
+    created_iso = user.created_at.isoformat() if user.created_at else datetime.now(UTC).isoformat()
     return AdminUserItem(
         id=str(user.id),
         name=name,
@@ -65,7 +61,9 @@ def _format_user(user: User) -> AdminUserItem:
 @router.get("/recent-users", response_model=list[AdminUserItem])
 async def get_recent_users(
     limit: int = 5,
-    x_user_role: str | None = Header(None, alias="X-User-Role"),  # injected by Gateway after JWT validation
+    x_user_role: str | None = Header(
+        None, alias="X-User-Role"
+    ),  # injected by Gateway after JWT validation
     db: AsyncSession = Depends(get_db),
 ):
     """
@@ -80,9 +78,7 @@ async def get_recent_users(
             detail="limit must be between 1 and 100",
         )
 
-    result = await db.execute(
-        select(User).order_by(User.created_at.desc()).limit(limit)
-    )
+    result = await db.execute(select(User).order_by(User.created_at.desc()).limit(limit))
     users = result.scalars().all()
 
     logger.info(f"Admin requested {limit} recent users — returned {len(users)} records")

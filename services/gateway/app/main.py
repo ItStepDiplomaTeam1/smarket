@@ -49,9 +49,7 @@ app.include_router(cart.router, prefix=f"{API_V1_STR}/cart", tags=["Cart Proxy v
 app.include_router(
     reviews.router, prefix=f"{API_V1_STR}/reviews", tags=["Reviews Proxy v1"]
 )
-app.include_router(
-    admin.router, prefix=f"{API_V1_STR}/admin", tags=["Admin Proxy v1"]
-)
+app.include_router(admin.router, prefix=f"{API_V1_STR}/admin", tags=["Admin Proxy v1"])
 
 
 @app.get("/health", tags=["System"])

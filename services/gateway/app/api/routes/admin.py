@@ -44,7 +44,9 @@ def _verify_admin_token(request: Request) -> dict:
     return payload
 
 
-async def _proxy_to_auth(request: Request, path: str, payload: dict) -> StreamingResponse:
+async def _proxy_to_auth(
+    request: Request, path: str, payload: dict
+) -> StreamingResponse:
     """Forward the request to auth_service, enriching headers with user context."""
     client: httpx.AsyncClient = request.app.state.http_client
     target_url = f"{settings.AUTH_SERVICE_URL}/admin/{path}"
