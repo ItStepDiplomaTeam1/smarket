@@ -1,0 +1,89 @@
+from datetime import UTC, datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Header, status
+from fastapi.responses import ORJSONResponse
+from loguru import logger
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from services.auth_service.database.models import User
+from services.auth_service.database.session import get_db
+from services.auth_service.plugins.checking.user import get_authenticated_user  # noqa: F401
+from services.auth_service.plugins.security.jwt_handler import (
+    JWTExpiredError,
+    JWTInvalidError,
+    decode_token,
+)
+
+router = APIRouter(default_response_class=ORJSONResponse)
+
+
+# ── Response schema ────────────────────────────────────────────────────────────
+
+
+class AdminUserItem(BaseModel):
+    id: str
+    name: str
+    email: str
+    status: str
+    created_at: str
+
+
+# ── Internal helpers ──────────────────────────────────────────────────────────
+
+
+def _require_admin_from_header(x_user_role: str | None) -> None:
+    """Gateway already validates JWT; here we trust the X-User-Role header it injects."""
+    if x_user_role not in ("admin", "superadmin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Доступ заборонено. Потрібні права адміністратора.",
+        )
+
+
+def _format_user(user: User) -> AdminUserItem:
+    name = user.email.split("@")[0] if "@" in user.email else user.email
+    status_str = "Активний" if user.is_active else "Неактивний"
+    created_iso = (
+        user.created_at.isoformat()
+        if user.created_at
+        else datetime.now(UTC).isoformat()
+    )
+    return AdminUserItem(
+        id=str(user.id),
+        name=name,
+        email=user.email,
+        status=status_str,
+        created_at=created_iso,
+    )
+
+
+# ── Routes ────────────────────────────────────────────────────────────────────
+
+
+@router.get("/recent-users", response_model=list[AdminUserItem])
+async def get_recent_users(
+    limit: int = 5,
+    x_user_role: str | None = Header(None, alias="X-User-Role"),  # injected by Gateway after JWT validation
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Returns the most recently registered users, ordered by created_at DESC.
+    Only accessible by admins (role enforced at Gateway + double-checked here).
+    """
+    _require_admin_from_header(x_user_role)
+
+    if limit < 1 or limit > 100:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="limit must be between 1 and 100",
+        )
+
+    result = await db.execute(
+        select(User).order_by(User.created_at.desc()).limit(limit)
+    )
+    users = result.scalars().all()
+
+    logger.info(f"Admin requested {limit} recent users — returned {len(users)} records")
+    return [_format_user(u) for u in users]
