@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tracing::{error, info};
 
+use super::post_index::ProductDocument;
+
 fn deserialize_bool_opt<'de, D>(deserializer: D) -> Result<Option<bool>, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -227,14 +229,38 @@ pub async fn search_handler(
         search_builder.with_sort(&sort_refs);
     }
 
-    match search_builder.execute::<Value>().await {
+    match search_builder.execute::<ProductDocument>().await {
         Ok(results) => {
             let nb_hits = results.hits.len();
             let total_hits = results.estimated_total_hits;
             let processing_time_ms = results.processing_time_ms;
 
 
-            let hits: Vec<Value> = results.hits.into_iter().map(|hit| hit.result).collect();
+            let hits: Vec<Value> = results.hits.into_iter().map(|hit| {
+                let doc = hit.result;
+                json!({
+                    "id": doc.id,
+                    "title": doc.title,
+                    "brand": doc.brand,
+                    "unit": doc.unit,
+                    "weight": doc.weight,
+                    "image_url": doc.image_url,
+                    "canonical_ean": doc.canonical_ean,
+                    "category_id": doc.category_id,
+                    "category_slug": doc.category_slug,
+                    "category_name": doc.category_name,
+                    "offers": [{
+                        "store": {
+                            "id": doc.store_id,
+                            "name": doc.store_name,
+                            "retail_chain": doc.retail_chain,
+                        },
+                        "price": doc.price,
+                        "old_price": doc.old_price,
+                        "in_stock": doc.in_stock,
+                    }]
+                })
+            }).collect();
 
             info!(
                 "[search] Знайдено {} результатів (estimated total: {:?}), за {}мс",
