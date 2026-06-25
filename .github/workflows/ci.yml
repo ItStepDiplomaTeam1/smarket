@@ -481,9 +481,6 @@ jobs:
       - name: Run Cargo tests
         run: cargo test --verbose
 
-      - name: Build target
-        run: cargo build --release
-
   # ═══════════════════════════════════════════
   #  STAGE 4 — DOCKER BUILD & PUSH → GHCR
   # ═══════════════════════════════════════════
