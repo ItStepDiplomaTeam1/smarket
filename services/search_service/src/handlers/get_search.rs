@@ -30,11 +30,17 @@ where
 
 #[derive(Deserialize, Debug)]
 pub struct ProductFilters {
+    #[serde(default)]
     pub category_id: Option<i32>,
+    #[serde(default)]
     pub category_slug: Option<String>,
+    #[serde(default)]
     pub store_id: Option<String>,
+    #[serde(default)]
     pub retail_chain: Option<String>,
+    #[serde(default)]
     pub price_min: Option<f64>,
+    #[serde(default)]
     pub price_max: Option<f64>,
     
     #[serde(default, deserialize_with = "deserialize_bool_opt")]
@@ -164,3 +170,4 @@ pub async fn search_handler(
         }
     }
 }
+
