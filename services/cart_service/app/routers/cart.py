@@ -29,14 +29,41 @@ async def get_all_carts(
     carts = await crud.get_user_carts(db, user_id)
     responses = []
     for cart in carts:
+        total_price = 0.0
+        items_response = []
+        for item in cart.items:
+            product_data = await fetch_product_details(item.product_id)
+            prices = product_data.get("prices", [])
+            valid_prices = [p.get("price", 0.0) for p in prices if p.get("in_stock", False)]
+            if valid_prices:
+                price = min(valid_prices)
+            else:
+                all_prices = [p.get("price", 0.0) for p in prices]
+                price = min(all_prices) if all_prices else 0.0
+            
+            name = product_data.get("title", "Невідомий товар")
+            item_price = price * item.quantity
+            total_price += item_price
+
+            items_response.append(
+                {
+                    "id": item.id,
+                    "cart_id": item.cart_id,
+                    "product_id": item.product_id,
+                    "quantity": item.quantity,
+                    "product_name": name,
+                    "price": price,
+                }
+            )
+
         responses.append(
             {
                 "id": cart.id,
                 "user_id": cart.user_id,
                 "name": cart.name,
                 "updated_at": cart.updated_at,
-                "items": [],
-                "total_price": 0.0,
+                "items": items_response,
+                "total_price": total_price,
             }
         )
     return responses
@@ -83,8 +110,15 @@ async def get_cart(
     total_price = 0.0
     for item in cart.items:
         product_data = await fetch_product_details(item.product_id)
-        price = product_data.get("price", 0.0)
-        name = product_data.get("name", "Невідомий товар")
+        name = product_data.get("title", "Невідомий товар")
+        
+        prices = product_data.get("prices", [])
+        valid_prices = [p.get("price", 0.0) for p in prices if p.get("in_stock", False)]
+        if valid_prices:
+            price = min(valid_prices)
+        else:
+            all_prices = [p.get("price", 0.0) for p in prices]
+            price = min(all_prices) if all_prices else 0.0
 
         item_price = price * item.quantity
         total_price += item_price
