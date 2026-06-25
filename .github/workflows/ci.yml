@@ -532,15 +532,15 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=local,src=/tmp/buildx-cache/${{ matrix.service.name }}
-          cache-to: type=local,dest=/tmp/buildx-cache/${{ matrix.service.name }}-new,mode=max
+          cache-from: type=local,src=/var/tmp/buildx-cache/${{ matrix.service.name }}
+          cache-to: type=local,dest=/var/tmp/buildx-cache/${{ matrix.service.name }}-new,mode=max
 
       # ── Ротація кешу (щоб не росло безкінечно) ──
       - name: Rotate Docker cache
         run: |
-          rm -rf /tmp/buildx-cache/${{ matrix.service.name }}
-          mv /tmp/buildx-cache/${{ matrix.service.name }}-new \
-             /tmp/buildx-cache/${{ matrix.service.name }} 2>/dev/null || true
+          rm -rf /var/tmp/buildx-cache/${{ matrix.service.name }}
+          mv /var/tmp/buildx-cache/${{ matrix.service.name }}-new \
+             /var/tmp/buildx-cache/${{ matrix.service.name }} 2>/dev/null || true
 
   # ═══════════════════════════════════════════
   #  STAGE 5 — DEPLOY TO HETZNER
