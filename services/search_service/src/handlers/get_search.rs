@@ -215,8 +215,6 @@ pub async fn search_handler(
     search_builder.with_limit(limit);
     search_builder.with_offset(offset);
 
-    search_builder.with_hits_per_page(limit);
-
     let filter_str: String;
     if let Some(ref f) = meili_filter {
         filter_str = f.clone();
