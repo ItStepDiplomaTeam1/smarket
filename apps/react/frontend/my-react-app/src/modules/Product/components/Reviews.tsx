@@ -18,9 +18,6 @@ const ReviewStars = ({ filled, size = 12 }: { filled: number; size?: number }) =
     </div>
 );
 
-// -------------------------------------------------------
-//  Форматування дати з ISO у «06 червня 2026»
-// -------------------------------------------------------
 
 const MONTHS_UA = [
     'січня', 'лютого', 'березня', 'квітня', 'травня', 'червня',
@@ -33,9 +30,6 @@ function formatDate(iso: string): string {
     return `${day} ${MONTHS_UA[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-// -------------------------------------------------------
-//  Компонент секції відгуків
-// -------------------------------------------------------
 
 interface ReviewsProps {
     productId: number;
@@ -44,21 +38,17 @@ interface ReviewsProps {
 export function Reviews({ productId }: ReviewsProps) {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    // Дані з API
     const { data: reviews = [], isLoading, isError } = useFetchProductReviews(productId);
     const deleteReview = useDeleteReview(productId);
 
-    // Авторизований користувач
     const { user, isAuthenticated } = useAuthStore();
 
-    // Обчислюємо середній рейтинг
     const avgRating = reviews.length > 0
         ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length)
         : 0;
     const avgRatingDisplay = avgRating.toFixed(1);
     const filledStarsAvg = Math.round(avgRating);
 
-    // Видалення відгуку
     const handleDelete = (reviewId: string) => {
         if (window.confirm('Ви впевнені, що хочете видалити цей відгук?')) {
             deleteReview.mutate(reviewId);

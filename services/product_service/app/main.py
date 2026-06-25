@@ -3,11 +3,13 @@ import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 
 from app.config import settings
 from app.database.session import _get_engine
 from app.listeners.pg_listener import run_pg_listener
+from app.routers.internal import router as internal_router
 from app.routers.products import router as products_router
 from app.routers.stores import router as stores_router
 
@@ -64,10 +66,20 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[],
+        allow_credentials=False,
+        allow_methods=["GET", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-User-Id"],
+    )
+
     # Каталог товарів (read-only, джерело — products_etl)
     app.include_router(products_router, prefix="/api/v1/products", tags=["products"])
     # Магазини (read-only, джерело — products_etl)
     app.include_router(stores_router, prefix="/api/v1/stores", tags=["stores"])
+    # Внутрішній ендпоінт моніторингу (лише для Gateway, не виставляти назовні)
+    app.include_router(internal_router, prefix="/api/v1/internal", tags=["internal"])
 
     @app.get("/health", tags=["system"])
     async def health() -> dict:

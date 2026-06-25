@@ -1,261 +1,380 @@
-services:
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-smarket}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_db_pass_123}
-      POSTGRES_DB: ${POSTGRES_DB:-smarket}
-    expose:
-      - "5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U smarket -d smarket" ]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
-    networks:
-      - smarket-network
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "${SMARKET_LOG_MAX_SIZE:-10m}"
+    max-file: "${SMARKET_LOG_MAX_FILES:-2}"
 
+x-healthcheck-defaults: &healthcheck-defaults
+  interval: "${SMARKET_HEALTH_INTERVAL:-15s}"
+  timeout: "${SMARKET_HEALTH_TIMEOUT:-5s}"
+  retries: 10
+  start_period: "${SMARKET_HEALTH_START_PERIOD:-30s}"
+
+x-runtime-defaults: &runtime-defaults
+  init: true
+  restart: unless-stopped
+  stop_grace_period: 30s
+  networks:
+    - smarket-network
+  logging: *default-logging
+
+x-api-defaults: &api-defaults
+  <<: *runtime-defaults
+  mem_limit: 256m
+  cpus: 0.50
+  pids_limit: 128
+
+x-job-defaults: &job-defaults
+  <<: *runtime-defaults
+  restart: "no"
+  mem_limit: 256m
+  cpus: 0.50
+  pids_limit: 128
+
+services:
   auth_service:
+    <<: *api-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/auth_service:${IMAGE_TAG:-develop}
     build:
       context: ..
       dockerfile: services/auth_service/Dockerfile
+    command:
+      - granian
+      - --interface
+      - asgi
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8001"
+      - --workers
+      - "${SMARKET_AUTH_WORKERS:-1}"
+      - services.auth_service.main:app
     expose:
       - "8001"
     env_file:
       - ../services/auth_service/.env
     depends_on:
-      db:
+      redis:
         condition: service_healthy
       auth_migration_job:
-        condition: service_completed_successfully # Ждём завершения Alembic-миграций
-    networks:
-      - smarket-network
+        condition: service_completed_successfully
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=3).read()\""]
+      start_period: "${SMARKET_API_HEALTH_START_PERIOD:-30s}"
 
   gateway_service:
+    <<: *api-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/gateway:${IMAGE_TAG:-develop}
+    mem_limit: 192m
+    cpus: 0.50
     build:
       context: ../services/gateway
       dockerfile: Dockerfile
+    command:
+      - granian
+      - --interface
+      - asgi
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --workers
+      - "${SMARKET_GATEWAY_WORKERS:-1}"
+      - app.main:app
     ports:
       - "8080:8080"
     env_file:
       - ../services/gateway/.env
     depends_on:
-      db:
+      auth_service:
         condition: service_healthy
-    networks:
-      - smarket-network
+      cart_service:
+        condition: service_healthy
+      product_service:
+        condition: service_healthy
+      reviews_service:
+        condition: service_healthy
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3).read()\""]
+      start_period: "${SMARKET_API_HEALTH_START_PERIOD:-30s}"
 
   auth_migration_job:
+    <<: *job-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/auth_service:${IMAGE_TAG:-develop}
     build:
       context: ..
       dockerfile: services/auth_service/Dockerfile
-    command: >
-      sh -c "cd /app/services/auth_service && alembic upgrade head"
+    command:
+      - sh
+      - -c
+      - cd /app/services/auth_service && alembic upgrade head
     env_file:
       - ../services/auth_service/.env
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: "no"
-    networks:
-      - smarket-network
 
   cart_migration_job:
+    <<: *job-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/cart_service:${IMAGE_TAG:-develop}
     build:
       context: ..
       dockerfile: services/cart_service/DockerFile
-    command: >
-      sh -c "cd /app/services/cart_service && alembic upgrade head"
+    command:
+      - sh
+      - -c
+      - cd /app/services/cart_service && alembic upgrade head
     env_file:
       - ../services/cart_service/.env
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: "no"
-    networks:
-      - smarket-network
 
   product_migration_job:
+    <<: *job-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/product_service:${IMAGE_TAG:-develop}
     build:
       context: ..
       dockerfile: services/product_service/DockerFile
-    command: >
-      sh -c "cd /app/services/product_service && alembic upgrade head"
+    command:
+      - sh
+      - -c
+      - cd /app/services/product_service && alembic upgrade head
     env_file:
       - ../services/product_service/.env
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: "no"
-    networks:
-      - smarket-network
 
   reviews_migration_job:
+    <<: *job-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/reviews_service:${IMAGE_TAG:-develop}
     build:
       context: ..
       dockerfile: services/reviews_service/Dockerfile
-    command: >
-      sh -c "cd /app/services/reviews_service && alembic upgrade head"
+    command:
+      - sh
+      - -c
+      - cd /app/services/reviews_service && alembic upgrade head
     env_file:
       - ../services/reviews_service/.env
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: "no"
-    networks:
-      - smarket-network
-
-
-  products_etl:
-    platform: linux/amd64   # явно фіксуємо x86_64, щоб уникнути "exec format error" на будь-конкретному хості
-    build:
-      context: ../services/products_etl
-      dockerfile: Dockerfile
-    environment:
-      - ENV=production
-      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/
-      - MONGO_URI=mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-secure_mongo_pass_123}@mongodb:27017/
-    env_file:
-      - ../services/products_etl/.env
-    expose:
-      - "8082"
-    depends_on:
-      db:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      mongodb:
-        condition: service_healthy
-    restart: on-failure
-    networks:
-      - smarket-network
 
   product_service:
+    <<: *api-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/product_service:${IMAGE_TAG:-develop}
     build:
       context: ..
       dockerfile: services/product_service/DockerFile
+    command:
+      - granian
+      - --interface
+      - asgi
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --workers
+      - "${SMARKET_PRODUCT_WORKERS:-1}"
+      - app.main:app
     expose:
       - "8000"
     env_file:
       - ../services/product_service/.env
     depends_on:
-      db:
-        condition: service_healthy
       product_migration_job:
         condition: service_completed_successfully
-    restart: on-failure
-    networks:
-      - smarket-network
-
-  mongodb:
-    image: mongo:8.3
-    container_name: smarket-mongodb
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-admin}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASS:-secure_mongo_pass_123}
-    expose:
-      - "27017"
-    volumes:
-      - mongodb_data:/data/db
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    restart: on-failure
-    networks:
-      - smarket-network
-
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: smarket-rabbitmq
-    expose:
-      - "5672"
-      - "15672"
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-smarket}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-secure_rmq_pass_123}
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    healthcheck:
-      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
-      interval: 10s
-      timeout: 10s
-      retries: 10
-      start_period: 30s
-    networks:
-      - smarket-network
-
-  redis:
-    image: redis:7-alpine
-    container_name: smarket-redis
-    expose:
-      - "6379"
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-    restart: on-failure
-    networks:
-      - smarket-network
-
-  email_worker:
-    build:
-      context: ../services/email_worker
-      dockerfile: Dockerfile
-    environment:
-      - RABBITMQ_URL=amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/
-    env_file:
-      - ../services/email_worker/.env
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    restart: on-failure
-    networks:
-      - smarket-network
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).read()\""]
+      start_period: "${SMARKET_API_HEALTH_START_PERIOD:-30s}"
 
   cart_service:
+    <<: *api-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/cart_service:${IMAGE_TAG:-develop}
     build:
       context: ..
       dockerfile: services/cart_service/DockerFile
+    command:
+      - granian
+      - --interface
+      - asgi
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8002"
+      - --workers
+      - "${SMARKET_CART_WORKERS:-1}"
+      - services.cart_service.app.main:app
     expose:
       - "8002"
     env_file:
       - ../services/cart_service/.env
     depends_on:
-      db:
-        condition: service_healthy
       cart_migration_job:
         condition: service_completed_successfully
-    restart: on-failure
-    networks:
-      - smarket-network
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/health', timeout=3).read()\""]
+      start_period: "${SMARKET_API_HEALTH_START_PERIOD:-30s}"
 
   reviews_service:
+    <<: *api-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/reviews_service:${IMAGE_TAG:-develop}
     build:
       context: ..
       dockerfile: services/reviews_service/Dockerfile
+    command:
+      - granian
+      - --interface
+      - asgi
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8004"
+      - --workers
+      - "${SMARKET_REVIEWS_WORKERS:-1}"
+      - app.main:app
     expose:
       - "8004"
     env_file:
       - ../services/reviews_service/.env
     depends_on:
-      db:
-        condition: service_healthy
       reviews_migration_job:
         condition: service_completed_successfully
-    restart: on-failure
-    networks:
-      - smarket-network
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8004/health', timeout=3).read()\""]
+      start_period: "${SMARKET_API_HEALTH_START_PERIOD:-30s}"
+
+  redis:
+    <<: *runtime-defaults
+    image: redis:7-alpine
+    command:
+      - redis-server
+      - --maxmemory
+      - "${REDIS_MAXMEMORY:-128mb}"
+      - --maxmemory-policy
+      - allkeys-lru
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+    expose:
+      - "6379"
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "redis-cli", "ping"]
+      start_period: "${REDIS_HEALTH_START_PERIOD:-10s}"
+    mem_limit: 192m
+    cpus: 0.25
+    pids_limit: 64
+
+  rabbitmq:
+    <<: *runtime-defaults
+    image: rabbitmq:3-alpine
+    expose:
+      - "5672"
+    environment:
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_USER:-smarket}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_PASS:-secure_rmq_pass_123}"
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "+S 1:1 +sbwt none +sbwtdcpu none +sbwtdio none"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      timeout: "${RABBITMQ_HEALTH_TIMEOUT:-10s}"
+      retries: 10
+      start_period: "${RABBITMQ_HEALTH_START_PERIOD:-30s}"
+    mem_limit: 384m
+    cpus: 0.50
+    pids_limit: 256
+
+  mongodb:
+    <<: *runtime-defaults
+    image: mongo:7.0
+    command:
+      - mongod
+      - --bind_ip_all
+      - --wiredTigerCacheSizeGB
+      - "${MONGO_CACHE_SIZE_GB:-0.25}"
+      - --quiet
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: "${MONGO_USER:-admin}"
+      MONGO_INITDB_ROOT_PASSWORD: "${MONGO_PASS:-secure_mongo_pass_123}"
+    expose:
+      - "27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "mongosh --quiet --host 127.0.0.1 --port 27017 --username \"$$MONGO_INITDB_ROOT_USERNAME\" --password \"$$MONGO_INITDB_ROOT_PASSWORD\" --authenticationDatabase admin --eval 'quit(db.adminCommand({ ping: 1 }).ok ? 0 : 1)'"]
+      interval: "${MONGO_HEALTH_INTERVAL:-10s}"
+      timeout: "${MONGO_HEALTH_TIMEOUT:-10s}"
+      retries: 30
+      start_period: "${MONGO_HEALTH_START_PERIOD:-120s}"
+    mem_limit: 768m
+    cpus: 1.00
+    pids_limit: 256
+    labels:
+      ofelia.enabled: "true"
+      # Щодня о 03:00 UTC — видаляємо оброблені/провалені сирі сторінки старші за 24 години
+      ofelia.job-exec.mongo-cleanup.schedule: "0 3 * * *"
+      ofelia.job-exec.mongo-cleanup.no-overlap: "true"
+      ofelia.job-exec.mongo-cleanup.command: >-
+        mongosh
+        "mongodb://$$MONGO_INITDB_ROOT_USERNAME:$$MONGO_INITDB_ROOT_PASSWORD@127.0.0.1:27017/?authSource=admin"
+        --quiet
+        --eval
+        "db.getSiblingDB('smarket_datalake').raw_pages.deleteMany({status:{$in:['processed','failed']},fetched_at:{$lt:new Date(Date.now()-86400000)}})"
+
+  email_worker:
+    <<: *api-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/email_worker:${IMAGE_TAG:-develop}
+    build:
+      context: ../services/email_worker
+      dockerfile: Dockerfile
+    environment:
+      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
+    env_file:
+      - ../services/email_worker/.env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    mem_limit: 160m
+    cpus: 0.25
+    pids_limit: 96
+
+  products_etl:
+    <<: *runtime-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/products_etl:${IMAGE_TAG:-develop}
+    build:
+      context: ../services/products_etl
+      dockerfile: Dockerfile
+    environment:
+      ENV: production
+      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
+      MONGO_URI: "mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-secure_mongo_pass_123}@mongodb:27017/?authSource=admin"
+    env_file:
+      - ../services/products_etl/.env
+    expose:
+      - "8082"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+    mem_limit: 384m
+    cpus: 0.75
+    pids_limit: 128
+
+  ofelia:
+    <<: *runtime-defaults
+    image: mcuadros/ofelia:latest
+    command: daemon --docker
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    mem_limit: 64m
+    cpus: 0.10
+    pids_limit: 32
 
 volumes:
-  postgres_data:
   rabbitmq_data:
   mongodb_data:
 

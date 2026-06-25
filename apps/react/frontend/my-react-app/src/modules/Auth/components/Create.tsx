@@ -27,7 +27,6 @@ interface RegisterResponse {
     user: User;
 }
 
-// --- Password checklist component ---
 const PasswordChecklist = ({ password }: { password: string }) => {
     const rules = [
         { label: 'Мінімум 8 символів', check: () => password.length >= 8 },
@@ -58,7 +57,6 @@ const PasswordChecklist = ({ password }: { password: string }) => {
     );
 };
 
-// --- Field validation helpers ---
 
 const emailRegex = /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i;
 
@@ -79,14 +77,13 @@ function validateEmail(value: string): string {
         const domainName = domain.split('.')[0];
         const tld = domain.split('.').slice(1).join('.');
 
-        // Popular domains typo prevention
         const popularDomains = ['gmail', 'yahoo', 'hotmail', 'outlook', 'icloud'];
         if (popularDomains.includes(domainName)) {
             if (['c', 'co', 'con', 'comn', 'xom', 'cpm'].includes(tld)) {
                 return `Можливо, ви мали на увазі ${domainName}.com?`;
             }
             if (tld === 'ua' || tld === 'net') {
-                 // That's fine, although gmail.ua is rare, ukr.net is common.
+                 // Усе с кайфом
             }
         }
         
@@ -114,7 +111,6 @@ function validateConfirm(password: string, confirm: string): string {
     return '';
 }
 
-// --- Component ---
 
 export function Create() {
     const navigate = useNavigate();
@@ -137,7 +133,6 @@ export function Create() {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [agree, setAgree] = useState(false);
 
-    // Per-field errors (shown after first blur or submit attempt)
     const [touched, setTouched] = useState({
         name: false,
         email: false,
@@ -203,7 +198,6 @@ export function Create() {
         e.preventDefault();
         setServerError('');
 
-        // Mark all fields as touched so errors appear
         setTouched({ name: true, email: true, password: true, confirm: true });
 
         const hasErrors =
@@ -222,7 +216,6 @@ export function Create() {
         registerMutation.mutate();
     };
 
-    // Derived border classes
     const fieldBorder = (error: string, isTouched: boolean) =>
         isTouched && error
             ? 'border-red-400 focus:border-red-400'

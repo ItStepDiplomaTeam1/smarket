@@ -1,0 +1,1 @@
+trigger CI build to push initial images to GHCR

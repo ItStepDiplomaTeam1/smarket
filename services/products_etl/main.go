@@ -123,6 +123,12 @@ func main() {
 		log.Printf("WARN: не вдалось синхронізувати магазини: %v", err)
 	}
 
+	// SeedCategories запускається після SeedStores, оскільки потребує хоча б одного
+	// активного магазину (слаги категорій глобальні — достатньо одного store).
+	if err := service.SeedCategories(seedCtx, infra.PgPool); err != nil {
+		log.Printf("WARN: не вдалось синхронізувати категорії: %v", err)
+	}
+
 	// Оголошується черга до старту горутин, щоб уникнути race condition
 	declareQueue(infra.RabbitConn, cfg.ETLQueueName)
 

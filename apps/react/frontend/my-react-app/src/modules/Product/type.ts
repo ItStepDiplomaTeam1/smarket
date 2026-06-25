@@ -18,6 +18,12 @@ export interface ProductPrice {
   store: Store;
 }
 
+export interface Category {
+  id: number;
+  slug: string;
+  name: string;
+}
+
 export interface Product {
   id: number;
   ean: string | null;
@@ -28,6 +34,7 @@ export interface Product {
   weight: number;
   image_url: string | null;
   canonical_category_id: number | null;
+  category: Category | null;
   created_at: string;
   prices: ProductPrice[];
 }

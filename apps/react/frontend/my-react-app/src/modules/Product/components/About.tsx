@@ -6,7 +6,8 @@ interface AboutProps {
 
 export function About({ product }: AboutProps) {
   if (!product) return null;
-  const generatedDescription = `${product.title} — якісний продукт категорії, представлений брендом "${product.brand || 'без ТМ'}". Вага/об'єм становить ${product.weight && product.weight > 0 ? `${product.weight} ${product.unit}` : `1 ${product.unit || 'шт'}`}.`;
+  const categoryName = product.category ? product.category.name : '';
+  const generatedDescription = `${product.title} — якісний продукт${categoryName ? ` категорії "${categoryName}"` : ' категорії'}, представлений брендом "${product.brand || 'без ТМ'}". Вага/об'єм становить ${product.weight && product.weight > 0 ? `${product.weight} ${product.unit}` : `1 ${product.unit || 'шт'}`}.`;
 
   const infoRows = [
     [
@@ -17,7 +18,7 @@ export function About({ product }: AboutProps) {
     ],
     [
       { label: 'Дата додавання', val: new Date(product.created_at).toLocaleDateString('uk-UA') },
-      { label: 'Категорія ID', val: product.canonical_category_id !== null ? String(product.canonical_category_id) : 'Не вказано' },
+      { label: 'Категорія', val: product.category ? product.category.name : (product.canonical_category_id !== null ? `ID: ${product.canonical_category_id}` : 'Не вказано') },
       { label: 'Країна-виробник', val: 'Україна' }, 
       { label: 'Статус', val: 'В наявності' },
     ]

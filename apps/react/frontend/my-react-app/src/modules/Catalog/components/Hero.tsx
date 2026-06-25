@@ -1,15 +1,44 @@
+import { useQuery } from '@tanstack/react-query';
+
 interface StatItem {
   value: string;
   label: string;
 }
 
-const STATS_DATA: StatItem[] = [
-  { value: '1 240', label: 'товарів' },
-  { value: '12', label: 'магазинів' },
-  { value: 'до 30%', label: 'економії' }
-];
+interface ProductsResponse {
+  items: [];
+  total: number;
+}
+
+// ================= ФУНКЦІЯ ОТРИМАННЯ ДАНИХ =================
+const fetchProducts = async (page: number, stores: string[]): Promise<ProductsResponse> => {
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://157.180.74.21:8080';
+    let url = new URL(`${apiBaseUrl}/api/v1/products`);
+    const res = await fetch(url.toString());
+  
+    if (!res.ok) {
+        throw new Error('Помилка завантаження товарів');
+    }
+    
+    return res.json();
+};
 
 export function Hero() {
+
+  // Синхронізація запиту з реактивними ключами стейтів
+  const { data, isLoading } = useQuery<ProductsResponse>({
+      queryKey: ['productsList'],
+      queryFn: () => fetchProducts(1, []),
+  });
+  
+  const totalProducts = data?.total ?? 0;
+
+  const STATS_DATA: StatItem[] = [
+    { value: totalProducts.toString(), label: 'товарів' },
+    { value: '5', label: 'магазинів' },
+    { value: 'до 30%', label: 'економії' }
+  ];
+
   return (
     <section className="w-full pt-[40px] pb-[60px] bg-[#F4F9F6]">
       <div className="w-full max-w-[1228px] mx-auto px-[20px] flex justify-between items-end gap-[40px] mobile:flex-col mobile:items-start mobile:gap-[30px]">

@@ -15,9 +15,6 @@ import (
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
-// резервний ID для категорій, яких ще нема в нашому маппінгу
-const unknownCategoryID = 999
-
 // ---------------------------------------------------------------------------
 // Горутина №2: Transform & Load  (MongoDB → PostgreSQL)
 // ---------------------------------------------------------------------------
@@ -429,7 +426,8 @@ func batchUpsertPage(
 					brand     = COALESCE(NULLIF(EXCLUDED.brand, ''), products.brand),
 					unit      = EXCLUDED.unit,
 					weight    = EXCLUDED.weight,
-					image_url = COALESCE(NULLIF(EXCLUDED.image_url, ''), products.image_url)`,
+					image_url = COALESCE(NULLIF(EXCLUDED.image_url, ''), products.image_url),
+					canonical_category_id = EXCLUDED.canonical_category_id`,
 				canonicalEAN, storeProductID, p.Title, brand, p.Unit, p.Weight, imageURL, categoryID,
 			)
 		} else {
@@ -445,7 +443,8 @@ func batchUpsertPage(
 					brand     = COALESCE(NULLIF(EXCLUDED.brand, ''), products.brand),
 					unit      = EXCLUDED.unit,
 					weight    = EXCLUDED.weight,
-					image_url = COALESCE(NULLIF(EXCLUDED.image_url, ''), products.image_url)`,
+					image_url = COALESCE(NULLIF(EXCLUDED.image_url, ''), products.image_url),
+					canonical_category_id = EXCLUDED.canonical_category_id`,
 				storeProductID, storeID, p.Title, brand, p.Unit, p.Weight, imageURL, categoryID,
 			)
 		}
@@ -617,43 +616,53 @@ func batchUpsertPage(
 // ResolveCategoryID — резолв slug → canonical_category_id
 // ---------------------------------------------------------------------------
 
-// ResolveCategoryID шукає canonical_category_id для заданого slug у таблиці
-// store_categories_mapping. Якщо слаг не знайдено — автоматично додає його
-// з тимчасовим canonical_category_id=999 (unknown) та повертає unknownCategoryID.
+// ResolveCategoryID шукає id категорії для заданого slug у таблиці categories.
+// Якщо слаг не знайдено — автоматично створює нову категорію з порожнім name
+// (name заповниться при наступному SeedCategories) та повертає її id.
+// Жодних «unknownCategoryId = 999» — кожен slug однозначно мапиться на категорію.
 func ResolveCategoryID(ctx context.Context, pgPool *pgxpool.Pool, categorySlug string) (int, error) {
-	const query = `
-		SELECT canonical_category_id
-		FROM   store_categories_mapping
-		WHERE  slug = $1
-		LIMIT  1
-	`
+	// 1. Шукаємо існуючу категорію.
+	var id int
+	err := pgPool.QueryRow(ctx,
+		`SELECT id FROM categories WHERE slug = $1`,
+		categorySlug,
+	).Scan(&id)
 
-	var canonicalID int
-	err := pgPool.QueryRow(ctx, query, categorySlug).Scan(&canonicalID)
-
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			// Автоматично додаємо новий slug з тимчасовим ID
-			_, insertErr := pgPool.Exec(ctx, `
-				INSERT INTO store_categories_mapping (slug, canonical_category_id)
-				VALUES ($1, $2)
-				ON CONFLICT (slug) DO NOTHING`,
-				categorySlug, unknownCategoryID,
-			)
-			if insertErr != nil {
-				log.Printf("[Transform] WARN: не вдалось додати slug %q в store_categories_mapping: %v",
-					categorySlug, insertErr)
-			} else {
-				log.Printf("[Transform] ✚ Новий slug %q додано в store_categories_mapping (ID=%d). "+
-					"Оновіть canonical_category_id для точної категоризації.",
-					categorySlug, unknownCategoryID)
-			}
-			return unknownCategoryID, nil
-		}
-		return 0, fmt.Errorf("SELECT store_categories_mapping: %w", err)
+	if err == nil {
+		return id, nil
+	}
+	if err != pgx.ErrNoRows {
+		return 0, fmt.Errorf("SELECT categories: %w", err)
 	}
 
-	return canonicalID, nil
+	// 2. Не знайдено — ліниве авто-створення.
+	//    ON CONFLICT (slug) DO NOTHING захищає від гонки між воркерами.
+	//    RETURNING id спрацює лише якщо цей виклик вставив рядок.
+	err = pgPool.QueryRow(ctx, `
+		INSERT INTO categories (slug, name) VALUES ($1, '')
+		ON CONFLICT (slug) DO NOTHING
+		RETURNING id`,
+		categorySlug,
+	).Scan(&id)
+
+	if err == nil {
+		log.Printf("[Transform] ✚ Новий slug %q додано в categories (name порожнє — заповниться наступним SeedCategories)", categorySlug)
+		return id, nil
+	}
+
+	// 3. RETURNING порожнє через ON CONFLICT (інший воркер вставив першим) — повторний SELECT.
+	if err == pgx.ErrNoRows {
+		err = pgPool.QueryRow(ctx,
+			`SELECT id FROM categories WHERE slug = $1`,
+			categorySlug,
+		).Scan(&id)
+		if err != nil {
+			return 0, fmt.Errorf("повторний SELECT categories після конфлікту: %w", err)
+		}
+		return id, nil
+	}
+
+	return 0, fmt.Errorf("INSERT categories: %w", err)
 }
 
 // ---------------------------------------------------------------------------

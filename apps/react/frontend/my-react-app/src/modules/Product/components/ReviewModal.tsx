@@ -1,10 +1,6 @@
 import { useState } from 'react';
 import { useCreateReview } from '@/hooks/api/useReviewsApi';
 
-// -------------------------------------------------------
-//  Інтерактивний вибір рейтингу (зірочки з hover-ефектом)
-// -------------------------------------------------------
-
 function StarRating({
   value,
   onChange,
@@ -47,9 +43,6 @@ function StarRating({
   );
 }
 
-// -------------------------------------------------------
-//  Модальне вікно створення відгуку
-// -------------------------------------------------------
 
 interface ReviewModalProps {
   productId: number;
@@ -64,7 +57,6 @@ export function ReviewModal({ productId, isOpen, onClose }: ReviewModalProps) {
 
   const createReview = useCreateReview();
 
-  // Скидаємо форму при закритті
   const handleClose = () => {
     setRating(0);
     setText('');
@@ -87,7 +79,6 @@ export function ReviewModal({ productId, isOpen, onClose }: ReviewModalProps) {
       {
         onSuccess: () => {
           setShowSuccess(true);
-          // Автоматично закриваємо через 1.5 секунди
           setTimeout(() => {
             handleClose();
           }, 1500);
@@ -99,19 +90,16 @@ export function ReviewModal({ productId, isOpen, onClose }: ReviewModalProps) {
   if (!isOpen) return null;
 
   return (
-    /* Overlay */
     <div
       className="fixed inset-0 z-[1000] bg-black/40 backdrop-blur-[8px] flex items-center justify-center font-inter"
       onClick={(e) => {
         if (e.target === e.currentTarget) handleClose();
       }}
     >
-      {/* Modal card */}
       <div
         className="relative w-[480px] max-w-[90vw] bg-white rounded-[24px] p-[40px] shadow-[0px_18px_48px_rgba(23,59,51,0.12)]
                     animate-[modalSlideIn_0.25s_ease-out]"
       >
-        {/* Кнопка закриття */}
         <button
           type="button"
           onClick={handleClose}
@@ -126,7 +114,6 @@ export function ReviewModal({ productId, isOpen, onClose }: ReviewModalProps) {
           </svg>
         </button>
 
-        {/* Success стан */}
         {showSuccess ? (
           <div className="flex flex-col items-center gap-[16px] py-[24px]">
             <div className="w-[56px] h-[56px] bg-[#EAF7F2] rounded-full flex items-center justify-center">
@@ -143,7 +130,6 @@ export function ReviewModal({ productId, isOpen, onClose }: ReviewModalProps) {
           </div>
         ) : (
           <>
-            {/* Заголовок */}
             <h2 className="font-manrope font-[700] text-[24px] leading-[36px] text-[#265447] m-0 mb-[8px]">
               Написати відгук
             </h2>
@@ -152,7 +138,6 @@ export function ReviewModal({ productId, isOpen, onClose }: ReviewModalProps) {
             </p>
 
             <form onSubmit={handleSubmit} className="flex flex-col">
-              {/* Рейтинг */}
               <label className="text-[13px] font-semibold text-[#265447] mb-[8px] block">
                 Оцінка <span className="text-[#EF4444]">*</span>
               </label>
@@ -165,7 +150,6 @@ export function ReviewModal({ productId, isOpen, onClose }: ReviewModalProps) {
                 )}
               </div>
 
-              {/* Текст відгуку */}
               <label htmlFor="review-text" className="text-[13px] font-semibold text-[#265447] mb-[8px] block">
                 Ваш коментар
               </label>
@@ -185,7 +169,6 @@ export function ReviewModal({ productId, isOpen, onClose }: ReviewModalProps) {
                 {text.length} / 1000
               </span>
 
-              {/* Помилка */}
               {createReview.isError && (
                 <div className="flex items-center gap-[8px] bg-[#FEF2F2] border border-[#FECACA] rounded-[10px] px-[16px] py-[12px] mb-[16px]">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -199,7 +182,6 @@ export function ReviewModal({ productId, isOpen, onClose }: ReviewModalProps) {
                 </div>
               )}
 
-              {/* Кнопка надіслати */}
               <button
                 type="submit"
                 disabled={rating === 0 || createReview.isPending}
@@ -211,7 +193,6 @@ export function ReviewModal({ productId, isOpen, onClose }: ReviewModalProps) {
               >
                 {createReview.isPending ? (
                   <>
-                    {/* Спіннер */}
                     <svg
                       className="animate-spin"
                       width="18"
@@ -238,7 +219,6 @@ export function ReviewModal({ productId, isOpen, onClose }: ReviewModalProps) {
         )}
       </div>
 
-      {/* Анімація появи модалки */}
       <style>{`
         @keyframes modalSlideIn {
           from {

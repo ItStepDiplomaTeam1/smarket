@@ -14,6 +14,14 @@ class StoreResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class CategoryResponse(BaseModel):
+    id: int
+    slug: str
+    name: str
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class PriceResponse(BaseModel):
     id: int
     product_id: int
@@ -44,6 +52,7 @@ class ProductResponse(BaseModel):
     weight: Optional[float] = None
     image_url: Optional[str] = None
     canonical_category_id: Optional[int] = None
+    category: Optional[CategoryResponse] = None
     created_at: datetime.datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -104,6 +113,11 @@ class ProductOffersResponse(ProductResponse):
     model_config = ConfigDict(from_attributes=True)
 
 
+class PaginatedProductsResponse(BaseModel):
+    total: int
+    items: list[ProductOffersResponse]
+
+
 class ProductFilters(BaseModel):
     category_id: Optional[int] = None
     brand: Optional[str] = None
@@ -114,10 +128,3 @@ class ProductFilters(BaseModel):
     search: Optional[str] = None
     skip: int = 0
     limit: int = 100
-
-
-class CategoryResponse(BaseModel):
-    id: int
-    slug: str
-
-    model_config = ConfigDict(from_attributes=True)

@@ -242,7 +242,7 @@ async def login(
 
 
 @router.post("/refresh", response_model=TokenResponse, status_code=status.HTTP_200_OK)
-async def refresh(request: Request, response: Response):
+async def refresh(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
     refresh_token = request.cookies.get("refresh_token")
 
     if not refresh_token:
@@ -280,13 +280,42 @@ async def refresh(request: Request, response: Response):
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    logger.info(f"Успішно оновлено токени для користувача з ID: {payload.get('sub')}")
-    new_access_token = create_access_token(
-        payload["sub"], payload["role"], payload.get("email", "user@example.com")
+    user_id = payload.get("sub")
+    import uuid
+
+    try:
+        user_uuid = uuid.UUID(user_id)
+    except (ValueError, TypeError) as err:
+        logger.warning(f"Невалідний формат ID користувача в токені: {user_id}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid user ID in token",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from err
+
+    result = await db.execute(select(User).where(User.id == user_uuid))
+    user = result.scalar_one_or_none()
+    if not user:
+        logger.warning(f"Користувача з ID {user_id} не знайдено при оновленні токена")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if not user.is_active:
+        logger.warning(f"Користувач {user.email} (ID: {user_id}) неактивний при оновленні токена")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User account is inactive",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    logger.info(
+        f"Успішно оновлено токени для користувача з ID: {payload.get('sub')} (роль: {user.role})"
     )
-    new_refresh_token = create_refresh_token(
-        payload["sub"], payload["role"], payload.get("email", "user@example.com")
-    )
+    new_access_token = create_access_token(str(user.id), user.role, user.email)
+    new_refresh_token = create_refresh_token(str(user.id), user.role, user.email)
 
     response.set_cookie(
         key="refresh_token",

@@ -20,9 +20,9 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH=/app
 
-RUN useradd -u 8888 appuser && mkdir -p /app && chown -R appuser:appuser /app
+RUN useradd -m -u 8888 appuser && mkdir -p /app && chown -R appuser:appuser /app
 
-COPY --from=builder /root/.local /home/appuser/.local
+COPY --chown=appuser:appuser --from=builder /root/.local /home/appuser/.local
 
 ENV PATH=/home/appuser/.local/bin:$PATH
 
