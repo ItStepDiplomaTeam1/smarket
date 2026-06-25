@@ -10,12 +10,13 @@ import (
 )
 
 type Config struct {
-	MongoURI     string `env:"MONGO_URI,required"`
-	MongoDBName  string `env:"MONGO_DB_NAME" envDefault:"smarket_datalake"`
-	DatabaseURL  string `env:"DATABASE_URL,required"`
-	RabbitMQURL  string `env:"RABBITMQ_URL,required"`
-	ETLQueueName string `env:"ETL_QUEUE_NAME" envDefault:"etl_tasks"`
-	Environment  string `env:"ENV" envDefault:"development"`
+	MongoURI          string `env:"MONGO_URI,required"`
+	MongoDBName       string `env:"MONGO_DB_NAME" envDefault:"smarket_datalake"`
+	DatabaseURL       string `env:"DATABASE_URL,required"`
+	RabbitMQURL       string `env:"RABBITMQ_URL,required"`
+	ETLQueueName      string `env:"ETL_QUEUE_NAME" envDefault:"etl_tasks"`
+	Environment       string `env:"ENV" envDefault:"development"`
+	SearchServiceURL  string `env:"SEARCH_SERVICE_URL" envDefault:"http://search_service:8083"`
 }
 
 func LoadConfig() *Config {

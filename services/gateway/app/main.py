@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
 
-from app.api.routes import auth, products, cart, stores, reviews, admin
+from app.api.routes import auth, products, cart, stores, reviews, admin, search
 
 
 @asynccontextmanager
@@ -50,6 +50,8 @@ app.include_router(
     reviews.router, prefix=f"{API_V1_STR}/reviews", tags=["Reviews Proxy v1"]
 )
 app.include_router(admin.router, prefix=f"{API_V1_STR}/admin", tags=["Admin Proxy v1"])
+app.include_router(search.router, prefix=f"{API_V1_STR}/search", tags=["Search Proxy v1"])
+
 
 
 @app.get("/health", tags=["System"])

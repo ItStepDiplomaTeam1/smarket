@@ -37,6 +37,7 @@ jobs:
     outputs:
       has_python: ${{ steps.changes.outputs.has_python }}
       has_go: ${{ steps.changes.outputs.has_go }}
+      has_rust: ${{ steps.changes.outputs.has_rust }}
       has_node: ${{ steps.changes.outputs.has_node }}
       has_docker: ${{ steps.changes.outputs.has_docker }}
       has_ci_changes: ${{ steps.changes.outputs.has_ci_changes }}
@@ -175,6 +176,12 @@ jobs:
             add_docker_service "products_etl" "services/products_etl/Dockerfile" "services/products_etl"
           fi
 
+          has_rust=false
+          if changed '^services/search_service/'; then
+            has_rust=true
+            add_docker_service "search_service" "services/search_service/Dockerfile" "services/search_service"
+          fi
+
           has_node=false
           if changed '^apps/react/frontend/my-react-app/'; then
             has_node=true
@@ -187,7 +194,7 @@ jobs:
           [[ "$docker_services" != "[]" ]] && has_docker=true
 
           has_ci_changes=false
-          if [[ "$has_python" == "true" || "$has_go" == "true" || "$has_node" == "true" || "$has_docker" == "true" || "$deploy_infra" == "true" ]]; then
+          if [[ "$has_python" == "true" || "$has_go" == "true" || "$has_rust" == "true" || "$has_node" == "true" || "$has_docker" == "true" || "$deploy_infra" == "true" ]]; then
             has_ci_changes=true
           fi
 
@@ -199,6 +206,7 @@ jobs:
           {
             echo "has_python=$has_python"
             echo "has_go=$has_go"
+            echo "has_rust=$has_rust"
             echo "has_node=$has_node"
             echo "has_docker=$has_docker"
             echo "has_ci_changes=$has_ci_changes"
@@ -431,12 +439,57 @@ jobs:
       - run: go test -v -race -coverprofile=coverage.out ./...
       - run: go build ./...
 
+  # ── Rust / Search Service ─────────────────
+  rust-ci:
+    name: 🦀 Rust Search Service
+    needs: detect
+    if: needs.detect.outputs.has_rust == 'true'
+    runs-on: self-hosted
+    env:
+      CARGO_TERM_COLOR: always
+      HOME: /root
+      PATH: /root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    defaults:
+      run:
+        working-directory: services/search_service
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Cargo registry and build target
+        uses: actions/cache@v4
+        with:
+          path: |
+            /root/.cargo/registry/cache
+            /root/.cargo/registry/index
+            /root/.cargo/git/db
+            services/search_service/target
+          key: rust-${{ hashFiles('services/search_service/Cargo.lock') }}
+          restore-keys: rust-
+
+      - name: Ensure Rustup and Cargo are available
+        run: |
+          if ! command -v cargo &> /dev/null; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+            source /root/.cargo/env
+          fi
+          rustc --version
+          cargo --version
+
+      - name: Cargo clippy check
+        run: cargo clippy -- -D warnings || cargo clippy
+
+      - name: Run Cargo tests
+        run: cargo test --verbose
+
+      - name: Build target
+        run: cargo build --release
+
   # ═══════════════════════════════════════════
   #  STAGE 4 — DOCKER BUILD & PUSH → GHCR
   # ═══════════════════════════════════════════
   docker-build:
     name: 🐳 Docker — ${{ matrix.service.name }}
-    needs: [detect, security, python-quality, python-test, node-ci, go-ci]
+    needs: [detect, security, python-quality, python-test, node-ci, go-ci, rust-ci]
     if: |
       always() &&
       !contains(needs.*.result, 'failure') &&
@@ -497,7 +550,7 @@ jobs:
   # ═══════════════════════════════════════════
   deploy:
     name: 🚀 Deploy to Hetzner
-    needs: [detect, security, python-quality, python-test, node-ci, go-ci, docker-build]
+    needs: [detect, security, python-quality, python-test, node-ci, go-ci, rust-ci, docker-build]
     if: |
       always() &&
       github.ref == 'refs/heads/develop' &&
@@ -546,6 +599,7 @@ jobs:
             ["services/email_worker"]="dev_email_worker"
             ["services/reviews_service"]="dev_reviews_service"
             ["services/products_etl"]="dev_products_etl"
+            ["services/search_service"]="dev_search_service"
           )
           for path in "${!configs[@]}"; do
             config="${configs[$path]}"
@@ -573,7 +627,7 @@ jobs:
 
           for srv in services/gateway services/auth_service services/product_service \
                      services/cart_service services/email_worker services/reviews_service \
-                     services/products_etl; do
+                     services/products_etl services/search_service; do
             cp "${{ github.workspace }}/$srv/.env" "$srv/.env" 2>/dev/null || true
           done
 
@@ -582,7 +636,7 @@ jobs:
           docker compose -f infra/docker-compose.yml pull --quiet
           if ! docker compose -f infra/docker-compose.yml up -d --remove-orphans --wait --wait-timeout "${SMARKET_DEPLOY_WAIT_TIMEOUT:-240}"; then
             docker compose -f infra/docker-compose.yml ps
-            docker compose -f infra/docker-compose.yml logs --tail=150 mongodb rabbitmq redis products_etl auth_service cart_service product_service reviews_service gateway_service email_worker
+            docker compose -f infra/docker-compose.yml logs --tail=150 mongodb rabbitmq redis products_etl auth_service cart_service product_service reviews_service gateway_service email_worker search_service meilisearch
             exit 1
           fi
           docker image prune -f
@@ -601,6 +655,7 @@ jobs:
       - python-test
       - node-ci
       - go-ci
+      - rust-ci
       - docker-build
     if: always()
     runs-on: self-hosted

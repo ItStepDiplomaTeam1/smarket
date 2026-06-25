@@ -145,6 +145,41 @@ const fetchProducts = async (filters: FetchFilters): Promise<ProductsResponse> =
     const skip = (filters.page - 1) * limit;
     
     const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://157.180.74.21:8080';
+    
+    // Якщо є пошуковий запит, використовуємо швидкий повнотекстовий пошук через Meilisearch
+    if (filters.search.trim() !== '') {
+        const url = new URL(`${apiBaseUrl}/api/v1/search/search`);
+        url.searchParams.append('q', filters.search.trim());
+        url.searchParams.append('limit', limit.toString());
+        url.searchParams.append('offset', skip.toString());
+        
+        if (filters.stores.length > 0) {
+            url.searchParams.append('store_id', filters.stores[0]);
+        }
+        if (filters.category !== 'products') {
+            url.searchParams.append('category_slug', filters.category);
+        }
+        if (filters.maxPrice < 2000) {
+            url.searchParams.append('price_max', filters.maxPrice.toString());
+        }
+        if (filters.sortBy !== 'best_price' && filters.sortBy !== 'everything') {
+            const sortDirection = filters.sortBy === 'cheapest_first' ? 'asc' : 'desc';
+            url.searchParams.append('sort', `price:${sortDirection}`);
+        }
+        
+        const res = await fetch(url.toString());
+        if (!res.ok) {
+            throw new Error('Помилка пошуку товарів');
+        }
+        
+        const searchData = await res.json();
+        return {
+            items: searchData.hits || [],
+            total: searchData.total_hits || searchData.nb_hits || 0
+        };
+    }
+    
+    // Стандартний запит каталогу без пошукового запиту
     let url = new URL(`${apiBaseUrl}/api/v1/products`);
     
     // Додаємо пагінацію
@@ -167,9 +202,6 @@ const fetchProducts = async (filters: FetchFilters): Promise<ProductsResponse> =
     if (filters.maxPrice < 2000) {
         url.searchParams.append('max_price', filters.maxPrice.toString());
     }
-    if (filters.search.trim() !== '') {
-        url.searchParams.append('search', filters.search.trim());
-    }
     if (filters.sortBy !== 'best_price') {
         url.searchParams.append('sort_by', filters.sortBy);
     }
@@ -182,6 +214,7 @@ const fetchProducts = async (filters: FetchFilters): Promise<ProductsResponse> =
     
     return res.json();
 };
+
 
 export function MainContent() {
   const [page, setPage] = useState(1);
