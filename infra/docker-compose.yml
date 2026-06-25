@@ -369,6 +369,7 @@ services:
   meilisearch:
     <<: *runtime-defaults
     image: getmeili/meilisearch:v1.8
+    user: "root"
     environment:
       MEILI_MASTER_KEY: "${MEILISEARCH_API_KEY:-masterKey_smarket_secure_2025}"
       MEILI_ENV: "${MEILI_ENV:-production}"
