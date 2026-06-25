@@ -3,6 +3,7 @@
 Private endpoint called by the API Gateway to probe all infrastructure.
 Never returns HTTP 500 — every exception is caught and mapped to "Помилка".
 """
+
 import asyncio
 import logging
 import os
@@ -24,13 +25,16 @@ FAIL = "Помилка"
 
 # ── Environment-driven URLs (fall back to Docker Compose service names) ────────
 _REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379")
-_RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://smarket:secure_rmq_pass_123@rabbitmq:5672/")
+_RABBITMQ_URL = os.getenv(
+    "RABBITMQ_URL", "amqp://smarket:secure_rmq_pass_123@rabbitmq:5672/"
+)
 _MEILISEARCH_URL = os.getenv("MEILISEARCH_URL", "http://meilisearch:7700")
 
 _PROBE_TIMEOUT = 3.0  # seconds per probe
 
 
 # ── Individual probes ──────────────────────────────────────────────────────────
+
 
 async def _probe_postgres() -> str:
     try:
@@ -46,6 +50,7 @@ async def _probe_postgres() -> str:
 async def _probe_redis() -> str:
     try:
         import redis.asyncio as aioredis  # type: ignore[import]
+
         client = aioredis.from_url(_REDIS_URL, socket_connect_timeout=_PROBE_TIMEOUT)
         pong = await asyncio.wait_for(client.ping(), timeout=_PROBE_TIMEOUT)
         await client.aclose()
@@ -68,6 +73,7 @@ async def _probe_meilisearch() -> str:
 async def _probe_rabbitmq() -> str:
     try:
         import aio_pika  # type: ignore[import]
+
         conn = await asyncio.wait_for(
             aio_pika.connect_robust(_RABBITMQ_URL),
             timeout=_PROBE_TIMEOUT,
@@ -82,6 +88,7 @@ async def _probe_rabbitmq() -> str:
 
 
 # ── Route ─────────────────────────────────────────────────────────────────────
+
 
 @router.get("/health-check")
 async def internal_health_check() -> dict:
@@ -99,8 +106,8 @@ async def internal_health_check() -> dict:
     )
 
     return {
-        "PostgreSQL":   pg,
-        "Redis":        redis,
-        "Meilisearch":  meili,
-        "RabbitMQ":     rmq,
+        "PostgreSQL": pg,
+        "Redis": redis,
+        "Meilisearch": meili,
+        "RabbitMQ": rmq,
     }
