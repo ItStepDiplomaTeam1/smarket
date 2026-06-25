@@ -51,7 +51,7 @@ export const CartDetails: React.FC = () => {
             <div key={item.productId} className="flex items-center justify-between p-4 bg-white border border-[#265447]/10 rounded-xl hover:border-[#265447]/30 transition-colors">
               <div className="flex items-center gap-4 flex-1">
                 {/* Image Placeholder */}
-                <div className="w-16 h-16 bg-gray-50 rounded-lg flex items-center justify-center shrink-0 overflow-hidden relative">
+                <div className="w-16 h-16 bg-gray-50 border border-gray-100 rounded-lg flex items-center justify-center shrink-0 overflow-hidden relative">
                   <ImageIcon className="w-6 h-6 text-gray-400 absolute z-0" />
                   {item.imageUrl && (
                     <img
@@ -96,7 +96,7 @@ export const CartDetails: React.FC = () => {
                 
                 {/* Price & Delete */}
                 <div className="flex items-center gap-6 w-32 justify-end">
-                  <div className="font-bold font-['Manrope'] text-lg text-[#173B33] text-right">
+                  <div className="font-bold font-['Manrope'] text-lg text-[#173B33] text-right whitespace-nowrap">
                     {item.totalItemPrice.toFixed(2)} ₴
                   </div>
                   <button 

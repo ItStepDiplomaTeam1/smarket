@@ -24,6 +24,7 @@ class CartItemResponse(BaseModel):
     quantity: int
     product_name: Optional[str] = None
     price: Optional[float] = None
+    image_url: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

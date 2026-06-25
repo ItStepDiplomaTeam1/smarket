@@ -42,6 +42,7 @@ async def get_all_carts(
                 price = min(all_prices) if all_prices else 0.0
             
             name = product_data.get("title", "Невідомий товар")
+            image_url = product_data.get("image_url")
             item_price = price * item.quantity
             total_price += item_price
 
@@ -53,6 +54,7 @@ async def get_all_carts(
                     "quantity": item.quantity,
                     "product_name": name,
                     "price": price,
+                    "image_url": image_url,
                 }
             )
 
@@ -120,6 +122,7 @@ async def get_cart(
             all_prices = [p.get("price", 0.0) for p in prices]
             price = min(all_prices) if all_prices else 0.0
 
+        image_url = product_data.get("image_url")
         item_price = price * item.quantity
         total_price += item_price
 
@@ -131,6 +134,7 @@ async def get_cart(
                 "quantity": item.quantity,
                 "product_name": name,
                 "price": price,
+                "image_url": image_url,
             }
         )
 
@@ -237,3 +241,16 @@ async def compare_cart_prices(
     result_list = list(stores_comparison.values())
     result_list.sort(key=lambda x: (x["missing_items_count"], x["total_price"]))
     return result_list
+
+
+@router.post("/{cart_id}/duplicate", response_model=CartResponse)
+async def duplicate_cart_endpoint(
+    cart_id: uuid.UUID,
+    user_id: uuid.UUID = Depends(get_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Дублювати кошик"""
+    new_cart = await crud.duplicate_cart(db, user_id, cart_id)
+    if not new_cart:
+        raise HTTPException(status_code=404, detail="Кошик не знайдено")
+    return await get_cart(new_cart.id, user_id, db)

@@ -103,3 +103,24 @@ async def clear_cart(db: AsyncSession, user_id: uuid.UUID, cart_id: uuid.UUID) -
     await db.execute(stmt)
     await db.commit()
     return True
+
+
+async def duplicate_cart(db: AsyncSession, user_id: uuid.UUID, cart_id: uuid.UUID):
+    original_cart = await get_cart(db, user_id, cart_id)
+    if not original_cart:
+        return None
+    
+    new_cart = Cart(user_id=user_id, name=original_cart.name + " (Копія)")
+    db.add(new_cart)
+    await db.flush()
+    
+    for item in original_cart.items:
+        new_item = CartItem(cart_id=new_cart.id, product_id=item.product_id, quantity=item.quantity)
+        db.add(new_item)
+        
+    await db.commit()
+    await db.refresh(new_cart)
+    
+    stmt = select(Cart).where(Cart.id == new_cart.id).options(selectinload(Cart.items))
+    res = await db.execute(stmt)
+    return res.scalars().first()
