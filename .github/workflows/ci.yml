@@ -627,6 +627,8 @@ jobs:
                      services/products_etl services/search_service; do
             cp "${{ github.workspace }}/$srv/.env" "$srv/.env" 2>/dev/null || true
           done
+          cp "${{ github.workspace }}/services/search_service/.env" "infra/.env" 2>/dev/null || true
+
 
           export IMAGE_TAG=develop
           docker compose -f infra/docker-compose.yml config --quiet
