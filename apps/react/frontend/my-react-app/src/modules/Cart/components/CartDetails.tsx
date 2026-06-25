@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../store/useCartStore';
 import { useFetchCartDetails, useUpdateCartItem, useClearCart } from '../../../hooks/api/useCartApi';
 import { Trash2, Plus, Minus, Image as ImageIcon } from 'lucide-react';
-import mainMilk from '../../../assets/images/MainMilk.png';
+import mainMilk from '@/shared/assets/milk.svg';
 
 export const CartDetails: React.FC = () => {
   const navigate = useNavigate();
@@ -49,8 +49,8 @@ export const CartDetails: React.FC = () => {
           <div className="text-center py-10 text-[#6D8279] font-['Inter']">Кошик порожній</div>
         ) : (
           activeCart.items.map((item) => (
-            <div key={item.productId} className="flex items-center justify-between p-4 bg-white border border-[#265447]/10 rounded-xl hover:border-[#265447]/30 transition-colors">
-              <div className="flex items-center gap-4 flex-1">
+            <div key={item.productId} className="flex flex-wrap sm:flex-nowrap items-center justify-between p-4 bg-white border border-[#265447]/10 rounded-xl hover:border-[#265447]/30 transition-colors gap-4">
+              <div className="flex items-center gap-4 flex-1 min-w-[200px]">
                 {/* Image Placeholder */}
                 <div className="w-16 h-16 bg-gray-50 border border-gray-100 rounded-lg flex items-center justify-center shrink-0 overflow-hidden relative">
                   <ImageIcon className="w-6 h-6 text-gray-400 absolute z-0" />
@@ -74,7 +74,7 @@ export const CartDetails: React.FC = () => {
                 </div>
               </div>
               
-              <div className="flex items-center gap-8 ml-4 shrink-0">
+              <div className="flex items-center gap-4 sm:gap-8 ml-auto shrink-0 w-full sm:w-auto justify-between sm:justify-end">
                 {/* Quantity Controls */}
                 <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-1 border border-gray-100">
                   <button 
