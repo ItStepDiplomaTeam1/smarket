@@ -51,3 +51,12 @@ class CartStoreComparison(BaseModel):
     is_complete: bool
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ShareEmailRequest(BaseModel):
+    email: str = Field(..., description="Електронна адреса для відправки листа")
+
+
+class ImportCartResponse(BaseModel):
+    new_cart_id: uuid.UUID
+    message: str

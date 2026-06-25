@@ -6,3 +6,4 @@ asyncpg
 pydantic-settings
 httpx
 orjson
+faststream[rabbit]

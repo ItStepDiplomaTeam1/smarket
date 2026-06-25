@@ -3,11 +3,23 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 
 from app.routers import cart
+from app.config import settings
+from faststream.rabbit import RabbitBroker
+from contextlib import asynccontextmanager
+
+broker = RabbitBroker(settings.RABBITMQ_URL)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await broker.connect()
+    yield
+    await broker.close()
 
 app = FastAPI(
     title="Cart Service",
     version="1.0.0",
     default_response_class=ORJSONResponse,
+    lifespan=lifespan,
 )
 
 
