@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../store/useCartStore';
 import { useFetchCartDetails, useUpdateCartItem, useClearCart } from '../../../hooks/api/useCartApi';
-import { Trash2, Plus, Minus, Image as ImageIcon } from 'lucide-react';
+import { Trash2, Plus, Minus } from 'lucide-react';
 import mainMilk from '@/shared/assets/milk.svg';
 
 export const CartDetails: React.FC = () => {
@@ -52,7 +52,6 @@ export const CartDetails: React.FC = () => {
             <div key={item.productId} className="flex gap-4 p-4 bg-white border border-[#265447]/10 rounded-xl hover:border-[#265447]/30 transition-colors">
               {/* Image */}
               <div className="w-24 h-24 sm:w-32 sm:h-32 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center shrink-0 overflow-hidden relative p-2">
-                <ImageIcon className="w-8 h-8 text-gray-400 absolute z-0" />
                 <img
                   src={item.imageUrl || mainMilk}
                   alt={item.name}
