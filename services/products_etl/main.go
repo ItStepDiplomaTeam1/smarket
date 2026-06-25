@@ -20,6 +20,7 @@ import (
 	"smarket/services/products_etl/internal/service"
 	"smarket/services/products_etl/usefulMethods"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	amqp "github.com/rabbitmq/amqp091-go"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
@@ -85,6 +86,24 @@ func getProductsHandler(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write(body)
 }
 
+// backfillHandler запускає повну реіндексацію товарів у Meilisearch
+func backfillHandler(pgPool *pgxpool.Pool, searchServiceURL string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		log.Println("[HTTP] Отримано запит на повний бекфілл індексу Meilisearch")
+		
+		go func() {
+			_, err := service.RunFullBackfill(pgPool, searchServiceURL)
+			if err != nil {
+				log.Printf("[Backfill] Помилка асинхронного бекфіллу: %v", err)
+			}
+		}()
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{"status":"started","message":"Процес повної реіндексації запустищено у фоні. Слідкуйте за логами products_etl."}`))
+	}
+}
+
 func declareQueue(conn *amqp.Connection, name string) {
 	ch, err := conn.Channel()
 	if err != nil {
@@ -110,6 +129,37 @@ func main() {
 	defer infra.Close(context.Background())
 
 	log.Println("Усі підключення до БД та RabbitMQ успішно ініціалізовано!")
+
+	var server *http.Server
+	{
+		mux := http.NewServeMux()
+
+		if cfg.Environment == "development" {
+			mux.Handle("/docs/", httpSwagger.Handler(
+				httpSwagger.URL("/docs/doc.json"),
+			))
+			log.Println("[main] Swagger UI увімкнено (development mode)")
+		}
+
+		mux.HandleFunc("/health", healthHandler)
+		mux.HandleFunc("GET /product/get", getProductsHandler)
+		mux.HandleFunc("POST /backfill", backfillHandler(infra.PgPool, cfg.SearchServiceURL))
+
+		server = &http.Server{
+			Addr:    ":8082",
+			Handler: mux,
+		}
+
+		go func() {
+			log.Println("HTTP сервер запущено на порті ", server.Addr)
+			if cfg.Environment == "development" {
+				log.Println("Swagger UI: http://localhost:8082/docs/index.html")
+			}
+			if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Fatalf("Помилка HTTP сервера: %v", err)
+			}
+		}()
+	}
 
 	migrateCtx, migrateCancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer migrateCancel()
@@ -214,38 +264,13 @@ func main() {
 	go service.ExtractLoadWorker(infra.RabbitConn, mongoDB, cfg.ETLQueueName)
 	log.Printf("[main] ExtractLoadWorker запущено (черга: %s, MongoDB: %s)", cfg.ETLQueueName, cfg.MongoDBName)
 
-	// Горутина №3: Transform & Load (MongoDB → PostgreSQL)
+	// Горутина №3: Transform & Load (MongoDB → PostgreSQL → Meilisearch)
 	// Опитує MongoDB на нові документи, трансформує їх та зберігає в Postgres.
-	go service.TransformLoadWorker(infra.MongoClient, infra.PgPool, cfg.MongoDBName)
-	log.Printf("[main] TransformLoadWorker запущено (MongoDB: %s → PostgreSQL)", cfg.MongoDBName)
+	// Після кожного батчу надсилає оновлені товари в search_service для індексації.
+	go service.TransformLoadWorker(infra.MongoClient, infra.PgPool, cfg.MongoDBName, cfg.SearchServiceURL)
+	log.Printf("[main] TransformLoadWorker запущено (MongoDB: %s → PostgreSQL → Meilisearch via %s)", cfg.MongoDBName, cfg.SearchServiceURL)
 
-	mux := http.NewServeMux()
 
-	// Swagger UI доступний тільки в development середовищі
-	if cfg.Environment == "development" {
-		mux.Handle("/docs/", httpSwagger.Handler(
-			httpSwagger.URL("/docs/doc.json"),
-		))
-		log.Println("[main] Swagger UI увімкнено (development mode)")
-	}
-
-	mux.HandleFunc("/health", healthHandler)
-	mux.HandleFunc("GET /product/get", getProductsHandler)
-
-	server := &http.Server{
-		Addr:    ":8082",
-		Handler: mux,
-	}
-
-	go func() {
-		log.Println("HTTP сервер запущено на порті ", server.Addr)
-		if cfg.Environment == "development" {
-			log.Println("Swagger UI: http://localhost:8082/docs/index.html")
-		}
-		if err := server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("Помилка HTTP сервера: %v", err)
-		}
-	}()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)

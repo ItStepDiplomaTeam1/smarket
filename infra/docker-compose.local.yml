@@ -299,6 +299,8 @@ services:
         condition: service_healthy
       reviews_service:
         condition: service_healthy
+      search_service:
+        condition: service_healthy
     healthcheck:
       <<: *healthcheck-local
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3).read()\""]
@@ -328,6 +330,7 @@ services:
       ENV: development
       RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
       MONGO_URI: "mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-secure_mongo_pass_123}@mongodb:27017/?authSource=admin"
+      SEARCH_SERVICE_URL: "http://search_service:8083"
     env_file:
       - ../services/products_etl/.env
     depends_on:
@@ -335,10 +338,49 @@ services:
         condition: service_healthy
       mongodb:
         condition: service_healthy
+      search_service:
+        condition: service_healthy
+
+  meilisearch:
+    <<: *runtime-local
+    image: getmeili/meilisearch:v1.8
+    ports:
+      - "7700:7700"
+    environment:
+      MEILI_MASTER_KEY: "${MEILISEARCH_API_KEY:-masterKey_smarket_secure_2025}"
+      MEILI_ENV: development
+      MEILI_NO_ANALYTICS: "true"
+    volumes:
+      - meilisearch_data:/meili_data
+    healthcheck:
+      <<: *healthcheck-local
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:7700/health || exit 1"]
+      start_period: 5s
+
+  search_service:
+    <<: *api-local
+    build:
+      context: ../services/search_service
+      dockerfile: Dockerfile
+    ports:
+      - "8083:8083"
+    environment:
+      PORT: "8083"
+      MEILISEARCH_HOST: "http://meilisearch:7700"
+      MEILISEARCH_API_KEY: "${MEILISEARCH_API_KEY:-masterKey_smarket_secure_2025}"
+      RUST_LOG: "info"
+    depends_on:
+      meilisearch:
+        condition: service_healthy
+    healthcheck:
+      <<: *healthcheck-local
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8083/api/v1/health || exit 1"]
+      start_period: 10s
 
 volumes:
   rabbitmq_data:
   mongodb_data:
+  meilisearch_data:
 
 networks:
   smarket-network:

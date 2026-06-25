@@ -1,5 +1,5 @@
 # --- Build Stage ---
-FROM rust:1.80-slim AS builder
+FROM rust:1.96-slim AS builder
 WORKDIR /usr/src/search_service
 
 # Install dependencies needed for compiling OpenSSL and other libraries
@@ -25,6 +25,7 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     libssl3 \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
