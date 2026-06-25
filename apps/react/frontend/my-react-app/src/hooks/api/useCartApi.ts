@@ -57,13 +57,14 @@ export const useFetchCartDetails = (cartId: string | null) => {
         bestPrice: comparisonData[0]?.totalPrice || data.total_price,
         potentialSavings: 0,
         updatedAt: data.updated_at,
-        items: data.items.map((item: { product_id: string; product_name: string; quantity: number; price: number; id: string }) => ({
+        items: data.items.map((item: { product_id: string; product_name: string; quantity: number; price: number; id: string; image_url?: string }) => ({
           productId: item.product_id,
           name: item.product_name,
           quantity: item.quantity,
           basePrice: item.price,
           totalItemPrice: item.price * item.quantity,
-          id: item.id // mapping the cart_item id
+          id: item.id, // mapping the cart_item id
+          imageUrl: item.image_url
         })),
         summary: {
           totalItems: data.items.length,
@@ -147,6 +148,20 @@ export const useClearCart = () => {
     },
     onSuccess: (_, cartId) => {
       queryClient.invalidateQueries({ queryKey: ['cart', cartId] });
+      queryClient.invalidateQueries({ queryKey: ['carts'] });
+    },
+  });
+};
+
+export const useDuplicateCart = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (cartId: string) => {
+      const { data } = await apiClient.post(`/api/v1/cart/${cartId}/duplicate`);
+      return data;
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['carts'] });
     },
   });

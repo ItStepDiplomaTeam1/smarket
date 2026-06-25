@@ -51,8 +51,18 @@ export const CartDetails: React.FC = () => {
             <div key={item.productId} className="flex items-center justify-between p-4 bg-white border border-[#265447]/10 rounded-xl hover:border-[#265447]/30 transition-colors">
               <div className="flex items-center gap-4 flex-1">
                 {/* Image Placeholder */}
-                <div className="w-16 h-16 bg-gray-50 rounded-lg flex items-center justify-center shrink-0">
-                  <ImageIcon className="w-6 h-6 text-gray-400" />
+                <div className="w-16 h-16 bg-gray-50 rounded-lg flex items-center justify-center shrink-0 overflow-hidden relative">
+                  <ImageIcon className="w-6 h-6 text-gray-400 absolute z-0" />
+                  {item.imageUrl && (
+                    <img
+                      src={item.imageUrl}
+                      alt={item.name}
+                      className="w-full h-full object-cover relative z-10"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  )}
                 </div>
                 
                 <div className="flex-1">

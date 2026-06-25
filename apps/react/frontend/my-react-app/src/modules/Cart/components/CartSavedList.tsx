@@ -1,13 +1,30 @@
 import React, { useRef, useEffect } from 'react';
 import { useCartStore } from '../store/useCartStore';
-import { useFetchCarts, useDeleteCart } from '../../../hooks/api/useCartApi';
+import { useFetchCarts, useDeleteCart, useDuplicateCart } from '../../../hooks/api/useCartApi';
 import { MoreHorizontal, Edit2, Share2, Copy, Trash2 } from 'lucide-react';
 
 export const CartSavedList: React.FC = () => {
   const { activeCartId, setActiveCart, openMenuId, setOpenMenuId } = useCartStore();
   const { data: carts = [] } = useFetchCarts();
   const { mutate: deleteCart } = useDeleteCart();
+  const { mutate: duplicateCart } = useDuplicateCart();
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const handleShare = async (cartId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpenMenuId(null);
+    const url = `${window.location.origin}/cart/${cartId}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Мій кошик Smarket', url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        alert('Посилання скопійовано!');
+      }
+    } catch (err) {
+      console.error('Share failed', err);
+    }
+  };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -57,10 +74,20 @@ export const CartSavedList: React.FC = () => {
                     <button className="w-full text-left px-4 py-2 text-sm text-[#265447] font-['Inter'] hover:bg-gray-50 flex items-center gap-2">
                       <Edit2 className="w-4 h-4" /> Редагувати назву
                     </button>
-                    <button className="w-full text-left px-4 py-2 text-sm text-[#265447] font-['Inter'] hover:bg-gray-50 flex items-center gap-2">
+                    <button 
+                      className="w-full text-left px-4 py-2 text-sm text-[#265447] font-['Inter'] hover:bg-gray-50 flex items-center gap-2"
+                      onClick={(e) => handleShare(cart.id, e)}
+                    >
                       <Share2 className="w-4 h-4" /> Поділитися
                     </button>
-                    <button className="w-full text-left px-4 py-2 text-sm text-[#265447] font-['Inter'] hover:bg-gray-50 flex items-center gap-2">
+                    <button 
+                      className="w-full text-left px-4 py-2 text-sm text-[#265447] font-['Inter'] hover:bg-gray-50 flex items-center gap-2"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        duplicateCart(cart.id);
+                        setOpenMenuId(null);
+                      }}
+                    >
                       <Copy className="w-4 h-4" /> Дублювати
                     </button>
                     <button 

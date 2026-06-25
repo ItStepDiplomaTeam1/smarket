@@ -6,6 +6,21 @@ export const CartSummary: React.FC = () => {
   const { activeCartId } = useCartStore();
   const { data: activeCart, isLoading } = useFetchCartDetails(activeCartId);
 
+  const handleShare = async () => {
+    if (!activeCartId) return;
+    const url = `${window.location.origin}/cart/${activeCartId}`;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Мій кошик Smarket', url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        alert('Посилання скопійовано!');
+      }
+    } catch (err) {
+      console.error('Share failed', err);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-6 flex items-center justify-center h-[300px]">
@@ -28,7 +43,7 @@ export const CartSummary: React.FC = () => {
         </div>
         <div className="flex justify-between">
           <span className="text-gray-500">Орієнтовна сума</span>
-          <span className="font-medium">{Number(activeCart.bestPrice).toFixed(2)} грн</span>
+          <span className="font-medium">{Number(activeCart.bestPrice).toFixed(2)} ₴</span>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-500">Найвигідніший магазин</span>
@@ -37,7 +52,7 @@ export const CartSummary: React.FC = () => {
         <div className="flex justify-between items-center pt-2 border-t border-gray-100">
           <span className="font-medium text-gray-900">Можлива економія</span>
           <span className="px-2 py-1 bg-[#ffcc00] text-yellow-900 font-bold rounded">
-            {Number(activeCart.summary.maxPossibleSavings).toFixed(2)} грн
+            {Number(activeCart.summary.maxPossibleSavings).toFixed(2)} ₴
           </span>
         </div>
       </div>
@@ -47,9 +62,9 @@ export const CartSummary: React.FC = () => {
         <h3 className="font-medium text-gray-900 mb-3 text-sm">Порівняння магазинів</h3>
         <div className="flex flex-col gap-2">
           {activeCart.summary.comparison.map((store) => (
-            <div key={store.storeName} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
-              <span className="text-[#6D8279] font-['Inter']">{store.storeName}</span>
-              <span className="font-semibold text-[#173B33] font-['Inter']">{Number(store.totalPrice).toFixed(2)} ₴</span>
+            <div key={store.storeName} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0 gap-4">
+              <span className="text-[#6D8279] font-['Inter'] flex-1 truncate" title={store.storeName}>{store.storeName}</span>
+              <span className="font-semibold text-[#173B33] font-['Inter'] whitespace-nowrap shrink-0">{Number(store.totalPrice).toFixed(2)} ₴</span>
             </div>
           ))}
         </div>
@@ -66,7 +81,10 @@ export const CartSummary: React.FC = () => {
       <button className="w-full py-3 bg-[#265447] text-white rounded-xl font-medium font-['Inter'] hover:bg-[#1A3E2F] transition-colors mb-3">
         Створити список покупок
       </button>
-      <button className="w-full py-3 border border-[#265447]/20 text-[#265447] rounded-xl font-medium font-['Inter'] hover:bg-[#F6FAF8] transition-colors">
+      <button 
+        className="w-full py-3 border border-[#265447]/20 text-[#265447] rounded-xl font-medium font-['Inter'] hover:bg-[#F6FAF8] transition-colors"
+        onClick={handleShare}
+      >
         Поділитися кошиком
       </button>
       
