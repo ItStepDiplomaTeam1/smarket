@@ -14,16 +14,19 @@ export const apiClient = axios.create({
 // --- Логіка автоматичного оновлення токена ---
 let isRefreshing = false;
 let failedQueue: Array<{
-  resolve: (token: string) => void;
+  resolve: (token: string | null) => void;
   reject: (err: unknown) => void;
 }> = [];
 
 function processQueue(error: unknown, token: string | null) {
   failedQueue.forEach(({ resolve, reject }) => {
     if (error) {
-      reject(error);
+      // Якщо оновлення токена не вдалося, даємо запитам у черзі інтерцептора запитів
+      // спробувати виконатися анонімно (передаємо null).
+      // Інтерцептор відповідей сам відхилить свій запит, якщо отримає null.
+      resolve(null);
     } else {
-      resolve(token as string);
+      resolve(token);
     }
   });
   failedQueue = [];
@@ -64,14 +67,14 @@ apiClient.interceptors.request.use(
     if (token && !isRefreshEndpoint && isTokenExpired(token)) {
       if (isRefreshing) {
         try {
-          token = await new Promise<string>((resolve, reject) => {
+          token = await new Promise<string | null>((resolve, reject) => {
             failedQueue.push({
               resolve,
               reject: (err) => reject(err),
             });
           });
         } catch (err) {
-          return Promise.reject(err);
+          token = null;
         }
       } else {
         isRefreshing = true;
@@ -85,7 +88,7 @@ apiClient.interceptors.request.use(
         } catch (refreshError) {
           processQueue(refreshError, null);
           useAuthStore.getState().logout();
-          return Promise.reject(refreshError);
+          token = null; // Якщо оновлення не вдалося, продовжуємо як анонімний користувач
         } finally {
           isRefreshing = false;
         }
@@ -116,15 +119,25 @@ apiClient.interceptors.response.use(
     }
 
     if (is401) {
+      // Якщо в сховищі немає токена (анонімний запит), навіть не пробуємо оновлювати
+      const storedToken = useAuthStore.getState().token;
+      if (!storedToken) {
+        return Promise.reject(error);
+      }
+
       if (isRefreshing) {
         // Запит чекає, поки виконується refresh
         return new Promise((resolve, reject) => {
           failedQueue.push({
-            resolve: (token: string) => {
-              if (originalRequest.headers) {
-                originalRequest.headers['Authorization'] = `Bearer ${token}`;
+            resolve: (token: string | null) => {
+              if (token) {
+                if (originalRequest.headers) {
+                  originalRequest.headers['Authorization'] = `Bearer ${token}`;
+                }
+                resolve(apiClient(originalRequest));
+              } else {
+                reject(error);
               }
-              resolve(apiClient(originalRequest));
             },
             reject,
           });

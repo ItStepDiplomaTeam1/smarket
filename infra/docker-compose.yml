@@ -321,7 +321,7 @@ services:
         "mongodb://$$MONGO_INITDB_ROOT_USERNAME:$$MONGO_INITDB_ROOT_PASSWORD@127.0.0.1:27017/?authSource=admin"
         --quiet
         --eval
-        "db.getSiblingDB('smarket_datalake').raw_pages.deleteMany({status:{$in:['processed','failed']},fetched_at:{$lt:new Date(Date.now()-86400000)}})"
+        "db.getSiblingDB('smarket_datalake').raw_pages.deleteMany({status:{$$in:['processed','failed']},fetched_at:{$$lt:new Date(Date.now()-86400000)}})"
 
   email_worker:
     <<: *api-defaults
