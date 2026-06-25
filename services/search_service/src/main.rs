@@ -41,7 +41,7 @@ impl Config {
 
 
 async fn configure_meilisearch_index(client: &meilisearch_sdk::client::Client) {
-    use meilisearch_sdk::settings::Settings;
+    use meilisearch_sdk::settings::{Settings, PaginationSetting};
 
     let settings = Settings::new()
         .with_searchable_attributes(["title", "brand", "category_name", "canonical_ean"])
@@ -54,7 +54,10 @@ async fn configure_meilisearch_index(client: &meilisearch_sdk::client::Client) {
             "in_stock",
         ])
         .with_sortable_attributes(["price", "title"])
-        .with_displayed_attributes(["*"]);
+        .with_displayed_attributes(["*"])
+        .with_pagination(PaginationSetting {
+            max_total_hits: 100000,
+        });
 
     let index = client.index("products");
 
