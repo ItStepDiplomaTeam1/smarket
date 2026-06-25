@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../store/useCartStore';
 import { useFetchCartDetails, useUpdateCartItem, useClearCart } from '../../../hooks/api/useCartApi';
 import { Trash2, Plus, Minus, Image as ImageIcon } from 'lucide-react';
+import mainMilk from '../../../assets/images/MainMilk.png';
 
 export const CartDetails: React.FC = () => {
   const navigate = useNavigate();
@@ -53,16 +54,14 @@ export const CartDetails: React.FC = () => {
                 {/* Image Placeholder */}
                 <div className="w-16 h-16 bg-gray-50 border border-gray-100 rounded-lg flex items-center justify-center shrink-0 overflow-hidden relative">
                   <ImageIcon className="w-6 h-6 text-gray-400 absolute z-0" />
-                  {item.imageUrl && (
-                    <img
-                      src={item.imageUrl}
-                      alt={item.name}
-                      className="w-full h-full object-cover relative z-10"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
-                  )}
+                  <img
+                    src={item.imageUrl || mainMilk}
+                    alt={item.name}
+                    className="w-full h-full object-cover relative z-10"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
                 </div>
                 
                 <div className="flex-1">
@@ -95,7 +94,7 @@ export const CartDetails: React.FC = () => {
                 </div>
                 
                 {/* Price & Delete */}
-                <div className="flex items-center gap-6 w-32 justify-end">
+                <div className="flex items-center gap-4 justify-end">
                   <div className="font-bold font-['Manrope'] text-lg text-[#173B33] text-right whitespace-nowrap">
                     {item.totalItemPrice.toFixed(2)} ₴
                   </div>

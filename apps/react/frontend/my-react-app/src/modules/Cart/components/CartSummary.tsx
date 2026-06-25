@@ -45,7 +45,7 @@ export const CartSummary: React.FC = () => {
           <span className="text-gray-500">Орієнтовна сума</span>
           <span className="font-medium">{Number(activeCart.bestPrice).toFixed(2)} ₴</span>
         </div>
-        <div className="flex justify-between gap-4">
+        <div className="flex justify-between items-center gap-4">
           <span className="text-gray-500 whitespace-nowrap">Найвигідніший магазин</span>
           <span className="font-medium text-gray-900 text-right">{activeCart.bestStore}</span>
         </div>
