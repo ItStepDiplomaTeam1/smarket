@@ -49,9 +49,9 @@ export const CartDetails: React.FC = () => {
           <div className="text-center py-10 text-[#6D8279] font-['Inter']">Кошик порожній</div>
         ) : (
           activeCart.items.map((item) => (
-            <div key={item.productId} className="flex gap-3 sm:gap-4 p-3 sm:p-4 bg-white border border-[#265447]/10 rounded-xl hover:border-[#265447]/30 transition-colors">
+            <div key={item.productId} className="flex gap-4 p-4 bg-white border border-[#265447]/10 rounded-xl hover:border-[#265447]/30 transition-colors items-start xl:items-center">
               {/* Image */}
-              <div className="w-20 h-20 sm:w-28 sm:h-28 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center shrink-0 overflow-hidden relative p-2">
+              <div className="w-24 h-24 lg:w-32 lg:h-32 xl:w-14 xl:h-14 bg-gray-50 border border-gray-100 rounded-xl flex items-center justify-center shrink-0 overflow-hidden relative p-1 transition-all">
                 <img
                   src={item.imageUrl || mainMilk}
                   alt={item.name}
@@ -62,23 +62,23 @@ export const CartDetails: React.FC = () => {
                 />
               </div>
 
-              {/* Content */}
-              <div className="flex flex-wrap flex-1 gap-4 items-center justify-between">
+              {/* Content Container */}
+              <div className="flex flex-col xl:flex-row flex-1 gap-4 xl:gap-6 xl:items-center justify-between min-w-0">
                 
-                {/* Title & Base Price */}
-                <div className="flex-1 min-w-[150px] md:flex-none md:w-1/3">
-                  <h3 className="font-semibold font-['Manrope'] text-[#173B33] text-base leading-tight line-clamp-2 mb-1" title={item.name}>
-                    {item.name}
-                  </h3>
-                  <div className="text-sm text-[#6D8279] font-['Inter']">
-                    {item.basePrice.toFixed(2)} ₴ / шт
+                {/* Top/Left Section: Title & Quantity */}
+                <div className="flex justify-between items-start xl:items-center gap-4 xl:flex-1 min-w-0">
+                  {/* Title & Base Price */}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold font-['Manrope'] text-[#173B33] text-base leading-tight line-clamp-2 mb-1" title={item.name}>
+                      {item.name}
+                    </h3>
+                    <div className="text-sm text-[#6D8279] font-['Inter']">
+                      {item.basePrice.toFixed(2)} ₴ / шт
+                    </div>
                   </div>
-                </div>
 
-                {/* Controls (Quantity, Total, Trash) */}
-                <div className="flex flex-wrap items-center gap-3 sm:gap-4 flex-1 min-w-[200px] justify-between md:justify-end">
                   {/* Quantity Controls */}
-                  <div className="flex items-center gap-2 sm:gap-3 bg-gray-50 rounded-lg p-1 border border-gray-100 shrink-0">
+                  <div className="flex items-center gap-2 xl:gap-3 bg-gray-50 rounded-lg p-1 border border-gray-100 shrink-0">
                     <button 
                       className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-white hover:shadow-sm transition-all text-[#6D8279] hover:text-[#173B33] disabled:opacity-50"
                       onClick={() => updateItem({ cartId: activeCart.id, productId: item.productId, quantity: Math.max(1, item.quantity - 1) })}
@@ -86,7 +86,7 @@ export const CartDetails: React.FC = () => {
                     >
                       <Minus className="w-4 h-4" />
                     </button>
-                    <span className="w-5 sm:w-6 text-center text-sm font-medium font-['Inter'] text-[#173B33]">{item.quantity}</span>
+                    <span className="w-6 text-center text-sm font-medium font-['Inter'] text-[#173B33]">{item.quantity}</span>
                     <button 
                       className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-white hover:shadow-sm transition-all text-[#6D8279] hover:text-[#173B33]"
                       onClick={() => updateItem({ cartId: activeCart.id, productId: item.productId, quantity: item.quantity + 1 })}
@@ -94,20 +94,21 @@ export const CartDetails: React.FC = () => {
                       <Plus className="w-4 h-4" />
                     </button>
                   </div>
-                  
-                  {/* Price & Delete */}
-                  <div className="flex items-center gap-3 sm:gap-4 shrink-0 ml-auto md:ml-0 justify-end">
-                    <div className="font-bold font-['Manrope'] text-lg text-[#173B33] text-right whitespace-nowrap min-w-[70px]">
-                      {item.totalItemPrice.toFixed(2)} ₴
-                    </div>
-                    <button 
-                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
-                      onClick={() => updateItem({ cartId: activeCart.id, productId: item.productId, quantity: 0 })}
-                    >
-                      <Trash2 className="w-5 h-5" />
-                    </button>
-                  </div>
                 </div>
+
+                {/* Bottom/Right Section: Price & Delete */}
+                <div className="flex items-center gap-4 justify-end shrink-0">
+                  <div className="font-bold font-['Manrope'] text-lg text-[#173B33] text-right whitespace-nowrap min-w-[80px]">
+                    {item.totalItemPrice.toFixed(2)} ₴
+                  </div>
+                  <button 
+                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
+                    onClick={() => updateItem({ cartId: activeCart.id, productId: item.productId, quantity: 0 })}
+                  >
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </div>
+
               </div>
             </div>
           ))
