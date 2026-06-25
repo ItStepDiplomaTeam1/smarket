@@ -1,6 +1,6 @@
 export { ProductHero } from './components/ProductHero'
 export { About } from './components/About'
-export { FBT } from './components/FBT'
+export { RecentlyViewed } from './components/FBT';
 export { SMProduct } from './components/SMProduct'
 export { Reviews } from './components/Reviews'
 export { ReviewModal } from './components/ReviewModal'
