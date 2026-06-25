@@ -28,23 +28,90 @@ where
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug)]
 pub struct ProductFilters {
-    #[serde(default)]
     pub category_id: Option<i32>,
-    #[serde(default)]
     pub category_slug: Option<String>,
-    #[serde(default)]
     pub store_id: Option<String>,
-    #[serde(default)]
     pub retail_chain: Option<String>,
-    #[serde(default)]
     pub price_min: Option<f64>,
-    #[serde(default)]
     pub price_max: Option<f64>,
-    
-    #[serde(default, deserialize_with = "deserialize_bool_opt")]
     pub in_stock: Option<bool>,
+}
+
+fn deserialize_f64_opt<'de, D>(deserializer: D) -> Result<Option<f64>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(serde::Deserialize)]
+    #[serde(untagged)]
+    enum F64OrString {
+        Number(f64),
+        String(String),
+    }
+
+    let val = Option::<F64OrString>::deserialize(deserializer)?;
+    match val {
+        Some(F64OrString::Number(n)) => Ok(Some(n)),
+        Some(F64OrString::String(s)) => {
+            if s.is_empty() {
+                Ok(None)
+            } else {
+                s.parse::<f64>().map(Some).map_err(serde::de::Error::custom)
+            }
+        }
+        None => Ok(None),
+    }
+}
+
+fn deserialize_i32_opt<'de, D>(deserializer: D) -> Result<Option<i32>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(serde::Deserialize)]
+    #[serde(untagged)]
+    enum I32OrString {
+        Number(i32),
+        String(String),
+    }
+
+    let val = Option::<I32OrString>::deserialize(deserializer)?;
+    match val {
+        Some(I32OrString::Number(n)) => Ok(Some(n)),
+        Some(I32OrString::String(s)) => {
+            if s.is_empty() {
+                Ok(None)
+            } else {
+                s.parse::<i32>().map(Some).map_err(serde::de::Error::custom)
+            }
+        }
+        None => Ok(None),
+    }
+}
+
+fn deserialize_usize_opt<'de, D>(deserializer: D) -> Result<Option<usize>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(serde::Deserialize)]
+    #[serde(untagged)]
+    enum UsizeOrString {
+        Number(usize),
+        String(String),
+    }
+
+    let val = Option::<UsizeOrString>::deserialize(deserializer)?;
+    match val {
+        Some(UsizeOrString::Number(n)) => Ok(Some(n)),
+        Some(UsizeOrString::String(s)) => {
+            if s.is_empty() {
+                Ok(None)
+            } else {
+                s.parse::<usize>().map(Some).map_err(serde::de::Error::custom)
+            }
+        }
+        None => Ok(None),
+    }
 }
 
 #[derive(Deserialize, Debug)]
@@ -53,12 +120,26 @@ pub struct SearchRequest {
 
     pub sort: Option<String>,
 
+    #[serde(default, deserialize_with = "deserialize_usize_opt")]
     pub limit: Option<usize>,
 
+    #[serde(default, deserialize_with = "deserialize_usize_opt")]
     pub offset: Option<usize>,
 
-    #[serde(flatten)]
-    pub filters: ProductFilters,
+    #[serde(default, deserialize_with = "deserialize_i32_opt")]
+    pub category_id: Option<i32>,
+    #[serde(default)]
+    pub category_slug: Option<String>,
+    #[serde(default)]
+    pub store_id: Option<String>,
+    #[serde(default)]
+    pub retail_chain: Option<String>,
+    #[serde(default, deserialize_with = "deserialize_f64_opt")]
+    pub price_min: Option<f64>,
+    #[serde(default, deserialize_with = "deserialize_f64_opt")]
+    pub price_max: Option<f64>,
+    #[serde(default, deserialize_with = "deserialize_bool_opt")]
+    pub in_stock: Option<bool>,
 }
 
 #[derive(Serialize)]
@@ -85,8 +166,17 @@ pub async fn search_handler(
         payload.q, limit, offset
     );
 
+    let filters = ProductFilters {
+        category_id: payload.category_id,
+        category_slug: payload.category_slug.clone(),
+        store_id: payload.store_id.clone(),
+        retail_chain: payload.retail_chain.clone(),
+        price_min: payload.price_min,
+        price_max: payload.price_max,
+        in_stock: payload.in_stock,
+    };
+
     let mut filter_conditions: Vec<String> = Vec::new();
-    let filters = &payload.filters;
 
     if let Some(cat_id) = filters.category_id {
         filter_conditions.push(format!("category_id = {}", cat_id));
