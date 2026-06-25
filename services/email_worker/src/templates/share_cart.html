@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Вам надіслали кошик</title>
+</head>
+<body style="font-family: Arial, sans-serif; background-color: #f9f9f9; padding: 20px;">
+    <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        <h2 style="color: #265447; text-align: center;">Хтось поділився з вами кошиком в SMarket!</h2>
+        <p style="color: #333333; font-size: 16px; line-height: 1.5;">
+            Привіт!<br><br>
+            Вам надіслали кошик з товарами. Щоб переглянути його та зберегти собі, натисніть на кнопку нижче:
+        </p>
+        <div style="text-align: center; margin-top: 30px; margin-bottom: 30px;">
+            <a href="http://localhost:5173/cart/shared/{{ token }}" 
+               style="background-color: #265447; color: #ffffff; text-decoration: none; padding: 14px 28px; font-size: 16px; border-radius: 6px; display: inline-block; font-weight: bold;">
+                Переглянути кошик
+            </a>
+        </div>
+        <p style="color: #666666; font-size: 14px; text-align: center;">
+            Якщо кнопка не працює, скопіюйте та вставте це посилання у ваш браузер:<br>
+            <a href="http://localhost:5173/cart/shared/{{ token }}" style="color: #265447;">http://localhost:5173/cart/shared/{{ token }}</a>
+        </p>
+    </div>
+</body>
+</html>
