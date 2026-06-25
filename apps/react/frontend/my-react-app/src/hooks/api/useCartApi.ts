@@ -49,6 +49,29 @@ export const useFetchCartDetails = (cartId: string | null) => {
         console.error("Failed to fetch comparison", err);
       }
       
+      const itemsWithImages = await Promise.all(data.items.map(async (item: { product_id: string; product_name: string; quantity: number; price: number; id: string; image_url?: string }) => {
+        let imageUrl = item.image_url;
+        if (!imageUrl) {
+          try {
+            const res = await apiClient.get(`/api/v1/products/${item.product_id}`);
+            if (res.data && res.data.image_url) {
+              imageUrl = res.data.image_url;
+            }
+          } catch (e) {
+            console.error("Failed to load product image fallback", e);
+          }
+        }
+        return {
+          productId: item.product_id,
+          name: item.product_name,
+          quantity: item.quantity,
+          basePrice: item.price,
+          totalItemPrice: item.price * item.quantity,
+          id: item.id, // mapping the cart_item id
+          imageUrl: imageUrl
+        };
+      }));
+
       return {
         id: data.id,
         title: data.name,
@@ -57,15 +80,7 @@ export const useFetchCartDetails = (cartId: string | null) => {
         bestPrice: comparisonData[0]?.totalPrice || data.total_price,
         potentialSavings: 0,
         updatedAt: data.updated_at,
-        items: data.items.map((item: { product_id: string; product_name: string; quantity: number; price: number; id: string; image_url?: string }) => ({
-          productId: item.product_id,
-          name: item.product_name,
-          quantity: item.quantity,
-          basePrice: item.price,
-          totalItemPrice: item.price * item.quantity,
-          id: item.id, // mapping the cart_item id
-          imageUrl: item.image_url
-        })),
+        items: itemsWithImages,
         summary: {
           totalItems: data.items.length,
           maxPossibleSavings: 0,

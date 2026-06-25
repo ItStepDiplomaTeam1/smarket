@@ -45,9 +45,9 @@ export const CartSummary: React.FC = () => {
           <span className="text-gray-500">Орієнтовна сума</span>
           <span className="font-medium">{Number(activeCart.bestPrice).toFixed(2)} ₴</span>
         </div>
-        <div className="flex justify-between items-center gap-4">
-          <span className="text-gray-500 whitespace-nowrap shrink-0">Найвигідніший магазин</span>
-          <span className="font-medium text-gray-900 text-right min-w-0">{activeCart.bestStore}</span>
+        <div className="flex flex-wrap justify-between items-center gap-2">
+          <span className="text-gray-500 whitespace-nowrap">Найвигідніший магазин</span>
+          <span className="font-medium text-gray-900 text-right ml-auto">{activeCart.bestStore}</span>
         </div>
         <div className="flex justify-between items-center pt-2 border-t border-gray-100">
           <span className="font-medium text-gray-900">Можлива економія</span>
@@ -70,11 +70,11 @@ export const CartSummary: React.FC = () => {
         </div>
       </div>
       
-      <div className="flex justify-between items-center py-4 mb-6 border-t border-gray-100 gap-4">
-        <span className="font-bold font-['Inter'] text-[#173B33] text-lg whitespace-nowrap shrink-0">Найкраща ціна:</span>
-        <div className="text-right min-w-0">
+      <div className="flex flex-wrap justify-between items-end py-4 mb-6 border-t border-gray-100 gap-4">
+        <span className="font-bold font-['Inter'] text-[#173B33] text-lg whitespace-nowrap">Найкраща ціна:</span>
+        <div className="text-right ml-auto">
           <div className="font-bold font-['Inter'] text-[#265447] text-2xl">{Number(activeCart.bestPrice).toFixed(2)} ₴</div>
-          <div className="text-xs text-[#6D8279] font-['Inter'] mt-1 break-words">В {activeCart.bestStore}</div>
+          <div className="text-sm text-[#6D8279] font-['Inter'] mt-1">В {activeCart.bestStore}</div>
         </div>
       </div>
       

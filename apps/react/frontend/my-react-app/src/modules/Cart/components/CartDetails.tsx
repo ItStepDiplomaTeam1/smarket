@@ -5,36 +5,6 @@ import { useFetchCartDetails, useUpdateCartItem, useClearCart } from '../../../h
 import { Trash2, Plus, Minus, Image as ImageIcon } from 'lucide-react';
 import mainMilk from '@/shared/assets/milk.svg';
 
-import { apiClient } from '@/shared/api/apiClient';
-
-const CartItemImage: React.FC<{ productId: number; initialImageUrl?: string; name: string }> = ({ productId, initialImageUrl, name }) => {
-  const [imageUrl, setImageUrl] = React.useState<string | undefined>(initialImageUrl);
-  
-  React.useEffect(() => {
-    if (!imageUrl) {
-      apiClient.get(`/api/v1/products/${productId}`).then((res) => {
-        if (res.data && res.data.image_url) {
-          setImageUrl(res.data.image_url);
-        }
-      }).catch(err => console.error("Failed to load image for product", productId, err));
-    }
-  }, [productId, imageUrl]);
-
-  return (
-    <div className="w-16 h-16 bg-gray-50 border border-gray-100 rounded-lg flex items-center justify-center shrink-0 overflow-hidden relative">
-      <ImageIcon className="w-6 h-6 text-gray-400 absolute z-0" />
-      <img
-        src={imageUrl || mainMilk}
-        alt={name}
-        className="w-full h-full object-cover relative z-10"
-        onError={(e) => {
-          e.currentTarget.style.display = 'none';
-        }}
-      />
-    </div>
-  );
-};
-
 export const CartDetails: React.FC = () => {
   const navigate = useNavigate();
   const { activeCartId } = useCartStore();
@@ -79,9 +49,20 @@ export const CartDetails: React.FC = () => {
           <div className="text-center py-10 text-[#6D8279] font-['Inter']">Кошик порожній</div>
         ) : (
           activeCart.items.map((item) => (
-            <div key={item.productId} className="flex flex-wrap sm:flex-nowrap items-center justify-between p-4 bg-white border border-[#265447]/10 rounded-xl hover:border-[#265447]/30 transition-colors gap-4">
+            <div key={item.productId} className="flex flex-wrap items-center justify-between p-4 bg-white border border-[#265447]/10 rounded-xl hover:border-[#265447]/30 transition-colors gap-4">
               <div className="flex items-center gap-4 flex-1 min-w-[200px]">
-                <CartItemImage productId={item.productId} initialImageUrl={item.imageUrl} name={item.name} />
+                {/* Image Placeholder */}
+                <div className="w-16 h-16 bg-gray-50 border border-gray-100 rounded-lg flex items-center justify-center shrink-0 overflow-hidden relative">
+                  <ImageIcon className="w-6 h-6 text-gray-400 absolute z-0" />
+                  <img
+                    src={item.imageUrl || mainMilk}
+                    alt={item.name}
+                    className="w-full h-full object-cover relative z-10"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                </div>
                 
                 <div className="flex-1">
                   <h3 className="font-semibold font-['Manrope'] text-[#173B33] line-clamp-2 mb-1" title={item.name}>
@@ -93,7 +74,7 @@ export const CartDetails: React.FC = () => {
                 </div>
               </div>
               
-              <div className="flex items-center gap-4 sm:gap-8 ml-auto shrink-0 w-full sm:w-auto justify-between sm:justify-end">
+              <div className="flex items-center gap-4 ml-auto shrink-0 flex-wrap justify-end">
                 {/* Quantity Controls */}
                 <div className="flex items-center gap-3 bg-gray-50 rounded-lg p-1 border border-gray-100">
                   <button 
@@ -114,7 +95,7 @@ export const CartDetails: React.FC = () => {
                 
                 {/* Price & Delete */}
                 <div className="flex items-center gap-4 justify-end">
-                  <div className="font-bold font-['Manrope'] text-lg text-[#173B33] text-right whitespace-nowrap">
+                  <div className="font-bold font-['Manrope'] text-lg text-[#173B33] text-right whitespace-nowrap min-w-[80px]">
                     {item.totalItemPrice.toFixed(2)} ₴
                   </div>
                   <button 
