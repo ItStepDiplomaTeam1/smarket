@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
 
-from app.api.routes import auth, products, cart, stores, reviews
+from app.api.routes import auth, products, cart, stores, reviews, admin, search
 
 
 @asynccontextmanager
@@ -22,8 +22,10 @@ app = FastAPI(title="Api Gateway", version="0.1.0", lifespan=lifespan)
 origins = [
     "http://localhost:3000",
     "http://localhost:5173",
+    "http://localhost:5174",
     "http://127.0.0.1:3000",
     "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
 ]
 
 app.add_middleware(
@@ -47,6 +49,9 @@ app.include_router(cart.router, prefix=f"{API_V1_STR}/cart", tags=["Cart Proxy v
 app.include_router(
     reviews.router, prefix=f"{API_V1_STR}/reviews", tags=["Reviews Proxy v1"]
 )
+app.include_router(admin.router, prefix=f"{API_V1_STR}/admin", tags=["Admin Proxy v1"])
+app.include_router(search.router, prefix=f"{API_V1_STR}/search", tags=["Search Proxy v1"])
+
 
 
 @app.get("/health", tags=["System"])

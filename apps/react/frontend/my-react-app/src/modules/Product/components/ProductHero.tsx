@@ -9,8 +9,6 @@ import zeroStar from '@/shared/assets/star-for-review.svg';
 import { useFetchCarts, useUpdateCartItem } from '@/hooks/api/useCartApi';
 import { useCartStore } from '@/modules/Cart/store/useCartStore';
 
-
-
 import mainMilk from '@/shared/assets/milk.svg';
 import starIcon from '@/shared/assets/gold-star.svg';
 import staricongreen from '@/shared/assets/star.svg';
@@ -20,8 +18,12 @@ interface ProductHeroProps {
 }
 
 export function ProductHero({ product }: ProductHeroProps) {
-    const { id } = useParams<{ id: string }>();
-    const productId = id || "dddb52b5-fce8-4fde-947d-25625a429690";
+    // === ОНОВЛЕНИЙ БЛОК ПАРСИНГУ ID ===
+    const params = useParams<{ idAndSlug?: string; id?: string }>();
+    const rawParam = params.idAndSlug || params.id; 
+    const extractedId = rawParam ? rawParam.split('-')[0] : null;
+    const productId = extractedId || "dddb52b5-fce8-4fde-947d-25625a429690";
+    // ====================================
 
     const { isAuthenticated, user } = useAuthStore();
     const { data: carts } = useFetchCarts();
@@ -108,15 +110,15 @@ export function ProductHero({ product }: ProductHeroProps) {
                     quantity: quantity
                 });
             }
-            
+
             alert('Товар успішно додано до кошика!');
             setQuantity(1);
-            
+
         } catch (error: unknown) {
             console.error('Повна помилка кошика:', error);
             if (axios.isAxiosError(error)) {
                 const detail = error.response?.data?.detail;
-                
+
                 if (Array.isArray(detail)) {
                     const errorMessages = detail.map((err: any) => `Поле: [${err.loc.join(' -> ')}] | Проблема: ${err.msg}`).join('\n');
                     alert(`Помилка даних (422):\n${errorMessages}`);
@@ -184,8 +186,8 @@ export function ProductHero({ product }: ProductHeroProps) {
         }
     };
 
-    const displayWeight = product.weight && product.weight > 0 
-        ? `${product.weight} ${product.unit}` 
+    const displayWeight = product.weight && product.weight > 0
+        ? `${product.weight} ${product.unit}`
         : (product.unit === 'kg' ? '1 кг' : `1 ${product.unit || 'шт'}`);
 
     return (
@@ -221,22 +223,16 @@ export function ProductHero({ product }: ProductHeroProps) {
                             </div>
                             {/* Головне фото */}
                             <div className="w-full h-full flex justify-center items-center">
-                                <img 
-                                    src={product.image_url || mainMilk} 
-                                    alt={product.title} 
-                                    className="max-w-full max-h-full object-contain" 
+                                <img
+                                    src={product.image_url || mainMilk}
+                                    alt={product.title}
+                                    className="max-w-full max-h-full object-contain"
                                 />
                             </div>
                         </div>
 
                         {/* Мініатюри */}
                         <div className="flex flex-row justify-between w-full gap-[12px]">
-                            <div className="w-[143px] h-[143px] rounded-[16px] bg-[#EAF7F2] border border-[#265447] flex justify-center items-center cursor-pointer shrink-0 p-[12px]">
-                                <img src={product.image_url || mainMilk} alt="thumb" className="max-w-full max-h-full object-contain" />
-                            </div>
-                            <div className="w-[143px] h-[143px] rounded-[16px] bg-[#F6FAF8] border border-[rgba(38,84,71,0.08)] flex justify-center items-center cursor-pointer shrink-0 p-[12px]">
-                                <img src={product.image_url || mainMilk} alt="thumb" className="max-w-full max-h-full object-contain opacity-70" />
-                            </div>
                             <div className="w-[143px] h-[143px] rounded-[16px] bg-[#F6FAF8] border border-[rgba(38,84,71,0.08)] flex justify-center items-center cursor-pointer shrink-0 p-[12px]">
                                 <img src={product.image_url || mainMilk} alt="thumb" className="max-w-full max-h-full object-contain opacity-70" />
                             </div>
@@ -257,11 +253,11 @@ export function ProductHero({ product }: ProductHeroProps) {
                             <div className="flex items-center gap-[8px] font-inter">
                                 <div className="flex gap-[4px]">
                                     {[0, 1, 2, 3, 4].map(i => (
-                                        <img 
-                                            key={i} 
-                                            src={i < filledStarsAvg ? starIcon : zeroStar} 
-                                            alt="star" 
-                                            className="w-[16px] h-[16px]" 
+                                        <img
+                                            key={i}
+                                            src={i < filledStarsAvg ? starIcon : zeroStar}
+                                            alt="star"
+                                            className="w-[16px] h-[16px]"
                                         />
                                     ))}
                                 </div>
@@ -291,9 +287,8 @@ export function ProductHero({ product }: ProductHeroProps) {
                                     }
                                 </div>
                             )}
-                            <div className={`px-[10px] py-[4px] rounded-[6px] font-inter text-[13px] font-semibold leading-[19.5px] ${
-                                activePriceObj?.in_stock ? 'bg-[#EAF7F2] text-[#265447]' : 'bg-[#FFF2F1] text-[#D94841]'
-                            }`}>
+                            <div className={`px-[10px] py-[4px] rounded-[6px] font-inter text-[13px] font-semibold leading-[19.5px] ${activePriceObj?.in_stock ? 'bg-[#EAF7F2] text-[#265447]' : 'bg-[#FFF2F1] text-[#D94841]'
+                                }`}>
                                 {activePriceObj?.in_stock ? 'В наявності' : 'Немає в наявності'}
                             </div>
                         </div>
@@ -301,7 +296,7 @@ export function ProductHero({ product }: ProductHeroProps) {
                         {/* Кнопки дій */}
                         <div className="flex items-center gap-[12px] mb-[12px]">
                             <div className="flex items-center h-[44px] px-[8px] rounded-[10px] border border-[rgba(38,84,71,0.16)]">
-                                <button 
+                                <button
                                     onClick={handleDecrease}
                                     disabled={quantity <= 1 || !activePriceObj?.in_stock}
                                     className="w-[36px] h-full bg-transparent border-none text-[20px] text-[#4B5563] cursor-pointer disabled:opacity-30 transition-opacity"
@@ -311,7 +306,7 @@ export function ProductHero({ product }: ProductHeroProps) {
                                 <span className="w-[32px] text-center font-inter text-[16px] font-semibold text-[#111827]">
                                     {quantity}
                                 </span>
-                                <button 
+                                <button
                                     onClick={handleIncrease}
                                     disabled={!activePriceObj?.in_stock}
                                     className="w-[36px] h-full bg-transparent border-none text-[20px] text-[#4B5563] cursor-pointer hover:text-[#173B33] transition-colors disabled:opacity-30"
@@ -319,16 +314,16 @@ export function ProductHero({ product }: ProductHeroProps) {
                                     +
                                 </button>
                             </div>
-                            
+
                             {/* ДОДАТИ В КОШИК */}
-                            <button 
+                            <button
                                 onClick={handleAddToCart}
                                 disabled={isAdding || !activePriceObj?.in_stock || (isAuthenticated && carts && carts.length > 1 && !selectedCart)}
                                 className="h-[44px] px-[24px] rounded-[10px] border-none bg-[#265447] font-inter text-[13px] font-semibold text-white whitespace-nowrap cursor-pointer transition-colors duration-200 hover:bg-[#1A3E2F] disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {isAdding ? 'Додаємо...' : 'Додати до кошика'}
                             </button>
-                            
+
                             <button className="h-[44px] px-[24px] rounded-[10px] border border-[rgba(38,84,71,0.16)] bg-white font-inter text-[13px] font-semibold text-[#265447] whitespace-nowrap cursor-pointer transition-colors duration-200 hover:bg-[#F9FAFB]">
                                 Додати до списку
                             </button>
@@ -344,7 +339,7 @@ export function ProductHero({ product }: ProductHeroProps) {
                                 <label className="font-inter text-[13px] font-semibold text-[#173B33]">
                                     Оберіть кошик для додавання:
                                 </label>
-                                <select 
+                                <select
                                     className="h-[44px] px-[16px] rounded-[10px] border border-[rgba(38,84,71,0.16)] bg-white font-inter text-[13px] text-[#173B33] outline-none"
                                     value={selectedCart || ''}
                                     onChange={(e) => setSelectedCart(e.target.value)}
@@ -360,7 +355,6 @@ export function ProductHero({ product }: ProductHeroProps) {
                         {!(isAuthenticated && carts && carts.length > 1) && (
                             <div className="mb-[32px]"></div>
                         )}
-
                         {/* Віджет порівняння цін */}
                         <div className="flex flex-col gap-[16px] p-[24px] rounded-[16px] border border-[rgba(38,84,71,0.08)] bg-white">
                             <div className="flex justify-between items-center">
@@ -372,7 +366,7 @@ export function ProductHero({ product }: ProductHeroProps) {
                                 )}
                             </div>
 
-                            <div className="flex flex-col gap-[8px]">
+                            <div className="flex flex-col gap-[8px] max-h-[166px] overflow-y-auto">
                                 {sortedPrices.length === 0 ? (
                                     <div className="font-inter text-[14px] text-[#6D8279] text-center py-4">
                                         Дані про ціни в інших магазинах відсутні.
@@ -384,16 +378,15 @@ export function ProductHero({ product }: ProductHeroProps) {
                                             ? priceObj.store_id === selectedStoreId
                                             : index === 0;
                                         return (
-                                            <div 
+                                            <div
                                                 key={priceObj.id}
                                                 onClick={() => handleSelectStore(priceObj.store_id)}
-                                                className={`flex justify-between items-center h-[50px] px-[16px] rounded-[10px] cursor-pointer transition-all duration-200 ${
-                                                    isSelected 
-                                                    ? 'bg-[#EAF7F2] border-[2px] border-[#265447] shadow-[0_0_0_1px_rgba(38,84,71,0.12)]' 
-                                                    : isCheapest
-                                                    ? 'bg-[#EAF7F2] border border-[#6FE3C2] hover:border-[#265447] hover:shadow-[0_2px_8px_rgba(38,84,71,0.1)]'
-                                                    : 'bg-white border border-[rgba(38,84,71,0.08)] hover:border-[#6FE3C2] hover:shadow-[0_2px_8px_rgba(38,84,71,0.1)]'
-                                                }`}
+                                                className={`shrink-0 flex justify-between items-center h-[50px] px-[16px] rounded-[10px] cursor-pointer transition-all duration-200 ${isSelected
+                                                        ? 'bg-[#EAF7F2] border-[2px] border-[#265447] shadow-[0_0_0_1px_rgba(38,84,71,0.12)]'
+                                                        : isCheapest
+                                                            ? 'bg-[#EAF7F2] border border-[#6FE3C2] hover:border-[#265447] hover:shadow-[0_2px_8px_rgba(38,84,71,0.1)]'
+                                                            : 'bg-white border border-[rgba(38,84,71,0.08)] hover:border-[#6FE3C2] hover:shadow-[0_2px_8px_rgba(38,84,71,0.1)]'
+                                                    }`}
                                             >
                                                 <div className="flex items-center gap-[12px]">
                                                     <span className="font-inter text-[14px] font-semibold leading-[21px] text-[#265447]">

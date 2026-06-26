@@ -12,6 +12,9 @@ RUN apk add --no-cache git ca-certificates
 
 WORKDIR /app
 
+# Use alternative Go proxy to bypass proxy.golang.org 403 errors on Hetzner
+ENV GOPROXY=https://goproxy.cn,https://goproxy.io,direct
+
 # Copy go.mod and go.sum to cache dependencies
 COPY go.mod go.sum ./
 RUN go mod download
@@ -36,7 +39,7 @@ WORKDIR /app
 COPY --from=builder --chmod=755 /app/products_etl .
 
 # Expose the HTTP health check port
-EXPOSE 8080
+EXPOSE 8082
 
 # Run the binary
 CMD ["./products_etl"]

@@ -24,6 +24,9 @@ def _send_email(email_to: str, token: str, action: str):
     elif action == "reset_password":
         subject = "Відновлення паролю"
         template_name = "reset_password.html"
+    elif action == "share_cart":
+        subject = "З вами поділилися кошиком в SMarket!"
+        template_name = "share_cart.html"
     else:
         raise ValueError(f"Невідома дія: {action}")
 

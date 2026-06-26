@@ -1,0 +1,387 @@
+# docker-compose.local.yml — локальний запуск для розробки
+#
+# Відмінності від infra/docker-compose.yml (production/server):
+#   - Збірка образів з локального сорс-коду (build:), а не pull з ghcr.io
+#   - Всі сервіси публікують порти назовні для зручного дебагу
+#   - Немає ресурсних лімітів (mem_limit, cpus, pids_limit)
+#   - Менш суворі healthcheck-таймаути (швидший старт)
+#   - restart: no — щоб контейнер не рестартував у петлі при падінні під час відлагодження
+#   - ENV=development скрізь
+#   - БД — Neon (зовнішній PostgreSQL), локальний postgres-контейнер не потрібен
+#
+# Запуск:
+#   docker compose -f infra/docker-compose.local.yml up --build
+#
+# Зупинка з видаленням volumes:
+#   docker compose -f infra/docker-compose.local.yml down -v
+
+x-healthcheck-local: &healthcheck-local
+  interval: 10s
+  timeout: 5s
+  retries: 15
+  start_period: 20s
+
+x-runtime-local: &runtime-local
+  init: true
+  restart: "no"
+  networks:
+    - smarket-network
+
+x-api-local: &api-local
+  <<: *runtime-local
+
+services:
+
+  # ─── Infrastructure ────────────────────────────────────────────────────────
+
+  redis:
+    <<: *runtime-local
+    image: redis:7-alpine
+    command:
+      - redis-server
+      - --maxmemory
+      - "256mb"
+      - --maxmemory-policy
+      - allkeys-lru
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+    ports:
+      - "6379:6379"
+    healthcheck:
+      <<: *healthcheck-local
+      test: ["CMD", "redis-cli", "ping"]
+      start_period: 5s
+
+  rabbitmq:
+    <<: *runtime-local
+    image: rabbitmq:3-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"   # RabbitMQ Management UI → http://localhost:15672
+    environment:
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_USER:-smarket}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_PASS:-secure_rmq_pass_123}"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      <<: *healthcheck-local
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      timeout: 10s
+      start_period: 20s
+
+  mongodb:
+    <<: *runtime-local
+    image: mongo:7.0
+    command:
+      - mongod
+      - --bind_ip_all
+      - --wiredTigerCacheSizeGB
+      - "0.5"
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: "${MONGO_USER:-admin}"
+      MONGO_INITDB_ROOT_PASSWORD: "${MONGO_PASS:-secure_mongo_pass_123}"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      <<: *healthcheck-local
+      test: ["CMD-SHELL", "mongosh --quiet --host 127.0.0.1 --port 27017 --username \"$$MONGO_INITDB_ROOT_USERNAME\" --password \"$$MONGO_INITDB_ROOT_PASSWORD\" --authenticationDatabase admin --eval 'quit(db.adminCommand({ ping: 1 }).ok ? 0 : 1)'"]
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+
+  # ─── Migration Jobs ────────────────────────────────────────────────────────
+
+  auth_migration_job:
+    <<: *runtime-local
+    restart: "no"
+    build:
+      context: ..
+      dockerfile: services/auth_service/Dockerfile
+    command:
+      - sh
+      - -c
+      - cd /app/services/auth_service && alembic upgrade head
+    env_file:
+      - ../services/auth_service/.env
+
+  cart_migration_job:
+    <<: *runtime-local
+    restart: "no"
+    build:
+      context: ..
+      dockerfile: services/cart_service/DockerFile
+    command:
+      - sh
+      - -c
+      - cd /app/services/cart_service && alembic upgrade head
+    env_file:
+      - ../services/cart_service/.env
+
+  product_migration_job:
+    <<: *runtime-local
+    restart: "no"
+    build:
+      context: ..
+      dockerfile: services/product_service/DockerFile
+    command:
+      - sh
+      - -c
+      - cd /app/services/product_service && alembic upgrade head
+    env_file:
+      - ../services/product_service/.env
+
+  reviews_migration_job:
+    <<: *runtime-local
+    restart: "no"
+    build:
+      context: ..
+      dockerfile: services/reviews_service/Dockerfile
+    command:
+      - sh
+      - -c
+      - cd /app/services/reviews_service && alembic upgrade head
+    env_file:
+      - ../services/reviews_service/.env
+
+  # ─── Application Services ──────────────────────────────────────────────────
+
+  auth_service:
+    <<: *api-local
+    build:
+      context: ..
+      dockerfile: services/auth_service/Dockerfile
+    command:
+      - granian
+      - --interface
+      - asgi
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8001"
+      - --workers
+      - "1"
+      - services.auth_service.main:app
+    ports:
+      - "8001:8001"
+    env_file:
+      - ../services/auth_service/.env
+    environment:
+      ENV: development
+    depends_on:
+      redis:
+        condition: service_healthy
+      auth_migration_job:
+        condition: service_completed_successfully
+    healthcheck:
+      <<: *healthcheck-local
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=3).read()\""]
+
+  cart_service:
+    <<: *api-local
+    build:
+      context: ..
+      dockerfile: services/cart_service/DockerFile
+    command:
+      - granian
+      - --interface
+      - asgi
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8002"
+      - --workers
+      - "1"
+      - services.cart_service.app.main:app
+    ports:
+      - "8002:8002"
+    env_file:
+      - ../services/cart_service/.env
+    environment:
+      ENV: development
+    depends_on:
+      cart_migration_job:
+        condition: service_completed_successfully
+    healthcheck:
+      <<: *healthcheck-local
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8002/health', timeout=3).read()\""]
+
+  product_service:
+    <<: *api-local
+    build:
+      context: ..
+      dockerfile: services/product_service/DockerFile
+    command:
+      - granian
+      - --interface
+      - asgi
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --workers
+      - "1"
+      - app.main:app
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../services/product_service/.env
+    environment:
+      ENV: development
+    depends_on:
+      product_migration_job:
+        condition: service_completed_successfully
+    healthcheck:
+      <<: *healthcheck-local
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).read()\""]
+
+  reviews_service:
+    <<: *api-local
+    build:
+      context: ..
+      dockerfile: services/reviews_service/Dockerfile
+    command:
+      - granian
+      - --interface
+      - asgi
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8004"
+      - --workers
+      - "1"
+      - app.main:app
+    ports:
+      - "8004:8004"
+    env_file:
+      - ../services/reviews_service/.env
+    environment:
+      ENV: development
+    depends_on:
+      reviews_migration_job:
+        condition: service_completed_successfully
+    healthcheck:
+      <<: *healthcheck-local
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8004/health', timeout=3).read()\""]
+
+  gateway_service:
+    <<: *api-local
+    build:
+      context: ../services/gateway
+      dockerfile: Dockerfile
+    command:
+      - granian
+      - --interface
+      - asgi
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+      - --workers
+      - "1"
+      - app.main:app
+    ports:
+      - "8080:8080"
+    env_file:
+      - ../services/gateway/.env
+    environment:
+      ENV: development
+    depends_on:
+      auth_service:
+        condition: service_healthy
+      cart_service:
+        condition: service_healthy
+      product_service:
+        condition: service_healthy
+      reviews_service:
+        condition: service_healthy
+      search_service:
+        condition: service_healthy
+    healthcheck:
+      <<: *healthcheck-local
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3).read()\""]
+
+  email_worker:
+    <<: *api-local
+    build:
+      context: ../services/email_worker
+      dockerfile: Dockerfile
+    environment:
+      ENV: development
+      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
+    env_file:
+      - ../services/email_worker/.env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  products_etl:
+    <<: *runtime-local
+    build:
+      context: ../services/products_etl
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8082"   # Go ETL HTTP + Swagger → http://localhost:8082/swagger/
+    environment:
+      ENV: development
+      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
+      MONGO_URI: "mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-secure_mongo_pass_123}@mongodb:27017/?authSource=admin"
+      SEARCH_SERVICE_URL: "http://search_service:8083"
+    env_file:
+      - ../services/products_etl/.env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      mongodb:
+        condition: service_healthy
+      search_service:
+        condition: service_healthy
+
+  meilisearch:
+    <<: *runtime-local
+    image: getmeili/meilisearch:v1.8
+    ports:
+      - "7700:7700"
+    environment:
+      MEILI_MASTER_KEY: "${MEILISEARCH_API_KEY:-masterKey_smarket_secure_2025}"
+      MEILI_ENV: development
+      MEILI_NO_ANALYTICS: "true"
+    volumes:
+      - meilisearch_data:/meili_data
+    healthcheck:
+      <<: *healthcheck-local
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:7700/health || exit 1"]
+      start_period: 5s
+
+  search_service:
+    <<: *api-local
+    build:
+      context: ../services/search_service
+      dockerfile: Dockerfile
+    ports:
+      - "8083:8083"
+    environment:
+      PORT: "8083"
+      MEILISEARCH_HOST: "http://meilisearch:7700"
+      MEILISEARCH_API_KEY: "${MEILISEARCH_API_KEY:-masterKey_smarket_secure_2025}"
+      RUST_LOG: "info"
+    depends_on:
+      meilisearch:
+        condition: service_healthy
+    healthcheck:
+      <<: *healthcheck-local
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8083/api/v1/health || exit 1"]
+      start_period: 10s
+
+volumes:
+  rabbitmq_data:
+  mongodb_data:
+  meilisearch_data:
+
+networks:
+  smarket-network:
+    driver: bridge

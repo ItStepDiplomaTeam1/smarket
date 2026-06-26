@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Link } from 'react-router-dom'; 
 import { apiClient } from '../../../shared/api/apiClient';
 import { type Product } from '../type';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { useFetchCarts, useUpdateCartItem } from '@/hooks/api/useCartApi';
 import { useCartStore } from '@/modules/Cart/store/useCartStore';
+import { generateSlug } from '@/shared/utils/url'; 
 
 import zagluska from '@/shared/assets/Vectorbuttle.svg';
 
@@ -46,7 +48,6 @@ const SmCard = ({ product }: { product: Product }) => {
                     quantity: 1
                 });
             } else if (isAuthenticated) {
-                // No cart exists yet — create one first
                 const cartResponse = await apiClient.post('/api/v1/cart/', {
                     name: "Мій кошик"
                 });
@@ -79,8 +80,12 @@ const SmCard = ({ product }: { product: Product }) => {
         }
     };
 
+    // ОБГОРНУТО В LINK ЗАМІСТЬ DIV
     return (
-        <div className="w-[271px] h-[489px] shrink-0 bg-white border border-[rgba(38,84,71,0.08)] rounded-[16px] p-[16px] flex flex-col box-border">
+        <Link 
+            to={`/product/${product.id}-${generateSlug(product.title)}`}
+            className="w-[271px] h-[489px] shrink-0 bg-white border border-[rgba(38,84,71,0.08)] rounded-[16px] p-[16px] flex flex-col box-border cursor-pointer transition-shadow hover:shadow-[0_4px_12px_rgba(38,84,71,0.08)] no-underline text-inherit block"
+        >
             <div className="w-full h-[339px] rounded-[10px] flex justify-center items-center mb-[16px] overflow-hidden">
                 <img 
                     src={product.image_url || zagluska} 
@@ -109,7 +114,7 @@ const SmCard = ({ product }: { product: Product }) => {
                     {isAdding ? 'Додаємо...' : 'До кошика'}
                 </button>
             </div>
-        </div>
+        </Link>
     );
 };
 

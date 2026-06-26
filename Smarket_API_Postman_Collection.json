@@ -1,0 +1,681 @@
+{
+  "info": {
+    "_postman_id": "a1f9a2e3-47a2-4a87-b9cd-c0fc2c35b91b",
+    "name": "Smarket Backend API Collection",
+    "description": "Повна Postman-колекція для взаємодії з усіма мікросервісами Smarket через API Gateway. Містить реалістичні дані для продуктів, магазинів і категорій (Zakaz.ua / український ритейл).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "JWT_TOKEN_HERE",
+      "type": "string"
+    },
+    {
+      "key": "test_product_id",
+      "value": "100234",
+      "type": "string"
+    },
+    {
+      "key": "test_store_id",
+      "value": "novus-kiev-pravdy",
+      "type": "string"
+    },
+    {
+      "key": "test_cart_id",
+      "value": "3c92f72c-9de8-4f32-a9c6-c0fc6c343a91",
+      "type": "string"
+    },
+    {
+      "key": "test_review_id",
+      "value": "e932f72c-9de8-4f32-a9c6-c0fc6c343a92",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "System & Health",
+      "item": [
+        {
+          "name": "API Gateway Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            },
+            "description": "Перевіряє доступність самого API Gateway."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth Service",
+      "item": [
+        {
+          "name": "Реєстрація користувача",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"serhii.shevchenko@gmail.com\",\n  \"password\": \"SecurityPass123!\",\n  \"username\": \"Сергій Шевченко\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "register"]
+            },
+            "description": "Реєструє нового користувача в системі."
+          }
+        },
+        {
+          "name": "Вхід (Login)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.access_token) {",
+                  "    pm.collectionVariables.set(\"access_token\", jsonData.access_token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"serhii.shevchenko@gmail.com\",\n  \"password\": \"SecurityPass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "login"]
+            },
+            "description": "Авторизує користувача та автоматично зберігає access_token у змінні колекції."
+          }
+        },
+        {
+          "name": "Дані поточного користувача (/me)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "me"]
+            },
+            "description": "Повертає дані про поточного користувача за Bearer токеном."
+          }
+        },
+        {
+          "name": "Оновлення токенів (Refresh)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "refresh"]
+            },
+            "description": "Оновлює access_token за допомогою HttpOnly refresh_token у куках."
+          }
+        },
+        {
+          "name": "Вихід із системи (Logout)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "auth", "logout"]
+            },
+            "description": "Видаляє cookie сесії."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Products Service",
+      "item": [
+        {
+          "name": "Список товарів (Каталог)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/products/?skip=0&limit=12&stores={{test_store_id}}&category=moloko-molochne&sort_by=best_price",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "products", ""],
+              "query": [
+                {
+                  "key": "skip",
+                  "value": "0"
+                },
+                {
+                  "key": "limit",
+                  "value": "12"
+                },
+                {
+                  "key": "stores",
+                  "value": "{{test_store_id}}",
+                  "description": "Список магазинів через кому"
+                },
+                {
+                  "key": "category",
+                  "value": "moloko-molochne",
+                  "description": "Категорія"
+                },
+                {
+                  "key": "sort_by",
+                  "value": "best_price",
+                  "description": "Сортування за ціною"
+                }
+              ]
+            },
+            "description": "Повертає фільтрований список продуктів."
+          }
+        },
+        {
+          "name": "Деталі товару",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/products/{{test_product_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "products", "{{test_product_id}}"]
+            },
+            "description": "Повертає деталі конкретного товару та його ціни в різних магазинах."
+          }
+        },
+        {
+          "name": "Товари в конкретному магазині",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/products/by-store/{{test_store_id}}?limit=50",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "products", "by-store", "{{test_store_id}}"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Отримує товари тільки з одного магазину."
+          }
+        },
+        {
+          "name": "Список категорій",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/products/categories",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "products", "categories"]
+            },
+            "description": "Повертає всі категорії верхнього рівня."
+          }
+        },
+        {
+          "name": "Історія цін товару",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/products/{{test_product_id}}/prices?limit=50",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "products", "{{test_product_id}}", "prices"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            },
+            "description": "Повертає історичний лог цін товару."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Stores Service",
+      "item": [
+        {
+          "name": "Список магазинів",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/stores/?city=Київ&is_active=true",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "stores", ""],
+              "query": [
+                {
+                  "key": "city",
+                  "value": "Київ"
+                },
+                {
+                  "key": "is_active",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Повертає список доступних магазинів у місті."
+          }
+        },
+        {
+          "name": "Деталі магазину за ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/stores/{{test_store_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "stores", "{{test_store_id}}"]
+            },
+            "description": "Повертає інформацію про магазин."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cart Service",
+      "item": [
+        {
+          "name": "Отримати всі кошики",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/cart/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "cart", ""]
+            },
+            "description": "Отримує список усіх кошиків поточного користувача."
+          }
+        },
+        {
+          "name": "Створити кошик",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Мій щотижневий кошик\",\n  \"description\": \"Закупка базових молочних продуктів на тиждень\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/cart/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "cart", ""]
+            },
+            "description": "Створює новий кошик для користувача."
+          }
+        },
+        {
+          "name": "Додати товар до кошика",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_id\": {{test_product_id}},\n  \"quantity\": 2\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/cart/{{test_cart_id}}/items",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "cart", "{{test_cart_id}}", "items"]
+            },
+            "description": "Додає обраний товар із вказаною кількістю до кошика."
+          }
+        },
+        {
+          "name": "Порівняти ціни кошика по магазинах",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/cart/{{test_cart_id}}/compare",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "cart", "{{test_cart_id}}", "compare"]
+            },
+            "description": "Аналізує вартість товарів у кошику та вираховує сумарну вартість для кожного ритейлера."
+          }
+        },
+        {
+          "name": "Видалити кошик",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/cart/{{test_cart_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "cart", "{{test_cart_id}}"]
+            },
+            "description": "Повністю видаляє кошик."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reviews Service",
+      "item": [
+        {
+          "name": "Отримати відгуки про товар",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/reviews/product/{{test_product_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "reviews", "product", "{{test_product_id}}"]
+            },
+            "description": "Публічний роут. Повертає список відгуків та рейтингів для товару."
+          }
+        },
+        {
+          "name": "Додати відгук",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"product_id\": {{test_product_id}},\n  \"rating\": 5,\n  \"text\": \"Чудове молоко! Завжди свіже та має приємний насичений смак. Рекомендую.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/reviews/",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "reviews", ""]
+            },
+            "description": "Додає новий відгук до товару (рейтинг 1-5 + текст)."
+          }
+        },
+        {
+          "name": "Видалити відгук",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/reviews/{{test_review_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "reviews", "{{test_review_id}}"]
+            },
+            "description": "Видаляє відгук користувача."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Search Service",
+      "item": [
+        {
+          "name": "Пошук товарів",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/search/search?q=молоко&limit=12&category_slug=moloko-molochne&in_stock=true&sort=price:asc",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "search", "search"],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "молоко",
+                  "description": "Фраза для повнотекстового пошуку"
+                },
+                {
+                  "key": "limit",
+                  "value": "12"
+                },
+                {
+                  "key": "category_slug",
+                  "value": "moloko-molochne"
+                },
+                {
+                  "key": "in_stock",
+                  "value": "true"
+                },
+                {
+                  "key": "sort",
+                  "value": "price:asc"
+                }
+              ]
+            },
+            "description": "Проводить швидкий повнотекстовий пошук через Meilisearch."
+          }
+        },
+        {
+          "name": "Індексація товарів (Бач)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documents\": [\n    {\n      \"id\": 100234,\n      \"title\": \"Молоко Селянське ультрапастеризоване 3.2% 900г\",\n      \"brand\": \"Селянське\",\n      \"unit\": \"г\",\n      \"weight\": 900.0,\n      \"image_url\": \"https://smarket.com/images/100234.jpg\",\n      \"canonical_ean\": \"4823061300891\",\n      \"category_id\": 14,\n      \"category_slug\": \"moloko-molochne\",\n      \"category_name\": \"Молоко\",\n      \"store_id\": \"novus-kiev-pravdy\",\n      \"store_name\": \"Novus просп. Правди\",\n      \"retail_chain\": \"novus\",\n      \"price\": 42.50,\n      \"old_price\": 46.90,\n      \"in_stock\": true\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/search/index",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "search", "index"]
+            },
+            "description": "Примусова індексація документів у Meilisearch."
+          }
+        },
+        {
+          "name": "Стан здоров'я пошуку (Health)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/search/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "search", "health"]
+            },
+            "description": "Перевірка з'єднання Gateway -> Search Service -> Meilisearch."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin Panel",
+      "item": [
+        {
+          "name": "Нещодавні користувачі",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/recent-users",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "admin", "recent-users"]
+            },
+            "description": "Повертає список нещодавно зареєстрованих користувачів. Дозволено тільки адміністраторам."
+          }
+        },
+        {
+          "name": "Статус всієї інфраструктури",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/system-status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "admin", "system-status"]
+            },
+            "description": "Показує працездатність баз даних (PostgreSQL, Redis, RabbitMQ, Meilisearch). Доступно тільки адміну."
+          }
+        },
+        {
+          "name": "Статус ETL-воркера",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/admin/etl/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "admin", "etl/health"]
+            },
+            "description": "Повертає стан підключень та черг ETL-воркера. Дозволено тільки адміну."
+          }
+        }
+      ]
+    }
+  ]
+}

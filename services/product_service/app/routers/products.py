@@ -1,11 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import ORJSONResponse
-from sqlalchemy import select, func, and_, cast, Boolean
+from sqlalchemy import select, func, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from typing import Optional
 from datetime import datetime, timedelta, timezone
-from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from app.database.models import (
     Price,
@@ -30,6 +29,7 @@ from app.database.session import get_db
 
 router = APIRouter(tags=["Products"], default_response_class=ORJSONResponse)
 
+
 @router.get(
     "/",
     response_model=PaginatedProductsResponse,
@@ -40,10 +40,16 @@ router = APIRouter(tags=["Products"], default_response_class=ORJSONResponse)
 async def get_products(
     skip: int = Query(0, ge=0),
     limit: int = Query(12, ge=1, le=1000),
-    stores: Optional[str] = Query(None, description="Магазини через кому (напр. 'atb,novus')"),
+    stores: Optional[str] = Query(
+        None, description="Магазини через кому (напр. 'atb,novus')"
+    ),
     category: Optional[str] = Query(None, description="ID категорії або 'products'"),
-    subcategories: Optional[str] = Query(None, description="Слаги підкатегорій через кому"),
-    offers: Optional[str] = Query(None, description="Фільтри пропозицій (promo, new, save)"),
+    subcategories: Optional[str] = Query(
+        None, description="Слаги підкатегорій через кому"
+    ),
+    offers: Optional[str] = Query(
+        None, description="Фільтри пропозицій (promo, new, save)"
+    ),
     max_price: Optional[float] = Query(None, description="Максимальна ціна"),
     search: Optional[str] = Query(None, description="Пошук по назві товару"),
     sort_by: Optional[str] = Query("best_price", description="Сортування"),
@@ -61,36 +67,26 @@ async def get_products(
             Price.product_id,
             Price.store_id,
             func.max(Price.recorded_at).label("max_recorded_at"),
-        )
-        .group_by(Price.product_id, Price.store_id)
+        ).group_by(Price.product_id, Price.store_id)
     ).subquery("latest_prices")
 
     # 3. CTE актуальних цін (приєднуємо самі ціни)
-    current_prices_stmt = (
-        select(
-            Price.product_id,
-            Price.store_id,
-            Price.price,
-            Price.old_price,
-            Price.in_stock
-        )
-        .join(
-            latest_price_subq,
-            and_(
-                Price.product_id == latest_price_subq.c.product_id,
-                Price.store_id == latest_price_subq.c.store_id,
-                Price.recorded_at == latest_price_subq.c.max_recorded_at,
-            ),
-        )
+    current_prices_stmt = select(
+        Price.product_id, Price.store_id, Price.price, Price.old_price, Price.in_stock
+    ).join(
+        latest_price_subq,
+        and_(
+            Price.product_id == latest_price_subq.c.product_id,
+            Price.store_id == latest_price_subq.c.store_id,
+            Price.recorded_at == latest_price_subq.c.max_recorded_at,
+        ),
     )
-    
+
     # Якщо користувач вибрав конкретні магазини, шукаємо по МЕРЕЖІ (retail_chain)
     if store_ids:
-        current_prices_stmt = (
-            current_prices_stmt
-            .join(Store, Price.store_id == Store.external_id)
-            .where(Store.retail_chain.in_(store_ids))
-        )
+        current_prices_stmt = current_prices_stmt.join(
+            Store, Price.store_id == Store.external_id
+        ).where(Store.retail_chain.in_(store_ids))
 
     current_prices_cte = current_prices_stmt.cte("current_prices")
 
@@ -101,8 +97,7 @@ async def get_products(
             func.min(current_prices_cte.c.price).label("min_price"),
             # Використовуємо bool_or щоб перевірити чи є хоча б в одному магазині стара ціна
             func.bool_or(current_prices_cte.c.old_price.isnot(None)).label("has_promo"),
-        )
-        .group_by(current_prices_cte.c.product_id)
+        ).group_by(current_prices_cte.c.product_id)
     ).subquery("product_stats")
 
     # 5. Будуємо базовий запит Товарів, приєднуючи статистику цін
@@ -130,8 +125,8 @@ async def get_products(
 
     # Фільтри пропозицій
     if "promo" in offer_list or "save" in offer_list:
-        base_stmt = base_stmt.where(product_stats_subq.c.has_promo == True)
-        
+        base_stmt = base_stmt.where(product_stats_subq.c.has_promo.is_(True))
+
     if "new" in offer_list:
         # Товари, додані за останні 14 днів
         fourteen_days_ago = datetime.now(timezone.utc) - timedelta(days=14)
@@ -146,10 +141,14 @@ async def get_products(
 
     # 8. Сортування
     if sort_by == "cheapest_first":
-        base_stmt = base_stmt.order_by(product_stats_subq.c.min_price.asc(), Product.id.asc())
+        base_stmt = base_stmt.order_by(
+            product_stats_subq.c.min_price.asc(), Product.id.asc()
+        )
     elif sort_by == "best_price":
         # Можна сортувати так само, або за пріоритетом акцій
-        base_stmt = base_stmt.order_by(product_stats_subq.c.min_price.asc(), Product.id.asc())
+        base_stmt = base_stmt.order_by(
+            product_stats_subq.c.min_price.asc(), Product.id.asc()
+        )
     elif sort_by == "popular":
         # Fallback сортування, наприклад за новизною
         base_stmt = base_stmt.order_by(Product.id.desc())
@@ -159,7 +158,7 @@ async def get_products(
     # 9. Пагінація
     base_stmt = base_stmt.offset(skip).limit(limit)
     result = await db.execute(base_stmt)
-    
+
     # Отримуємо кортежі: (Product, min_price, has_promo)
     rows = result.all()
     products = [row[0] for row in rows]
@@ -223,6 +222,7 @@ async def get_products(
         )
 
     return PaginatedProductsResponse(total=total, items=response_items)
+
 
 @router.get(
     "/by-store/{store_id}",

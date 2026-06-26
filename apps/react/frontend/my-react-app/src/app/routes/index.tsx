@@ -40,7 +40,7 @@ const router = createBrowserRouter([
         element: <Suspense fallback={fallback}><LoginPage /></Suspense>,
       },
       {
-        path: '/product/:id',
+        path: '/product/:idAndSlug', 
         element: <Suspense fallback={fallback}><ProductDetailPage /></Suspense>,
       },
       {

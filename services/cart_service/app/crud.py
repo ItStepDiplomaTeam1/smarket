@@ -103,3 +103,50 @@ async def clear_cart(db: AsyncSession, user_id: uuid.UUID, cart_id: uuid.UUID) -
     await db.execute(stmt)
     await db.commit()
     return True
+
+
+async def duplicate_cart(db: AsyncSession, user_id: uuid.UUID, cart_id: uuid.UUID):
+    original_cart = await get_cart(db, user_id, cart_id)
+    if not original_cart:
+        return None
+    
+    new_cart = Cart(user_id=user_id, name=original_cart.name + " (Копія)")
+    db.add(new_cart)
+    await db.flush()
+    
+    for item in original_cart.items:
+        new_item = CartItem(cart_id=new_cart.id, product_id=item.product_id, quantity=item.quantity)
+        db.add(new_item)
+        
+    await db.commit()
+    await db.refresh(new_cart)
+    
+    stmt = select(Cart).where(Cart.id == new_cart.id).options(selectinload(Cart.items))
+    res = await db.execute(stmt)
+    return res.scalars().first()
+
+
+async def update_item_quantity(
+    db: AsyncSession, user_id: uuid.UUID, cart_id: uuid.UUID, item_id: uuid.UUID, quantity: int
+) -> Cart | None:
+    cart = await get_cart(db, user_id, cart_id)
+    if not cart:
+        return None
+
+    stmt_item = select(CartItem).where(
+        CartItem.cart_id == cart.id, CartItem.id == item_id
+    )
+    result_item = await db.execute(stmt_item)
+    existing_item = result_item.scalars().first()
+
+    if not existing_item:
+        return None
+
+    existing_item.quantity = quantity
+    await db.commit()
+
+    stmt_updated = (
+        select(Cart).where(Cart.id == cart.id).options(selectinload(Cart.items))
+    )
+    res_updated = await db.execute(stmt_updated)
+    return res_updated.scalars().first()

@@ -7,7 +7,7 @@ import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { useFetchCarts, useUpdateCartItem } from '@/hooks/api/useCartApi';
 import { useCartStore } from '@/modules/Cart/store/useCartStore';
 
-const FbtCard = ({ product }: { product: Product }) => {
+const RecentlyViewedCard = ({ product }: { product: Product }) => {
     const { isAuthenticated, user } = useAuthStore();
     const { data: carts } = useFetchCarts();
     const { mutateAsync: updateCartItem } = useUpdateCartItem();
@@ -44,7 +44,6 @@ const FbtCard = ({ product }: { product: Product }) => {
                     quantity: 1
                 });
             } else if (isAuthenticated) {
-                // No cart exists yet — create one first
                 const cartResponse = await apiClient.post('/api/v1/cart/', {
                     name: "Мій кошик"
                 });
@@ -121,47 +120,64 @@ const FbtCard = ({ product }: { product: Product }) => {
     );
 };
 
-interface FBTProps {
+interface RecentlyViewedProps {
     title?: string;
+    currentProductId?: number | string;
 }
 
-export function FBT({ title = "З цим товаром також купують" }: FBTProps) {
+export function RecentlyViewed({ 
+    title = "Ви нещодавно переглядали", 
+    currentProductId 
+}: RecentlyViewedProps) {
     const [products, setProducts] = useState<Product[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
 
     useEffect(() => {
-        const fetchRandomProducts = async () => {
+        const fetchRecentlyViewed = async () => {
             try {
                 setIsLoading(true);
-                const response = await apiClient.get('/api/v1/products');
+                const stored = localStorage.getItem('recently_viewed_products');
                 
-                const allProducts = response.data?.items || response.data || [];
+                if (!stored) {
+                    setIsLoading(false);
+                    return;
+                }
 
-                const shuffled = [...allProducts].sort(() => 0.5 - Math.random());
-                const selected = shuffled.slice(0, 6);
+                let viewedIds: string[] = JSON.parse(stored);
+
+                if (currentProductId) {
+                    viewedIds = viewedIds.filter(id => id !== String(currentProductId));
+                }
+
+                const selectedIds = viewedIds.slice(0, 6);
+
+                if (selectedIds.length === 0) {
+                    setIsLoading(false);
+                    return;
+                }
 
                 const detailed = await Promise.all(
-                    selected.map(async (p: Product) => {
+                    selectedIds.map(async (id) => {
                         try {
-                            const detailRes = await apiClient.get(`/api/v1/products/${p.id}`);
+                            const detailRes = await apiClient.get(`/api/v1/products/${id}`);
                             return detailRes.data;
                         } catch (err) {
-                            console.error(`Помилка отримання цін для товару ${p.id}:`, err);
-                            return p;
+                            console.error(`Помилка отримання товару ${id}:`, err);
+                            return null;
                         }
                     })
                 );
 
-                setProducts(detailed);
+                setProducts(detailed.filter(Boolean));
             } catch (error) {
-                console.error("Помилка завантаження рекомендацій:", error);
+                console.error("Помилка завантаження нещодавно переглянутих:", error);
             } finally {
                 setIsLoading(false);
             }
         };
 
-        fetchRandomProducts();
-    }, []);
+        fetchRecentlyViewed();
+    }, [currentProductId]);
 
     if (isLoading || products.length === 0) return null;
 
@@ -173,7 +189,7 @@ export function FBT({ title = "З цим товаром також купуют�
                 </h2>
                 <div className="flex gap-[24px] overflow-x-auto pb-[16px]">
                     {products.map((product) => (
-                        <FbtCard key={product.id} product={product} />
+                        <RecentlyViewedCard key={product.id} product={product} />
                     ))}
                 </div>
             </div>
