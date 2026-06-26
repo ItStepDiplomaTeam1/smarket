@@ -1,0 +1,1 @@
+export { default as ConfidentialPolicyPage } from './ui/ConfidentialPolicyPage'

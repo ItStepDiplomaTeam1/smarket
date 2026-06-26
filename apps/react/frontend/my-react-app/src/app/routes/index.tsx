@@ -12,6 +12,10 @@ const ProfilePage = lazy(() => import('@/pages/Profile/ui/ProfilePage'));
 const CatalogPage = lazy(() => import('@/pages/Catalog/ui/Catalog'));
 const CartPage = lazy(() => import('@/pages/Cart/ui/CartPage.tsx').then(m => ({ default: m.CartPage })));
 
+const ConfidentialPolicyPage = lazy(() => import('@/pages/ConfidentionalPolicy/ui/ConfidentialPolicyPage'));
+const PrivacyPage = lazy(() => import('@/pages/Privacy/ui/PrivacyPage'));
+const UsingConditionsPage = lazy(() => import('@/pages/UsingConditions/ui/UsingConditionsPage'));
+
 const fallback = <div>Завантаження...</div>;
 
 const router = createBrowserRouter([
@@ -54,6 +58,18 @@ const router = createBrowserRouter([
       {
         path: '/cart',
         element: <Suspense fallback={fallback}><CartPage /></Suspense>,
+      },
+      {
+        path: '/confidential-policy',
+        element: <Suspense fallback={fallback}><ConfidentialPolicyPage /></Suspense>,
+      },
+      {
+        path: '/privacy',
+        element: <Suspense fallback={fallback}><PrivacyPage /></Suspense>,
+      },
+      {
+        path: '/using-conditions',
+        element: <Suspense fallback={fallback}><UsingConditionsPage /></Suspense>,
       }
     ]
   }
