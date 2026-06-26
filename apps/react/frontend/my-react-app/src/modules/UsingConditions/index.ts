@@ -1,0 +1,1 @@
+export { TermsOfUsePage } from './components/main';

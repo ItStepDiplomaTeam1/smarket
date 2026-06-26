@@ -1,0 +1,1 @@
+export { PersonalDataPage } from './components/main';
