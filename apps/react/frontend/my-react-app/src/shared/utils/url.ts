@@ -15,14 +15,6 @@ const CYRILLIC_MAP: Record<string, string> = {
     'ё': 'yo', 'ъ': '',   'ы': 'y',  'э': 'e',
 };
 
-/**
- * Генерує SEO-friendly slug з назви товару.
- * Підтримує українську, російську та латинську з діакритичними знаками.
- *
- * @example
- * generateSlug("Молоко Селянське 2.6%") → "moloko-selyanske-26"
- * generateSlug("Château Margaux 2015")  → "chateau-margaux-2015"
- */
 export const generateSlug = (name: string | undefined): string => {
     if (!name) return 'product';
 
@@ -36,9 +28,9 @@ export const generateSlug = (name: string | undefined): string => {
         .toLowerCase()
         // 1. Транслітерація кирилиці
         .replace(/[а-яґєіїёъыэ]/g, (ch) => CYRILLIC_MAP[ch] ?? '')
-        // 2. Пробіли → дефіси
+        // 2. Пробіли  дефіси
         .replace(/\s+/g, '-')
-        // 3. Латинські діакритичні знаки → ASCII
+        // 3. Латинські діакритичні знаки  ASCII
         .replace(diacriticsRegex, (c) => replacements.charAt(diacritics.indexOf(c)))
         // 4. & → and
         .replace(/&/g, '-and-')

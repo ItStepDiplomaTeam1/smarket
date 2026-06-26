@@ -2,9 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/shared/api/apiClient';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 
-// -------------------------------------------------------
-//  Типи для відгуків (відповідають ReviewResponse з бекенду)
-// -------------------------------------------------------
 
 export interface Review {
   id: string;
@@ -23,9 +20,6 @@ export interface ReviewCreatePayload {
   user_name?: string;
 }
 
-// -------------------------------------------------------
-//  GET — завантажити відгуки для конкретного товару
-// -------------------------------------------------------
 
 export const useFetchProductReviews = (productId: number) => {
   return useQuery<Review[]>({
@@ -39,10 +33,6 @@ export const useFetchProductReviews = (productId: number) => {
     enabled: productId > 0,
   });
 };
-
-// -------------------------------------------------------
-//  POST — створити новий відгук
-// -------------------------------------------------------
 
 export const useCreateReview = () => {
   const queryClient = useQueryClient();
@@ -62,9 +52,6 @@ export const useCreateReview = () => {
   });
 };
 
-// -------------------------------------------------------
-//  DELETE — видалити свій відгук
-// -------------------------------------------------------
 
 export const useDeleteReview = (productId: number) => {
   const queryClient = useQueryClient();

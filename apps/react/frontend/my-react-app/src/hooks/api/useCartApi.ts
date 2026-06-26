@@ -16,12 +16,11 @@ export const useFetchCarts = () => {
     queryKey: ['carts'],
     queryFn: async () => {
       const { data } = await apiClient.get('/api/v1/cart/');
-      // Map backend response to CartListItem
       return data.map((cart: { id: string; name: string; items?: unknown[]; total_price?: number; updated_at: string }) => ({
         id: cart.id,
         title: cart.name,
         itemsCount: cart.items?.length || 0,
-        bestStore: '-', // We will update this later with comparison data if needed
+        bestStore: '-', 
         bestPrice: cart.total_price || 0,
         potentialSavings: 0,
         updatedAt: cart.updated_at,
@@ -36,7 +35,6 @@ export const useFetchCartDetails = (cartId: string | null) => {
     queryFn: async () => {
       const { data } = await apiClient.get(`/api/v1/cart/${cartId}`);
       
-      // Fetch comparison to populate the summary
       let comparisonData = [];
       try {
         const compRes = await apiClient.get(`/api/v1/cart/${cartId}/compare`);
@@ -67,7 +65,7 @@ export const useFetchCartDetails = (cartId: string | null) => {
           quantity: item.quantity,
           basePrice: item.price,
           totalItemPrice: item.price * item.quantity,
-          id: item.id, // mapping the cart_item id
+          id: item.id,
           imageUrl: imageUrl
         };
       }));
