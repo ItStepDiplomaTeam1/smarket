@@ -9,6 +9,7 @@ from app.shared.schemas import (
     CartResponse,
     CartStoreComparison,
     CartCreate,
+    CartItemUpdate,
 )
 from app import crud
 from app.external_api import fetch_product_details, fetch_product_offers
@@ -181,6 +182,21 @@ async def remove_item_from_cart(
     if not success:
         raise HTTPException(status_code=404, detail="Кошик або товар не знайдено")
     return {"message": "Товар успішно видалено"}
+
+
+@router.put("/{cart_id}/items/{item_id}", response_model=CartResponse)
+async def update_item_quantity(
+    cart_id: uuid.UUID,
+    item_id: uuid.UUID,
+    item_in: CartItemUpdate,
+    user_id: uuid.UUID = Depends(get_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Оновити кількість товару в кошику"""
+    cart = await crud.update_item_quantity(db, user_id, cart_id, item_id, item_in.quantity)
+    if not cart:
+        raise HTTPException(status_code=404, detail="Кошик або товар не знайдено")
+    return await get_cart(cart_id, user_id, db)
 
 
 @router.delete("/{cart_id}/items")

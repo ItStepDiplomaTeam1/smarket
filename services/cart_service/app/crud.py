@@ -124,3 +124,29 @@ async def duplicate_cart(db: AsyncSession, user_id: uuid.UUID, cart_id: uuid.UUI
     stmt = select(Cart).where(Cart.id == new_cart.id).options(selectinload(Cart.items))
     res = await db.execute(stmt)
     return res.scalars().first()
+
+
+async def update_item_quantity(
+    db: AsyncSession, user_id: uuid.UUID, cart_id: uuid.UUID, item_id: uuid.UUID, quantity: int
+) -> Cart | None:
+    cart = await get_cart(db, user_id, cart_id)
+    if not cart:
+        return None
+
+    stmt_item = select(CartItem).where(
+        CartItem.cart_id == cart.id, CartItem.id == item_id
+    )
+    result_item = await db.execute(stmt_item)
+    existing_item = result_item.scalars().first()
+
+    if not existing_item:
+        return None
+
+    existing_item.quantity = quantity
+    await db.commit()
+
+    stmt_updated = (
+        select(Cart).where(Cart.id == cart.id).options(selectinload(Cart.items))
+    )
+    res_updated = await db.execute(stmt_updated)
+    return res_updated.scalars().first()
