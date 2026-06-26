@@ -25,6 +25,7 @@ export interface CartListItem {
 
 // Деталі конкретного товару в кошику
 export interface CartItemDetail {
+  id: string;
   productId: string;
   name: string;
   imageUrl?: string;

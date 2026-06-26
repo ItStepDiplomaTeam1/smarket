@@ -369,10 +369,10 @@ async def import_shared_cart(
     new_cart = await crud.create_cart(db, user_id, CartCreate(name=new_cart_name))
 
     for item in shared_cart.items:
-        await crud.add_item_to_cart(
-            db, 
-            user_id, 
-            new_cart.id, 
+        await crud.add_item(
+            db,
+            user_id,
+            new_cart.id,
             CartItemCreate(product_id=item.product_id, quantity=item.quantity)
         )
 
