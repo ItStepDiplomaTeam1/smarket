@@ -282,24 +282,27 @@ const ProductsTable: React.FC = () => {
                   }}
                 />
               </div>
-              <div className="flex flex-col max-w-[280px]">
-                <span className="text-sm font-semibold text-textMain truncate" title={title}>
+              <div className="flex flex-col max-w-[240px] sm:max-w-[280px] lg:max-w-[320px]">
+                <span className="text-[13px] font-semibold text-textMain truncate" title={title}>
                   {title}
                 </span>
-                <span className="text-xs text-textMuted">{weightStr}</span>
+                <span className="text-[11px] text-textMuted mt-0.5">{weightStr}</span>
               </div>
             </div>
           </td>
           <td className="py-4 px-3 text-sm text-textMuted">
             {categoryName || <span className="text-textMuted/50">—</span>}
           </td>
-          <td className="py-4 px-3 text-sm font-medium text-textMain">
+          <td className="py-4 px-3 text-sm font-medium text-textMain whitespace-nowrap">
             {price && price > 0 ? (
-              <div className="flex flex-col">
-                <span>від {price.toFixed(2)} грн</span>
+              <div className="flex flex-col items-start">
+                <span className="whitespace-nowrap">від {price.toFixed(2)} грн</span>
                 {firstOffer?.store?.name && (
-                  <span className="text-[11px] text-textMuted font-normal">
-                    {firstOffer.store.name} ({firstOffer.store.retail_chain || ''})
+                  <span 
+                    className="text-[10px] text-textMuted font-normal block max-w-[180px] truncate mt-0.5" 
+                    title={`${firstOffer.store.name} (${firstOffer.store.retail_chain || ''})`}
+                  >
+                    {firstOffer.store.name}
                   </span>
                 )}
               </div>
@@ -514,13 +517,13 @@ const ProductsTable: React.FC = () => {
                     onChange={toggleSelectAll}
                   />
                 </th>
-                <th className="py-4 px-3 text-xs font-semibold text-textMain">Товар</th>
-                <th className="py-4 px-3 text-xs font-semibold text-textMain">Категорія</th>
-                <th className="py-4 px-3 text-xs font-semibold text-textMain">Ціна</th>
-                <th className="py-4 px-3 text-xs font-semibold text-textMain">Статус</th>
-                <th className="py-4 px-3 text-xs font-semibold text-textMain">Проблема</th>
-                <th className="py-4 px-3 text-xs font-semibold text-textMain text-right">Оновлення</th>
-                <th className="py-4 pl-3 pr-6 text-xs font-semibold text-textMain text-right">Дії</th>
+                <th className="py-4 px-3 text-xs font-semibold text-textMain w-[38%]">Товар</th>
+                <th className="py-4 px-3 text-xs font-semibold text-textMain w-[15%]">Категорія</th>
+                <th className="py-4 px-3 text-xs font-semibold text-textMain w-[22%]">Ціна</th>
+                <th className="py-4 px-3 text-xs font-semibold text-textMain w-[10%]">Статус</th>
+                <th className="py-4 px-3 text-xs font-semibold text-textMain w-[10%]">Проблема</th>
+                <th className="py-4 px-3 text-xs font-semibold text-textMain text-right w-[10%]">Оновлення</th>
+                <th className="py-4 pl-3 pr-6 text-xs font-semibold text-textMain text-right w-[5%]">Дії</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
