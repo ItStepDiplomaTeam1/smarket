@@ -622,7 +622,12 @@ jobs:
         run: |
           git config --global --add safe.directory "${{ github.workspace }}" || true
           git config --global --add safe.directory /app/smarket || true
-          git fetch "${{ github.workspace }}" HEAD
+          if [ -f .git/shallow ]; then
+            echo "Target repository is shallow. Unshallowing..."
+            git fetch --unshallow "${{ github.workspace }}" HEAD
+          else
+            git fetch "${{ github.workspace }}" HEAD
+          fi
           git checkout -f -B develop FETCH_HEAD
 
           for srv in services/gateway services/auth_service services/product_service \
