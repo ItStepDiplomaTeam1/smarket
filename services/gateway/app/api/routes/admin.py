@@ -112,6 +112,17 @@ async def get_system_status(request: Request):
     # Gateway itself is obviously alive if we reached this point
     service_statuses["API Gateway"] = "Працює"
 
+    # Probe search_service (Rust) health endpoint
+    search_health_url = f"{settings.SEARCH_SERVICE_URL}/api/v1/health"
+    try:
+        search_response = await client.get(search_health_url, timeout=5.0)
+        if search_response.status_code == 200 and search_response.json().get("status") == "up":
+            service_statuses["Search Service"] = "Працює"
+        else:
+            service_statuses["Search Service"] = "Помилка"
+    except Exception:
+        service_statuses["Search Service"] = "Помилка"
+
     return JSONResponse(content=service_statuses)
 
 
