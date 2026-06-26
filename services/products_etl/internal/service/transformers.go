@@ -1,10 +1,13 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -24,7 +27,9 @@ import (
 //
 // Стратегія 3: після кожного успішного батчу надсилає pg_notify('products_updated', ...)
 // щоб product_service (Python) міг моментально інвалідувати кеш.
-func TransformLoadWorker(mongoClient *mongo.Client, pgPool *pgxpool.Pool, mongoDBName string) {
+// Стратегія 4: після кожного батчу надсилає HTTP POST до search_service
+// для індексації змінених товарів у Meilisearch.
+func TransformLoadWorker(mongoClient *mongo.Client, pgPool *pgxpool.Pool, mongoDBName string, searchServiceURL string) {
 	collection := mongoClient.Database(mongoDBName).Collection("raw_pages")
 
 	log.Println("[Transform] Воркер трансформації запущено.")
@@ -32,15 +37,15 @@ func TransformLoadWorker(mongoClient *mongo.Client, pgPool *pgxpool.Pool, mongoD
 	for {
 		time.Sleep(5 * time.Second)
 
-		if err := runTransformBatch(context.Background(), collection, pgPool); err != nil {
+		if err := runTransformBatch(context.Background(), collection, pgPool, searchServiceURL); err != nil {
 			log.Printf("[Transform] Помилка обробки батчу: %v", err)
 		}
 	}
 }
 
 // runTransformBatch вичитує один батч «нових» документів і обробляє кожен.
-// Після успішної обробки батчу надсилає pg_notify.
-func runTransformBatch(ctx context.Context, collection *mongo.Collection, pgPool *pgxpool.Pool) error {
+// Після успішної обробки батчу надсилає pg_notify та оновлює Meilisearch.
+func runTransformBatch(ctx context.Context, collection *mongo.Collection, pgPool *pgxpool.Pool, searchServiceURL string) error {
 	docs, err := findNewDocuments(ctx, collection)
 	if err != nil {
 		return fmt.Errorf("читання з Mongo: %w", err)
@@ -80,6 +85,10 @@ func runTransformBatch(ctx context.Context, collection *mongo.Collection, pgPool
 	// Стратегія 3: надсилаємо pg_notify для кожного store_id, який оновився
 	for storeID := range processedStores {
 		notifyProductsUpdated(ctx, pgPool, storeID)
+		// Стратегія 4: індексуємо оновлені товари в Meilisearch (fire-and-forget)
+		if searchServiceURL != "" {
+			go indexProductsToSearch(pgPool, searchServiceURL, storeID)
+		}
 	}
 
 	// --- Другий прохід: маркери завершення ETL ---
@@ -666,8 +675,296 @@ func ResolveCategoryID(ctx context.Context, pgPool *pgxpool.Pool, categorySlug s
 }
 
 // ---------------------------------------------------------------------------
-// Стратегія 3: pg_notify — повідомляємо product_service про оновлення
+// Стратегія 4: Індексація в Meilisearch через search_service
 // ---------------------------------------------------------------------------
+
+// SearchProductDocument — DTO для надсилання в search_service /api/v1/index.
+// Повинен відповідати структурі ProductDocument у search_service/src/handlers/post_index.rs.
+type SearchProductDocument struct {
+	ID           int64   `json:"id"`
+	Title        string  `json:"title"`
+	Brand        string  `json:"brand,omitempty"`
+	Unit         string  `json:"unit,omitempty"`
+	Weight       float64 `json:"weight,omitempty"`
+	ImageURL     string  `json:"image_url,omitempty"`
+	CanonicalEAN string  `json:"canonical_ean,omitempty"`
+	CategoryID   *int    `json:"category_id,omitempty"`
+	CategorySlug string  `json:"category_slug,omitempty"`
+	CategoryName string  `json:"category_name,omitempty"`
+	StoreID      string  `json:"store_id"`
+	StoreName    string  `json:"store_name,omitempty"`
+	RetailChain  string  `json:"retail_chain,omitempty"`
+	Price        float64 `json:"price"`
+	OldPrice     *float64 `json:"old_price,omitempty"`
+	InStock      bool    `json:"in_stock"`
+}
+
+type searchIndexRequest struct {
+	Documents []SearchProductDocument `json:"documents"`
+}
+
+// indexProductsToSearch вибирає оновлені товари з PostgreSQL для заданого store_id
+// та надсилає їх у search_service для індексації в Meilisearch.
+// Викликається як горутина (fire-and-forget), помилки не є критичними.
+func indexProductsToSearch(pgPool *pgxpool.Pool, searchServiceURL string, storeID string) {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// JOIN: products + store_products + stores + prices + categories
+	// prices: беремо найостаннішу ціну для пари (product_id, store_id)
+	rows, err := pgPool.Query(ctx, `
+		SELECT
+			p.id,
+			p.title,
+			COALESCE(p.brand, '')              AS brand,
+			COALESCE(p.unit, '')               AS unit,
+			COALESCE(p.weight, 0)              AS weight,
+			COALESCE(p.image_url, '')          AS image_url,
+			COALESCE(p.canonical_ean, '')      AS canonical_ean,
+			p.canonical_category_id,
+			COALESCE(c.slug, '')               AS category_slug,
+			COALESCE(c.name, '')               AS category_name,
+			sp.store_id,
+			COALESCE(s.name, '')               AS store_name,
+			COALESCE(s.retail_chain, '')        AS retail_chain,
+			lpr.price,
+			lpr.old_price,
+			lpr.in_stock
+		FROM store_products sp
+		JOIN products p ON p.id = sp.product_id
+		JOIN stores s   ON s.external_id = sp.store_id
+		LEFT JOIN categories c ON c.id = p.canonical_category_id
+		JOIN LATERAL (
+			SELECT price, old_price, in_stock
+			FROM prices pr
+			WHERE pr.product_id = sp.product_id AND pr.store_id = sp.store_id
+			ORDER BY pr.recorded_at DESC
+			LIMIT 1
+		) lpr ON true
+		WHERE sp.store_id = $1
+		LIMIT 500`,
+		storeID,
+	)
+	if err != nil {
+		log.Printf("[SearchIndex] WARN: помилка SELECT для store=%s: %v", storeID, err)
+		return
+	}
+	defer rows.Close()
+
+	var docs []SearchProductDocument
+	for rows.Next() {
+		var doc SearchProductDocument
+		var categoryID *int
+		var oldPrice *float64
+
+		if err := rows.Scan(
+			&doc.ID,
+			&doc.Title,
+			&doc.Brand,
+			&doc.Unit,
+			&doc.Weight,
+			&doc.ImageURL,
+			&doc.CanonicalEAN,
+			&categoryID,
+			&doc.CategorySlug,
+			&doc.CategoryName,
+			&doc.StoreID,
+			&doc.StoreName,
+			&doc.RetailChain,
+			&doc.Price,
+			&oldPrice,
+			&doc.InStock,
+		); err != nil {
+			log.Printf("[SearchIndex] WARN: scan row: %v", err)
+			continue
+		}
+		doc.CategoryID = categoryID
+		doc.OldPrice = oldPrice
+		docs = append(docs, doc)
+	}
+	if err := rows.Err(); err != nil {
+		log.Printf("[SearchIndex] WARN: rows.Err: %v", err)
+	}
+
+	if len(docs) == 0 {
+		return
+	}
+
+	body, err := json.Marshal(searchIndexRequest{Documents: docs})
+	if err != nil {
+		log.Printf("[SearchIndex] WARN: marshal: %v", err)
+		return
+	}
+
+	url := strings.TrimRight(searchServiceURL, "/") + "/api/v1/index"
+	resp, err := postWithRetry(url, body, 5)
+	if err != nil {
+		log.Printf("[SearchIndex] WARN: HTTP POST до search_service не вдалось після повторів (store=%s): %v", storeID, err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		log.Printf("[SearchIndex] WARN: search_service повернув %d для store=%s", resp.StatusCode, storeID)
+		return
+	}
+
+	log.Printf("[SearchIndex] ✓ Проіндексовано %d товарів store=%s", len(docs), storeID)
+}
+
+// postWithRetry здійснює HTTP POST із експоненціальною затримкою при помилках мережі або 5xx помилках сервера.
+func postWithRetry(url string, body []byte, maxRetries int) (*http.Response, error) {
+	var resp *http.Response
+	var err error
+	delay := 1 * time.Second
+
+	for i := 0; i < maxRetries; i++ {
+		resp, err = http.Post(url, "application/json", bytes.NewReader(body)) //nolint:gosec
+		if err == nil && resp.StatusCode < 500 {
+			// Успіх або клієнтська помилка (4xx), повторювати не потрібно
+			return resp, nil
+		}
+
+		if resp != nil {
+			resp.Body.Close()
+		}
+
+		log.Printf("[SearchIndex] Спроба %d/%d не вдалась (помилка: %v). Повтор через %v...", i+1, maxRetries, err, delay)
+		time.Sleep(delay)
+		delay *= 2 // Експоненціальний бекофф
+	}
+
+	if err != nil {
+		return nil, err
+	}
+	return nil, fmt.Errorf("помилка після %d спроб: статус %d", maxRetries, resp.StatusCode)
+}
+
+// RunFullBackfill вибирає абсолютно всі товари з PostgreSQL та надсилає їх у search_service.
+// Повертає кількість успішно проіндексованих товарів та помилку.
+func RunFullBackfill(pgPool *pgxpool.Pool, searchServiceURL string) (int, error) {
+	ctx := context.Background()
+
+	// Отримуємо загальну кількість
+	var totalCount int
+	err := pgPool.QueryRow(ctx, "SELECT COUNT(*) FROM store_products").Scan(&totalCount)
+	if err != nil {
+		return 0, fmt.Errorf("отримання кількості товарів: %w", err)
+	}
+	log.Printf("[Backfill] Початок повної індексації. Всього товарів для обробки: %d", totalCount)
+
+	rows, err := pgPool.Query(ctx, `
+		SELECT
+			p.id,
+			p.title,
+			COALESCE(p.brand, '')              AS brand,
+			COALESCE(p.unit, '')               AS unit,
+			COALESCE(p.weight, 0)              AS weight,
+			COALESCE(p.image_url, '')          AS image_url,
+			COALESCE(p.canonical_ean, '')      AS canonical_ean,
+			p.canonical_category_id,
+			COALESCE(c.slug, '')               AS category_slug,
+			COALESCE(c.name, '')               AS category_name,
+			sp.store_id,
+			COALESCE(s.name, '')               AS store_name,
+			COALESCE(s.retail_chain, '')        AS retail_chain,
+			lpr.price,
+			lpr.old_price,
+			lpr.in_stock
+		FROM store_products sp
+		JOIN products p ON p.id = sp.product_id
+		JOIN stores s   ON s.external_id = sp.store_id
+		LEFT JOIN categories c ON c.id = p.canonical_category_id
+		JOIN LATERAL (
+			SELECT price, old_price, in_stock
+			FROM prices pr
+			WHERE pr.product_id = sp.product_id AND pr.store_id = sp.store_id
+			ORDER BY pr.recorded_at DESC
+			LIMIT 1
+		) lpr ON true`)
+	if err != nil {
+		return 0, fmt.Errorf("запит на вибірку всіх товарів: %w", err)
+	}
+	defer rows.Close()
+
+	var docs []SearchProductDocument
+	indexedCount := 0
+	batchSize := 500
+
+	url := strings.TrimRight(searchServiceURL, "/") + "/api/v1/index"
+
+	sendBatch := func(batch []SearchProductDocument) error {
+		body, err := json.Marshal(searchIndexRequest{Documents: batch})
+		if err != nil {
+			return fmt.Errorf("marshal batch: %w", err)
+		}
+
+		resp, err := postWithRetry(url, body, 5)
+		if err != nil {
+			return fmt.Errorf("надсилання батчу: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode >= 400 {
+			return fmt.Errorf("статус відповіді search_service: %d", resp.StatusCode)
+		}
+		return nil
+	}
+
+	for rows.Next() {
+		var doc SearchProductDocument
+		var categoryID *int
+		var oldPrice *float64
+
+		if err := rows.Scan(
+			&doc.ID,
+			&doc.Title,
+			&doc.Brand,
+			&doc.Unit,
+			&doc.Weight,
+			&doc.ImageURL,
+			&doc.CanonicalEAN,
+			&categoryID,
+			&doc.CategorySlug,
+			&doc.CategoryName,
+			&doc.StoreID,
+			&doc.StoreName,
+			&doc.RetailChain,
+			&doc.Price,
+			&oldPrice,
+			&doc.InStock,
+		); err != nil {
+			log.Printf("[Backfill] WARN: помилка читання рядка: %v", err)
+			continue
+		}
+		doc.CategoryID = categoryID
+		doc.OldPrice = oldPrice
+		docs = append(docs, doc)
+
+		if len(docs) >= batchSize {
+			if err := sendBatch(docs); err != nil {
+				log.Printf("[Backfill] Помилка відправки батчу: %v", err)
+			} else {
+				indexedCount += len(docs)
+				log.Printf("[Backfill] Прогрес: проіндексовано %d/%d товарів", indexedCount, totalCount)
+			}
+			docs = nil
+		}
+	}
+
+	// Відправляємо залишок
+	if len(docs) > 0 {
+		if err := sendBatch(docs); err != nil {
+			log.Printf("[Backfill] Помилка відправки фінального батчу: %v", err)
+		} else {
+			indexedCount += len(docs)
+		}
+	}
+
+	log.Printf("[Backfill] Успішно завершено! Всього проіндексовано: %d товарів", indexedCount)
+	return indexedCount, nil
+}
+
 
 // notifyProductsUpdated надсилає pg_notify на канал 'products_updated'.
 // product_service (Python/asyncpg) слухає цей канал і інвалідує кеш.

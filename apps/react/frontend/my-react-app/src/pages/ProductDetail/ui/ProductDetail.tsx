@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { ProductHero, About, FBT, SMProduct, Reviews, BottomCti } from '@/modules/Product'
+import { ProductHero, About, RecentlyViewed, SMProduct, Reviews, BottomCti } from '@/modules/Product'
 import { apiClient } from '@/shared/api/apiClient';
 import { type Product } from '@/modules/Product/type';
 
 export default function ProductDetail() {
-  const { idAndSlug } = useParams<{ idAndSlug: string }>();
-  
-  const extractedId = idAndSlug ? idAndSlug.split('-')[0] : null;
+  // Універсальний парсинг ID
+  const params = useParams<{ idAndSlug?: string; id?: string }>();
+  const rawParam = params.idAndSlug || params.id; 
+  const extractedId = rawParam ? rawParam.split('-')[0] : null;
   const productId = Number(extractedId) || 1;
   
   const [product, setProduct] = useState<Product | null>(null);
@@ -30,6 +31,26 @@ export default function ProductDetail() {
     }
   }, [productId]);
 
+  // Зберігаємо переглянутий товар в localStorage
+  useEffect(() => {
+    if (!productId) return;
+    try {
+      const key = 'recently_viewed_products';
+      const stored = localStorage.getItem(key);
+      let viewedIds: string[] = stored ? JSON.parse(stored) : [];
+      const idStr = String(productId);
+      // Видаляємо дублікат, якщо вже є
+      viewedIds = viewedIds.filter(id => id !== idStr);
+      // Додаємо на початок (найновіший першим)
+      viewedIds.unshift(idStr);
+      // Обмежуємо до 20 товарів
+      if (viewedIds.length > 20) viewedIds = viewedIds.slice(0, 20);
+      localStorage.setItem(key, JSON.stringify(viewedIds));
+    } catch (e) {
+      console.error('Помилка збереження в localStorage:', e);
+    }
+  }, [productId]);
+
   if (isLoading) {
     return (
       <div className="w-full h-screen flex justify-center items-center bg-[#F6FAF8] text-[#265447] font-semibold">
@@ -43,7 +64,7 @@ export default function ProductDetail() {
       <ProductHero product={product} />
       <About product={product} />
       <Reviews productId={productId} />
-      <FBT />
+      <RecentlyViewed currentProductId={productId} />
       <SMProduct currentProduct={product}/>
       <BottomCti />
     </>

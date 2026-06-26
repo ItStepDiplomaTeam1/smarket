@@ -2,7 +2,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    rabbitmq_url: str = "amqp://smarket:smarket@rabbitmq:5672/"
+    rabbitmq_url: str = "amqp://smarket:secure_rmq_pass_123@rabbitmq:5672/"
     resend_api_key: str
 
     class Config:

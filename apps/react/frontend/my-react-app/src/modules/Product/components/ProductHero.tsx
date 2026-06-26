@@ -9,8 +9,6 @@ import zeroStar from '@/shared/assets/star-for-review.svg';
 import { useFetchCarts, useUpdateCartItem } from '@/hooks/api/useCartApi';
 import { useCartStore } from '@/modules/Cart/store/useCartStore';
 
-
-
 import mainMilk from '@/shared/assets/milk.svg';
 import starIcon from '@/shared/assets/gold-star.svg';
 import staricongreen from '@/shared/assets/star.svg';
@@ -20,9 +18,12 @@ interface ProductHeroProps {
 }
 
 export function ProductHero({ product }: ProductHeroProps) {
-    const { idAndSlug } = useParams<{ idAndSlug: string }>();
-    const id = idAndSlug ? idAndSlug.split('-')[0] : undefined;
-    const productId = id || "dddb52b5-fce8-4fde-947d-25625a429690";
+    // === ОНОВЛЕНИЙ БЛОК ПАРСИНГУ ID ===
+    const params = useParams<{ idAndSlug?: string; id?: string }>();
+    const rawParam = params.idAndSlug || params.id; 
+    const extractedId = rawParam ? rawParam.split('-')[0] : null;
+    const productId = extractedId || "dddb52b5-fce8-4fde-947d-25625a429690";
+    // ====================================
 
     const { isAuthenticated, user } = useAuthStore();
     const { data: carts } = useFetchCarts();
