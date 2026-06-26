@@ -618,9 +618,10 @@ jobs:
       - name: Pull latest images & restart services
         working-directory: /app/smarket
         run: |
-          git fetch origin
-          git checkout develop
-          git reset --hard origin/develop
+          git config --global --add safe.directory "${{ github.workspace }}" || true
+          git config --global --add safe.directory /app/smarket || true
+          git fetch "${{ github.workspace }}" HEAD
+          git checkout -f -B develop FETCH_HEAD
 
           for srv in services/gateway services/auth_service services/product_service \
                      services/cart_service services/email_worker services/reviews_service \
