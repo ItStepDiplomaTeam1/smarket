@@ -5,6 +5,7 @@ import { useSystemStatus, type ServiceStatus } from '@/hooks/useSystemStatus';
 
 const SERVICE_LABELS: Record<string, string> = {
   'API Gateway': 'API Gateway',
+  'Search Service': 'Пошуковий сервіс (Rust)',
   PostgreSQL:    'PostgreSQL',
   Redis:         'Redis',
   RabbitMQ:      'RabbitMQ',
@@ -12,7 +13,7 @@ const SERVICE_LABELS: Record<string, string> = {
 };
 
 // Ordered list — Gateway always first as it's the "entry point"
-const SERVICE_ORDER = ['API Gateway', 'PostgreSQL', 'Redis', 'RabbitMQ', 'Meilisearch'];
+const SERVICE_ORDER = ['API Gateway', 'Search Service', 'PostgreSQL', 'Redis', 'RabbitMQ', 'Meilisearch'];
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 

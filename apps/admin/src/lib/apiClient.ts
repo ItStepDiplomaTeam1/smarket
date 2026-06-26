@@ -47,9 +47,10 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+    const isRefreshRequest = originalRequest?.url?.includes('/auth/refresh') || originalRequest?.url?.endsWith('/refresh');
 
-    // Only intercept 401 errors that haven't already been retried
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Only intercept 401 errors that are not refresh requests and haven't already been retried
+    if (error.response?.status === 401 && !isRefreshRequest && !originalRequest?._retry) {
       if (isRefreshing) {
         // Queue the request until a refresh is in progress
         return new Promise<string>((resolve) => {

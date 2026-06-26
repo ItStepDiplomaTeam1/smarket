@@ -9,99 +9,38 @@ import {
   Plus, 
   ChevronLeft, 
   ChevronRight,
-  ChevronDown
+  ChevronDown,
+  AlertCircle
 } from 'lucide-react';
+import { useProducts } from '@/hooks/useProducts';
 
-// ── Types ─────────────────────────────────────────────────────────────────
+// ── Constants ─────────────────────────────────────────────────────────────
 
-export interface ProductMock {
-  id: string;
-  name: string;
-  weight: string;
-  imageUrl: string;
-  category: string;
-  priceStart: number;
-  retailerCount: number;
-  status: 'Активний' | 'Неактивний' | 'Потребують перевірки';
-  issue: 'Без ціни' | 'Видалено' | 'Без категорії' | null;
-  updatedAt: string;
-}
+const CATEGORIES = [
+  { slug: '', label: 'Всі категорії' },
+  { slug: 'molochni-produkty', label: 'Молочні продукти' },
+  { slug: 'myaso-ta-ptytsya', label: "М'ясо та птиця" },
+  { slug: 'hlib-ta-vypichka', label: 'Хліб та випічка' },
+  { slug: 'vegetables', label: 'Овочі та фрукти' },
+  { slug: 'fish', label: 'Риба та морепродукти' },
+  { slug: 'grains', label: 'Крупи та бобові' },
+  { slug: 'frozen', label: 'Заморожені продукти' },
+  { slug: 'cans', label: 'Консерви' },
+];
 
-// ── Mock Data ─────────────────────────────────────────────────────────────
+const RETAILERS = [
+  { name: '', label: 'Всі магазини' },
+  { name: 'АТБ', label: 'АТБ' },
+  { name: 'Сільпо', label: 'Сільпо' },
+  { name: 'Novus', label: 'Novus' },
+  { name: 'Metro', label: 'Metro' },
+  { name: 'Ашан', label: 'Ашан' },
+];
 
-const mockProducts: ProductMock[] = [
-  {
-    id: 'PRD-001',
-    name: 'Чипси Pringles Sour Cream & Onion Сметана та цибуля',
-    weight: '165 г',
-    imageUrl: 'https://images.silpo.ua/products/1600x1600/webp/2c5bd4d9-dcda-43c2-a7d0-120f2b3e8392.png',
-    category: 'Снеки',
-    priceStart: 54.49,
-    retailerCount: 3,
-    status: 'Активний',
-    issue: null,
-    updatedAt: '5 хв тому',
-  },
-  {
-    id: 'PRD-002',
-    name: 'Молоко Яготинське пастеризоване 2,6%',
-    weight: '870г',
-    imageUrl: 'https://images.silpo.ua/products/1600x1600/webp/4d5b2447-d57b-4899-b14e-eb7eb8c9d46d.png',
-    category: 'Молочні продукти',
-    priceStart: 38.90,
-    retailerCount: 0,
-    status: 'Потребують перевірки',
-    issue: 'Без ціни',
-    updatedAt: '12 хв тому',
-  },
-  {
-    id: 'PRD-003',
-    name: 'Вино Marlborough Sun Sauvignon Blanc',
-    weight: '0,75л',
-    imageUrl: 'https://images.silpo.ua/products/1600x1600/webp/7d7a4650-70f2-45e6-b9ab-5909ff7b2b07.png',
-    category: 'Алкоголь',
-    priceStart: 469.00,
-    retailerCount: 2,
-    status: 'Активний',
-    issue: null,
-    updatedAt: '18 хв тому',
-  },
-  {
-    id: 'PRD-004',
-    name: 'Макаронні вироби La Pasta ріжки',
-    weight: '400 г',
-    imageUrl: 'https://images.silpo.ua/products/1600x1600/webp/86720d2b-10e5-42d4-a82d-8e6f33d45c50.png',
-    category: 'Бакалія',
-    priceStart: 38.00,
-    retailerCount: 4,
-    status: 'Активний',
-    issue: null,
-    updatedAt: '25 хв тому',
-  },
-  {
-    id: 'PRD-005',
-    name: 'Асорті Parmiamo Антіпасто нарізка',
-    weight: '90г',
-    imageUrl: 'https://images.silpo.ua/products/1600x1600/webp/e3ea9768-3e4b-4835-ab32-d1be8e95079a.png',
-    category: 'Бакалія',
-    priceStart: 243.00,
-    retailerCount: 1,
-    status: 'Неактивний',
-    issue: 'Видалено',
-    updatedAt: '35 хв тому',
-  },
-  {
-    id: 'PRD-006',
-    name: 'Закваска 2.5% Яготинська',
-    weight: '900г',
-    imageUrl: 'https://images.silpo.ua/products/1600x1600/webp/a755d7f1-799d-4876-8869-7becc4a6d0c4.png',
-    category: '',
-    priceStart: 68.40,
-    retailerCount: 2,
-    status: 'Потребують перевірки',
-    issue: 'Без категорії',
-    updatedAt: '39 хв тому',
-  },
+const STATUSES = [
+  { value: '', label: 'Всі статуси' },
+  { value: 'active', label: 'Активний' },
+  { value: 'inactive', label: 'Неактивний' },
 ];
 
 // ── Helper Components ─────────────────────────────────────────────────────
@@ -131,7 +70,7 @@ const MetricCard: React.FC<{
   </div>
 );
 
-const StatusBadge: React.FC<{ status: ProductMock['status'] }> = ({ status }) => {
+const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   if (status === 'Активний') {
     return <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold bg-[#e6f4ea] text-[#1e8e3e]">Активний</span>;
   }
@@ -141,7 +80,7 @@ const StatusBadge: React.FC<{ status: ProductMock['status'] }> = ({ status }) =>
   return <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold bg-[#fef7e0] text-[#b08b00]">Потребує перевірки</span>;
 };
 
-const IssueBadge: React.FC<{ issue: ProductMock['issue'] }> = ({ issue }) => {
+const IssueBadge: React.FC<{ issue: string | null }> = ({ issue }) => {
   if (!issue) return <span className="text-textMuted">—</span>;
   
   if (issue === 'Видалено') {
@@ -150,18 +89,71 @@ const IssueBadge: React.FC<{ issue: ProductMock['issue'] }> = ({ issue }) => {
   return <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-[#feefe6] text-[#e05a10]">{issue}</span>;
 };
 
+const ProductRowSkeleton: React.FC = () => (
+  <tr className="animate-pulse">
+    <td className="py-4 pl-6 pr-3 w-12">
+      <div className="w-4 h-4 bg-secondary rounded" />
+    </td>
+    <td className="py-4 px-3">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-md bg-secondary shrink-0" />
+        <div className="flex flex-col gap-1.5 flex-1">
+          <div className="h-3.5 w-48 rounded bg-secondary" />
+          <div className="h-3 w-12 rounded bg-secondary" />
+        </div>
+      </div>
+    </td>
+    <td className="py-4 px-3">
+      <div className="h-4 w-20 rounded bg-secondary" />
+    </td>
+    <td className="py-4 px-3">
+      <div className="h-4 w-16 rounded bg-secondary" />
+    </td>
+    <td className="py-4 px-3">
+      <div className="h-5 w-14 rounded-full bg-secondary" />
+    </td>
+    <td className="py-4 px-3">
+      <div className="h-5 w-16 rounded bg-secondary" />
+    </td>
+    <td className="py-4 px-3 text-right">
+      <div className="h-4 w-16 rounded bg-secondary inline-block" />
+    </td>
+    <td className="py-4 pl-3 pr-6 text-right">
+      <div className="h-6 w-12 rounded bg-secondary inline-block" />
+    </td>
+  </tr>
+);
+
 // ── Main Component ────────────────────────────────────────────────────────
 
 const ProductsTable: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeSearch, setActiveSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedRetailer, setSelectedRetailer] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
   const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
+  const limit = 10;
+  const { data, isLoading, isError } = useProducts({
+    q: activeSearch,
+    page,
+    limit,
+    categorySlug: selectedCategory || undefined,
+    retailChain: selectedRetailer || undefined,
+    inStock: selectedStatus === 'active' ? true : selectedStatus === 'inactive' ? false : undefined,
+  });
+
+  const products = data?.hits || [];
+  const totalHits = data?.total_hits || 0;
+  const totalPages = Math.ceil(totalHits / limit) || 1;
+
   const toggleSelectAll = () => {
-    if (selectedIds.size === mockProducts.length) {
+    if (selectedIds.size === products.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(mockProducts.map(p => p.id)));
+      setSelectedIds(new Set(products.map(p => String(p.id))));
     }
   };
 
@@ -173,6 +165,173 @@ const ProductsTable: React.FC = () => {
       newSet.add(id);
     }
     setSelectedIds(newSet);
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setActiveSearch(searchQuery);
+    setPage(1);
+  };
+
+  const getPageNumbers = () => {
+    const pages = [];
+    const siblingCount = 1;
+    
+    pages.push(1);
+    
+    const leftSiblingIndex = Math.max(page - siblingCount, 2);
+    const rightSiblingIndex = Math.min(page + siblingCount, totalPages - 1);
+    
+    if (leftSiblingIndex > 2) {
+      pages.push('...');
+    }
+    
+    for (let i = leftSiblingIndex; i <= rightSiblingIndex; i++) {
+      pages.push(i);
+    }
+    
+    if (rightSiblingIndex < totalPages - 1) {
+      pages.push('...');
+    }
+    
+    if (totalPages > 1) {
+      pages.push(totalPages);
+    }
+    
+    return pages;
+  };
+
+  const renderTableBody = () => {
+    if (isLoading) {
+      return Array.from({ length: 5 }).map((_, i) => (
+        <ProductRowSkeleton key={i} />
+      ));
+    }
+
+    if (isError) {
+      return (
+        <tr>
+          <td colSpan={8} className="py-8 text-center">
+            <div className="flex flex-col items-center justify-center gap-2">
+              <AlertCircle size={24} className="text-accentRed opacity-70" />
+              <p className="text-sm text-textMuted font-medium">
+                Не вдалося завантажити товари.
+                <br />
+                <span className="text-xs">Перевірте підключення до пошукового сервісу.</span>
+              </p>
+            </div>
+          </td>
+        </tr>
+      );
+    }
+
+    if (products.length === 0) {
+      return (
+        <tr>
+          <td colSpan={8} className="py-8 text-center text-sm text-textMuted font-medium">
+            Товарів не знайдено за вказаними фільтрами.
+          </td>
+        </tr>
+      );
+    }
+
+    return products.map((product) => {
+      const idStr = String(product.id);
+      const title = product.title;
+      const weightStr = product.weight ? `${product.weight} ${product.unit || ''}`.trim() : '—';
+      const imageUrl = product.image_url || 'https://images.silpo.ua/products/1600x1600/webp/2c5bd4d9-dcda-43c2-a7d0-120f2b3e8392.png';
+      const categoryName = product.category_name || '';
+
+      const firstOffer = product.offers?.[0];
+      const price = firstOffer?.price;
+      const inStock = firstOffer?.in_stock ?? false;
+
+      let statusStr = 'Неактивний';
+      if (inStock && price && price > 0) {
+        statusStr = 'Активний';
+      } else if (!price || price <= 0) {
+        statusStr = 'Потребують перевірки';
+      }
+
+      let issueStr: string | null = null;
+      if (!price || price <= 0) {
+        issueStr = 'Без ціни';
+      } else if (!product.category_name) {
+        issueStr = 'Без категорії';
+      }
+
+      return (
+        <tr key={idStr} className="hover:bg-secondary/40 transition-colors group">
+          <td className="py-4 pl-6 pr-3">
+            <input 
+              type="checkbox" 
+              className="w-4 h-4 rounded border-border text-[#1a4731] focus:ring-[#1a4731]"
+              checked={selectedIds.has(idStr)}
+              onChange={() => toggleSelect(idStr)}
+            />
+          </td>
+          <td className="py-4 px-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-md border border-border overflow-hidden bg-white shrink-0 flex items-center justify-center">
+                <img 
+                  src={imageUrl} 
+                  alt={title} 
+                  className="w-8 h-8 object-contain" 
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://images.silpo.ua/products/1600x1600/webp/2c5bd4d9-dcda-43c2-a7d0-120f2b3e8392.png';
+                  }}
+                />
+              </div>
+              <div className="flex flex-col max-w-[240px] sm:max-w-[280px] lg:max-w-[320px]">
+                <span className="text-[13px] font-semibold text-textMain truncate" title={title}>
+                  {title}
+                </span>
+                <span className="text-[11px] text-textMuted mt-0.5">{weightStr}</span>
+              </div>
+            </div>
+          </td>
+          <td className="py-4 px-3 text-sm text-textMuted">
+            {categoryName || <span className="text-textMuted/50">—</span>}
+          </td>
+          <td className="py-4 px-3 text-sm font-medium text-textMain whitespace-nowrap">
+            {price && price > 0 ? (
+              <div className="flex flex-col items-start">
+                <span className="whitespace-nowrap">від {price.toFixed(2)} грн</span>
+                {firstOffer?.store?.name && (
+                  <span 
+                    className="text-[10px] text-textMuted font-normal block max-w-[180px] truncate mt-0.5" 
+                    title={`${firstOffer.store.name} (${firstOffer.store.retail_chain || ''})`}
+                  >
+                    {firstOffer.store.name}
+                  </span>
+                )}
+              </div>
+            ) : (
+              <span className="text-textMuted/50">—</span>
+            )}
+          </td>
+          <td className="py-4 px-3">
+            <StatusBadge status={statusStr} />
+          </td>
+          <td className="py-4 px-3">
+            <IssueBadge issue={issueStr} />
+          </td>
+          <td className="py-4 px-3 text-sm text-textMuted text-right whitespace-nowrap">
+            Нещодавно
+          </td>
+          <td className="py-4 pl-3 pr-6 text-right">
+            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button className="p-1.5 text-textMuted hover:text-primary hover:bg-secondary rounded-md transition-colors" title="Редагувати">
+                <Edit size={16} />
+              </button>
+              <button className="p-1.5 text-textMuted hover:text-accentRed hover:bg-accentRed/10 rounded-md transition-colors" title="Видалити">
+                <Trash size={16} />
+              </button>
+            </div>
+          </td>
+        </tr>
+      );
+    });
   };
 
   return (
@@ -187,7 +346,7 @@ const ProductsTable: React.FC = () => {
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <MetricCard 
           title="Всього товарів" 
-          value={60} 
+          value={isLoading ? 0 : totalHits} 
           icon={ShoppingBag} 
           iconBg="bg-[#e6f4ea]" 
           iconColor="text-[#1e8e3e]"
@@ -236,8 +395,8 @@ const ProductsTable: React.FC = () => {
       <div className="flex flex-col lg:flex-row items-end lg:items-center justify-between gap-4 bg-surface border border-border p-4 rounded-xl shadow-sm">
         
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
-          {/* Search */}
-          <div className="w-full sm:w-auto">
+          {/* Search Form */}
+          <form onSubmit={handleSearchSubmit} className="w-full sm:w-auto">
             <label className="block text-xs font-semibold text-textMain mb-1.5 ml-1">Пошук товару</label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -251,17 +410,25 @@ const ProductsTable: React.FC = () => {
                 className="w-full sm:w-[220px] pl-9 pr-4 py-2 bg-surface border border-border rounded-lg text-sm text-textMain focus:outline-none focus:ring-1 focus:ring-primary transition-all placeholder:text-textMuted"
               />
             </div>
-          </div>
+          </form>
 
           {/* Select Category */}
           <div className="w-full sm:w-auto">
             <label className="block text-xs font-semibold text-textMain mb-1.5 ml-1">Категорія</label>
             <div className="relative">
-              <select className="w-full sm:w-[150px] pl-3 pr-8 py-2 bg-surface border border-border rounded-lg text-sm text-textMain appearance-none focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer">
-                <option>Всі категорії</option>
-                <option>Снеки</option>
-                <option>Молочні продукти</option>
-                <option>Алкоголь</option>
+              <select 
+                value={selectedCategory}
+                onChange={(e) => {
+                  setSelectedCategory(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full sm:w-[150px] pl-3 pr-8 py-2 bg-surface border border-border rounded-lg text-sm text-textMain appearance-none focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+              >
+                {CATEGORIES.map((cat) => (
+                  <option key={cat.slug} value={cat.slug}>
+                    {cat.label}
+                  </option>
+                ))}
               </select>
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                 <ChevronDown size={14} className="text-textMuted" />
@@ -273,10 +440,19 @@ const ProductsTable: React.FC = () => {
           <div className="w-full sm:w-auto">
             <label className="block text-xs font-semibold text-textMain mb-1.5 ml-1">Магазин</label>
             <div className="relative">
-              <select className="w-full sm:w-[150px] pl-3 pr-8 py-2 bg-surface border border-border rounded-lg text-sm text-textMain appearance-none focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer">
-                <option>Всі магазини</option>
-                <option>АТБ</option>
-                <option>Сільпо</option>
+              <select 
+                value={selectedRetailer}
+                onChange={(e) => {
+                  setSelectedRetailer(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full sm:w-[150px] pl-3 pr-8 py-2 bg-surface border border-border rounded-lg text-sm text-textMain appearance-none focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+              >
+                {RETAILERS.map((ret) => (
+                  <option key={ret.name} value={ret.name}>
+                    {ret.label}
+                  </option>
+                ))}
               </select>
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                 <ChevronDown size={14} className="text-textMuted" />
@@ -288,10 +464,19 @@ const ProductsTable: React.FC = () => {
           <div className="w-full sm:w-auto">
             <label className="block text-xs font-semibold text-textMain mb-1.5 ml-1">Статус</label>
             <div className="relative">
-              <select className="w-full sm:w-[150px] pl-3 pr-8 py-2 bg-surface border border-border rounded-lg text-sm text-textMain appearance-none focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer">
-                <option>Всі статуси</option>
-                <option>Активний</option>
-                <option>Неактивний</option>
+              <select 
+                value={selectedStatus}
+                onChange={(e) => {
+                  setSelectedStatus(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full sm:w-[150px] pl-3 pr-8 py-2 bg-surface border border-border rounded-lg text-sm text-textMain appearance-none focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+              >
+                {STATUSES.map((stat) => (
+                  <option key={stat.value} value={stat.value}>
+                    {stat.label}
+                  </option>
+                ))}
               </select>
               <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                 <ChevronDown size={14} className="text-textMuted" />
@@ -300,7 +485,13 @@ const ProductsTable: React.FC = () => {
           </div>
 
           <div className="w-full sm:w-auto self-end mt-4 sm:mt-0">
-             <button className="h-[38px] px-5 py-2 border border-border rounded-lg text-sm font-medium text-textMain hover:bg-secondary transition-colors w-full sm:w-auto">
+             <button 
+              onClick={() => {
+                setActiveSearch(searchQuery);
+                setPage(1);
+              }}
+              className="h-[38px] px-5 py-2 border border-border rounded-lg text-sm font-medium text-textMain hover:bg-secondary transition-colors w-full sm:w-auto"
+            >
               Пошук
             </button>
           </div>
@@ -322,77 +513,21 @@ const ProductsTable: React.FC = () => {
                   <input 
                     type="checkbox" 
                     className="w-4 h-4 rounded border-border text-[#1a4731] focus:ring-[#1a4731]"
-                    checked={selectedIds.size === mockProducts.length && mockProducts.length > 0}
+                    checked={products.length > 0 && selectedIds.size === products.length}
                     onChange={toggleSelectAll}
                   />
                 </th>
-                <th className="py-4 px-3 text-xs font-semibold text-textMain">Товар</th>
-                <th className="py-4 px-3 text-xs font-semibold text-textMain">Категорія</th>
-                <th className="py-4 px-3 text-xs font-semibold text-textMain">Ціна</th>
-                <th className="py-4 px-3 text-xs font-semibold text-textMain">Статус</th>
-                <th className="py-4 px-3 text-xs font-semibold text-textMain">Проблема</th>
-                <th className="py-4 px-3 text-xs font-semibold text-textMain text-right">Оновлення</th>
-                <th className="py-4 pl-3 pr-6 text-xs font-semibold text-textMain text-right">Дії</th>
+                <th className="py-4 px-3 text-xs font-semibold text-textMain w-[38%]">Товар</th>
+                <th className="py-4 px-3 text-xs font-semibold text-textMain w-[15%]">Категорія</th>
+                <th className="py-4 px-3 text-xs font-semibold text-textMain w-[22%]">Ціна</th>
+                <th className="py-4 px-3 text-xs font-semibold text-textMain w-[10%]">Статус</th>
+                <th className="py-4 px-3 text-xs font-semibold text-textMain w-[10%]">Проблема</th>
+                <th className="py-4 px-3 text-xs font-semibold text-textMain text-right w-[10%]">Оновлення</th>
+                <th className="py-4 pl-3 pr-6 text-xs font-semibold text-textMain text-right w-[5%]">Дії</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {mockProducts.map((product) => (
-                <tr key={product.id} className="hover:bg-secondary/40 transition-colors group">
-                  <td className="py-4 pl-6 pr-3">
-                    <input 
-                      type="checkbox" 
-                      className="w-4 h-4 rounded border-border text-[#1a4731] focus:ring-[#1a4731]"
-                      checked={selectedIds.has(product.id)}
-                      onChange={() => toggleSelect(product.id)}
-                    />
-                  </td>
-                  <td className="py-4 px-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-md border border-border overflow-hidden bg-white shrink-0 flex items-center justify-center">
-                        <img src={product.imageUrl} alt={product.name} className="w-8 h-8 object-contain" />
-                      </div>
-                      <div className="flex flex-col max-w-[280px]">
-                        <span className="text-sm font-semibold text-textMain truncate" title={product.name}>
-                          {product.name}
-                        </span>
-                        <span className="text-xs text-textMuted">{product.weight}</span>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="py-4 px-3 text-sm text-textMuted">
-                    {product.category || <span className="text-textMuted/50">—</span>}
-                  </td>
-                  <td className="py-4 px-3 text-sm font-medium text-textMain">
-                    {product.retailerCount > 0 ? (
-                      <div className="flex flex-col">
-                        <span>від {product.priceStart.toFixed(2)} грн</span>
-                        <span className="text-[11px] text-textMuted font-normal">{product.retailerCount} {product.retailerCount === 1 ? 'пропозиція' : product.retailerCount >= 2 && product.retailerCount <= 4 ? 'пропозиції' : 'пропозицій'}</span>
-                      </div>
-                    ) : (
-                      <span className="text-textMuted/50">—</span>
-                    )}
-                  </td>
-                  <td className="py-4 px-3">
-                    <StatusBadge status={product.status} />
-                  </td>
-                  <td className="py-4 px-3">
-                    <IssueBadge issue={product.issue} />
-                  </td>
-                  <td className="py-4 px-3 text-sm text-textMuted text-right whitespace-nowrap">
-                    {product.updatedAt}
-                  </td>
-                  <td className="py-4 pl-3 pr-6 text-right">
-                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button className="p-1.5 text-textMuted hover:text-primary hover:bg-secondary rounded-md transition-colors" title="Редагувати">
-                        <Edit size={16} />
-                      </button>
-                      <button className="p-1.5 text-textMuted hover:text-accentRed hover:bg-accentRed/10 rounded-md transition-colors" title="Видалити">
-                        <Trash size={16} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {renderTableBody()}
             </tbody>
           </table>
         </div>
@@ -401,46 +536,46 @@ const ProductsTable: React.FC = () => {
       {/* ── Pagination Footer ── */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
         <div className="text-sm text-textMuted font-medium">
-          Показано <span className="text-textMain">1-6</span> з <span className="text-textMain">60</span>
+          Показано <span className="text-textMain">
+            {totalHits === 0 ? 0 : (page - 1) * limit + 1}-{Math.min(page * limit, totalHits)}
+          </span> з <span className="text-textMain">{totalHits}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <button 
             className="w-8 h-8 flex items-center justify-center rounded-lg border border-border bg-surface text-textMuted hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             onClick={() => setPage(Math.max(1, page - 1))}
-            disabled={page === 1}
+            disabled={page === 1 || isLoading}
           >
             <ChevronLeft size={16} />
           </button>
           
-          {[1, 2, 3, 4].map(p => (
-            <button 
-              key={p}
-              onClick={() => setPage(p)}
-              className={`w-8 h-8 flex items-center justify-center rounded-lg border text-sm font-semibold transition-colors
-                ${page === p 
-                  ? 'border-[#1a4731] bg-[#e8f1ec] text-[#1a4731]' 
-                  : 'border-transparent text-textMuted hover:bg-secondary'}`}
-            >
-              {p}
-            </button>
-          ))}
+          {getPageNumbers().map((p, idx) => {
+            if (p === '...') {
+              return (
+                <span key={`dots-${idx}`} className="w-8 h-8 flex items-center justify-center text-textMuted">
+                  ...
+                </span>
+              );
+            }
+            const pageNum = p as number;
+            return (
+              <button 
+                key={`page-${pageNum}`}
+                onClick={() => setPage(pageNum)}
+                className={`w-8 h-8 flex items-center justify-center rounded-lg border text-sm font-semibold transition-colors
+                  ${page === pageNum 
+                    ? 'border-[#1a4731] bg-[#e8f1ec] text-[#1a4731]' 
+                    : 'border-transparent text-textMuted hover:bg-secondary'}`}
+              >
+                {pageNum}
+              </button>
+            );
+          })}
           
-          <span className="w-8 h-8 flex items-center justify-center text-textMuted">...</span>
-          
-          <button 
-            onClick={() => setPage(10)}
-            className={`w-8 h-8 flex items-center justify-center rounded-lg border text-sm font-semibold transition-colors
-              ${page === 10 
-                ? 'border-[#1a4731] bg-[#e8f1ec] text-[#1a4731]' 
-                : 'border-transparent text-textMuted hover:bg-secondary'}`}
-          >
-            10
-          </button>
-
           <button 
             className="w-8 h-8 flex items-center justify-center rounded-lg border border-border bg-surface text-textMuted hover:bg-secondary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            onClick={() => setPage(Math.min(10, page + 1))}
-            disabled={page === 10}
+            onClick={() => setPage(Math.min(totalPages, page + 1))}
+            disabled={page === totalPages || isLoading}
           >
             <ChevronRight size={16} />
           </button>
