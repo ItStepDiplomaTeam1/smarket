@@ -110,6 +110,23 @@ export const useUpdateCartItem = () => {
   });
 };
 
+export const useUpdateCartItemQuantity = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ cartId, itemId, quantity }: { cartId: string; itemId: string; quantity: number }) => {
+      const { data } = await apiClient.put(`/api/v1/cart/${cartId}/items/${itemId}`, {
+        quantity: quantity
+      });
+      return data;
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['cart', variables.cartId] });
+      queryClient.invalidateQueries({ queryKey: ['carts'] });
+    },
+  });
+};
+
 export const useDeleteCartItem = () => {
   const queryClient = useQueryClient();
 
