@@ -1,16 +1,23 @@
-import React from 'react';
+import { useAuthStore } from '@/modules/Auth/store/authStore';
+import { useFetchCarts } from '@/hooks/api/useCartApi';
 
-interface MainContentProps {
-  userData?: any | null; 
+/** Форматує ISO-дату у зручний вигляд, напр. "01 червня 2026" */
+function formatDate(iso: string): string {
+  const months = [
+    'січня', 'лютого', 'березня', 'квітня', 'травня', 'червня',
+    'липня', 'серпня', 'вересня', 'жовтня', 'листопада', 'грудня',
+  ];
+  const d = new Date(iso);
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${day} ${months[d.getMonth()]} ${d.getFullYear()}`;
 }
 
-export function MainContent({ userData }: MainContentProps) {
-  const userName = userData?.firstName || 'Марино';
+export function MainContent() {
+  const user = useAuthStore((s) => s.user);
+  const { data: carts } = useFetchCarts();
 
-  const savedBaskets = [
-    { label: 'Побутова хімія', store: 'Сільпо', items: 7, date: '01 червня 2026', total: '724 грн', discount: 'Економія 118 ₴' },
-    { label: 'Дитячі товари', store: 'Novus', items: 9, date: '24 травня 2026', total: '1390 грн', discount: 'Економія 265 ₴' },
-  ];
+  // Відображуване ім'я для привітання: якщо є name — ім'я, інакше email
+  const userName = user?.name || user?.email || 'Користувачу';
 
   const favoriteProducts = [
     { title: 'Молоко Яготинське пастеризоване 2,6%', category: 'Молочні продукти', price: '54.49 - 61.91 грн', rating: 4.8, views: 400 },
@@ -114,38 +121,42 @@ export function MainContent({ userData }: MainContentProps) {
         </div>
 
         {/* Секція Збережені кошики та Обрані товари */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-[24px] mb-[24px] items-stretch">
+        <div className={`grid grid-cols-1 ${carts && carts.length > 0 ? 'xl:grid-cols-2' : ''} gap-[24px] mb-[24px] items-stretch`}>
           
-          {/* Блок: Збережені кошики */}
-          <div className="bg-white border border-[#265447]/[0.08] shadow-[0_4px_12px_rgba(23,59,51,0.06)] rounded-[16px] py-[24px] px-[24px] flex flex-col h-full">
-            <h3 className="font-manrope text-[18px] font-bold text-[#173B33] m-0 mb-[8px]">Збережені кошики</h3>
-            <p className="font-inter text-[12px] text-[#6D8279] m-0 mb-[24px]">
-              Оберіть кошик, щоб переглянути товари та порівняти магазини.
-            </p>
-            
-            <div className="flex flex-col gap-[16px] mb-[24px]">
-              {savedBaskets.map((basket, i) => (
-                <div key={i} className="flex justify-between border border-[#265447]/[0.08] rounded-[10px] p-[12px] h-[111px]">
-                  <div className="flex flex-col justify-between h-full w-[203px]">
-                    <h4 className="font-manrope text-[15px] font-bold text-[#173B33] m-0">{basket.label}</h4>
-                    <div className="my-auto"><span className="font-inter text-[12px] text-[#6D8279]">{basket.items} товарів · {basket.date}</span></div>
-                    <span className="font-inter text-[12px] font-semibold text-[#173B33]">{basket.store}</span>
-                  </div>
-                  <div className="flex flex-col justify-between items-end h-full">
-                    <div className="h-[22px] px-[8px] bg-[#FACC14] rounded-[6px] flex items-center justify-center shrink-0">
-                      <span className="font-inter text-[12px] font-bold text-[#173B33] leading-none">{basket.discount}</span>
+          {/* Блок: Збережені кошики — тільки якщо є хоча б 1 кошик */}
+          {carts && carts.length > 0 && (
+            <div className="bg-white border border-[#265447]/[0.08] shadow-[0_4px_12px_rgba(23,59,51,0.06)] rounded-[16px] py-[24px] px-[24px] flex flex-col h-full">
+              <h3 className="font-manrope text-[18px] font-bold text-[#173B33] m-0 mb-[8px]">Збережені кошики</h3>
+              <p className="font-inter text-[12px] text-[#6D8279] m-0 mb-[24px]">
+                Оберіть кошик, щоб переглянути товари та порівняти магазини.
+              </p>
+              
+              <div className={`flex flex-col gap-[16px] mb-[24px] ${carts.length > 2 ? 'max-h-[254px] overflow-y-auto pr-[4px]' : ''}`}
+                style={carts.length > 2 ? { scrollbarWidth: 'thin', scrollbarColor: '#265447 transparent' } : undefined}
+              >
+                {carts.map((cart) => (
+                  <div key={cart.id} className="flex justify-between border border-[#265447]/[0.08] rounded-[10px] p-[12px] h-[111px] shrink-0">
+                    <div className="flex flex-col justify-between h-full w-[203px]">
+                      <h4 className="font-manrope text-[15px] font-bold text-[#173B33] m-0">{cart.title}</h4>
+                      <div className="my-auto"><span className="font-inter text-[12px] text-[#6D8279]">{cart.itemsCount} товарів · {formatDate(cart.updatedAt)}</span></div>
+                      <span className="font-inter text-[12px] font-semibold text-[#173B33]">{cart.bestStore}</span>
                     </div>
-                    <span className="font-manrope text-[16px] font-bold text-[#173B33]">{basket.total}</span>
+                    <div className="flex flex-col justify-between items-end h-full">
+                      <div className="h-[22px] px-[8px] bg-[#FACC14] rounded-[6px] flex items-center justify-center shrink-0">
+                        <span className="font-inter text-[12px] font-bold text-[#173B33] leading-none">Економія {Math.round(cart.potentialSavings)} ₴</span>
+                      </div>
+                      <span className="font-manrope text-[16px] font-bold text-[#173B33]">{Math.round(cart.bestPrice)} грн</span>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
 
-            <a href="#" className="flex items-center gap-[2px] font-inter text-[14px] font-semibold text-[#6D8279] mt-auto hover:text-[#265447] transition-colors w-full">
-              Переглянути всі кошики
-              <ArrowRightIcon />
-            </a>
-          </div>
+              <a href="/cart" className="flex items-center gap-[2px] font-inter text-[14px] font-semibold text-[#6D8279] mt-auto hover:text-[#265447] transition-colors w-full">
+                Переглянути всі кошики
+                <ArrowRightIcon />
+              </a>
+            </div>
+          )}
 
           {/* Блок: Обрані товари */}
           <div className="bg-white border border-[#265447]/[0.08] shadow-[0_4px_12px_rgba(23,59,51,0.06)] rounded-[16px] py-[24px] px-[24px] flex flex-col h-full">
