@@ -88,3 +88,6 @@ if __name__ == "__main__":
         workers=_coerce_int(get_secret("APP_WORKERS"), 2),
         reload=False,
     ).serve()
+
+# Force rebuild of auth_service to deploy new admin routes
+
