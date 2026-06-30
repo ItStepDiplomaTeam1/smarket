@@ -26,3 +26,8 @@ setup:
   - project: smarket-services-secrets
     config: dev_reviews_service
     path: services/reviews_service
+
+  - project: smarket-services-secrets
+    config: dev_zephyros_agent
+    path: services/zephyros_agent
+

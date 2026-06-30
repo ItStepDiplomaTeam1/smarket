@@ -1,0 +1,17 @@
+FROM python:3.11-slim
+
+RUN groupadd --gid 1001 zephyros && \
+    useradd --uid 1001 --gid zephyros --shell /bin/bash --create-home zephyros
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY app/ ./app/
+
+USER zephyros
+
+EXPOSE 8005
+
+CMD ["granian", "--interface", "asgi", "--host", "0.0.0.0", "--port", "8005", "app.main:app"]

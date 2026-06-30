@@ -163,11 +163,17 @@ jobs:
             add_docker_service "reviews_service" "services/reviews_service/Dockerfile" "."
           fi
 
+          if python_service_changed "zephyros_agent"; then
+            add_python_service "zephyros_agent"
+            add_docker_service "zephyros_agent" "services/zephyros_agent/Dockerfile" "."
+          fi
+
           if [[ "$root_docker" == "true" ]]; then
             add_docker_service "auth_service" "services/auth_service/Dockerfile" "."
             add_docker_service "cart_service" "services/cart_service/DockerFile" "."
             add_docker_service "product_service" "services/product_service/DockerFile" "."
             add_docker_service "reviews_service" "services/reviews_service/Dockerfile" "."
+            add_docker_service "zephyros_agent" "services/zephyros_agent/Dockerfile" "."
           fi
 
           has_go=false
@@ -208,7 +214,7 @@ jobs:
             echo "has_go=$has_go"
             echo "has_rust=$has_rust"
             echo "has_node=$has_node"
-            echo "has_docker=$has_docker"
+            echo "has_docker=$has_d```````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````````ocker"
             echo "has_ci_changes=$has_ci_changes"
             echo "has_deploy_changes=$has_deploy_changes"
             echo "services_matrix=$docker_services"
@@ -599,6 +605,7 @@ jobs:
             ["services/reviews_service"]="dev_reviews_service"
             ["services/products_etl"]="dev_products_etl"
             ["services/search_service"]="dev_search_service"
+            ["services/zephyros_agent"]="dev_zephyros_agent"
           )
           for path in "${!configs[@]}"; do
             config="${configs[$path]}"
@@ -632,7 +639,7 @@ jobs:
 
           for srv in services/gateway services/auth_service services/product_service \
                      services/cart_service services/email_worker services/reviews_service \
-                     services/products_etl services/search_service; do
+                     services/products_etl services/search_service services/zephyros_agent; do
             cp "${{ github.workspace }}/$srv/.env" "$srv/.env" 2>/dev/null || true
           done
           cp "${{ github.workspace }}/services/search_service/.env" "infra/.env" 2>/dev/null || true
@@ -643,7 +650,7 @@ jobs:
           docker compose -f infra/docker-compose.yml pull --quiet
           if ! docker compose -f infra/docker-compose.yml up -d --remove-orphans --wait --wait-timeout "${SMARKET_DEPLOY_WAIT_TIMEOUT:-240}"; then
             docker compose -f infra/docker-compose.yml ps
-            docker compose -f infra/docker-compose.yml logs --tail=150 mongodb rabbitmq redis products_etl auth_service cart_service product_service reviews_service gateway_service email_worker search_service meilisearch
+            docker compose -f infra/docker-compose.yml logs --tail=150 mongodb rabbitmq redis products_etl auth_service cart_service product_service reviews_service gateway_service email_worker search_service meilisearch zephyros_agent
             exit 1
           fi
           docker image prune -f

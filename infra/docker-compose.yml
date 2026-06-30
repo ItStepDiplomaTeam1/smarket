@@ -97,6 +97,8 @@ services:
         condition: service_healthy
       search_service:
         condition: service_healthy
+      zephyros_agent:
+        condition: service_healthy
     healthcheck:
       <<: *healthcheck-defaults
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3).read()\""]
@@ -411,6 +413,46 @@ services:
     mem_limit: 128m
     cpus: 0.25
     pids_limit: 64
+
+  zephyros_agent:
+    <<: *api-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/zephyros_agent:${IMAGE_TAG:-develop}
+    build:
+      context: ..
+      dockerfile: services/zephyros_agent/Dockerfile
+    command:
+      - granian
+      - --interface
+      - asgi
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8005"
+      - --workers
+      - "${SMARKET_AGENT_WORKERS:-1}"
+      - app.main:app
+    expose:
+      - "8005"
+    environment:
+      PORT: "8005"
+      OPENROUTER_API_KEY: "${OPENROUTER_API_KEY}"
+      SEARCH_SERVICE_URL: "http://search_service:8083/api/v1"
+      PRODUCT_SERVICE_URL: "http://product_service:8000/api/v1"
+      CART_SERVICE_URL: "http://cart_service:8002/cart"
+    depends_on:
+      search_service:
+        condition: service_healthy
+      product_service:
+        condition: service_healthy
+      cart_service:
+        condition: service_healthy
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8005/health', timeout=3).read()\""]
+      start_period: "${SMARKET_API_HEALTH_START_PERIOD:-30s}"
+    mem_limit: 256m
+    cpus: 0.50
+    pids_limit: 128
 
 
   ofelia:
