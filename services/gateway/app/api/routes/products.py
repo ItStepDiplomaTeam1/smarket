@@ -18,7 +18,7 @@ async def proxy_to_product(request: Request, path: str):
     client: httpx.AsyncClient = request.app.state.http_client
 
     # Формуємо кінцеву URL-адресу до мікросервісу товарів
-    target_url = f"{settings.PRODUCT_SERVICE_URL}/{path}"
+    target_url = f"{settings.PRODUCT_SERVICE_URL}/api/v1/products/{path}"
 
     headers = dict(request.headers)
     headers.pop("host", None)
@@ -71,6 +71,10 @@ async def proxy_to_product(request: Request, path: str):
             response.aiter_raw(),
             status_code=response.status_code,
             headers=dict(response.headers),
+        )
+    except httpx.ReadTimeout:
+        raise HTTPException(
+            status_code=504, detail="Сервіс товарів не відповів вчасно"
         )
     except httpx.ConnectError:
         raise HTTPException(
