@@ -52,6 +52,7 @@ async fn configure_meilisearch_index(client: &meilisearch_sdk::client::Client) {
             "retail_chain",
             "price",
             "in_stock",
+            "is_hidden",
         ])
         .with_sortable_attributes(["price", "title"])
         .with_displayed_attributes(["*"])

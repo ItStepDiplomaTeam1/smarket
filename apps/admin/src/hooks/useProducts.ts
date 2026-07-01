@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 
 export interface MeiliSearchProduct {
@@ -12,6 +12,7 @@ export interface MeiliSearchProduct {
   category_id: number | null;
   category_slug: string | null;
   category_name: string | null;
+  is_hidden: boolean;
   offers: Array<{
     store: {
       id: string;
@@ -67,15 +68,23 @@ const fetchProducts = async (params: FetchProductsParams): Promise<MeiliSearchRe
   return data;
 };
 
-/**
- * Custom TanStack Query hook to search products indexed in Meilisearch.
- *
- * @param params - Search and filter parameters (query, page, limit, category, retailer, inStock).
- */
 export function useProducts(params: FetchProductsParams) {
   return useQuery<MeiliSearchResponse, Error>({
     queryKey: ['productsSearch', params],
     queryFn: () => fetchProducts(params),
-    staleTime: 30_000, // 30 seconds cache
+    staleTime: 30_000,
   });
 }
+
+export const useToggleProductVisibility = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ productId, isHidden }: { productId: number; isHidden: boolean }) => {
+      await apiClient.patch(`/products/${productId}/visibility`, { is_hidden: isHidden });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['productsSearch'] });
+    },
+  });
+};

@@ -254,6 +254,13 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			name: "drop store_categories_mapping",
 			sql:  `DROP TABLE IF EXISTS store_categories_mapping`,
 		},
+		{
+			name: "add is_hidden to products",
+			sql: `
+				ALTER TABLE products
+					ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN NOT NULL DEFAULT FALSE
+			`,
+		},
 	}
 
 	for _, m := range migrations {
