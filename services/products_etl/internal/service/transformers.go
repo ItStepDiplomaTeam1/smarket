@@ -681,22 +681,23 @@ func ResolveCategoryID(ctx context.Context, pgPool *pgxpool.Pool, categorySlug s
 // SearchProductDocument — DTO для надсилання в search_service /api/v1/index.
 // Повинен відповідати структурі ProductDocument у search_service/src/handlers/post_index.rs.
 type SearchProductDocument struct {
-	ID           int64   `json:"id"`
-	Title        string  `json:"title"`
-	Brand        string  `json:"brand,omitempty"`
-	Unit         string  `json:"unit,omitempty"`
-	Weight       float64 `json:"weight,omitempty"`
-	ImageURL     string  `json:"image_url,omitempty"`
-	CanonicalEAN string  `json:"canonical_ean,omitempty"`
-	CategoryID   *int    `json:"category_id,omitempty"`
-	CategorySlug string  `json:"category_slug,omitempty"`
-	CategoryName string  `json:"category_name,omitempty"`
-	StoreID      string  `json:"store_id"`
-	StoreName    string  `json:"store_name,omitempty"`
-	RetailChain  string  `json:"retail_chain,omitempty"`
-	Price        float64 `json:"price"`
+	ID           int64    `json:"id"`
+	Title        string   `json:"title"`
+	Brand        string   `json:"brand,omitempty"`
+	Unit         string   `json:"unit,omitempty"`
+	Weight       float64  `json:"weight,omitempty"`
+	ImageURL     string   `json:"image_url,omitempty"`
+	CanonicalEAN string   `json:"canonical_ean,omitempty"`
+	CategoryID   *int     `json:"category_id,omitempty"`
+	CategorySlug string   `json:"category_slug,omitempty"`
+	CategoryName string   `json:"category_name,omitempty"`
+	StoreID      string   `json:"store_id"`
+	StoreName    string   `json:"store_name,omitempty"`
+	RetailChain  string   `json:"retail_chain,omitempty"`
+	Price        float64  `json:"price"`
 	OldPrice     *float64 `json:"old_price,omitempty"`
-	InStock      bool    `json:"in_stock"`
+	InStock      bool     `json:"in_stock"`
+	IsHidden     bool     `json:"is_hidden"`
 }
 
 type searchIndexRequest struct {
@@ -729,7 +730,8 @@ func indexProductsToSearch(pgPool *pgxpool.Pool, searchServiceURL string, storeI
 			COALESCE(s.retail_chain, '')        AS retail_chain,
 			lpr.price,
 			lpr.old_price,
-			lpr.in_stock
+			lpr.in_stock,
+			p.is_hidden
 		FROM store_products sp
 		JOIN products p ON p.id = sp.product_id
 		JOIN stores s   ON s.external_id = sp.store_id
@@ -774,6 +776,7 @@ func indexProductsToSearch(pgPool *pgxpool.Pool, searchServiceURL string, storeI
 			&doc.Price,
 			&oldPrice,
 			&doc.InStock,
+			&doc.IsHidden,
 		); err != nil {
 			log.Printf("[SearchIndex] WARN: scan row: %v", err)
 			continue
@@ -870,7 +873,8 @@ func RunFullBackfill(pgPool *pgxpool.Pool, searchServiceURL string) (int, error)
 			COALESCE(s.retail_chain, '')        AS retail_chain,
 			lpr.price,
 			lpr.old_price,
-			lpr.in_stock
+			lpr.in_stock,
+			p.is_hidden
 		FROM store_products sp
 		JOIN products p ON p.id = sp.product_id
 		JOIN stores s   ON s.external_id = sp.store_id
@@ -933,6 +937,7 @@ func RunFullBackfill(pgPool *pgxpool.Pool, searchServiceURL string) (int, error)
 			&doc.Price,
 			&oldPrice,
 			&doc.InStock,
+			&doc.IsHidden,
 		); err != nil {
 			log.Printf("[Backfill] WARN: помилка читання рядка: %v", err)
 			continue
