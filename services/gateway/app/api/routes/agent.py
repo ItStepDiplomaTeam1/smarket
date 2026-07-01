@@ -33,9 +33,9 @@ async def proxy_to_agent(
             headers=headers,
             params=request.query_params,
             content=request.stream(),
+            timeout=120.0,
         )
-        # LLM calls can be slow, so we set a timeout of 120 seconds specifically for this request
-        response = await client.send(req, stream=True, timeout=120.0)
+        response = await client.send(req, stream=True)
         return StreamingResponse(
             response.aiter_raw(),
             status_code=response.status_code,
