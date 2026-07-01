@@ -91,9 +91,9 @@ Use for: visual separation between sections.
 agent: Agent[AgentDeps, ZephyrosResponse] = Agent(
     model=model,
     deps_type=AgentDeps,
-    result_type=ZephyrosResponse,
+    output_type=ZephyrosResponse,
     system_prompt=SYSTEM_PROMPT,
-    max_retries=3,
+    retries=3,
 )
 
 agent.tool(search_catalog)
