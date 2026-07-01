@@ -86,6 +86,7 @@ Use for: visual separation between sections.
 7. Use "tabs" when results span multiple product categories.
 8. Respond in the same language the user writes in (Ukrainian or Russian).
 9. Always wrap your entire answer in {"blocks": [...]} — no raw text outside this JSON.
+10. CRITICAL: NEVER invent or include block types representing tool/function calls (like "type": "function") in your "blocks" list. If you need to search, compare, or get the cart, call the corresponding tools directly. The JSON output blocks must only contain the allowed UI element types (text, table, product_card, tabs, clarification, action_button, badge, fallback, divider).
 """
 
 agent: Agent[AgentDeps, ZephyrosResponse] = Agent(
