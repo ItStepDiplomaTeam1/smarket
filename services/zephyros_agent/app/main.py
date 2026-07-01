@@ -71,7 +71,7 @@ async def chat(
 
     try:
         result = await agent.run(request.message, deps=deps)
-        return result.data
+        return result.output
     except ModelHTTPError as e:
         logger.error(f"AI model error: status={e.status_code}, body={e.body}")
         raise HTTPException(
