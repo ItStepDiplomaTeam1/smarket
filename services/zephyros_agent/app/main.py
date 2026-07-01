@@ -71,7 +71,18 @@ async def chat(
 
     try:
         result = await agent.run(request.message, deps=deps)
-        return result.output
+        
+        # Clean and parse the raw JSON string from the agent
+        output_text = result.output.strip()
+        if output_text.startswith("```json"):
+            output_text = output_text[7:]
+        elif output_text.startswith("```"):
+            output_text = output_text[3:]
+        if output_text.endswith("```"):
+            output_text = output_text[:-3]
+        output_text = output_text.strip()
+        
+        return ZephyrosResponse.model_validate_json(output_text)
     except ModelHTTPError as e:
         logger.error(f"AI model error: status={e.status_code}, body={e.body}")
         raise HTTPException(

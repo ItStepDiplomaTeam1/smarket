@@ -89,10 +89,10 @@ Use for: visual separation between sections.
 10. CRITICAL: NEVER invent or include block types representing tool/function calls (like "type": "function") in your "blocks" list. If you need to search, compare, or get the cart, call the corresponding tools directly. The JSON output blocks must only contain the allowed UI element types (text, table, product_card, tabs, clarification, action_button, badge, fallback, divider).
 """
 
-agent: Agent[AgentDeps, ZephyrosResponse] = Agent(
+agent: Agent[AgentDeps, str] = Agent(
     model=model,
     deps_type=AgentDeps,
-    output_type=ZephyrosResponse,
+    output_type=str,
     system_prompt=SYSTEM_PROMPT,
     retries=3,
 )
