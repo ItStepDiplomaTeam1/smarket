@@ -17,7 +17,7 @@ async def lifespan(app: FastAPI):
     await app.state.http_client.aclose()
 
 
-app = FastAPI(title="Api Gateway", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="Api Gateway", version="0.1.0", lifespan=lifespan, redirect_slashes=False)
 
 origins = [
     "http://localhost:3000",
