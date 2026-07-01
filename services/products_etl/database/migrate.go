@@ -139,10 +139,9 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 		{
 			name: "fix kopeck prices",
 			sql: `
-				UPDATE prices SET
-					price = price / 100.0,
-					old_price = old_price / 100.0
-				WHERE price > 1000
+				-- Замінено на SELECT 1, оскільки ця міграція не є безпечною для повторного запуску
+				-- і псує реальні ціни товарів дорожчих за 1000 грн.
+				SELECT 1;
 			`,
 		},
 		// ---------------------------------------------------------------

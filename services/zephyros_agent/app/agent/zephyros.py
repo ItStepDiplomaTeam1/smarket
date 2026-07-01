@@ -1,5 +1,6 @@
 from pydantic_ai import Agent
-from pydantic_ai.models.openai import OpenAIModel
+from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.providers.openai import OpenAIProvider
 
 from app.config import settings
 from app.deps import AgentDeps
@@ -11,10 +12,12 @@ from app.tools import (
     add_product_to_cart,
 )
 
-model = OpenAIModel(
+model = OpenAIChatModel(
     model_name="nvidia/nemotron-3-ultra-550b-a55b:free",
-    base_url="https://openrouter.ai/api/v1",
-    api_key=settings.OPENROUTER_API_KEY,
+    provider=OpenAIProvider(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=settings.OPENROUTER_API_KEY or "stub",
+    ),
 )
 
 SYSTEM_PROMPT = """

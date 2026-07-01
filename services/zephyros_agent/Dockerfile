@@ -5,10 +5,10 @@ RUN groupadd --gid 1001 zephyros && \
 
 WORKDIR /app
 
-COPY requirements.txt .
+COPY services/zephyros_agent/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app/ ./app/
+COPY services/zephyros_agent/app/ ./app/
 
 USER zephyros
 
