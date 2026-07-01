@@ -33,15 +33,37 @@ import (
 
 // healthHandler provides health check info
 // @Summary     Перевірка стану сервісу
-// @Description Повертає статус "ok" якщо сервіс запущений і доступний
+// @Description Повертає статус "ok" якщо сервіс запущений і доступний, а також перевіряє MongoDB
 // @Tags        system
 // @Produce     json
-// @Success     200 {object} map[string]string "{"status":"ok"}"
+// @Success     200 {object} map[string]string "{"status":"ok","mongodb":"ok"}"
 // @Router      /health [get]
-func healthHandler(w http.ResponseWriter, _ *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(`{"status":"ok"}`))
+func healthHandler(infra *database.Infrastructure) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+
+		mongoStatus := "ok"
+		if infra.MongoClient != nil {
+			if err := infra.MongoClient.Ping(ctx, nil); err != nil {
+				mongoStatus = "error"
+			}
+		} else {
+			mongoStatus = "missing"
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if mongoStatus != "ok" {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte(fmt.Sprintf(`{"status":"error","mongodb":"%s"}`, mongoStatus)))
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"ok","mongodb":"ok"}`))
+	}
 }
+
 
 // getProductsHandler returns a list of products
 // @Summary     Отримати список товарів з Zakaz.ua
@@ -141,7 +163,7 @@ func main() {
 			log.Println("[main] Swagger UI увімкнено (development mode)")
 		}
 
-		mux.HandleFunc("/health", healthHandler)
+		mux.HandleFunc("/health", healthHandler(infra))
 		mux.HandleFunc("GET /product/get", getProductsHandler)
 		mux.HandleFunc("POST /backfill", backfillHandler(infra.PgPool, cfg.SearchServiceURL))
 

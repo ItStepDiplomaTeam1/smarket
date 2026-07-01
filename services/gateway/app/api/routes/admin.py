@@ -88,42 +88,98 @@ async def get_recent_users(request: Request):
     return await _proxy_to_auth(request, "recent-users", payload)
 
 
+import asyncio
+
+async def _probe_http_service(client: httpx.AsyncClient, url: str, timeout: float = 3.0) -> str:
+    try:
+        resp = await client.get(url, timeout=timeout)
+        if resp.status_code == 200:
+            return "Працює"
+        return "Помилка"
+    except Exception:
+        return "Помилка"
+
+
+async def _probe_search_service(client: httpx.AsyncClient, url: str) -> str:
+    try:
+        resp = await client.get(url, timeout=3.0)
+        if resp.status_code == 200 and resp.json().get("status") == "up":
+            return "Працює"
+        return "Помилка"
+    except Exception:
+        return "Помилка"
+
+
+async def _probe_etl_service(client: httpx.AsyncClient, url: str) -> tuple[str, str]:
+    try:
+        resp = await client.get(url, timeout=3.0)
+        if resp.status_code == 200:
+            data = resp.json()
+            mongo_status = "Працює" if data.get("mongodb") == "ok" else "Помилка"
+            return "Працює", mongo_status
+        return "Помилка", "Помилка"
+    except Exception:
+        return "Помилка", "Помилка"
+
+
 @router.get("/system-status")
 async def get_system_status(request: Request):
     """
-    Returns real-time operational status of all infrastructure services.
-    Probes are performed by product_service (internal network access).
-    Requires admin role — validated locally at the Gateway.
-    Always returns 200 with "Помилка" for unreachable services.
+    Returns real-time operational status of all infrastructure and microservices.
+    Probes are performed in parallel from the Gateway.
     """
     _verify_admin_token(request)
 
     client: httpx.AsyncClient = request.app.state.http_client
     probe_url = f"{settings.PRODUCT_SERVICE_URL}/api/v1/internal/health-check"
 
-    try:
-        response = await client.get(probe_url, timeout=15.0)
-        response.raise_for_status()
-        service_statuses: dict = response.json()
-    except Exception:
-        # Product service is unreachable — mark all its databases as failed
-        service_statuses = {name: "Помилка" for name in _FALLBACK_SERVICES}
+    # Database status probe task
+    async def get_db_statuses():
+        try:
+            response = await client.get(probe_url, timeout=5.0)
+            if response.status_code == 200:
+                return response.json()
+        except Exception:
+            pass
+        return {name: "Помилка" for name in _FALLBACK_SERVICES}
 
-    # Gateway itself is obviously alive if we reached this point
-    service_statuses["API Gateway"] = "Працює"
+    # Run all probes concurrently
+    db_task = get_db_statuses()
+    auth_task = _probe_http_service(client, f"{settings.AUTH_SERVICE_URL}/health")
+    product_task = _probe_http_service(client, f"{settings.PRODUCT_SERVICE_URL}/health")
+    cart_task = _probe_http_service(client, f"{settings.CART_SERVICE_URL}/health")
+    reviews_task = _probe_http_service(client, f"{settings.REVIEWS_SERVICE_URL}/health")
+    search_task = _probe_search_service(client, f"{settings.SEARCH_SERVICE_URL}/api/v1/health")
+    etl_task = _probe_etl_service(client, f"{settings.ETL_SERVICE_URL}/health")
+    email_task = _probe_http_service(client, f"{settings.EMAIL_WORKER_URL}/health")
 
-    # Probe search_service (Rust) health endpoint
-    search_health_url = f"{settings.SEARCH_SERVICE_URL}/api/v1/health"
-    try:
-        search_response = await client.get(search_health_url, timeout=5.0)
-        if search_response.status_code == 200 and search_response.json().get("status") == "up":
-            service_statuses["Search Service"] = "Працює"
-        else:
-            service_statuses["Search Service"] = "Помилка"
-    except Exception:
-        service_statuses["Search Service"] = "Помилка"
+    (db_res, auth_res, product_res, cart_res, reviews_res, 
+     search_res, (etl_res, mongo_res), email_res) = await asyncio.gather(
+        db_task, auth_task, product_task, cart_task, reviews_task, search_task, etl_task, email_task
+    )
+
+    # Compile result dict
+    service_statuses = {
+        # Infrastructure / Databases
+        "PostgreSQL": db_res.get("PostgreSQL", "Помилка"),
+        "Redis": db_res.get("Redis", "Помилка"),
+        "Meilisearch": db_res.get("Meilisearch", "Помилка"),
+        "RabbitMQ": db_res.get("RabbitMQ", "Помилка"),
+        "MongoDB": mongo_res,
+        
+        # Microservices
+        "API Gateway": "Працює",
+        "Auth Service": auth_res,
+        "Product Service": product_res,
+        "Cart Service": cart_res,
+        "Reviews Service": reviews_res,
+        "Search Service": search_res,
+        "ETL Service": etl_res,
+        "Email Worker": email_res,
+    }
 
     return JSONResponse(content=service_statuses)
+
 
 
 @router.get("/etl/health")
