@@ -28,12 +28,30 @@ async def get_all_carts(
 ):
     """Отримати список усіх кошиків користувача"""
     carts = await crud.get_user_carts(db, user_id)
+    import asyncio
+    
+    # Gather all items across all carts
+    all_items = []
+    for cart in carts:
+        all_items.extend(cart.items)
+        
+    # Fetch details for all items in parallel
+    product_details_list = await asyncio.gather(
+        *(fetch_product_details(item.product_id) for item in all_items)
+    )
+    
+    # Map from product_id to product_data
+    product_data_map = {
+        item.product_id: details 
+        for item, details in zip(all_items, product_details_list)
+    }
+
     responses = []
     for cart in carts:
         total_price = 0.0
         items_response = []
         for item in cart.items:
-            product_data = await fetch_product_details(item.product_id)
+            product_data = product_data_map.get(item.product_id, {})
             prices = product_data.get("prices", [])
             valid_prices = [p.get("price", 0.0) for p in prices if p.get("in_stock", False)]
             if valid_prices:
@@ -110,9 +128,15 @@ async def get_cart(
         "total_price": 0.0,
     }
 
+    import asyncio
+    
+    # Fetch details for all items in parallel
+    product_details_list = await asyncio.gather(
+        *(fetch_product_details(item.product_id) for item in cart.items)
+    )
+
     total_price = 0.0
-    for item in cart.items:
-        product_data = await fetch_product_details(item.product_id)
+    for item, product_data in zip(cart.items, product_details_list):
         name = product_data.get("title", "Невідомий товар")
         
         prices = product_data.get("prices", [])
@@ -222,10 +246,16 @@ async def compare_cart_prices(
     if not cart or not cart.items:
         return []
 
+    import asyncio
+    
+    # Fetch offers for all items in parallel
+    offers_data_list = await asyncio.gather(
+        *(fetch_product_offers(item.product_id) for item in cart.items)
+    )
+
     stores_comparison = {}
     total_items_in_cart = len(cart.items)
-    for item in cart.items:
-        offers_data = await fetch_product_offers(item.product_id)
+    for item, offers_data in zip(cart.items, offers_data_list):
         offers = offers_data.get("offers", [])
         for offer in offers:
             store = offer.get("store")
@@ -287,10 +317,16 @@ async def get_shared_cart(cart_id: uuid.UUID, db: AsyncSession = Depends(get_db)
     if not cart:
         raise HTTPException(status_code=404, detail="Cart not found")
 
+    import asyncio
+    
+    # Fetch details for all items in parallel
+    product_details_list = await asyncio.gather(
+        *(fetch_product_details(item.product_id) for item in cart.items)
+    )
+
     total_price = 0.0
     items_response = []
-    for item in cart.items:
-        product_data = await fetch_product_details(item.product_id)
+    for item, product_data in zip(cart.items, product_details_list):
         prices = product_data.get("prices", [])
         valid_prices = [p.get("price", 0.0) for p in prices if p.get("in_stock", False)]
         if valid_prices:
