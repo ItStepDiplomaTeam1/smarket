@@ -49,18 +49,7 @@ export const useFetchCartDetails = (cartId: string | null) => {
         console.error("Failed to fetch comparison", err);
       }
       
-      const itemsWithImages = await Promise.all(data.items.map(async (item: { product_id: string; product_name: string; quantity: number; price: number; id: string; image_url?: string }) => {
-        let imageUrl = item.image_url;
-        if (!imageUrl) {
-          try {
-            const res = await apiClient.get(`/api/v1/products/${item.product_id}`);
-            if (res.data && res.data.image_url) {
-              imageUrl = res.data.image_url;
-            }
-          } catch (e) {
-            console.error("Failed to load product image fallback", e);
-          }
-        }
+      const itemsWithImages = data.items.map((item: { product_id: string; product_name: string; quantity: number; price: number; id: string; image_url?: string }) => {
         return {
           productId: item.product_id,
           name: item.product_name,
@@ -68,9 +57,9 @@ export const useFetchCartDetails = (cartId: string | null) => {
           basePrice: item.price,
           totalItemPrice: item.price * item.quantity,
           id: item.id, // mapping the cart_item id
-          imageUrl: imageUrl
+          imageUrl: item.image_url
         };
-      }));
+      });
 
       return {
         id: data.id,
@@ -120,7 +109,36 @@ export const useUpdateCartItemQuantity = () => {
       });
       return data;
     },
-    onSuccess: (data, variables) => {
+    onMutate: async (newVariables) => {
+      await queryClient.cancelQueries({ queryKey: ['cart', newVariables.cartId] });
+      const previousCart = queryClient.getQueryData(['cart', newVariables.cartId]);
+
+      if (previousCart) {
+        queryClient.setQueryData(['cart', newVariables.cartId], (old: any) => {
+          if (!old) return old;
+          return {
+            ...old,
+            items: old.items.map((item: any) =>
+              item.id === newVariables.itemId
+                ? { 
+                    ...item, 
+                    quantity: newVariables.quantity,
+                    totalItemPrice: item.basePrice * newVariables.quantity
+                  }
+                : item
+            )
+          };
+        });
+      }
+
+      return { previousCart };
+    },
+    onError: (err, newVariables, context) => {
+      if (context?.previousCart) {
+        queryClient.setQueryData(['cart', newVariables.cartId], context.previousCart);
+      }
+    },
+    onSettled: (data, error, variables) => {
       queryClient.invalidateQueries({ queryKey: ['cart', variables.cartId] });
       queryClient.invalidateQueries({ queryKey: ['carts'] });
     },
