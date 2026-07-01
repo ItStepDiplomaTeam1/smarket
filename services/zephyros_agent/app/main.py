@@ -12,6 +12,7 @@ from app.agent.zephyros import agent
 from app.config import settings
 from app.deps import AgentDeps
 from app.schemas import ZephyrosResponse
+from pydantic_ai.exceptions import ModelHTTPError
 
 
 @asynccontextmanager
@@ -68,5 +69,15 @@ async def chat(
         user_id=user_id,
     )
 
-    result = await agent.run(request.message, deps=deps)
-    return result.data
+    try:
+        result = await agent.run(request.message, deps=deps)
+        return result.data
+    except ModelHTTPError as e:
+        logger.error(f"AI model error: status={e.status_code}, body={e.body}")
+        raise HTTPException(
+            status_code=503,
+            detail=f"AI-модель недоступна: {e.body.get('message', str(e)) if isinstance(e.body, dict) else str(e)}",
+        )
+    except Exception as e:
+        logger.error(f"Unexpected agent error: {e}")
+        raise HTTPException(status_code=500, detail="Внутрішня помилка агента")
