@@ -333,6 +333,8 @@ services:
     build:
       context: ../services/email_worker
       dockerfile: Dockerfile
+    expose:
+      - "8085"
     environment:
       RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
     env_file:
