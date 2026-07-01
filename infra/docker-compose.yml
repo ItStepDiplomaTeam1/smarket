@@ -435,9 +435,10 @@ services:
       - app.main:app
     expose:
       - "8005"
+    env_file:
+      - ../services/zephyros_agent/.env
     environment:
       PORT: "8005"
-      OPENROUTER_API_KEY: "${OPENROUTER_API_KEY}"
       SEARCH_SERVICE_URL: "http://search_service:8083/api/v1"
       PRODUCT_SERVICE_URL: "http://product_service:8000/api/v1"
       CART_SERVICE_URL: "http://cart_service:8002/cart"
