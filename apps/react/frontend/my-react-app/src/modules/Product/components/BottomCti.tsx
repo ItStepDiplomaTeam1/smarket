@@ -1,6 +1,6 @@
 export function BottomCti() {
   return (
-    <section className="w-full p-0 bg-[#F6FAF8]">
+    <section className="w-full pb-[80px] bg-[#F6FAF8]">
       <div className="w-full max-w-[1228px] mx-auto px-[24px]">
         
         <div className="bg-[#EAF7F2] rounded-[24px] py-[40px] px-[24px] flex flex-col items-center text-center">

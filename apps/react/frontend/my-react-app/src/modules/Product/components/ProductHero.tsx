@@ -22,7 +22,7 @@ export function ProductHero({ product }: ProductHeroProps) {
     const params = useParams<{ idAndSlug?: string; id?: string }>();
     const rawParam = params.idAndSlug || params.id; 
     const extractedId = rawParam ? rawParam.split('-')[0] : null;
-    const productId = extractedId || "dddb52b5-fce8-4fde-947d-25625a429690";
+    const productId = product?.id ?? (extractedId ? Number(extractedId) : null);
     // ====================================
 
     const { isAuthenticated, user } = useAuthStore();
@@ -47,7 +47,7 @@ export function ProductHero({ product }: ProductHeroProps) {
 
     const userId = user?.id;
 
-    const targetId = product?.id || Number(productId) || 1;
+    const targetId = productId || 1;
     const { data: reviews = [] } = useFetchProductReviews(targetId);
 
     const reviewsCount = reviews.length;

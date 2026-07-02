@@ -9,31 +9,38 @@ export default function ProductDetail() {
   const params = useParams<{ idAndSlug?: string; id?: string }>();
   const rawParam = params.idAndSlug || params.id; 
   const extractedId = rawParam ? rawParam.split('-')[0] : null;
-  const productId = Number(extractedId) || 1;
+  const productId = extractedId ? Number(extractedId) : null;
   
   const [product, setProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [notFound, setNotFound] = useState<boolean>(false);
 
   useEffect(() => {
+    if (!productId || isNaN(productId)) {
+      setIsLoading(false);
+      setNotFound(true);
+      return;
+    }
+
     const fetchProduct = async () => {
       try {
         setIsLoading(true);
+        setNotFound(false);
         const response = await apiClient.get(`/api/v1/products/${productId}`);
         setProduct(response.data);
       } catch (error) {
         console.error('Помилка завантаження товару:', error);
+        setNotFound(true);
       } finally {
         setIsLoading(false);
       }
     };
-    if (productId) {
-      fetchProduct();
-    }
+    fetchProduct();
   }, [productId]);
 
   // Зберігаємо переглянутий товар в localStorage
   useEffect(() => {
-    if (!productId) return;
+    if (!productId || isNaN(productId)) return;
     try {
       const key = 'recently_viewed_products';
       const stored = localStorage.getItem(key);
@@ -59,12 +66,28 @@ export default function ProductDetail() {
     );
   }
 
+  if (notFound || !product) {
+    return (
+      <div className="w-full h-screen flex flex-col justify-center items-center bg-[#F6FAF8] gap-[16px]">
+        <span className="text-[48px]">😔</span>
+        <h1 className="font-manrope text-[24px] font-[200] text-[#173B33] m-0">Товар не знайдено</h1>
+        <p className="font-inter text-[14px] text-[#6D8279] m-0">Перевірте посилання або поверніться до каталогу</p>
+        <a
+          href="/catalog"
+          className="mt-[8px] px-[24px] py-[10px] rounded-[10px] bg-[#265447] text-white font-inter text-[14px] font-semibold no-underline transition-colors hover:bg-[#1A3E2F]"
+        >
+          До каталогу
+        </a>
+      </div>
+    );
+  }
+
   return (
     <>
       <ProductHero product={product} />
       <About product={product} />
-      <Reviews productId={productId} />
-      <RecentlyViewed currentProductId={productId} />
+      <Reviews productId={productId!} />
+      <RecentlyViewed currentProductId={productId!} />
       <SMProduct currentProduct={product}/>
       <BottomCti />
     </>
