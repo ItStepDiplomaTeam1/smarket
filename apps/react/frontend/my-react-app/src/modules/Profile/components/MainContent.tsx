@@ -1,8 +1,9 @@
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { useFetchCarts } from '@/hooks/api/useCartApi';
 import { useFetchUserReviews } from '@/hooks/api/useReviewsApi';
+import { apiClient } from '@/shared/api/apiClient';
 
-/** Форматує ISO-дату у зручний вигляд, напр. "01 червня 2026" */
 function formatDate(iso: string): string {
   const months = [
     'січня', 'лютого', 'березня', 'квітня', 'травня', 'червня',
@@ -17,6 +18,38 @@ export function MainContent() {
   const user = useAuthStore((s) => s.user);
   const { data: carts } = useFetchCarts();
   const { data: userReviews = [], isLoading: reviewsLoading, isError: reviewsError } = useFetchUserReviews(user?.id);
+
+  // Завантажуємо інформацію про товари для відгуків (назва, фото)
+  const [productsMap, setProductsMap] = useState<Record<number, { title: string; image_url: string | null }>>({}); 
+
+  useEffect(() => {
+    if (userReviews.length === 0) return;
+
+    const productIds = [...new Set(userReviews.map((r) => r.product_id))];
+    const idsToFetch = productIds.filter((id) => !productsMap[id]);
+    if (idsToFetch.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      const results: Record<number, { title: string; image_url: string | null }> = {};
+      await Promise.all(
+        idsToFetch.map(async (id) => {
+          const { data, status } = await apiClient.get(`/api/v1/products/${id}`, {
+            validateStatus: (s) => s === 200 || s === 404,
+          });
+          if (status === 200 && data?.title) {
+            results[id] = { title: data.title, image_url: data.image_url };
+          } else {
+            results[id] = { title: `Товар #${id}`, image_url: null };
+          }
+        })
+      );
+      if (!cancelled) {
+        setProductsMap((prev) => ({ ...prev, ...results }));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [userReviews]);
 
   // Відображуване ім'я для привітання: якщо є name — ім'я, інакше email
   const userName = user?.name || user?.email || 'Користувачу';
@@ -197,23 +230,37 @@ export function MainContent() {
           {!reviewsLoading && !reviewsError && userReviews.length > 0 && (
             <>
               <div className="flex flex-col gap-[24px] mb-[24px]">
-                {userReviews.map((review) => (
-                  <div key={review.id} className="flex items-start gap-[24px]">
-                    <div className="w-[44px] h-[56px] rounded-[5px] shrink-0 border border-[#265447]/[0.08] bg-[#F6FAF8] flex items-center justify-center">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6D8279" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
-                        <path d="m3.3 7 8.7 5 8.7-5" />
-                        <path d="M12 22V12" />
-                      </svg>
+                {userReviews.map((review) => {
+                  const productInfo = productsMap[review.product_id];
+                  const productTitle = productInfo?.title || `Товар #${review.product_id}`;
+                  const productImage = productInfo?.image_url;
+
+                  return (
+                    <div key={review.id} className="flex items-start gap-[24px]">
+                      {productImage ? (
+                        <img
+                          src={productImage}
+                          alt={productTitle}
+                          className="w-[44px] h-[56px] rounded-[5px] object-cover shrink-0 border border-[#265447]/[0.08]"
+                        />
+                      ) : (
+                        <div className="w-[44px] h-[56px] rounded-[5px] shrink-0 border border-[#265447]/[0.08] bg-[#F6FAF8] flex items-center justify-center">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6D8279" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                            <path d="m3.3 7 8.7 5 8.7-5" />
+                            <path d="M12 22V12" />
+                          </svg>
+                        </div>
+                      )}
+                      <h4 className="w-[153px] font-inter text-[13px] font-medium text-[#173B33] leading-[18px] m-0 shrink-0">{productTitle}</h4>
+                      <div className="flex shrink-0">
+                        {[1, 2, 3, 4, 5].map((star) => <StarIcon key={star} filled={star <= review.rating} />)}
+                      </div>
+                      <p className="flex-1 min-w-0 font-inter text-[13px] text-[#6D8279] leading-[20px] m-0 pr-[16px]">{review.text || 'Без коментаря'}</p>
+                      <span className="w-[110px] shrink-0 font-inter text-[13px] text-[#6D8279] text-right whitespace-nowrap">{formatDate(review.created_at)}</span>
                     </div>
-                    <h4 className="w-[153px] font-inter text-[13px] font-medium text-[#173B33] leading-[18px] m-0 shrink-0">Товар #{review.product_id}</h4>
-                    <div className="flex shrink-0">
-                      {[1, 2, 3, 4, 5].map((star) => <StarIcon key={star} filled={star <= review.rating} />)}
-                    </div>
-                    <p className="flex-1 min-w-0 font-inter text-[13px] text-[#6D8279] leading-[20px] m-0 pr-[16px]">{review.text || 'Без коментаря'}</p>
-                    <span className="w-[110px] shrink-0 font-inter text-[13px] text-[#6D8279] text-right whitespace-nowrap">{formatDate(review.created_at)}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               <a href="#" className="flex items-center gap-[2px] font-inter text-[14px] font-semibold text-[#6D8279] mt-auto hover:text-[#265447] transition-colors w-full">
