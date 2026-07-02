@@ -34,6 +34,19 @@ export const useFetchProductReviews = (productId: number) => {
   });
 };
 
+export const useFetchUserReviews = (userId: string | undefined) => {
+  return useQuery<Review[]>({
+    queryKey: ['reviews', 'user', userId],
+    queryFn: async () => {
+      const response = await apiClient.get<Review[]>(
+        `/api/v1/reviews/user/${userId}`
+      );
+      return response.data;
+    },
+    enabled: !!userId,
+  });
+};
+
 export const useCreateReview = () => {
   const queryClient = useQueryClient();
 

@@ -1,5 +1,6 @@
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { useFetchCarts } from '@/hooks/api/useCartApi';
+import { useFetchUserReviews } from '@/hooks/api/useReviewsApi';
 
 /** Форматує ISO-дату у зручний вигляд, напр. "01 червня 2026" */
 function formatDate(iso: string): string {
@@ -15,6 +16,7 @@ function formatDate(iso: string): string {
 export function MainContent() {
   const user = useAuthStore((s) => s.user);
   const { data: carts } = useFetchCarts();
+  const { data: userReviews = [], isLoading: reviewsLoading, isError: reviewsError } = useFetchUserReviews(user?.id);
 
   // Відображуване ім'я для привітання: якщо є name — ім'я, інакше email
   const userName = user?.name || user?.email || 'Користувачу';
@@ -24,41 +26,6 @@ export function MainContent() {
     { title: 'Вино Marlborough Sun Sauvignon Blanc', category: 'Алкоголь', price: '469.00 - 585.00 грн', rating: 4.9, views: 340 },
     { title: 'Напій кокосовий Vega Milk', category: 'Молочні продукти', price: '85.49 - 118.00 грн', rating: 4.7, views: 259 },
     { title: 'Віскі Monkey Shoulder, 40%, 0.7 л', category: 'Алкоголь', price: '999.00 - 1559.00 грн', rating: 4.8, views: 129 },
-  ];
-
-  const userReviews = [
-    { 
-      id: 1,
-      title: 'Шоколад молочний Lindt Lindor 100 г', 
-      date: '10 червня 2026', 
-      rating: 1,
-      text: 'Взагалі не сподобався, в складі на 1 місці цукор, на 2 пальмова олія, какао дуже мало, на смак одна пальма, за таку ціну взагалі не очікував що може бути такий склад. Не рекомендую',
-      img: 'https://images.unsplash.com/photo-1623341214825-9f4f963727da?q=80&w=100&auto=format&fit=crop'
-    },
-    { 
-      id: 2,
-      title: 'Кава в зернах Jacobs Velvet Gold Crema 1000 г', 
-      date: '5 червня 2026', 
-      rating: 5, 
-      text: 'Ароматна та смачна кава',
-      img: 'https://images.unsplash.com/photo-1559525839-b184a4d698c7?q=80&w=100&auto=format&fit=crop'
-    },
-    { 
-      id: 3,
-      title: 'Набір підгузків Huggies Extra Care Box 4 (8-14 кг), 76 шт', 
-      date: '28 травня 2026', 
-      rating: 5, 
-      text: 'Поки найкращі підгузки для моєї малечі. Рекомендуємо! Чергую з Huggies Little Movers, але з цих забули, що таке попрілості. Відчувається різниця з дешевшими варіантами.',
-      img: 'https://images.unsplash.com/photo-1515488042361-ee00e0ddd4e4?q=80&w=100&auto=format&fit=crop'
-    },
-    { 
-      id: 4,
-      title: 'Чипси Pringles Sour Cream & Onion Сметана та цибуля 165 г', 
-      date: '7 травня 2026', 
-      rating: 4, 
-      text: 'Pringles і цим все сказано. Найкращі чіпси як до пива так і просто так. Якщо вже їсть якусь гидоту, то однозначно Pringles',
-      img: 'https://images.unsplash.com/photo-1599490659213-e2b9527bd08c?q=80&w=100&auto=format&fit=crop'
-    },
   ];
 
   const StarIcon = ({ filled }: { filled: boolean }) => (
@@ -192,24 +159,69 @@ export function MainContent() {
         <div className="w-full bg-white border border-[#265447]/[0.08] shadow-[0_4px_12px_rgba(23,59,51,0.06)] rounded-[16px] p-[24px] flex flex-col">
           <h2 className="font-manrope text-[18px] font-bold text-[#173B33] m-0 mb-[24px]">Відгуки</h2>
           
-          <div className="flex flex-col gap-[24px] mb-[24px]">
-            {userReviews.map((review) => (
-              <div key={review.id} className="flex items-start gap-[24px]">
-                <img src={review.img} alt="Product" className="w-[44px] h-[56px] rounded-[5px] object-cover shrink-0 border border-[#265447]/[0.08]" />
-                <h4 className="w-[153px] font-inter text-[13px] font-medium text-[#173B33] leading-[18px] m-0 shrink-0">{review.title}</h4>
-                <div className="flex shrink-0">
-                  {[1, 2, 3, 4, 5].map((star) => <StarIcon key={star} filled={star <= review.rating} />)}
-                </div>
-                <p className="flex-1 min-w-0 font-inter text-[13px] text-[#6D8279] leading-[20px] m-0 pr-[16px]">{review.text}</p>
-                <span className="w-[110px] shrink-0 font-inter text-[13px] text-[#6D8279] text-right whitespace-nowrap">{review.date}</span>
-              </div>
-            ))}
-          </div>
+          {/* Стан завантаження */}
+          {reviewsLoading && (
+            <div className="flex items-center justify-center py-[32px]">
+              <svg className="animate-spin mr-[8px]" width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" stroke="rgba(38,84,71,0.2)" strokeWidth="3" />
+                <path d="M12 2a10 10 0 0 1 10 10" stroke="#265447" strokeWidth="3" strokeLinecap="round" />
+              </svg>
+              <span className="font-inter text-[14px] text-[#6D8279]">Завантаження відгуків...</span>
+            </div>
+          )}
 
-          <a href="#" className="flex items-center gap-[2px] font-inter text-[14px] font-semibold text-[#6D8279] mt-auto hover:text-[#265447] transition-colors w-full">
-            Переглянути всі відгуки
-            <ArrowRightIcon />
-          </a>
+          {/* Помилка завантаження */}
+          {reviewsError && (
+            <div className="flex items-center gap-[8px] bg-[#FEF2F2] border border-[#FECACA] rounded-[12px] px-[20px] py-[16px] mb-[16px]">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              <span className="font-inter text-[14px] text-[#991B1B]">Не вдалося завантажити відгуки. Спробуйте оновити сторінку.</span>
+            </div>
+          )}
+
+          {/* Пустий стан */}
+          {!reviewsLoading && !reviewsError && userReviews.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-[32px]">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="mb-[12px]">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+              </svg>
+              <p className="font-manrope font-semibold text-[15px] text-[#265447] m-0 mb-[4px]">Ще немає відгуків</p>
+              <p className="font-inter text-[13px] text-[#6D8279] m-0">Ваші відгуки на товари з'являться тут.</p>
+            </div>
+          )}
+
+          {/* Список відгуків */}
+          {!reviewsLoading && !reviewsError && userReviews.length > 0 && (
+            <>
+              <div className="flex flex-col gap-[24px] mb-[24px]">
+                {userReviews.map((review) => (
+                  <div key={review.id} className="flex items-start gap-[24px]">
+                    <div className="w-[44px] h-[56px] rounded-[5px] shrink-0 border border-[#265447]/[0.08] bg-[#F6FAF8] flex items-center justify-center">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6D8279" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                        <path d="m3.3 7 8.7 5 8.7-5" />
+                        <path d="M12 22V12" />
+                      </svg>
+                    </div>
+                    <h4 className="w-[153px] font-inter text-[13px] font-medium text-[#173B33] leading-[18px] m-0 shrink-0">Товар #{review.product_id}</h4>
+                    <div className="flex shrink-0">
+                      {[1, 2, 3, 4, 5].map((star) => <StarIcon key={star} filled={star <= review.rating} />)}
+                    </div>
+                    <p className="flex-1 min-w-0 font-inter text-[13px] text-[#6D8279] leading-[20px] m-0 pr-[16px]">{review.text || 'Без коментаря'}</p>
+                    <span className="w-[110px] shrink-0 font-inter text-[13px] text-[#6D8279] text-right whitespace-nowrap">{formatDate(review.created_at)}</span>
+                  </div>
+                ))}
+              </div>
+
+              <a href="#" className="flex items-center gap-[2px] font-inter text-[14px] font-semibold text-[#6D8279] mt-auto hover:text-[#265447] transition-colors w-full">
+                Переглянути всі відгуки
+                <ArrowRightIcon />
+              </a>
+            </>
+          )}
         </div>
       </div>
     </section>

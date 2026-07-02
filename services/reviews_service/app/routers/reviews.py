@@ -24,6 +24,12 @@ async def get_product_reviews(product_id: int, db: AsyncSession = Depends(get_db
     return await crud.get_reviews_by_product(db, product_id)
 
 
+@router.get("/user/{user_id}", response_model=list[ReviewResponse])
+async def get_user_reviews(user_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    """Отримати всі відгуки конкретного користувача"""
+    return await crud.get_reviews_by_user(db, user_id)
+
+
 @router.post("/", response_model=ReviewResponse)
 async def add_review(
     review_in: ReviewCreate,
