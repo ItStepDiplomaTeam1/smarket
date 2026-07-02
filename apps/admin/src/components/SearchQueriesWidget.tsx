@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import type { DashboardData } from '@/hooks/useDashboardData';
 import { ChevronRight } from 'lucide-react';
 
@@ -30,9 +31,9 @@ export const SearchQueriesWidget: React.FC<SearchQueriesWidgetProps> = ({ querie
       </div>
 
       <div className="px-5 py-3 border-t border-border mt-auto">
-        <a href="#" className="text-sm font-medium text-textMuted hover:text-primary transition-colors flex items-center">
+        <Link to="/products" className="text-sm font-medium text-textMuted hover:text-primary transition-colors flex items-center">
           Переглянути всі товари <ChevronRight size={16} className="ml-1" />
-        </a>
+        </Link>
       </div>
     </div>
   );

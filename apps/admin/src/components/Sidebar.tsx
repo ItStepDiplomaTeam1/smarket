@@ -2,20 +2,18 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import { 
-  Home, Package, Layers, Store, Percent, 
-  Activity, FileText, MessageSquare, Users, LifeBuoy, 
+  Home, Package, Layers, Store, 
+  FileText, MessageSquare, Users, LifeBuoy, 
   Settings, ScrollText, LogOut 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import logo from '@/assets/Logo-Smarket.svg';
-
+ 
 const mainNavItems = [
   { name: 'Головна',      path: '/',            icon: Home },
   { name: 'Товари',       path: '/products',    icon: Package },
   { name: 'Категорії',    path: '/categories',  icon: Layers },
   { name: 'Магазини',     path: '/stores',      icon: Store },
-  { name: 'Акції',        path: '/promotions',  icon: Percent },
-  { name: 'Парсери',      path: '/parsers',     icon: Activity },
   { name: 'Сторінки',     path: '/pages',       icon: FileText },
   { name: 'Повідомлення', path: '/messages',    icon: MessageSquare },
   { name: 'Клієнти',      path: '/clients',     icon: Users },

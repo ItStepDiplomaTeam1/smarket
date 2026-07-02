@@ -47,24 +47,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         </p>
       </div>
 
-      {/* Trend */}
-      {trend && (
-        <div
-          className={cn(
-            'flex items-center gap-1 text-sm font-medium',
-            trend.isPositive ? 'text-accentGreen' : 'text-accentRed'
-          )}
-        >
-          {trend.isPositive ? (
-            <ArrowUpRight size={16} strokeWidth={2} />
-          ) : (
-            <ArrowDownRight size={16} strokeWidth={2} />
-          )}
-          <span>
-            {trend.value}% {trend.text}
-          </span>
-        </div>
-      )}
+
     </div>
   );
 };

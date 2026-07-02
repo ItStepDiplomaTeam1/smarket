@@ -4,7 +4,6 @@ import { MetricCard } from '@/components/MetricCard';
 import { SystemLogsTable } from '@/components/SystemLogsTable';
 import { SystemStatusWidget } from '@/components/SystemStatusWidget';
 import { QuickActions } from '@/components/QuickActions';
-import { DataCollectionWidget } from '@/components/DataCollectionWidget';
 import { SourceStatusWidget } from '@/components/SourceStatusWidget';
 import { NeedsAttentionWidget } from '@/components/NeedsAttentionWidget';
 import { PopularCategoriesWidget } from '@/components/PopularCategoriesWidget';
@@ -13,14 +12,14 @@ import { SearchQueriesWidget } from '@/components/SearchQueriesWidget';
 import { PopularProductsWidget } from '@/components/PopularProductsWidget';
 
 import { Package, Store, Users, Tag } from 'lucide-react';
-import { 
-  ResponsiveContainer, 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip 
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip
 } from 'recharts';
 
 const Dashboard: React.FC = () => {
@@ -52,10 +51,10 @@ const Dashboard: React.FC = () => {
 
       {/* ─── Main Content Area (Left: 2 cols, Right: 1 col "Sidebar") ─── */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
-        
+
         {/* Left Column (Main Content) */}
         <div className="xl:col-span-2 flex flex-col gap-6">
-          
+
           {/* ─── Top section: 4 KPI Cards in a single row ─── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
@@ -80,7 +79,7 @@ const Dashboard: React.FC = () => {
               trend={{ value: data.metrics.totalUsersTrend, isPositive: true, text: 'від учора' }}
             />
             <MetricCard
-              title="Цін оновлено сьогодні"
+              title="Цін оновлено"
               value={data.metrics.pricesUpdatedToday.toLocaleString('uk-UA')}
               icon={Tag}
               iconBgColor="#3B82F6"
@@ -145,15 +144,13 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Right Column ("Sidebar" of widgets) */}
         <div className="flex flex-col gap-6">
-          <DataCollectionWidget data={data.dataCollection} />
           <SourceStatusWidget sources={data.sourceStatus} />
           <QuickActions />
           <SystemStatusWidget />
           <PopularProductsWidget products={data.popularProducts} />
         </div>
-        
+
       </div>
     </div>
   );

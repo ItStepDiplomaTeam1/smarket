@@ -5,13 +5,13 @@ import { useSystemStatus, type ServiceStatus } from '@/hooks/useSystemStatus';
 
 const SERVICE_LABELS: Record<string, string> = {
   'API Gateway':      'API Gateway',
-  'Auth Service':     'Служба авторизації (FastAPI)',
-  'Product Service':  'Служба товарів (FastAPI)',
-  'Cart Service':     'Служба кошика (FastAPI)',
-  'Reviews Service':  'Служба відгуків (FastAPI)',
-  'Search Service':   'Пошуковий сервіс (Rust)',
-  'ETL Service':      'Служба імпорту (Go ETL)',
-  'Email Worker':     'Служба розсилок (FastStream)',
+  'Auth Service':     'Служба авторизації',
+  'Product Service':  'Служба товарів',
+  'Cart Service':     'Служба кошика',
+  'Reviews Service':  'Служба відгуків',
+  'Search Service':   'Пошуковий сервіс',
+  'ETL Service':      'Служба імпорту',
+  'Email Worker':     'Служба розсилок',
 };
 
 // Ordered list of microservices only
