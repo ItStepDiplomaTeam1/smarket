@@ -46,7 +46,7 @@ def get_agent_model(provider: str | None, model_name: str | None, attempt: int =
         m_name = model_name or gemini_models[attempt % len(gemini_models)]
         return GoogleModel(m_name)
     else:
-        groq_models = ["llama-3.3-70b-versatile", "mixtral-8x7b-32768", "llama-3.1-8b-instant"]
+        groq_models = ["llama-3.3-70b-versatile", "gemma2-9b-it", "llama-3.1-8b-instant"]
         m_name = model_name or groq_models[attempt % len(groq_models)]
         return OpenAIChatModel(
             model_name=m_name,
