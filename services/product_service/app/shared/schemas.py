@@ -54,6 +54,7 @@ class ProductResponse(BaseModel):
     canonical_category_id: Optional[int] = None
     category: Optional[CategoryResponse] = None
     created_at: datetime.datetime
+    is_hidden: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -128,3 +129,7 @@ class ProductFilters(BaseModel):
     search: Optional[str] = None
     skip: int = 0
     limit: int = 100
+
+
+class ProductVisibilityUpdate(BaseModel):
+    is_hidden: bool

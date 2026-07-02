@@ -25,8 +25,14 @@ router = APIRouter(
     default_response_class=ORJSONResponse,
 )
 
+def _get_cookie_secure() -> bool:
+    val = os.getenv("COOKIE_SECURE")
+    if val is not None:
+        return val.lower() in ("true", "1", "yes")
+    return os.getenv("DEBUG", "False").lower() not in ("true", "1", "yes")
+
 _REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60
-_COOKIE_SECURE = os.getenv("DEBUG", "False").lower() not in ("true", "1", "yes")
+_COOKIE_SECURE = _get_cookie_secure()
 _GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs"
 _GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 

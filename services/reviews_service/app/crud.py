@@ -17,7 +17,19 @@ async def get_reviews_by_product(db: AsyncSession, product_id: int):
     return result.scalars().all()
 
 
-# 2. Додати новий відгук
+
+# 2. Отримати всі відгуки конкретного користувача
+async def get_reviews_by_user(db: AsyncSession, user_id: uuid.UUID):
+    stmt = (
+        select(Review)
+        .where(Review.user_id == user_id)
+        .order_by(Review.created_at.desc())
+    )
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
+# 3. Додати новий відгук
 async def create_review(
     db: AsyncSession, review_in: ReviewCreate, user_id: uuid.UUID, user_name: str
 ) -> Review:

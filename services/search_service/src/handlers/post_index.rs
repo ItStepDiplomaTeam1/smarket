@@ -48,6 +48,9 @@ pub struct ProductDocument {
     pub old_price: Option<f64>,
 
     pub in_stock: bool,
+
+    #[serde(default)]
+    pub is_hidden: bool,
 }
 
 #[derive(Debug, Deserialize)]

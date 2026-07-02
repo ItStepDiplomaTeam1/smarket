@@ -214,6 +214,16 @@ func main() {
 
 		// Функція перевірки застарілих магазинів
 		runSchedulerCheck := func() {
+			log.Println("[Scheduler] Синхронізація магазинів та категорій перед перевіркою застарілих даних...")
+			syncCtx, syncCancel := context.WithTimeout(context.Background(), 120*time.Second)
+			if err := service.SeedStores(syncCtx, infra.PgPool); err != nil {
+				log.Printf("[Scheduler] WARN: не вдалось синхронізувати магазини: %v", err)
+			}
+			if err := service.SeedCategories(syncCtx, infra.PgPool); err != nil {
+				log.Printf("[Scheduler] WARN: не вдалось синхронізувати категорії: %v", err)
+			}
+			syncCancel()
+
 			log.Println("[Scheduler] Перевірка застарілих даних магазинів...")
 			rows, err := infra.PgPool.Query(context.Background(),
 				// last_parsed_at — індексована колонка, яку TransformLoadWorker оновлює

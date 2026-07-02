@@ -1,1 +1,2 @@
-export { Profile } from './components/Profile'
+export { Sidebar } from './components/Sidebar'
+export { MainContent } from './components/MainContent'

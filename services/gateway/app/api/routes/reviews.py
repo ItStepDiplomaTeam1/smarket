@@ -43,17 +43,45 @@ async def proxy_reviews_public(request: Request, product_id: int):
 
 
 # -------------------------------------------------------
-#  POST / PUT / DELETE — потрібна авторизація (JWT)
+#  GET — публічний доступ (відгуки конкретного користувача)
 # -------------------------------------------------------
 @router.api_route(
-    "/{path:path}",
-    methods=["POST", "PUT", "DELETE"],
+    "/user/{user_id}",
+    methods=["GET"],
     include_in_schema=False,
 )
-async def proxy_reviews_protected(
+async def proxy_user_reviews_public(request: Request, user_id: str):
+    """Проксі GET-запитів до reviews_service (відгуки користувача, публічний доступ)."""
+    client: httpx.AsyncClient = request.app.state.http_client
+    target_url = f"{settings.REVIEWS_SERVICE_URL}/api/v1/reviews/user/{user_id}"
+
+    headers = dict(request.headers)
+    headers.pop("host", None)
+
+    try:
+        req = client.build_request(
+            method="GET",
+            url=target_url,
+            headers=headers,
+            params=request.query_params,
+        )
+        response = await client.send(req, stream=True)
+        return StreamingResponse(
+            response.aiter_raw(),
+            status_code=response.status_code,
+            headers=dict(response.headers),
+        )
+    except httpx.ConnectError:
+        raise HTTPException(status_code=503, detail="Сервіс відгуків недоступний")
+
+
+# -------------------------------------------------------
+#  POST / PUT / DELETE — потрібна авторизація (JWT)
+# -------------------------------------------------------
+async def _proxy_reviews_protected(
     request: Request,
     path: str,
-    token_payload: dict = Depends(verify_jwt),
+    token_payload: dict,
 ):
     """Проксі мутаційних запитів до reviews_service (потрібен JWT)."""
     client: httpx.AsyncClient = request.app.state.http_client
@@ -131,3 +159,31 @@ async def proxy_reviews_protected(
         )
     except httpx.ConnectError:
         raise HTTPException(status_code=503, detail="Сервіс відгуків недоступний")
+
+
+@router.post("/{path:path}", include_in_schema=False)
+async def proxy_reviews_post(
+    request: Request,
+    path: str,
+    token_payload: dict = Depends(verify_jwt),
+):
+    return await _proxy_reviews_protected(request, path, token_payload)
+
+
+@router.put("/{path:path}", include_in_schema=False)
+async def proxy_reviews_put(
+    request: Request,
+    path: str,
+    token_payload: dict = Depends(verify_jwt),
+):
+    return await _proxy_reviews_protected(request, path, token_payload)
+
+
+@router.delete("/{path:path}", include_in_schema=False)
+async def proxy_reviews_delete(
+    request: Request,
+    path: str,
+    token_payload: dict = Depends(verify_jwt),
+):
+    return await _proxy_reviews_protected(request, path, token_payload)
+
