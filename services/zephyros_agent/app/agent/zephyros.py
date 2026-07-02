@@ -1,6 +1,9 @@
+import os
 from pydantic_ai import Agent
+from pydantic_ai.models import Model
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_ai.models.google import GoogleModel
 
 from app.config import settings
 from app.deps import AgentDeps
@@ -12,22 +15,46 @@ from app.tools import (
     add_product_to_cart,
 )
 
-def create_model(model_name: str) -> OpenAIChatModel:
+# Set Gemini environment variables eagerly if available during startup
+if settings.GEMINI_API_KEY:
+    os.environ["GEMINI_API_KEY"] = settings.GEMINI_API_KEY
+    os.environ["GOOGLE_API_KEY"] = settings.GEMINI_API_KEY
+
+def get_default_model() -> Model:
+    if settings.GEMINI_API_KEY:
+        return GoogleModel("gemini-1.5-flash")
     return OpenAIChatModel(
-        model_name=model_name,
+        model_name="llama-3.3-70b-versatile",
         provider=OpenAIProvider(
             base_url="https://api.groq.com/openai/v1",
             api_key=settings.GROQ_API_KEY or "stub",
         ),
     )
 
-model = create_model("llama-3.3-70b-versatile")
+model = get_default_model()
 
-models_fallback = [
-    model,
-    create_model("mixtral-8x7b-32768"),
-    create_model("llama-3.1-8b-instant"),
-]
+def get_agent_model(provider: str | None, model_name: str | None, attempt: int = 0) -> Model:
+    prov = (provider or "").lower()
+    if not prov:
+        prov = "gemini" if settings.GEMINI_API_KEY else "groq"
+
+    if prov == "gemini":
+        if settings.GEMINI_API_KEY:
+            os.environ["GEMINI_API_KEY"] = settings.GEMINI_API_KEY
+            os.environ["GOOGLE_API_KEY"] = settings.GEMINI_API_KEY
+        gemini_models = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-3.1-flash-lite"]
+        m_name = model_name or gemini_models[attempt % len(gemini_models)]
+        return GoogleModel(m_name)
+    else:
+        groq_models = ["llama-3.3-70b-versatile", "mixtral-8x7b-32768", "llama-3.1-8b-instant"]
+        m_name = model_name or groq_models[attempt % len(groq_models)]
+        return OpenAIChatModel(
+            model_name=m_name,
+            provider=OpenAIProvider(
+                base_url="https://api.groq.com/openai/v1",
+                api_key=settings.GROQ_API_KEY or "stub",
+            ),
+        )
 
 SYSTEM_PROMPT = """
 You are Zephyros — a smart AI shopping assistant for the Smarket price aggregator platform.

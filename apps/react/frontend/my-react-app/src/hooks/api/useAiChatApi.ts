@@ -4,6 +4,8 @@ import type { ZephyrosResponse } from '@/modules/AiChat/store/useAiChatStore';
 
 interface SendMessagePayload {
   message: string;
+  provider?: string | null;
+  model_name?: string | null;
   onStatusChange?: (status: string) => void;
 }
 
@@ -19,7 +21,7 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export const useSendAiMessage = () => {
   return useMutation<ZephyrosResponse, Error, SendMessagePayload>({
-    mutationFn: async ({ message, onStatusChange }) => {
+    mutationFn: async ({ message, provider, model_name, onStatusChange }) => {
       let stepIdx = 0;
       const nextStatus = () => {
         if (onStatusChange && stepIdx < STATUS_STEPS.length) {
@@ -33,7 +35,7 @@ export const useSendAiMessage = () => {
         try {
           const { data } = await apiClient.post<ZephyrosResponse>(
             '/api/v1/agent/chat',
-            { message },
+            { message, provider, model_name },
             { timeout: 90000 },
           );
           return data;

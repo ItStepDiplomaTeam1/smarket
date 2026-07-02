@@ -11,6 +11,7 @@ class Settings(BaseSettings):
 
     OPENROUTER_API_KEY: str | None = None
     GROQ_API_KEY: str | None = None
+    GEMINI_API_KEY: str | None = None
 
     SEARCH_SERVICE_URL: str = "http://search_service:8083/api/v1"
     PRODUCT_SERVICE_URL: str = "http://product_service:8000/api/v1"

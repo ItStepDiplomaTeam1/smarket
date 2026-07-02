@@ -25,19 +25,32 @@ export interface ChatMessage {
 interface AiChatState {
   isOpen: boolean;
   messages: ChatMessage[];
+  provider: 'gemini' | 'groq' | null;
+  modelName: string | null;
   open: () => void;
   close: () => void;
   toggle: () => void;
   addMessage: (message: ChatMessage) => void;
   clearMessages: () => void;
+  setProvider: (p: 'gemini' | 'groq' | null) => void;
+  setModelName: (m: string | null) => void;
 }
 
-export const useAiChatStore = create<AiChatState>((set) => ({
-  isOpen: false,
-  messages: [],
-  open: () => set({ isOpen: true }),
-  close: () => set({ isOpen: false }),
-  toggle: () => set((s) => ({ isOpen: !s.isOpen })),
-  addMessage: (message) => set((s) => ({ messages: [...s.messages, message] })),
-  clearMessages: () => set({ messages: [] }),
-}));
+export const useAiChatStore = create<AiChatState>()(
+  persist(
+    (set) => ({
+      isOpen: false,
+      messages: [],
+      provider: null,
+      modelName: null,
+      open: () => set({ isOpen: true }),
+      close: () => set({ isOpen: false }),
+      toggle: () => set((s) => ({ isOpen: !s.isOpen })),
+      addMessage: (message) => set((s) => ({ messages: [...s.messages, message] })),
+      clearMessages: () => set({ messages: [] }),
+      setProvider: (provider) => set({ provider, modelName: null }), // reset model on provider change
+      setModelName: (modelName) => set({ modelName }),
+    }),
+    { name: 'ai-chat-settings-storage' }
+  )
+);

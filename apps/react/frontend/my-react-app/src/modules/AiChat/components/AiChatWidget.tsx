@@ -13,6 +13,7 @@ import {
   Minimize2,
   Trash2,
   Trophy,
+  Settings,
 } from 'lucide-react';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { useAiChatStore, type UIBlock, type ZephyrosResponse, type ChatMessage } from '@/modules/AiChat/store/useAiChatStore';
@@ -464,15 +465,35 @@ function EmptyState({ onSend }: { onSend: (text: string) => void }) {
   );
 }
 
+const PROVIDER_MODELS = {
+  gemini: [
+    { value: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash (рекомендовано)' },
+    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+    { value: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash-Lite' },
+    { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (інтелектуальна)' },
+  ],
+  groq: [
+    { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (рекомендовано)' },
+    { value: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B' },
+    { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B (швидкісна)' },
+  ],
+};
+
 // ─── Chat window ──────────────────────────────────────────────────────────────
 function ChatWindow({ expanded, onToggleExpand }: { expanded: boolean; onToggleExpand: () => void }) {
   const close = useAiChatStore((s) => s.close);
   const messages = useAiChatStore((s) => s.messages);
   const addMessage = useAiChatStore((s) => s.addMessage);
   const clearMessages = useAiChatStore((s) => s.clearMessages);
+  const provider = useAiChatStore((s) => s.provider);
+  const modelName = useAiChatStore((s) => s.modelName);
+  const setProvider = useAiChatStore((s) => s.setProvider);
+  const setModelName = useAiChatStore((s) => s.setModelName);
+
   const { mutate: sendMessage, isPending } = useSendAiMessage();
   const [input, setInput] = useState('');
   const [pendingStatus, setPendingStatus] = useState('Думаю над запитом...');
+  const [showSettings, setShowSettings] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -493,7 +514,12 @@ function ChatWindow({ expanded, onToggleExpand }: { expanded: boolean; onToggleE
     setPendingStatus('Думаю над запитом...');
 
     sendMessage(
-      { message: messageText, onStatusChange: (s) => setPendingStatus(s) },
+      {
+        message: messageText,
+        provider,
+        model_name: modelName,
+        onStatusChange: (s) => setPendingStatus(s),
+      },
       {
         onSuccess: (data) => {
           setPendingStatus('Думаю над запитом...');
@@ -544,6 +570,17 @@ function ChatWindow({ expanded, onToggleExpand }: { expanded: boolean; onToggleE
           </div>
         </div>
 
+        {/* Settings toggle */}
+        <button
+          onClick={() => setShowSettings((v) => !v)}
+          title="Налаштування провайдера ШІ"
+          className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors duration-150 cursor-pointer border-none ${
+            showSettings ? 'bg-white/20 text-white' : 'bg-white/10 text-white hover:bg-white/20'
+          }`}
+        >
+          <Settings className="w-3.5 h-3.5" />
+        </button>
+
         {/* Expand toggle */}
         <button
           onClick={onToggleExpand}
@@ -571,6 +608,65 @@ function ChatWindow({ expanded, onToggleExpand }: { expanded: boolean; onToggleE
           <X className="w-3.5 h-3.5 text-white" />
         </button>
       </div>
+
+      {/* ── Settings Panel Overlay ── */}
+      {showSettings && (
+        <div className="absolute inset-0 top-[52px] bg-white z-20 flex flex-col p-4 gap-4 animate-[statusFade_0.2s_ease_both]">
+          <div className="flex items-center justify-between border-b pb-2">
+            <h3 className="text-[13px] font-bold text-[#173B33]">Налаштування ШІ-асистента</h3>
+            <button
+              onClick={() => setShowSettings(false)}
+              className="text-[11px] font-semibold text-[#265447] hover:underline cursor-pointer border-none bg-transparent"
+            >
+              Зберегти та закрити
+            </button>
+          </div>
+          
+          {/* Provider Select */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px] font-semibold text-[#6D8279] uppercase tracking-wide">Провайдер ШІ</label>
+            <select
+              value={provider || 'auto'}
+              onChange={(e) => {
+                const val = e.target.value;
+                setProvider(val === 'auto' ? null : val as 'gemini' | 'groq');
+              }}
+              className="w-full text-[13px] border border-[rgba(38,84,71,0.15)] rounded-lg px-2.5 py-1.5 bg-white text-[#173B33] focus:border-[#265447] focus:outline-none"
+            >
+              <option value="auto">Автовибір (Gemini / Groq)</option>
+              <option value="gemini">Google Gemini</option>
+              <option value="groq">Groq Inference</option>
+            </select>
+          </div>
+
+          {/* Model Select */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[11px] font-semibold text-[#6D8279] uppercase tracking-wide">Модель</label>
+            <select
+              disabled={!provider}
+              value={modelName || 'default'}
+              onChange={(e) => {
+                const val = e.target.value;
+                setModelName(val === 'default' ? null : val);
+              }}
+              className="w-full text-[13px] border border-[rgba(38,84,71,0.15)] rounded-lg px-2.5 py-1.5 bg-white text-[#173B33] disabled:bg-[#FAFAFA] disabled:text-[#A0AEC0] focus:border-[#265447] focus:outline-none"
+            >
+              <option value="default">За замовчуванням для провайдера</option>
+              {provider && PROVIDER_MODELS[provider].map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+            {!provider && (
+              <p className="text-[10px] text-[#6D8279]">Виберіть конкретного провайдера, щоб налаштувати модель.</p>
+            )}
+          </div>
+
+          <div className="mt-auto border-t pt-3 text-[11px] text-[#6D8279] leading-relaxed">
+            <p><strong>Gemini:</strong> ідеальний вибір для складних порівнянь цін та великих списків товарів завдяки величезному контексту.</p>
+            <p className="mt-1.5"><strong>Groq:</strong> забезпечує мінімальну затримку (субсекундний відгук) для швидких запитів.</p>
+          </div>
+        </div>
+      )}
 
       {/* ── Messages ── */}
       <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-5 scroll-smooth">
