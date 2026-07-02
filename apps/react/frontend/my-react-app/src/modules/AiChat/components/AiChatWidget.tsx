@@ -38,7 +38,10 @@ function ZephyrosMonogram({ size = 28 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 28 28" fill="none" aria-hidden>
       <rect width="28" height="28" rx="8" fill="rgba(255,255,255,0.15)" />
-      <path d="M8 8.5h12L8 19.5h12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Minimalist wind breeze lines representing Zephyros (the west wind) */}
+      <path d="M6 9h11a2.5 2.5 0 0 0 2.5-2.5v0A2.5 2.5 0 0 0 17 4" stroke="white" strokeWidth="2" strokeLinecap="round" />
+      <path d="M5 14h18" stroke="white" strokeWidth="2" strokeLinecap="round" />
+      <path d="M7 19h10a2.5 2.5 0 0 1 2.5 2.5v0a2.5 2.5 0 0 1-2.5 2.5" stroke="white" strokeWidth="2" strokeLinecap="round" />
     </svg>
   );
 }
