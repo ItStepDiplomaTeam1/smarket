@@ -51,6 +51,8 @@ services:
       - services.auth_service.main:app
     expose:
       - "8001"
+    environment:
+      COOKIE_SECURE: "${COOKIE_SECURE:-false}"
     env_file:
       - ../services/auth_service/.env
     depends_on:
