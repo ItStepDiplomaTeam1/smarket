@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from contextlib import asynccontextmanager
 
@@ -6,13 +7,28 @@ from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 from loguru import logger
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from app.agent.zephyros import agent
 from app.config import settings
 from app.deps import AgentDeps
 from app.schemas import ZephyrosResponse
 from pydantic_ai.exceptions import ModelHTTPError
+
+_MAX_RETRIES = 3
+_RETRY_DELAYS = [0.5, 1.5, 3.0]
+
+
+def _clean_json(raw: str) -> str:
+    """Strip optional markdown code fences from the model output."""
+    text = raw.strip()
+    if text.startswith("```json"):
+        text = text[7:]
+    elif text.startswith("```"):
+        text = text[3:]
+    if text.endswith("```"):
+        text = text[:-3]
+    return text.strip()
 
 
 @asynccontextmanager
@@ -69,26 +85,38 @@ async def chat(
         user_id=user_id,
     )
 
-    try:
-        result = await agent.run(request.message, deps=deps)
-        
-        # Clean and parse the raw JSON string from the agent
-        output_text = result.output.strip()
-        if output_text.startswith("```json"):
-            output_text = output_text[7:]
-        elif output_text.startswith("```"):
-            output_text = output_text[3:]
-        if output_text.endswith("```"):
-            output_text = output_text[:-3]
-        output_text = output_text.strip()
-        
-        return ZephyrosResponse.model_validate_json(output_text)
-    except ModelHTTPError as e:
-        logger.error(f"AI model error: status={e.status_code}, body={e.body}")
-        raise HTTPException(
-            status_code=503,
-            detail=f"AI-модель недоступна: {e.body.get('message', str(e)) if isinstance(e.body, dict) else str(e)}",
-        )
-    except Exception as e:
-        logger.error(f"Unexpected agent error: {e}")
-        raise HTTPException(status_code=500, detail="Внутрішня помилка агента")
+    last_error: Exception | None = None
+
+    for attempt in range(_MAX_RETRIES):
+        try:
+            result = await agent.run(request.message, deps=deps)
+            return ZephyrosResponse.model_validate_json(_clean_json(result.output))
+
+        except ModelHTTPError as e:
+            # 400 = bad prompt / tool schema mismatch — retry may help if model misbehaved
+            # 401 = auth issue — no point retrying
+            if e.status_code == 401:
+                logger.error(f"[attempt {attempt+1}] Auth error from AI model: {e.body}")
+                raise HTTPException(
+                    status_code=503,
+                    detail="AI-модель недоступна: невірний API-ключ.",
+                )
+            logger.warning(f"[attempt {attempt+1}/{_MAX_RETRIES}] Model HTTP error {e.status_code}: {e.body}")
+            last_error = e
+
+        except ValidationError as e:
+            logger.warning(f"[attempt {attempt+1}/{_MAX_RETRIES}] JSON parse/validation failed: {e}")
+            last_error = e
+
+        except Exception as e:
+            logger.warning(f"[attempt {attempt+1}/{_MAX_RETRIES}] Unexpected error: {e}")
+            last_error = e
+
+        if attempt < _MAX_RETRIES - 1:
+            delay = _RETRY_DELAYS[attempt]
+            logger.info(f"Retrying in {delay}s...")
+            await asyncio.sleep(delay)
+
+    logger.error(f"All {_MAX_RETRIES} attempts failed. Last error: {last_error}")
+    raise HTTPException(status_code=503, detail="Агент не зміг опрацювати запит. Спробуйте ще раз.")
+

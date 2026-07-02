@@ -238,20 +238,23 @@ function UserMessage({ msg }: { msg: ChatMessage }) {
   );
 }
 
-function TypingIndicator() {
+function TypingIndicator({ status }: { status: string }) {
   return (
     <div className="flex items-start gap-2.5">
       <div className="w-7 h-7 rounded-full bg-[#265447] flex items-center justify-center shrink-0">
         <Bot className="w-3.5 h-3.5 text-white" />
       </div>
-      <div className="bg-[#F6FAF8] rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-1.5">
-        {[0, 1, 2].map((i) => (
-          <span
-            key={i}
-            className="w-1.5 h-1.5 rounded-full bg-[#6D8279] animate-bounce"
-            style={{ animationDelay: `${i * 150}ms` }}
-          />
-        ))}
+      <div className="bg-[#F6FAF8] rounded-2xl rounded-tl-sm px-4 py-3 flex items-center gap-2">
+        <div className="flex items-center gap-1">
+          {[0, 1, 2].map((i) => (
+            <span
+              key={i}
+              className="w-1.5 h-1.5 rounded-full bg-[#265447] animate-bounce"
+              style={{ animationDelay: `${i * 150}ms` }}
+            />
+          ))}
+        </div>
+        <span className="text-[11px] text-[#6D8279] font-medium leading-none">{status}</span>
       </div>
     </div>
   );
@@ -263,6 +266,7 @@ function ChatWindow() {
   const addMessage = useAiChatStore((s) => s.addMessage);
   const { mutate: sendMessage, isPending } = useSendAiMessage();
   const [input, setInput] = useState('');
+  const [pendingStatus, setPendingStatus] = useState('Думаю над запитом...');
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -287,10 +291,16 @@ function ChatWindow() {
     addMessage(userMsg);
     setInput('');
 
+    setPendingStatus('Думаю над запитом...');
+
     sendMessage(
-      { message: messageText },
+      {
+        message: messageText,
+        onStatusChange: (status) => setPendingStatus(status),
+      },
       {
         onSuccess: (data) => {
+          setPendingStatus('Думаю над запитом...');
           const aiMsg: ChatMessage = {
             id: generateId(),
             role: 'assistant',
@@ -300,6 +310,7 @@ function ChatWindow() {
           addMessage(aiMsg);
         },
         onError: () => {
+          setPendingStatus('Думаю над запитом...');
           const errorMsg: ChatMessage = {
             id: generateId(),
             role: 'assistant',
@@ -307,8 +318,8 @@ function ChatWindow() {
               blocks: [
                 {
                   type: 'fallback',
-                  message: 'Виникла помилка. Спробуйте ще раз.',
-                  suggestion: 'Перевірте підключення до інтернету.',
+                  message: 'Не вдалося отримати відповідь після кількох спроб.',
+                  suggestion: 'Спробуйте переформулювати запит або повторіть пізніше.',
                 },
               ],
             },
@@ -377,7 +388,7 @@ function ChatWindow() {
           )
         )}
 
-        {isPending && <TypingIndicator />}
+        {isPending && <TypingIndicator status={pendingStatus} />}
         <div ref={bottomRef} />
       </div>
 
