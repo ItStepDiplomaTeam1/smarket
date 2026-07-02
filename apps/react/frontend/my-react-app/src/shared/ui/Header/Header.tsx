@@ -66,30 +66,27 @@ export function Header() {
 
     return (
         <header className="w-full bg-white border-b border-[#E5E7EB] h-18 sticky top-0 z-50">
-            <div className="max-w-307 mx-auto px-6 h-full flex justify-between items-center">
+            {/* Виправлено ширину контейнера на 1230px */}
+            <div className="max-w-[1230px] mx-auto px-6 h-full flex justify-between items-center">
 
                 <Link to="/" className="flex items-center h-full py-0">
                     <img src={fix_logo} alt="Smarket Logo" className="h-8 w-auto block object-contain" />
                 </Link>
 
+                {/* Оновлено список посилань відповідно до макета */}
                 <nav className="flex items-center gap-8">
+                    <NavLink to="/promotions" className={navLinkClass}>Акції</NavLink>
                     <NavLink to="/catalog" className={navLinkClass}>Каталог</NavLink>
-                    <NavLink to="/catalog" className={navLinkClass}>Порівняти ціни</NavLink>
-                    <NavLink to="/catalog" className={navLinkClass}>Магазини</NavLink>
+                    <NavLink to="/stores" className={navLinkClass}>Магазини</NavLink>
+                    <NavLink to="/cart" className={navLinkClass}>Кошик</NavLink>
                 </nav>
 
-                <div className="flex items-center gap-5">
+                <div className="flex items-center gap-6">
                     <button className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0 w-5 h-5">
                         <img src={lupa} alt="Search" className="w-5 h-5 block" />
                     </button>
 
-                    <button
-                        onClick={() => navigate('/cart')}
-                        className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0 w-5 h-5"
-                    >
-                        <img src={koshuk} alt="Basket" className="w-5 h-5 block" />
-                    </button>
-
+                    {/* Авторизований стан (випадаюче меню збережено) або чиста контурна іконка */}
                     {isAuthenticated && user ? (
                         <div className="relative" ref={dropdownRef}>
                             <button
@@ -122,7 +119,6 @@ export function Header() {
                                         : 'opacity-0 scale-95 pointer-events-none'
                                 }`}
                             >
-                                {/* User info block */}
                                 <div className="px-4 pt-4 pb-3 border-b border-[rgba(38,84,71,0.08)]">
                                     <div className="flex items-center gap-3">
                                         <span
@@ -142,7 +138,6 @@ export function Header() {
                                     </div>
                                 </div>
 
-                                {/* Menu items */}
                                 <div className="py-2">
                                     <button
                                         onClick={() => { setDropdownOpen(false); navigate('/profile'); }}
@@ -167,7 +162,6 @@ export function Header() {
                                     </button>
                                 </div>
 
-                                {/* Logout */}
                                 <div className="py-2 border-t border-[rgba(38,84,71,0.08)]">
                                     <button
                                         onClick={handleLogout}
@@ -184,18 +178,29 @@ export function Header() {
                             </div>
                         </div>
                     ) : (
+                        /* Замінено текстову кнопку "Увійти" на іконку користувача з макета */
                         <Link
                             to="/auth"
-                            className="flex items-center gap-1.5 h-9 px-4 rounded-[10px] bg-[#265447] text-white text-[13px] font-semibold no-underline transition-all duration-200 hover:bg-[#1A3E2F] hover:shadow-[0_4px_12px_rgba(38,84,71,0.25)] active:scale-95"
+                            className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0 w-5 h-5 text-[#173B33] hover:text-[#265447] transition-colors duration-200"
+                            aria-label="Увійти"
                         >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
-                                <polyline points="10 17 15 12 10 7"/>
-                                <line x1="15" y1="12" x2="3" y2="12"/>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                <circle cx="12" cy="7" r="4" />
                             </svg>
-                            Увійти
                         </Link>
                     )}
+
+                    {/* Додано відносне позиціонування та жовтий бейдж із цифрою 3 */}
+                    <button
+                        onClick={() => navigate('/cart')}
+                        className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0 w-5 h-5 relative"
+                    >
+                        <img src={koshuk} alt="Basket" className="w-5 h-5 block" />
+                        <span className="absolute -top-1.5 -right-1.5 bg-[#FFC72C] text-[#173B33] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center select-none shadow-[0_0_0_2px_#fff]">
+                            3
+                        </span>
+                    </button>
                 </div>
 
             </div>

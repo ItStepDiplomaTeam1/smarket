@@ -178,7 +178,7 @@ pub async fn search_handler(
         in_stock: payload.in_stock,
     };
 
-    let mut filter_conditions: Vec<String> = Vec::new();
+    let mut filter_conditions: Vec<String> = vec!["is_hidden = false".to_string()];
 
     if let Some(cat_id) = filters.category_id {
         filter_conditions.push(format!("category_id = {}", cat_id));

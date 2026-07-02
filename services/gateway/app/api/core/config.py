@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     REVIEWS_SERVICE_URL: str = "http://reviews_service:8004"
     ETL_SERVICE_URL: str = "http://products_etl:8082"
     SEARCH_SERVICE_URL: str = "http://search_service:8083"
+    AGENT_SERVICE_URL: str = "http://zephyros_agent:8005"
+    EMAIL_WORKER_URL: str = "http://email_worker:8085"
+
 
 
 

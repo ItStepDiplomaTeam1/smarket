@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../store/useCartStore';
-import { useFetchCartDetails, useUpdateCartItem, useClearCart } from '../../../hooks/api/useCartApi';
+import { useFetchCartDetails, useUpdateCartItem, useClearCart, useUpdateCartItemQuantity, useDeleteCartItem } from '../../../hooks/api/useCartApi';
 import { Trash2, Plus, Minus } from 'lucide-react';
 import mainMilk from '@/shared/assets/milk.svg';
 
@@ -10,6 +10,8 @@ export const CartDetails: React.FC = () => {
   const { activeCartId } = useCartStore();
   const { data: activeCart, isLoading } = useFetchCartDetails(activeCartId);
   const { mutate: updateItem } = useUpdateCartItem();
+  const { mutate: updateQuantity } = useUpdateCartItemQuantity();
+  const { mutate: deleteItem } = useDeleteCartItem();
   const { mutate: clearCart, isPending: isClearing } = useClearCart();
 
   if (isLoading) {
@@ -81,7 +83,7 @@ export const CartDetails: React.FC = () => {
                   <div className="flex items-center gap-2 xl:gap-3 bg-gray-50 rounded-lg p-1 border border-gray-100 shrink-0">
                     <button 
                       className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-white hover:shadow-sm transition-all text-[#6D8279] hover:text-[#173B33] disabled:opacity-50"
-                      onClick={() => updateItem({ cartId: activeCart.id, productId: item.productId, quantity: Math.max(1, item.quantity - 1) })}
+                      onClick={() => updateQuantity({ cartId: activeCart.id, itemId: item.id, quantity: Math.max(1, item.quantity - 1) })}
                       disabled={item.quantity <= 1}
                     >
                       <Minus className="w-4 h-4" />
@@ -89,7 +91,7 @@ export const CartDetails: React.FC = () => {
                     <span className="w-6 text-center text-sm font-medium font-['Inter'] text-[#173B33]">{item.quantity}</span>
                     <button 
                       className="w-8 h-8 flex items-center justify-center rounded-md hover:bg-white hover:shadow-sm transition-all text-[#6D8279] hover:text-[#173B33]"
-                      onClick={() => updateItem({ cartId: activeCart.id, productId: item.productId, quantity: item.quantity + 1 })}
+                      onClick={() => updateQuantity({ cartId: activeCart.id, itemId: item.id, quantity: item.quantity + 1 })}
                     >
                       <Plus className="w-4 h-4" />
                     </button>
@@ -103,7 +105,7 @@ export const CartDetails: React.FC = () => {
                   </div>
                   <button 
                     className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
-                    onClick={() => updateItem({ cartId: activeCart.id, productId: item.productId, quantity: 0 })}
+                    onClick={() => deleteItem({ cartId: activeCart.id, itemId: item.id })}
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>

@@ -12,6 +12,10 @@ const Profile = lazy(() => import('@/pages/Profile/ui/ProfilePage.tsx'));
 const Catalog = lazy(() => import('@/pages/Catalog/ui/Catalog.tsx'));
 const CartPage = lazy(() => import('@/pages/Cart/ui/CartPage.tsx').then(m => ({ default: m.CartPage })));
 
+const ConfidentialPolicy = lazy(() => import('@/pages/ConfidentionalPolicy/ui/ConfidentialPolicyPage.tsx'));
+const Privacy = lazy(() => import('@/pages/Privacy/ui/PrivacyPage.tsx'));
+const UsingConditions = lazy(() => import('@/pages/UsingConditions/ui/UsingConditionsPage.tsx'));
+
 const router = createBrowserRouter([
   {
     path: '/',
@@ -86,6 +90,30 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<div>Завантаження кошика...</div>}>
             <CartPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: '/ConfidentialPolicy',
+        element: (
+          <Suspense fallback={<div>Завантаження політики конфіденційності...</div>}>
+            <ConfidentialPolicy />
+          </Suspense>
+        ),
+      },
+      {
+        path: '/Privacy',
+        element: (
+          <Suspense fallback={<div>Завантаження обробки персональних даних...</div>}>
+            <Privacy />
+          </Suspense>
+        ),
+      },
+      {
+        path: '/UsingConditions',
+        element: (
+          <Suspense fallback={<div>Завантаження умов використання...</div>}>
+            <UsingConditions />
           </Suspense>
         ),
       }
