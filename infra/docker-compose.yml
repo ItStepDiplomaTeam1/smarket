@@ -441,7 +441,6 @@ services:
       - ../services/zephyros_agent/.env
     environment:
       PORT: "8005"
-      GEMINI_API_KEY: "${GEMINI_API_KEY}"
       SEARCH_SERVICE_URL: "http://search_service:8083/api/v1"
       PRODUCT_SERVICE_URL: "http://product_service:8000/api/v1"
       CART_SERVICE_URL: "http://cart_service:8002/cart"
