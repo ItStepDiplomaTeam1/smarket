@@ -12,13 +12,22 @@ from app.tools import (
     add_product_to_cart,
 )
 
-model = OpenAIChatModel(
-    model_name="llama-3.3-70b-versatile",
-    provider=OpenAIProvider(
-        base_url="https://api.groq.com/openai/v1",
-        api_key=settings.GROQ_API_KEY or "stub",
-    ),
-)
+def create_model(model_name: str) -> OpenAIChatModel:
+    return OpenAIChatModel(
+        model_name=model_name,
+        provider=OpenAIProvider(
+            base_url="https://api.groq.com/openai/v1",
+            api_key=settings.GROQ_API_KEY or "stub",
+        ),
+    )
+
+model = create_model("llama-3.3-70b-versatile")
+
+models_fallback = [
+    model,
+    create_model("mixtral-8x7b-32768"),
+    create_model("llama-3.1-8b-instant"),
+]
 
 SYSTEM_PROMPT = """
 You are Zephyros — a smart AI shopping assistant for the Smarket price aggregator platform.

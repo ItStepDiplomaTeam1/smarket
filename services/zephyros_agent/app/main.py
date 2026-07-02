@@ -9,7 +9,7 @@ from fastapi.responses import ORJSONResponse
 from loguru import logger
 from pydantic import BaseModel, ValidationError
 
-from app.agent.zephyros import agent
+from app.agent.zephyros import agent, models_fallback
 from app.config import settings
 from app.deps import AgentDeps
 from app.schemas import ZephyrosResponse
@@ -89,7 +89,9 @@ async def chat(
 
     for attempt in range(_MAX_RETRIES):
         try:
-            result = await agent.run(request.message, deps=deps)
+            current_model = models_fallback[attempt] if attempt < len(models_fallback) else models_fallback[-1]
+            logger.info(f"[attempt {attempt+1}/{_MAX_RETRIES}] Running agent with model: {current_model.model_name}")
+            result = await agent.run(request.message, deps=deps, model=current_model)
             return ZephyrosResponse.model_validate_json(_clean_json(result.output))
 
         except ModelHTTPError as e:
