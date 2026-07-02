@@ -38,12 +38,21 @@ export const useFetchUserReviews = (userId: string | undefined) => {
   return useQuery<Review[]>({
     queryKey: ['reviews', 'user', userId],
     queryFn: async () => {
-      const response = await apiClient.get<Review[]>(
-        `/api/v1/reviews/user/${userId}`
-      );
-      return response.data;
+      try {
+        const response = await apiClient.get<Review[]>(
+          `/api/v1/reviews/user/${userId}`
+        );
+        return response.data;
+      } catch (error: any) {
+        // Якщо ендпоінт ще не задеплоєно (405/404) — повертаємо пустий масив
+        if (error?.response?.status === 405 || error?.response?.status === 404) {
+          return [];
+        }
+        throw error;
+      }
     },
     enabled: !!userId,
+    retry: false,
   });
 };
 
