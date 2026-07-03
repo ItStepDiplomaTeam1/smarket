@@ -26,14 +26,14 @@ export interface ChatMessage {
 interface AiChatState {
   isOpen: boolean;
   messages: ChatMessage[];
-  provider: 'gemini' | 'groq' | null;
+  provider: 'gemini' | 'groq' | 'cerebras' | null;
   modelName: string | null;
   open: () => void;
   close: () => void;
   toggle: () => void;
   addMessage: (message: ChatMessage) => void;
   clearMessages: () => void;
-  setProvider: (p: 'gemini' | 'groq' | null) => void;
+  setProvider: (p: 'gemini' | 'groq' | 'cerebras' | null) => void;
   setModelName: (m: string | null) => void;
 }
 

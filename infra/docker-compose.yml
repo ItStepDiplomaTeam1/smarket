@@ -446,11 +446,11 @@ services:
       CART_SERVICE_URL: "http://cart_service:8002/cart"
     depends_on:
       search_service:
-        condition: service_healthy
+        condition: service_started
       product_service:
-        condition: service_healthy
+        condition: service_started
       cart_service:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
       <<: *healthcheck-defaults
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8005/health', timeout=3).read()\""]

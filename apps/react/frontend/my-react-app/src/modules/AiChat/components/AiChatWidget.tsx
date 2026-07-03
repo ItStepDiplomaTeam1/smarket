@@ -249,7 +249,13 @@ function ActionButtonView({
 }
 
 // ─── Fallback ─────────────────────────────────────────────────────────────────
-function FallbackBlockView({ block }: { block: Extract<UIBlock, { type: 'fallback' }> }) {
+function FallbackBlockView({
+  block,
+  onRetry,
+}: {
+  block: Extract<UIBlock, { type: 'fallback' }>;
+  onRetry?: () => void;
+}) {
   return (
     <div className="flex flex-col gap-2 py-3 px-3.5 rounded-xl bg-[#FFF7F7] border border-[#FECACA]">
       <div className="flex items-center gap-2">
@@ -257,6 +263,14 @@ function FallbackBlockView({ block }: { block: Extract<UIBlock, { type: 'fallbac
         <p className="text-[13px] font-semibold text-[#173B33]">{block.message}</p>
       </div>
       {block.suggestion && <p className="text-[12px] text-[#6D8279] leading-relaxed">{block.suggestion}</p>}
+      {onRetry && (
+        <button
+          onClick={onRetry}
+          className="mt-1 px-3 py-1.5 rounded-lg bg-[#DC2626] hover:bg-[#B91C1C] text-white text-[11px] font-semibold transition-colors duration-150 cursor-pointer border-none self-start"
+        >
+          Спробувати ще раз
+        </button>
+      )}
     </div>
   );
 }
@@ -265,10 +279,12 @@ function FallbackBlockView({ block }: { block: Extract<UIBlock, { type: 'fallbac
 function BlockRenderer({
   block,
   onOptionClick,
+  onRetry,
   index = 0,
 }: {
   block: UIBlock;
   onOptionClick: (text: string) => void;
+  onRetry?: () => void;
   index?: number;
 }) {
   const style: React.CSSProperties = {
@@ -293,7 +309,7 @@ function BlockRenderer({
       case 'badge':
         return <BadgeBlockView block={block} />;
       case 'fallback':
-        return <FallbackBlockView block={block} />;
+        return <FallbackBlockView block={block} onRetry={onRetry} />;
       case 'divider':
         return <hr className="border-[rgba(38,84,71,0.08)] my-0.5" />;
       default:
@@ -306,14 +322,22 @@ function BlockRenderer({
 }
 
 // ─── Assistant message — document style ───────────────────────────────────────
-function AssistantMessage({ msg, onOptionClick }: { msg: ChatMessage; onOptionClick: (text: string) => void }) {
+function AssistantMessage({
+  msg,
+  onOptionClick,
+  onRetry,
+}: {
+  msg: ChatMessage;
+  onOptionClick: (text: string) => void;
+  onRetry?: () => void;
+}) {
   const response = msg.content as ZephyrosResponse;
   return (
     <div className="flex flex-col gap-2.5 py-1">
       <span className="text-[10px] font-semibold text-[#6D8279] uppercase tracking-widest">Zephyros</span>
       <div className="flex flex-col gap-2.5">
         {response.blocks?.map((block, i) => (
-          <BlockRenderer key={i} block={block} onOptionClick={onOptionClick} index={i} />
+          <BlockRenderer key={i} block={block} onOptionClick={onOptionClick} onRetry={onRetry} index={i} />
         ))}
       </div>
     </div>
@@ -467,15 +491,13 @@ function EmptyState({ onSend }: { onSend: (text: string) => void }) {
 
 const PROVIDER_MODELS = {
   gemini: [
-    { value: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash (рекомендовано)' },
-    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
-    { value: 'gemini-3.1-flash-lite', label: 'Gemini 3.1 Flash-Lite' },
-    { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (інтелектуальна)' },
+    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (рекомендовано)' },
   ],
   groq: [
     { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (рекомендовано)' },
-    { value: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B' },
-    { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B (швидкісна)' },
+  ],
+  cerebras: [
+    { value: 'gpt-oss-120b', label: 'GPT OSS 120B (рекомендовано)' },
   ],
 };
 
@@ -494,6 +516,7 @@ function ChatWindow({ expanded, onToggleExpand }: { expanded: boolean; onToggleE
   const [input, setInput] = useState('');
   const [pendingStatus, setPendingStatus] = useState('Думаю над запитом...');
   const [showSettings, setShowSettings] = useState(false);
+  const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -523,10 +546,12 @@ function ChatWindow({ expanded, onToggleExpand }: { expanded: boolean; onToggleE
       {
         onSuccess: (data) => {
           setPendingStatus('Думаю над запитом...');
+          setLastFailedMessage(null);
           addMessage({ id: generateId(), role: 'assistant', content: data, timestamp: new Date() });
         },
         onError: () => {
           setPendingStatus('Думаю над запитом...');
+          setLastFailedMessage(messageText);
           addMessage({
             id: generateId(),
             role: 'assistant',
@@ -534,8 +559,8 @@ function ChatWindow({ expanded, onToggleExpand }: { expanded: boolean; onToggleE
               blocks: [
                 {
                   type: 'fallback',
-                  message: 'Не вдалося отримати відповідь після кількох спроб.',
-                  suggestion: 'Спробуйте переформулювати запит або повторіть пізніше.',
+                  message: 'Не вдалося отримати відповідь. Спробуйте ще раз.',
+                  suggestion: 'Перевірте підключення або повторіть запит.',
                 },
               ],
             },
@@ -629,13 +654,14 @@ function ChatWindow({ expanded, onToggleExpand }: { expanded: boolean; onToggleE
               value={provider || 'auto'}
               onChange={(e) => {
                 const val = e.target.value;
-                setProvider(val === 'auto' ? null : val as 'gemini' | 'groq');
+                setProvider(val === 'auto' ? null : val as 'gemini' | 'groq' | 'cerebras');
               }}
               className="w-full text-[13px] border border-[rgba(38,84,71,0.15)] rounded-lg px-2.5 py-1.5 bg-white text-[#173B33] focus:border-[#265447] focus:outline-none"
             >
-              <option value="auto">Автовибір (Gemini / Groq)</option>
+              <option value="auto">Автовибір (Gemini / Groq / Cerebras)</option>
               <option value="gemini">Google Gemini</option>
               <option value="groq">Groq Inference</option>
+              <option value="cerebras">Cerebras Inference</option>
             </select>
           </div>
 
@@ -664,6 +690,7 @@ function ChatWindow({ expanded, onToggleExpand }: { expanded: boolean; onToggleE
           <div className="mt-auto border-t pt-3 text-[11px] text-[#6D8279] leading-relaxed">
             <p><strong>Gemini:</strong> ідеальний вибір для складних порівнянь цін та великих списків товарів завдяки величезному контексту.</p>
             <p className="mt-1.5"><strong>Groq:</strong> забезпечує мінімальну затримку (субсекундний відгук) для швидких запитів.</p>
+            <p className="mt-1.5"><strong>Cerebras:</strong> надшвидка генерація відповідей завдяки спеціалізованому залізу.</p>
           </div>
         </div>
       )}
@@ -672,11 +699,20 @@ function ChatWindow({ expanded, onToggleExpand }: { expanded: boolean; onToggleE
       <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-5 scroll-smooth">
         {messages.length === 0 && <EmptyState onSend={handleSend} />}
 
-        {messages.map((msg) =>
+        {messages.map((msg, idx) =>
           msg.role === 'user' ? (
             <UserMessage key={msg.id} msg={msg} />
           ) : (
-            <AssistantMessage key={msg.id} msg={msg} onOptionClick={handleSend} />
+            <AssistantMessage
+              key={msg.id}
+              msg={msg}
+              onOptionClick={handleSend}
+              onRetry={
+                idx === messages.length - 1 && lastFailedMessage
+                  ? () => handleSend(lastFailedMessage)
+                  : undefined
+              }
+            />
           )
         )}
 
