@@ -421,6 +421,8 @@ services:
   zephyros_agent:
     <<: *api-defaults
     image: ghcr.io/itstepdiplomateam1/smarket/zephyros_agent:${IMAGE_TAG:-develop}
+    extra_hosts:
+        - "host.docker.internal:host-gateway"
     build:
       context: ..
       dockerfile: services/zephyros_agent/Dockerfile
