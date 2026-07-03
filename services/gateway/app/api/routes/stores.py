@@ -7,6 +7,11 @@ from app.api.core.config import settings
 router = APIRouter()
 
 
+@router.api_route("", methods=["GET"], include_in_schema=False)
+async def proxy_to_stores_root(request: Request):
+    return await proxy_to_stores(request, "")
+
+
 @router.api_route("/{path:path}", methods=["GET"], include_in_schema=False)
 async def proxy_to_stores(request: Request, path: str):
     client: httpx.AsyncClient = request.app.state.http_client

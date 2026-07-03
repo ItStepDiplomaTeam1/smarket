@@ -3,6 +3,8 @@ from fastapi.responses import StreamingResponse, JSONResponse
 import httpx
 import jwt
 
+import asyncio
+
 from app.api.core.config import settings
 
 router = APIRouter()
@@ -88,7 +90,6 @@ async def get_recent_users(request: Request):
     return await _proxy_to_auth(request, "recent-users", payload)
 
 
-import asyncio
 
 async def _probe_http_service(client: httpx.AsyncClient, url: str, timeout: float = 3.0) -> str:
     try:

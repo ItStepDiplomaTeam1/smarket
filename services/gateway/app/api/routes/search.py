@@ -8,6 +8,15 @@ router = APIRouter()
 
 
 @router.api_route(
+    "",
+    methods=["GET", "POST", "DELETE"],
+    include_in_schema=False,
+)
+async def proxy_to_search_root(request: Request):
+    return await proxy_to_search(request, "")
+
+
+@router.api_route(
     "/{path:path}",
     methods=["GET", "POST", "DELETE"],
     include_in_schema=False,
