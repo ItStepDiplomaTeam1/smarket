@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { ProductHero, About, RecentlyViewed, SMProduct, Reviews, BottomCti } from '@/modules/Product'
+import { ProductHero, About, RecentlyViewed, SMProduct, Reviews} from '@/modules/Product'
 import { apiClient } from '@/shared/api/apiClient';
 import { type Product } from '@/modules/Product/type';
 
@@ -46,11 +46,8 @@ export default function ProductDetail() {
       const stored = localStorage.getItem(key);
       let viewedIds: string[] = stored ? JSON.parse(stored) : [];
       const idStr = String(productId);
-      // Видаляємо дублікат, якщо вже є
       viewedIds = viewedIds.filter(id => id !== idStr);
-      // Додаємо на початок (найновіший першим)
       viewedIds.unshift(idStr);
-      // Обмежуємо до 20 товарів
       if (viewedIds.length > 20) viewedIds = viewedIds.slice(0, 20);
       localStorage.setItem(key, JSON.stringify(viewedIds));
     } catch (e) {
@@ -89,7 +86,7 @@ export default function ProductDetail() {
       <Reviews productId={productId!} />
       <RecentlyViewed currentProductId={productId!} />
       <SMProduct currentProduct={product}/>
-      <BottomCti />
+      {/*<BottomCti />*/}
     </>
   )
 }

@@ -1,5 +1,5 @@
-// Импортируем ReviewsContent вместо MainContent
-import { Sidebar, ReviewsContent } from '@/modules/Profile'
+import { Outlet } from 'react-router-dom';
+import { Sidebar } from '@/modules/Profile';
 
 export default function ProfilePage() {
   return (
@@ -10,8 +10,7 @@ export default function ProfilePage() {
         <Sidebar />
         
         <div className="flex-1 min-w-0">
-          {/* Тимчасово виводимо ReviewsContent, щоб бачити і верстати сторінку відгуків */}
-          <ReviewsContent />
+          <Outlet />
         </div>
 
       </div>

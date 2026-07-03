@@ -4,4 +4,3 @@ export { RecentlyViewed } from './components/FBT';
 export { SMProduct } from './components/SMProduct'
 export { Reviews } from './components/Reviews'
 export { ReviewModal } from './components/ReviewModal'
-export { BottomCti } from './components/BottomCti'

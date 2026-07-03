@@ -1,4 +1,4 @@
-export function BottomCti() {
+/*export function BottomCti() {
   return (
     <section className="w-full pb-[80px] bg-[#F6FAF8]">
       <div className="w-full max-w-[1228px] mx-auto px-[24px]">
@@ -14,7 +14,7 @@ export function BottomCti() {
           </p>
 
           <button className="w-[197px] h-[44px] bg-[#265447] text-white rounded-[10px] border-none flex justify-center items-center cursor-pointer font-inter text-[16px] font-semibold transition-all duration-200 hover:bg-[#1a3e34] active:scale-[0.98]">
-            Додати до кошика
+              Додати до кошика
           </button>
 
         </div>
@@ -22,4 +22,4 @@ export function BottomCti() {
       </div>
     </section>
   );
-}
+}*/
