@@ -4,6 +4,9 @@ from pydantic_ai.models import Model
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.models.google import GoogleModel
+from dataclasses import replace
+from pydantic_ai.capabilities import PrepareTools
+from pydantic_ai.tools import ToolDefinition, RunContext
 
 from app.config import settings
 from app.deps import AgentDeps
@@ -154,12 +157,17 @@ Use for: visual separation between sections.
 10. CRITICAL: NEVER invent or include block types representing tool/function calls (like "type": "function") in your "blocks" list. If you need to search, compare, or get the cart, call the corresponding tools directly. The JSON output blocks must only contain the allowed UI element types (text, table, product_card, tabs, clarification, action_button, badge, fallback, divider).
 """
 
+def normalize_tool_strict(ctx: RunContext, tool_defs: list[ToolDefinition]) -> list[ToolDefinition]:
+    return [replace(t, strict=False) for t in tool_defs]
+
+
 agent: Agent[AgentDeps, ZephyrosResponse] = Agent(
     model=default_model,
     deps_type=AgentDeps,
     output_type=ZephyrosResponse,
     system_prompt=SYSTEM_PROMPT,
     retries=2,
+    capabilities=[PrepareTools(normalize_tool_strict)],
 )
 
 agent.tool(search_catalog)
