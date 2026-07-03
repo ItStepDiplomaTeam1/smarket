@@ -225,7 +225,6 @@ export function PersonalDataPage() {
               );
             })}
           </div>
-
         </main>
       </div>
     </div>
