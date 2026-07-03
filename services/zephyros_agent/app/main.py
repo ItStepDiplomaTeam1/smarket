@@ -9,26 +9,24 @@ from fastapi.responses import ORJSONResponse
 from loguru import logger
 from pydantic import BaseModel, ValidationError
 
-from app.agent.zephyros import agent, get_agent_model
+import time
+from app.agent.zephyros import agent, available_provider_chain, build_model
 from app.config import settings
 from app.deps import AgentDeps
 from app.schemas import ZephyrosResponse
 from pydantic_ai.exceptions import ModelHTTPError
 
-_MAX_RETRIES = 3
-_RETRY_DELAYS = [0.5, 1.5, 3.0]
+_provider_down_until: dict[str, float] = {}
 
+def _mark_down(provider: str, seconds: float) -> None:
+    _provider_down_until[provider] = time.monotonic() + seconds
 
-def _clean_json(raw: str) -> str:
-    """Strip optional markdown code fences from the model output."""
-    text = raw.strip()
-    if text.startswith("```json"):
-        text = text[7:]
-    elif text.startswith("```"):
-        text = text[3:]
-    if text.endswith("```"):
-        text = text[:-3]
-    return text.strip()
+def _is_down(provider: str) -> bool:
+    until = _provider_down_until.get(provider)
+    # TODO: If SMARKET_AGENT_WORKERS is ever set to > 1, this in-memory structure
+    # must be moved to a shared Redis store. For single worker process, in-memory is sufficient.
+    return until is not None and time.monotonic() < until
+
 
 
 @asynccontextmanager
@@ -82,45 +80,66 @@ async def chat(
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid X-User-Id format.")
 
-    deps = AgentDeps(
-        http_client=app.state.http_client,
-        user_id=user_id,
-    )
+    deps = AgentDeps(http_client=app.state.http_client, user_id=user_id)
+
+    # Явный провайдер из запроса — используем только его (без автопереключения).
+    # Автопереключение — только когда provider не передан явно.
+    if request.provider:
+        candidates = [request.provider.lower()]
+    else:
+        candidates = available_provider_chain()
+
+    if not candidates:
+        raise HTTPException(status_code=503, detail="Жоден AI-провайдер не налаштований на сервері.")
 
     last_error: Exception | None = None
 
-    for attempt in range(_MAX_RETRIES):
+    for provider in candidates:
+        if _is_down(provider):
+            logger.warning(f"Provider '{provider}' is in cooldown, skipping.")
+            continue
+
         try:
-            current_model = get_agent_model(request.provider, request.model_name, attempt)
-            logger.info(f"[attempt {attempt+1}/{_MAX_RETRIES}] Running agent with model: {current_model.model_name} (provider: {request.provider or 'auto'})")
+            current_model = build_model(provider, request.model_name)
+            logger.info(f"Trying provider={provider} model={current_model.model_name}")
             result = await agent.run(request.message, deps=deps, model=current_model)
-            return ZephyrosResponse.model_validate_json(_clean_json(result.output))
+            return result.output  # ZephyrosResponse напрямую, без ручного парсинга
 
         except ModelHTTPError as e:
-            # 400 = bad prompt / tool schema mismatch — retry may help if model misbehaved
-            # 401 = auth issue — no point retrying
             if e.status_code == 401:
-                logger.error(f"[attempt {attempt+1}] Auth error from AI model: {e.body}")
-                raise HTTPException(
-                    status_code=503,
-                    detail="AI-модель недоступна: невірний API-ключ.",
-                )
-            logger.warning(f"[attempt {attempt+1}/{_MAX_RETRIES}] Model HTTP error {e.status_code}: {e.body}")
+                logger.error(f"[{provider}] Auth error: {e.body}")
+                _mark_down(provider, settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS)
+                last_error = e
+                continue
+
+            if e.status_code == 429:
+                retry_after = None
+                headers = getattr(e, "headers", None) or {}
+                if headers.get("retry-after"):
+                    try:
+                        retry_after = float(headers["retry-after"])
+                    except ValueError:
+                        retry_after = None
+                cooldown = retry_after or settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS
+                logger.warning(f"[{provider}] Rate limited, cooling down for {cooldown}s")
+                _mark_down(provider, cooldown)
+                last_error = e
+                continue
+
+            logger.warning(f"[{provider}] Model HTTP error {e.status_code}: {e.body}")
             last_error = e
+            continue
 
         except ValidationError as e:
-            logger.warning(f"[attempt {attempt+1}/{_MAX_RETRIES}] JSON parse/validation failed: {e}")
+            logger.warning(f"[{provider}] JSON validation failed: {e}")
             last_error = e
+            continue
 
         except Exception as e:
-            logger.warning(f"[attempt {attempt+1}/{_MAX_RETRIES}] Unexpected error: {e}")
+            logger.warning(f"[{provider}] Unexpected error: {e}")
             last_error = e
+            continue
 
-        if attempt < _MAX_RETRIES - 1:
-            delay = _RETRY_DELAYS[attempt]
-            logger.info(f"Retrying in {delay}s...")
-            await asyncio.sleep(delay)
-
-    logger.error(f"All {_MAX_RETRIES} attempts failed. Last error: {last_error}")
-    raise HTTPException(status_code=503, detail="Агент не зміг опрацювати запит. Спробуйте ще раз.")
+    logger.error(f"All providers exhausted. Last error: {last_error}")
+    raise HTTPException(status_code=503, detail="Агент тимчасово недоступний. Спробуйте за хвилину.")
 
