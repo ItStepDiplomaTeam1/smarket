@@ -10,6 +10,7 @@ const LoginPage = lazy(() => import('@/pages/Login/ui/LoginPage.tsx'));
 const ProductDetail = lazy(() => import('@/pages/ProductDetail/ui/ProductDetail.tsx'));
 const Profile = lazy(() => import('@/pages/Profile/ui/ProfilePage.tsx'));
 const Catalog = lazy(() => import('@/pages/Catalog/ui/Catalog.tsx'));
+const ShopsPage = lazy(() => import('@/pages/Shops/ui/ShopPage.tsx'));
 const CartPage = lazy(() => import('@/pages/Cart/ui/CartPage.tsx').then(m => ({ default: m.CartPage })));
 
 const ConfidentialPolicy = lazy(() => import('@/pages/ConfidentionalPolicy/ui/ConfidentialPolicyPage.tsx'));
@@ -114,6 +115,14 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<div>Завантаження умов використання...</div>}>
             <UsingConditions />
+          </Suspense>
+        ),
+      },
+      {
+        path: '/Shops',
+        element: (
+          <Suspense fallback={<div>Завантаження магазинів...</div>}>
+            <ShopsPage />
           </Suspense>
         ),
       }
