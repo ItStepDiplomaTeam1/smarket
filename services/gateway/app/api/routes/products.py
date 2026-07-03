@@ -10,6 +10,15 @@ router = APIRouter()
 
 # Динамічна труба для всього, що йде на /products/*
 @router.api_route(
+    "",
+    methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
+    include_in_schema=False,
+)
+async def proxy_to_product_root(request: Request):
+    return await proxy_to_product(request, "")
+
+
+@router.api_route(
     "/{path:path}",
     methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
     include_in_schema=False,

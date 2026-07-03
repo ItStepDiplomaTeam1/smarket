@@ -1,3 +1,4 @@
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -33,7 +34,15 @@ class Settings(BaseSettings):
     AGENT_SERVICE_URL: str = "http://zephyros_agent:8005"
     EMAIL_WORKER_URL: str = "http://email_worker:8085"
 
-
+    @model_validator(mode="after")
+    def clean_product_service_url(self) -> "Settings":
+        if self.PRODUCT_SERVICE_URL:
+            url = self.PRODUCT_SERVICE_URL.rstrip("/")
+            if url.endswith("/api/v1/products"):
+                url = url.removesuffix("/api/v1/products")
+            self.PRODUCT_SERVICE_URL = url
+        return self
 
 
 settings = Settings()
+
