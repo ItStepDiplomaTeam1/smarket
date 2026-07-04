@@ -56,7 +56,7 @@ function AppRoutes() {
             <Route path="/stores" element={<StoresPage />} />
             {/* Placeholders for future routes */}
             <Route path="/retailers" element={<div className="p-6">Retailers Module (Coming Soon)</div>} />
-            <Route path="/users" element={<UsersPage />} />
+            <Route path="/clients" element={<UsersPage />} />
             <Route path="/settings" element={<div className="p-6">Settings Module (Coming Soon)</div>} />
           </Route>
         </Route>
