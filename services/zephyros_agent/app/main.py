@@ -35,6 +35,11 @@ async def lifespan(app: FastAPI):
         timeout=30.0,
     )
     logger.info("Zephyros agent service started.")
+    try:
+        chain = available_provider_chain()
+        logger.info(f"Available provider candidates: {chain}")
+    except Exception as e:
+        logger.error(f"Error checking available providers on startup: {e}")
     yield
     await app.state.http_client.aclose()
     logger.info("Zephyros agent service stopped.")
@@ -135,10 +140,11 @@ async def chat(
             continue
 
         except Exception as e:
-            logger.warning(f"[{provider}] Unexpected error: {e}")
+            logger.exception(f"[{provider}] Unexpected error occurred while running agent")
             last_error = e
             continue
 
     logger.error(f"All providers exhausted. Last error: {last_error}")
-    raise HTTPException(status_code=503, detail="Агент тимчасово недоступний. Спробуйте за хвилину.")
+    detail_msg = f"Агент тимчасово недоступний. Спробуйте за хвилину. (Помилка: {last_error})"
+    raise HTTPException(status_code=503, detail=detail_msg)
 
