@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str | None = None
     CEREBRAS_API_KEY: str | None = None
 
+    OPENROUTER_MODEL: str = "openai/gpt-oss-120b:free"
     GEMINI_MODEL: str = "gemini-2.5-flash"
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
     CEREBRAS_MODEL: str = "gpt-oss-120b"

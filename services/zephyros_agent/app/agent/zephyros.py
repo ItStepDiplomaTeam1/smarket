@@ -23,11 +23,12 @@ if settings.GEMINI_API_KEY:
     os.environ["GOOGLE_API_KEY"] = settings.GEMINI_API_KEY
 
 # Порядок провайдеров для автоматического перебора, если явный provider не передан
-PROVIDER_CHAIN = ["gemini", "groq", "cerebras"]
+PROVIDER_CHAIN = ["openrouter", "gemini", "groq", "cerebras"]
 
 
 def _provider_available(prov: str) -> bool:
     return {
+        "openrouter": bool(settings.OPENROUTER_API_KEY),
         "gemini": bool(settings.GEMINI_API_KEY),
         "groq": bool(settings.GROQ_API_KEY),
         "cerebras": bool(settings.CEREBRAS_API_KEY),
@@ -41,6 +42,17 @@ def available_provider_chain() -> list[str]:
 
 def build_model(provider: str, model_name: str | None = None) -> Model:
     """Собрать Model для конкретного провайдера. Бросает ValueError, если ключа нет."""
+    if provider == "openrouter":
+        if not settings.OPENROUTER_API_KEY:
+            raise ValueError("OPENROUTER_API_KEY is not configured")
+        return OpenAIChatModel(
+            model_name=model_name or settings.OPENROUTER_MODEL,
+            provider=OpenAIProvider(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=settings.OPENROUTER_API_KEY,
+            ),
+        )
+
     if provider == "gemini":
         if not settings.GEMINI_API_KEY:
             raise ValueError("GEMINI_API_KEY is not configured")
