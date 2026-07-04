@@ -50,6 +50,7 @@ const fetchProducts = async (params: FetchProductsParams): Promise<MeiliSearchRe
     q: params.q?.trim() || '',
     limit: params.limit,
     offset,
+    show_hidden: true, // Адмінка завжди повинна мати доступ до прихованих товарів
   };
 
   if (params.categorySlug) {

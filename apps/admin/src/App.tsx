@@ -9,6 +9,9 @@ import { useAuthStore } from '@/store/useAuthStore';
 // Lazy loaded pages
 const Dashboard = React.lazy(() => import('@/pages/Dashboard'));
 const ProductsTable = React.lazy(() => import('@/pages/ProductsTable'));
+const CategoriesPage = React.lazy(() => import('@/pages/CategoriesPage'));
+const StoresPage = React.lazy(() => import('@/pages/StoresPage'));
+const UsersPage = React.lazy(() => import('@/pages/UsersPage'));
 const Login = React.lazy(() => import('@/pages/Login'));
 
 const queryClient = new QueryClient({
@@ -49,9 +52,11 @@ function AppRoutes() {
           <Route element={<Layout />}>
             <Route path="/" element={<Dashboard />} />
             <Route path="/products" element={<ProductsTable />} />
+            <Route path="/categories" element={<CategoriesPage />} />
+            <Route path="/stores" element={<StoresPage />} />
             {/* Placeholders for future routes */}
             <Route path="/retailers" element={<div className="p-6">Retailers Module (Coming Soon)</div>} />
-            <Route path="/users" element={<div className="p-6">Users Module (Coming Soon)</div>} />
+            <Route path="/users" element={<UsersPage />} />
             <Route path="/settings" element={<div className="p-6">Settings Module (Coming Soon)</div>} />
           </Route>
         </Route>
