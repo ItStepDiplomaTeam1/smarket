@@ -1,24 +1,38 @@
+import time
 import uuid
 from contextlib import asynccontextmanager
 
 import httpx
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 from loguru import logger
 from pydantic import BaseModel, ValidationError
+from pydantic_ai.exceptions import ModelHTTPError
 
-import time
 from app.agent.zephyros import agent, available_provider_chain, build_model
 from app.config import settings
 from app.deps import AgentDeps
+from app.logging import setup_logging
 from app.schemas import ZephyrosResponse
-from pydantic_ai.exceptions import ModelHTTPError
+
+setup_logging(level=settings.LOG_LEVEL, json_logs=settings.LOG_JSON)
 
 _provider_down_until: dict[str, float] = {}
 
+
+def _truncate(value: str | None, limit: int = 240) -> str:
+    if not value:
+        return ""
+    return value if len(value) <= limit else f"{value[:limit]}..."
+
+
 def _mark_down(provider: str, seconds: float) -> None:
     _provider_down_until[provider] = time.monotonic() + seconds
+    logger.bind(provider=provider, cooldown_seconds=seconds).warning(
+        "Provider moved to cooldown",
+    )
+
 
 def _is_down(provider: str) -> bool:
     until = _provider_down_until.get(provider)
@@ -27,22 +41,21 @@ def _is_down(provider: str) -> bool:
     return until is not None and time.monotonic() < until
 
 
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.http_client = httpx.AsyncClient(
         limits=httpx.Limits(max_keepalive_connections=20, max_connections=50),
         timeout=30.0,
     )
-    logger.info("Zephyros agent service started.")
+    logger.info("Zephyros agent service started")
     try:
         chain = available_provider_chain()
-        logger.info(f"Available provider candidates: {chain}")
-    except Exception as e:
-        logger.error(f"Error checking available providers on startup: {e}")
+        logger.bind(provider_candidates=chain).info("Resolved available provider candidates")
+    except Exception:
+        logger.exception("Error checking available providers on startup")
     yield
     await app.state.http_client.aclose()
-    logger.info("Zephyros agent service stopped.")
+    logger.info("Zephyros agent service stopped")
 
 
 app = FastAPI(
@@ -57,8 +70,36 @@ app.add_middleware(
     allow_origins=[],
     allow_credentials=False,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-User-Id"],
+    allow_headers=["Authorization", "Content-Type", "X-User-Id", "X-Request-Id"],
 )
+
+
+@app.middleware("http")
+async def request_logging_middleware(request: Request, call_next):
+    request_id = request.headers.get("X-Request-Id") or str(uuid.uuid4())
+    user_id = request.headers.get("X-User-Id")
+    request_log = logger.bind(
+        request_id=request_id,
+        method=request.method,
+        path=request.url.path,
+        user_id=user_id,
+    )
+
+    started_at = time.perf_counter()
+    request_log.info("HTTP request started")
+    try:
+        response = await call_next(request)
+    except Exception:
+        elapsed_ms = round((time.perf_counter() - started_at) * 1000, 2)
+        request_log.bind(elapsed_ms=elapsed_ms).exception("HTTP request failed")
+        raise
+
+    elapsed_ms = round((time.perf_counter() - started_at) * 1000, 2)
+    response.headers["X-Request-Id"] = request_id
+    request_log.bind(status_code=response.status_code, elapsed_ms=elapsed_ms).info(
+        "HTTP request finished"
+    )
+    return response
 
 
 class ChatRequest(BaseModel):
@@ -84,35 +125,56 @@ async def chat(
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid X-User-Id format.")
 
+    chat_log = logger.bind(
+        endpoint="/agent/chat",
+        user_id=str(user_id) if user_id else None,
+        requested_provider=request.provider,
+        requested_model=request.model_name,
+        message_length=len(request.message),
+    )
+    chat_log.info("Chat request received")
+
     deps = AgentDeps(http_client=app.state.http_client, user_id=user_id)
 
-    # Явный провайдер из запроса — используем только его (без автопереключения).
-    # Автопереключение — только когда provider не передан явно.
+    # Explicit provider in request -> use only that one.
+    # Autoselection is used only when provider is not passed.
     if request.provider:
         candidates = [request.provider.lower()]
     else:
         candidates = available_provider_chain()
 
     if not candidates:
-        raise HTTPException(status_code=503, detail="Жоден AI-провайдер не налаштований на сервері.")
+        chat_log.error("No AI providers configured")
+        raise HTTPException(
+            status_code=503,
+            detail="Жоден AI-провайдер не налаштований на сервері.",
+        )
 
+    chat_log.bind(provider_candidates=candidates).info("Provider candidates resolved")
     last_error: Exception | None = None
 
     for provider in candidates:
+        provider_log = chat_log.bind(provider=provider)
         if _is_down(provider):
-            logger.warning(f"Provider '{provider}' is in cooldown, skipping.")
+            provider_log.warning("Provider is in cooldown, skipping")
             continue
 
+        started_at = time.perf_counter()
         try:
             current_model = build_model(provider, request.model_name)
-            logger.info(f"Trying provider={provider} model={current_model.model_name}")
+            model_name = getattr(current_model, "model_name", request.model_name or "default")
+            provider_log.bind(model_name=model_name).info("Running agent with provider")
             result = await agent.run(request.message, deps=deps, model=current_model)
-            return result.output  # ZephyrosResponse напрямую, без ручного парсинга
+            elapsed_ms = round((time.perf_counter() - started_at) * 1000, 2)
+            provider_log.bind(elapsed_ms=elapsed_ms).info("Provider returned successful response")
+            return result.output
 
         except ModelHTTPError as e:
             if e.status_code == 401:
-                logger.error(f"[{provider}] Auth error: {e.body}")
                 _mark_down(provider, settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS)
+                provider_log.bind(status_code=401, body=_truncate(str(e.body))).error(
+                    "Provider authentication error",
+                )
                 last_error = e
                 continue
 
@@ -125,26 +187,30 @@ async def chat(
                     except ValueError:
                         retry_after = None
                 cooldown = retry_after or settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS
-                logger.warning(f"[{provider}] Rate limited, cooling down for {cooldown}s")
                 _mark_down(provider, cooldown)
+                provider_log.bind(status_code=429, cooldown_seconds=cooldown).warning(
+                    "Provider rate-limited",
+                )
                 last_error = e
                 continue
 
-            logger.warning(f"[{provider}] Model HTTP error {e.status_code}: {e.body}")
+            provider_log.bind(
+                status_code=e.status_code,
+                body=_truncate(str(e.body)),
+            ).warning("Provider returned ModelHTTPError")
             last_error = e
             continue
 
         except ValidationError as e:
-            logger.warning(f"[{provider}] JSON validation failed: {e}")
+            provider_log.bind(error=str(e)).warning("Response validation failed")
             last_error = e
             continue
 
         except Exception as e:
-            logger.exception(f"[{provider}] Unexpected error occurred while running agent")
+            provider_log.exception("Unexpected error while running provider")
             last_error = e
             continue
 
-    logger.error(f"All providers exhausted. Last error: {last_error}")
-    detail_msg = f"Агент тимчасово недоступний. Спробуйте за хвилину. (Помилка: {last_error})"
+    chat_log.bind(last_error=repr(last_error)).error("All providers exhausted")
+    detail_msg = "Агент тимчасово недоступний. Спробуйте за хвилину."
     raise HTTPException(status_code=503, detail=detail_msg)
-

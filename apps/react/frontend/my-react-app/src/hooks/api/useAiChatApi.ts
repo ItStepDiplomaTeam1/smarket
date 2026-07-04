@@ -26,13 +26,9 @@ export const useSendAiMessage = () => {
       };
       nextStatus();
 
-      // If provider is 'openrouter', send null to let the backend use the full chain with failover
-      const reqProvider = provider === 'openrouter' ? null : provider;
-      const reqModelName = provider === 'openrouter' ? null : model_name;
-
       const { data } = await apiClient.post<ZephyrosResponse>(
         '/api/v1/agent/chat',
-        { message, provider: reqProvider, model_name: reqModelName },
+        { message, provider: provider ?? null, model_name: model_name ?? null },
         { timeout: 30000 },
       );
       return data;

@@ -490,6 +490,9 @@ function EmptyState({ onSend }: { onSend: (text: string) => void }) {
 }
 
 const PROVIDER_MODELS = {
+  cerebras: [
+    { value: 'gpt-oss-120b', label: 'GPT OSS 120B (рекомендовано)' },
+  ],
   openrouter: [
     { value: 'openai/gpt-oss-120b:free', label: 'GPT OSS 120B Free (рекомендовано)' },
     { value: 'google/gemini-2.5-flash:free', label: 'Gemini 2.5 Flash Free' },
@@ -500,9 +503,6 @@ const PROVIDER_MODELS = {
   ],
   groq: [
     { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (рекомендовано)' },
-  ],
-  cerebras: [
-    { value: 'gpt-oss-120b', label: 'GPT OSS 120B (рекомендовано)' },
   ],
 };
 
@@ -663,11 +663,11 @@ function ChatWindow({ expanded, onToggleExpand }: { expanded: boolean; onToggleE
               }}
               className="w-full text-[13px] border border-[rgba(38,84,71,0.15)] rounded-lg px-2.5 py-1.5 bg-white text-[#173B33] focus:border-[#265447] focus:outline-none"
             >
+              <option value="cerebras">Cerebras Inference (за замовчуванням)</option>
               <option value="auto">Автовибір (OpenRouter / Gemini / Groq / Cerebras)</option>
-              <option value="openrouter">OpenRouter (головний)</option>
+              <option value="openrouter">OpenRouter</option>
               <option value="gemini">Google Gemini</option>
               <option value="groq">Groq Inference</option>
-              <option value="cerebras">Cerebras Inference</option>
             </select>
           </div>
 
@@ -694,10 +694,10 @@ function ChatWindow({ expanded, onToggleExpand }: { expanded: boolean; onToggleE
           </div>
 
           <div className="mt-auto border-t pt-3 text-[11px] text-[#6D8279] leading-relaxed">
-            <p><strong>OpenRouter:</strong> головний провайдер, що забезпечує доступ до передових та безкоштовних моделей.</p>
+            <p><strong>Cerebras:</strong> провайдер за замовчуванням для максимально швидких відповідей.</p>
+            <p className="mt-1.5"><strong>OpenRouter:</strong> агрегатор провайдерів з доступом до передових та безкоштовних моделей.</p>
             <p className="mt-1.5"><strong>Gemini:</strong> ідеальний вибір для складних порівнянь цін та великих списків товарів завдяки величезному контексту.</p>
             <p className="mt-1.5"><strong>Groq:</strong> забезпечує мінімальну затримку (субсекундний відгук) для швидких запитів.</p>
-            <p className="mt-1.5"><strong>Cerebras:</strong> надшвидка генерація відповідей завдяки спеціалізованому залізу.</p>
           </div>
         </div>
       )}

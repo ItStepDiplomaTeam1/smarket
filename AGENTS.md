@@ -24,7 +24,7 @@
   (`dev_gateway`, `dev_auth_service`, `dev_zephyros_agent`, …), див.
   `doppler.yaml` у корені.
 - Деплой: Hetzner CX23, `docker compose` (`infra/docker-compose.yml`,
-  підключається через `docker-compose.yml` в корені).
+  підключається через `docker-compose.yml` в корені), IP серверу - http://157.180.74.21.
 
 ## Архітектура (звідки й куди йдуть запити)
 

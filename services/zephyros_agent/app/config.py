@@ -17,9 +17,11 @@ class Settings(BaseSettings):
     OPENROUTER_MODEL: str = "openai/gpt-oss-120b:free"
     GEMINI_MODEL: str = "gemini-2.5-flash"
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
-    CEREBRAS_MODEL: str = "llama-3.3-70b"
+    CEREBRAS_MODEL: str = "gpt-oss-120b"
 
     CIRCUIT_BREAKER_COOLDOWN_SECONDS: int = 60
+    LOG_LEVEL: str = "INFO"
+    LOG_JSON: bool = False
 
     SEARCH_SERVICE_URL: str = "http://search_service:8083/api/v1"
     PRODUCT_SERVICE_URL: str = "http://product_service:8000/api/v1"

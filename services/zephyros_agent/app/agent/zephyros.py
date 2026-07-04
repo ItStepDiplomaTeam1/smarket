@@ -1,8 +1,10 @@
 import os
 from pydantic_ai import Agent
 from pydantic_ai.models import Model
+from pydantic_ai.models.cerebras import CerebrasModel
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_ai.providers.cerebras import CerebrasProvider
 from pydantic_ai.models.google import GoogleModel
 from dataclasses import replace
 from pydantic_ai.capabilities import PrepareTools
@@ -72,12 +74,9 @@ def build_model(provider: str, model_name: str | None = None) -> Model:
     if provider == "cerebras":
         if not settings.CEREBRAS_API_KEY:
             raise ValueError("CEREBRAS_API_KEY is not configured")
-        return OpenAIChatModel(
+        return CerebrasModel(
             model_name=model_name or settings.CEREBRAS_MODEL,
-            provider=OpenAIProvider(
-                base_url="https://api.cerebras.ai/v1",
-                api_key=settings.CEREBRAS_API_KEY,
-            ),
+            provider=CerebrasProvider(api_key=settings.CEREBRAS_API_KEY),
         )
 
     raise ValueError(f"Unknown provider: {provider}")
