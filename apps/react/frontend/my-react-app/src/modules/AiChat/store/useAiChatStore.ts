@@ -26,14 +26,14 @@ export interface ChatMessage {
 interface AiChatState {
   isOpen: boolean;
   messages: ChatMessage[];
-  provider: 'gemini' | 'groq' | 'cerebras' | null;
+  provider: 'gemini' | 'groq' | 'cerebras' | 'openrouter' | null;
   modelName: string | null;
   open: () => void;
   close: () => void;
   toggle: () => void;
   addMessage: (message: ChatMessage) => void;
   clearMessages: () => void;
-  setProvider: (p: 'gemini' | 'groq' | 'cerebras' | null) => void;
+  setProvider: (p: 'gemini' | 'groq' | 'cerebras' | 'openrouter' | null) => void;
   setModelName: (m: string | null) => void;
 }
 
