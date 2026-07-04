@@ -4,6 +4,9 @@ from pydantic_ai.models import Model
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.models.google import GoogleModel
+from dataclasses import replace
+from pydantic_ai.capabilities import PrepareTools
+from pydantic_ai.tools import ToolDefinition, RunContext
 
 from app.config import settings
 from app.deps import AgentDeps
@@ -15,46 +18,87 @@ from app.tools import (
     add_product_to_cart,
 )
 
-# Set Gemini environment variables eagerly if available during startup
 if settings.GEMINI_API_KEY:
     os.environ["GEMINI_API_KEY"] = settings.GEMINI_API_KEY
     os.environ["GOOGLE_API_KEY"] = settings.GEMINI_API_KEY
 
-def get_default_model() -> Model:
-    if settings.GEMINI_API_KEY:
-        return GoogleModel("gemini-1.5-flash")
-    return OpenAIChatModel(
-        model_name="llama-3.3-70b-versatile",
-        provider=OpenAIProvider(
-            base_url="https://api.groq.com/openai/v1",
-            api_key=settings.GROQ_API_KEY or "stub",
-        ),
-    )
+# Порядок провайдеров для автоматического перебора, если явный provider не передан
+PROVIDER_CHAIN = ["openrouter", "gemini", "groq", "cerebras"]
 
-model = get_default_model()
 
-def get_agent_model(provider: str | None, model_name: str | None, attempt: int = 0) -> Model:
-    prov = (provider or "").lower()
-    if not prov:
-        prov = "gemini" if settings.GEMINI_API_KEY else "groq"
+def _provider_available(prov: str) -> bool:
+    return {
+        "openrouter": bool(settings.OPENROUTER_API_KEY),
+        "gemini": bool(settings.GEMINI_API_KEY),
+        "groq": bool(settings.GROQ_API_KEY),
+        "cerebras": bool(settings.CEREBRAS_API_KEY),
+    }.get(prov, False)
 
-    if prov == "gemini":
-        if settings.GEMINI_API_KEY:
-            os.environ["GEMINI_API_KEY"] = settings.GEMINI_API_KEY
-            os.environ["GOOGLE_API_KEY"] = settings.GEMINI_API_KEY
-        gemini_models = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-3.1-flash-lite"]
-        m_name = model_name or gemini_models[attempt % len(gemini_models)]
-        return GoogleModel(m_name)
-    else:
-        groq_models = ["llama-3.3-70b-versatile", "gemma2-9b-it", "llama-3.1-8b-instant"]
-        m_name = model_name or groq_models[attempt % len(groq_models)]
+
+def available_provider_chain() -> list[str]:
+    """Провайдеры в порядке приоритета, для которых реально задан ключ."""
+    return [p for p in PROVIDER_CHAIN if _provider_available(p)]
+
+
+def build_model(provider: str, model_name: str | None = None) -> Model:
+    """Собрать Model для конкретного провайдера. Бросает ValueError, если ключа нет."""
+    if provider == "openrouter":
+        if not settings.OPENROUTER_API_KEY:
+            raise ValueError("OPENROUTER_API_KEY is not configured")
         return OpenAIChatModel(
-            model_name=m_name,
+            model_name=model_name or settings.OPENROUTER_MODEL,
             provider=OpenAIProvider(
-                base_url="https://api.groq.com/openai/v1",
-                api_key=settings.GROQ_API_KEY or "stub",
+                base_url="https://openrouter.ai/api/v1",
+                api_key=settings.OPENROUTER_API_KEY,
             ),
         )
+
+    if provider == "gemini":
+        if not settings.GEMINI_API_KEY:
+            raise ValueError("GEMINI_API_KEY is not configured")
+        return GoogleModel(model_name or settings.GEMINI_MODEL)
+
+    if provider == "groq":
+        if not settings.GROQ_API_KEY:
+            raise ValueError("GROQ_API_KEY is not configured")
+        return OpenAIChatModel(
+            model_name=model_name or settings.GROQ_MODEL,
+            provider=OpenAIProvider(
+                base_url="https://api.groq.com/openai/v1",
+                api_key=settings.GROQ_API_KEY,
+            ),
+        )
+
+    if provider == "cerebras":
+        if not settings.CEREBRAS_API_KEY:
+            raise ValueError("CEREBRAS_API_KEY is not configured")
+        return OpenAIChatModel(
+            model_name=model_name or settings.CEREBRAS_MODEL,
+            provider=OpenAIProvider(
+                base_url="https://api.cerebras.ai/v1",
+                api_key=settings.CEREBRAS_API_KEY,
+            ),
+        )
+
+    raise ValueError(f"Unknown provider: {provider}")
+
+
+def get_default_model() -> Model:
+    """Модель для инициализации Agent(...) при импорте модуля. Реальный выбор
+    провайдера на запрос происходит в main.py через build_model()."""
+    chain = available_provider_chain()
+    if not chain:
+        # Не роняем импорт модуля, если ни один ключ не задан — health check должен
+        # оставаться живым, чтобы это было видно в логах, а не в падении контейнера.
+        return OpenAIChatModel(
+            model_name="llama-3.3-70b-versatile",
+            provider=OpenAIProvider(base_url="https://api.groq.com/openai/v1", api_key="stub"),
+        )
+    return build_model(chain[0])
+
+
+default_model = get_default_model()
+
 
 SYSTEM_PROMPT = """
 You are Zephyros — a smart AI shopping assistant for the Smarket price aggregator platform.
@@ -125,12 +169,17 @@ Use for: visual separation between sections.
 10. CRITICAL: NEVER invent or include block types representing tool/function calls (like "type": "function") in your "blocks" list. If you need to search, compare, or get the cart, call the corresponding tools directly. The JSON output blocks must only contain the allowed UI element types (text, table, product_card, tabs, clarification, action_button, badge, fallback, divider).
 """
 
-agent: Agent[AgentDeps, str] = Agent(
-    model=model,
+def normalize_tool_strict(ctx: RunContext, tool_defs: list[ToolDefinition]) -> list[ToolDefinition]:
+    return [replace(t, strict=False) for t in tool_defs]
+
+
+agent: Agent[AgentDeps, ZephyrosResponse] = Agent(
+    model=default_model,
     deps_type=AgentDeps,
-    output_type=str,
+    output_type=ZephyrosResponse,
     system_prompt=SYSTEM_PROMPT,
-    retries=3,
+    retries=2,
+    capabilities=[PrepareTools(normalize_tool_strict)],
 )
 
 agent.tool(search_catalog)

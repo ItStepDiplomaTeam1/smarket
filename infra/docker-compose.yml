@@ -421,6 +421,8 @@ services:
   zephyros_agent:
     <<: *api-defaults
     image: ghcr.io/itstepdiplomateam1/smarket/zephyros_agent:${IMAGE_TAG:-develop}
+    extra_hosts:
+        - "host.docker.internal:host-gateway"
     build:
       context: ..
       dockerfile: services/zephyros_agent/Dockerfile
@@ -444,13 +446,16 @@ services:
       SEARCH_SERVICE_URL: "http://search_service:8083/api/v1"
       PRODUCT_SERVICE_URL: "http://product_service:8000/api/v1"
       CART_SERVICE_URL: "http://cart_service:8002/cart"
+      HTTPS_PROXY: "${HTTPS_PROXY:-${HTTP_PROXY:-}}"
+      HTTP_PROXY: "${HTTP_PROXY:-}"
+      NO_PROXY: "search_service,product_service,cart_service,localhost,127.0.0.1"
     depends_on:
       search_service:
-        condition: service_healthy
+        condition: service_started
       product_service:
-        condition: service_healthy
+        condition: service_started
       cart_service:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
       <<: *healthcheck-defaults
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8005/health', timeout=3).read()\""]
