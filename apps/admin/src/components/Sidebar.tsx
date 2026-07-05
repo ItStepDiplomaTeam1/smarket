@@ -14,10 +14,6 @@ const mainNavItems = [
   { name: 'Товари',       path: '/products',    icon: Package },
   { name: 'Категорії',    path: '/categories',  icon: Layers },
   { name: 'Магазини',     path: '/stores',      icon: Store },
-  { name: 'Акції',        path: '/promotions',  icon: Percent },
-  { name: 'Парсери',      path: '/parsers',     icon: Activity },
-  { name: 'Сторінки',     path: '/pages',       icon: FileText },
-  { name: 'Повідомлення', path: '/messages',    icon: MessageSquare },
   { name: 'Клієнти',      path: '/clients',     icon: Users },
   { name: 'Підтримка',    path: '/support',     icon: LifeBuoy },
 ];
