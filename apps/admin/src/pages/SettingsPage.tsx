@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Shield, Bell, Database, ChevronDown } from 'lucide-react';
+import { Shield, Bell } from 'lucide-react';
 import { useSystemStatus } from '@/hooks/useSystemStatus';
 
 // ── Components ────────────────────────────────────────────────────────────────
@@ -93,10 +93,8 @@ const SettingsPage: React.FC = () => {
   const { data: systemStatus, isLoading } = useSystemStatus();
 
   // State
-  const [general, setGeneral] = useState({ name: 'Smarket', lang: 'Українська', currency: 'грн (₴)' });
   const [security, setSecurity] = useState({ twoFactor: true, logoutTime: '30 хв', password: '••••••••' });
   const [notifications, setNotifications] = useState({ parserErrors: true, dailyReport: false, newUsers: false, parserRun: false, email: true });
-  const [parsing, setParsing] = useState({ frequency: '30 хв', errorLimit: '10', clearCache: 'Раз на тиждень', autoRun: false });
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-12 max-w-[1200px]">
@@ -107,35 +105,6 @@ const SettingsPage: React.FC = () => {
         <p className="text-sm text-textMuted mt-2">Керування параметрами платформи</p>
       </div>
 
-      {/* General Settings */}
-      <Card>
-        <SectionHeader icon={User} title="Загальні" />
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
-          <div>
-            <Label>Назва сервісу</Label>
-            <Input value={general.name} onChange={(e) => setGeneral({ ...general, name: e.target.value })} />
-          </div>
-          <div>
-            <Label>Мова панелі</Label>
-            <Select
-              options={['Українська', 'English']}
-              value={general.lang}
-              onChange={(v) => setGeneral({ ...general, lang: v })}
-            />
-          </div>
-          <div className="flex gap-4 items-end">
-            <div className="flex-1">
-              <Label>Валюта</Label>
-              <Select
-                options={['грн (₴)', 'USD ($)', 'EUR (€)']}
-                value={general.currency}
-                onChange={(v) => setGeneral({ ...general, currency: v })}
-              />
-            </div>
-            <ButtonOutline>Зберегти зміни</ButtonOutline>
-          </div>
-        </div>
-      </Card>
 
       {/* Grid for Security and System Status */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -234,43 +203,7 @@ const SettingsPage: React.FC = () => {
         </div>
       </Card>
 
-      {/* Parsing */}
-      <Card>
-        <SectionHeader icon={Database} title="Парсинг" />
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end mb-6">
-          <div>
-            <Label>Частота оновлення цін</Label>
-            <Select
-              options={['30 хв', '1 година', '6 годин', '24 години']}
-              value={parsing.frequency}
-              onChange={(v) => setParsing({ ...parsing, frequency: v })}
-            />
-          </div>
-          <div>
-            <Label>Ліміт помилок</Label>
-            <Select
-              options={['5', '10', '20', 'Без ліміту']}
-              value={parsing.errorLimit}
-              onChange={(v) => setParsing({ ...parsing, errorLimit: v })}
-            />
-          </div>
-          <div>
-            <Label>Очистка кешу</Label>
-            <Select
-              options={['Щодня', 'Раз на тиждень', 'Раз на місяць']}
-              value={parsing.clearCache}
-              onChange={(v) => setParsing({ ...parsing, clearCache: v })}
-            />
-          </div>
-          <div className="flex justify-end">
-            <ButtonOutline>Зберегти зміни</ButtonOutline>
-          </div>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="text-sm font-semibold text-textMain">Автозапуск парсерів</span>
-          <Toggle checked={parsing.autoRun} onChange={(v) => setParsing({ ...parsing, autoRun: v })} />
-        </div>
-      </Card>
+
     </div>
   );
 };
