@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiClient } from '@/lib/apiClient';
+import { PasswordChangeModal } from '@/components/PasswordChangeModal';
 import { Shield, Bell, ChevronDown } from 'lucide-react';
 
 const Toggle = ({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) => {
@@ -76,8 +79,63 @@ const ButtonOutline = ({ children, onClick }: { children: React.ReactNode; onCli
 
 const SettingsPage: React.FC = () => {
   // State
-  const [security, setSecurity] = useState({ twoFactor: true, logoutTime: '30 хв', password: '••••••••' });
+  const [security, setSecurity] = useState({ logoutTime: '30 хв', password: '••••••••' });
   const [notifications, setNotifications] = useState({ parserErrors: true, dailyReport: false, newUsers: false, parserRun: false, email: true });
+  const [isPasswordModalOpen, setPasswordModalOpen] = useState(false);
+
+  // Queries & Mutations
+  const queryClient = useQueryClient();
+  const { data: userProfile, isLoading } = useQuery({
+    queryKey: ['auth', 'me'],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/auth/me');
+      return data;
+    },
+  });
+
+  const updateSettingsMutation = useMutation({
+    mutationFn: async (newSettings: any) => {
+      const { data } = await apiClient.patch('/auth/settings', { settings: newSettings });
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['auth', 'me'] });
+      alert('Налаштування збережено успішно');
+    },
+    onError: () => alert('Помилка збереження налаштувань'),
+  });
+
+  const changePasswordMutation = useMutation({
+    mutationFn: async ({ old_password, new_password }: any) => {
+      const { data } = await apiClient.patch('/auth/password', { old_password, new_password });
+      return data;
+    },
+  });
+
+  // Init state from fetched profile
+  useEffect(() => {
+    if (userProfile?.settings) {
+      if (userProfile.settings.logoutTime) {
+        setSecurity(prev => ({ ...prev, logoutTime: userProfile.settings.logoutTime }));
+      }
+      if (userProfile.settings.notifications) {
+        setNotifications(prev => ({ ...prev, ...userProfile.settings.notifications }));
+      }
+    }
+  }, [userProfile]);
+
+  const handleSaveSettings = () => {
+    updateSettingsMutation.mutate({
+      logoutTime: security.logoutTime,
+      notifications,
+    });
+  };
+
+  const handlePasswordSubmit = async (oldPass: string, newPass: string) => {
+    await changePasswordMutation.mutateAsync({ old_password: oldPass, new_password: newPass });
+  };
+
+  if (isLoading) return <div className="p-8">Завантаження налаштувань...</div>;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-12 max-w-[1200px]">
@@ -104,17 +162,17 @@ const SettingsPage: React.FC = () => {
                 />
               </div>
               <div className="pb-1 mt-7">
-                <ButtonOutline>Зберегти зміни</ButtonOutline>
+                <ButtonOutline onClick={handleSaveSettings}>Зберегти зміни</ButtonOutline>
               </div>
             </div>
 
             <div className="flex items-center gap-6">
               <div className="flex-1">
                 <Label>Пароль</Label>
-                <Input type="password" value={security.password} onChange={(e) => setSecurity({ ...security, password: e.target.value })} />
+                <Input type="password" value={security.password} disabled className="opacity-70 bg-bgMain" />
               </div>
               <div className="pb-1 mt-7">
-                <ButtonOutline>Змінити пароль</ButtonOutline>
+                <ButtonOutline onClick={() => setPasswordModalOpen(true)}>Змінити пароль</ButtonOutline>
               </div>
             </div>
           </div>
@@ -151,12 +209,17 @@ const SettingsPage: React.FC = () => {
               <Toggle checked={notifications.email} onChange={(v) => setNotifications({ ...notifications, email: v })} />
             </div>
             <div className="flex justify-end pt-4">
-              <ButtonOutline>Зберегти зміни</ButtonOutline>
+              <ButtonOutline onClick={handleSaveSettings}>Зберегти зміни</ButtonOutline>
             </div>
           </div>
         </div>
       </Card>
 
+      <PasswordChangeModal 
+        isOpen={isPasswordModalOpen} 
+        onClose={() => setPasswordModalOpen(false)} 
+        onSubmit={handlePasswordSubmit} 
+      />
 
     </div>
   );
