@@ -2,13 +2,11 @@ import React from 'react';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { MetricCard } from '@/components/MetricCard';
 import { SystemLogsTable } from '@/components/SystemLogsTable';
-import { SystemStatusWidget } from '@/components/SystemStatusWidget';
 import { QuickActions } from '@/components/QuickActions';
 
 import { NeedsAttentionWidget } from '@/components/NeedsAttentionWidget';
 import { PopularCategoriesWidget } from '@/components/PopularCategoriesWidget';
 import { NewUsersWidget } from '@/components/NewUsersWidget';
-import { SearchQueriesWidget } from '@/components/SearchQueriesWidget';
 import { PopularProductsWidget } from '@/components/PopularProductsWidget';
 
 import { Package, Store, Users, Tag } from 'lucide-react';
@@ -81,18 +79,16 @@ const Dashboard: React.FC = () => {
           <SystemLogsTable logs={data.systemLogs} />
 
           {/* 4-col bottom widgets */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             <NeedsAttentionWidget items={data.needsAttention} />
             <NewUsersWidget />
             <PopularCategoriesWidget categories={data.popularCategories} />
-            <SearchQueriesWidget queries={data.searchQueries} />
           </div>
         </div>
 
         {/* Right Column ("Sidebar" of widgets) */}
         <div className="flex flex-col gap-6">
           <QuickActions />
-          <SystemStatusWidget />
           <PopularProductsWidget products={data.popularProducts} />
         </div>
         

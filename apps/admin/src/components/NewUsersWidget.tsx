@@ -2,6 +2,7 @@ import React from 'react';
 import { ChevronRight, AlertCircle, Lock } from 'lucide-react';
 import { useAdminUsers } from '@/hooks/useAdminUsers';
 import { useAuthStore } from '@/store/useAuthStore';
+import { Link } from 'react-router-dom';
 
 // ── Skeleton row shown while loading ─────────────────────────────────────────
 
@@ -147,13 +148,13 @@ export const NewUsersWidget: React.FC = () => {
 
       {/* Footer */}
       <div className="px-5 py-3 border-t border-border mt-auto">
-        <a
-          href="#"
+        <Link
+          to="/clients"
           className="text-sm font-medium text-textMuted hover:text-primary transition-colors flex items-center"
         >
           Переглянути всіх користувачів
           <ChevronRight size={16} className="ml-1" />
-        </a>
+        </Link>
       </div>
     </div>
   );
