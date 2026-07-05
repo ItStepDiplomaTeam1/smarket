@@ -1,58 +1,104 @@
-export function PersonalDataPage() {
-  // Пункти для лівого змісту (точно як на скріншоті)
-  const sidebarItems = [
-    { id: 1, title: "Загальні положення" },
-    { id: 2, title: "Які дані ми обробляємо" },
-    { id: 3, title: "Мета обробки даних" },
-    { id: 4, title: "Зберігання та захист даних" },
-    { id: 5, title: "Права користувача" }
-  ];
+import { useState } from 'react';
 
-  // Контент для правих карток (точно як на скріншоті)
-  const contentItems = [
+export function PersonalDataPage() {
+  // Повертаємо твою нормальну структуровану логіку даних
+  const policyItems = [
     {
       id: 1,
-      title: "Які дані ми збираємо",
-      content: "Smarket може збирати дані, які користувач надає під час реєстрації або використання сервісу."
+      title: "Загальні положення",
+      intro: "Це Положення про обробку персональних даних визначає порядок збору, використання та захисту інформації користувачів сервісу Smarket.",
+      subIntro: "Основні принципи, якими ми керуємося при обробці інформації:",
+      bullets: [
+        "законність, прозорість та відкритість для користувача;",
+        "обмеження збору даних — ми беремо лише те, що критично необхідно для роботи сервісу;",
+        "точність та актуальність інформації;",
+        "обмеження термінів зберігання даних;",
+        "забезпечення цілісності та конфіденційності."
+      ],
+      outro: "Використовуючи Smarket, ви повністю погоджуєтеся з умовами цього Положення та надаєте згоду на обробку вказаних даних."
     },
     {
       id: 2,
       title: "Які дані ми обробляємо",
-      content: "Smarket може обробляти дані, які користувач надає самостійно або які формуються під час використання..."
+      intro: "Smarket може обробляти дані, які користувач надає самостійно або які автоматично формуються під час використання платформи.",
+      subIntro: "До таких даних належать наступні категорії:",
+      bullets: [
+        "особисті ідентифікатори: ім'я користувача, діючий email або номер телефону;",
+        "географічні дані: місто та район для коректного пошуку найближчих магазинів;",
+        "користувацький контент: створені кошики, збережені списки покупок, обрані товари;",
+        "технічні логі: IP-адреса, тип і версія браузера, операційна система;",
+        "файли cookie для збереження індивідуальних налаштувань інтерфейсу."
+      ],
+      outro: "Зверніть увагу: Smarket ніколи не збирає і не обробляє чутливі дані, такі як біометрична інформація або номери банківських карт."
     },
     {
       id: 3,
-      title: "Передача даних третім сторонам",
-      content: "Ми не продаємо персональні дані користувачів третім сторонам."
+      title: "Мета обробки даних",
+      intro: "Усі зібрані персональні дані використовуються виключно для забезпечення стабільної роботи сервісу Smarket та покращення досвіду користувачів.",
+      subIntro: "Обробка даних здійснюється з такою метою:",
+      bullets: [
+        "успішна автентифікація та надання доступу до особистого профілю;",
+        "персоналізація відображення актуальних цін у супермаркетах вашого міста;",
+        "синхронізація списків покупок та кошиків між різними пристроями користувача;",
+        "аналіз популярності товарів та оптимізація алгоритмів внутрішнього пошуку;",
+        "надсилання технічних сповіщень щодо функціоналу платформи або оновлень."
+      ],
+      outro: "Обробка інформації для будь-яких маркетингових чи рекламних цілей відбувається виключно за вашою окремою згодою."
     },
     {
       id: 4,
       title: "Зберігання та захист даних",
-      content: "Персональні дані зберігаються лише стільки часу, скільки потрібно для роботи сервісу..."
+      intro: "Персональні дані користувачів зберігаються протягом усього часу активності вашого облікового запису на сервісі Smarket.",
+      subIntro: "Для забезпечення максимальної безпеки ми впроваджуємо такі заходи:",
+      bullets: [
+        "повне шифрування даних під час їх передачі (протоколи SSL/TLS);",
+        "суворе обмеження доступу співробітників компанії до внутрішніх баз даних;",
+        "регулярне автоматичне резервне копіювання інформації для запобігання її втраті;",
+        "постійний моніторинг систем на предмет вразливостей або підозрілої активності."
+      ],
+      outro: "У разі видалення акаунту всі ваші персональні дані безповоротно та повністю стираються з наших серверів протягом 30 днів."
     },
     {
       id: 5,
       title: "Права користувача",
-      content: "Користувач має право керувати своїми персональними даними."
+      intro: "Кожен користувач має повний контроль над своїми персональними даними згідно з чинним законодавством України.",
+      subIntro: "Ви маєте законне право на:",
+      bullets: [
+        "доступ до своїх даних та отримання детальної інформації про методи їх обробки;",
+        "швидке виправлення або оновлення застарілої інформації через особистий кабінет;",
+        "видалення всіх даних (право бути забутим) шляхом повного видалення облікового запису;",
+        "обмеження обробки або відкликання раніше наданої згоди на обробку окремих категорій даних."
+      ],
+      outro: "Для реалізації будь-якого з цих прав ви можете скористатися налаштуваннями профілю або написати напряму на нашу пошту підтримки."
     }
   ];
+
+  // Перший пункт відкритий за замовчуванням
+  const [expandedId, setExpandedId] = useState<number | null>(1);
+
+  const toggleSection = (id: number) => {
+    setExpandedId(prev => (prev === id ? null : id));
+  };
 
   return (
     <div className="w-full bg-[#F8FAF9] min-h-screen font-inter antialiased py-10">
       <div className="max-w-[1230px] mx-auto px-4 flex flex-col md:flex-row gap-[30px]">
         
-        {/* ЛІВА КОЛОНКА — ЗМІСТ (w-[307px]) */}
-        <aside className="w-full md:w-[307px] shrink-0 flex flex-col gap-6">
+        {/* ЛІВА КОЛОНКА — ЗМІСТ (Зафіксована при скролі) */}
+        <aside className="w-full md:w-[307px] shrink-0 flex flex-col gap-6 md:sticky md:top-6 h-fit">
           <div className="bg-white border border-[#E9ECEB] rounded-[16px] p-6 flex flex-col gap-4">
             <h3 className="text-[18px] font-bold text-[#173B33] pb-3 border-b border-[#E1E6E4]">
               Зміст
             </h3>
             <nav className="flex flex-col gap-3">
-              {sidebarItems.map((item) => (
+              {policyItems.map((item) => (
                 <a
                   key={item.id}
                   href={`#section-${item.id}`}
-                  className="text-[14px] font-medium text-[#6D8279] hover:text-[#173B33] transition-colors leading-[20px]"
+                  onClick={() => setExpandedId(item.id)}
+                  className={`text-[14px] font-medium leading-[20px] transition-colors ${
+                    expandedId === item.id ? 'text-[#173B33] font-bold' : 'text-[#6D8279] hover:text-[#173B33]'
+                  }`}
                 >
                   {item.id}. {item.title}
                 </a>
@@ -81,7 +127,7 @@ export function PersonalDataPage() {
           </div>
         </aside>
 
-        {/* ПРАВА КОЛОНКА — КОНТЕНТ (w-[923px]) */}
+        {/* ПРАВА КОЛОНКА — КОНТЕНТ */}
         <main className="flex-1 md:max-w-[923px] flex flex-col gap-6">
           
           {/* Хлібні крихти та Заголовок */}
@@ -103,46 +149,82 @@ export function PersonalDataPage() {
             </div>
           </div>
 
-          {/* Список правил (Статичні плашки) */}
+          {/* Список правил з плавним акордеоном */}
           <div className="flex flex-col gap-4">
-            {contentItems.map((item) => (
-              <div 
-                key={item.id}
-                id={`section-${item.id}`}
-                className="bg-white border border-[#E9ECEB] rounded-[16px] shadow-[0_2px_4px_rgba(0,0,0,0.01)]"
-              >
-                {/* Шапка плашки */}
-                <div className="w-full flex items-center justify-between p-5 text-left select-none">
-                  <div className="flex items-center gap-4">
-                    {/* Круглий бейдж з номером */}
-                    <div className="w-8 h-8 rounded-full bg-[#EAF5F1] text-[#173B33] font-bold text-[14px] flex items-center justify-center shrink-0">
-                      {item.id}
-                    </div>
-                    <h2 className="text-[16px] font-bold text-[#173B33] tracking-tight">
-                      {item.title}
-                    </h2>
-                  </div>
-                  
-                  {/* Статична стрілочка вниз */}
-                  <svg 
-                    width="20" height="20" viewBox="0 0 24 24" fill="none" 
-                    stroke="#6D8279" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                    className="shrink-0"
+            {policyItems.map((item) => {
+              const isOpen = expandedId === item.id;
+              
+              return (
+                <div 
+                  key={item.id}
+                  id={`section-${item.id}`}
+                  className="w-full bg-white border border-[#E9ECEB] rounded-[16px] overflow-hidden flex flex-col shadow-[0_2px_4px_rgba(0,0,0,0.01)]"
+                >
+                  {/* Клікабельна шапка */}
+                  <button 
+                    type="button"
+                    onClick={() => toggleSection(item.id)}
+                    className="w-full flex items-center justify-between p-5 text-left select-none hover:bg-[#FDFEFE] transition-colors focus:outline-none"
                   >
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
-                </div>
+                    <div className="flex items-center gap-4">
+                      <div className="w-8 h-8 rounded-full bg-[#EAF5F1] text-[#173B33] font-bold text-[14px] flex items-center justify-center shrink-0">
+                        {item.id}
+                      </div>
+                      <h2 className="text-[16px] font-bold text-[#173B33] tracking-tight">
+                        {item.title}
+                      </h2>
+                    </div>
+                    
+                    {/* Стрілочка з плавним поворотом */}
+                    <svg 
+                      width="20" height="20" viewBox="0 0 24 24" fill="none" 
+                      stroke="#6D8279" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                      className={`shrink-0 transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
+                    >
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </button>
 
-                {/* Текст (завжди розгорнутий) */}
-                <div className="px-5 pb-5 pl-[68px]">
-                  <p className="text-[14px] font-medium text-[#6D8279] leading-[22px] m-0">
-                    {item.content}
-                  </p>
+                  {/* Контейнер плавної анімації висоти */}
+                  <div 
+                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                      isOpen ? 'max-h-[1000px] opacity-100 border-t border-[#F5F7F6]' : 'max-h-0 opacity-0'
+                    }`}
+                  >
+                    {/* Контент картки з нормальним красивим форматуванням */}
+                    <div className="p-5 pl-5 md:pl-[68px] flex flex-col gap-4 text-[14px] font-medium text-[#6D8279] leading-[22px]">
+                      <p className="m-0 text-[#6D8279]">
+                        {item.intro}
+                      </p>
+                      
+                      {item.subIntro && (
+                        <p className="font-semibold text-[#173B33] m-0 mt-1">
+                          {item.subIntro}
+                        </p>
+                      )}
+                      
+                      {item.bullets && (
+                        <ul className="list-disc pl-5 leading-[24px] flex flex-col gap-1.5 text-[#6D8279]">
+                          {item.bullets.map((bullet, index) => (
+                            <li key={index} className="pl-1">
+                              {bullet}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      
+                      {item.outro && (
+                        <p className="m-0 mt-2 text-[#6D8279]">
+                          {item.outro}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-
         </main>
       </div>
     </div>

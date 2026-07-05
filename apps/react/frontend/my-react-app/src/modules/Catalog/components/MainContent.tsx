@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 
 // ================= SVG ІКОНКИ ДЛЯ МАКЕТУ =================
@@ -15,11 +16,12 @@ const SearchIcon = () => (
   </svg>
 );
 
-const HeartIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M10.0001 17.0708L8.79173 15.9708C4.50007 12.0875 1.66673 9.52083 1.66673 6.33333C1.66673 3.76667 3.6834 1.75 6.25007 1.75C7.70007 1.75 9.09173 2.425 10.0001 3.49167C10.9084 2.425 12.3001 1.75 13.7501 1.75C16.3167 1.75 18.3334 3.76667 18.3334 6.33333C18.3334 9.52083 15.5001 12.0875 11.2084 15.9792L10.0001 17.0708Z" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
+const DISCOUNT_OPTIONS = [
+  { id: '0-10', name: 'до 10%', count: 120 },
+  { id: '10-30', name: 'від 10% до 30%', count: 85 },
+  { id: '30-50', name: 'від 30% до 50%', count: 43 },
+  { id: '50+', name: 'більше 50%', count: 14 },
+];
 
 const GridIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -187,7 +189,7 @@ export function MainContent() {
     const [selectedStores, setSelectedStores] = useState<string[]>([]);
     const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>([]); 
     const [selectedOffers, setSelectedOffers] = useState<string[]>([]);
-
+    const [selectedDiscounts, setSelectedDiscounts] = useState<string[]>([]);
   // НОВІ СТЕЙТИ: пошук, сортування, вигляд
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [debouncedSearch, setDebouncedSearch] = useState<string>('');
@@ -242,6 +244,13 @@ export function MainContent() {
     );
     setPage(1);
   };
+
+  const toggleDiscount = (id: string) => {
+    setSelectedDiscounts(prev => 
+        prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+    setPage(1);
+};
 
   const toggleOffer = (offerId: string) => {
     setSelectedOffers(prev => 
@@ -441,6 +450,33 @@ export function MainContent() {
             </div>
           </div>
 
+            {/* 5. РОЗМІР ЗНИЖКИ (ДИНАМІЧНИЙ) */}
+            <div className="mb-[24px]">
+                <h4 className="font-manrope text-[12px] font-bold text-[#6D8279] tracking-[0.06em] uppercase mb-[12px]">
+                    Розмір знижки
+                </h4>
+            <div className="flex flex-col gap-[12px]">
+                {DISCOUNT_OPTIONS.map((item) => {
+                const isDiscountActive = selectedDiscounts.includes(item.id);
+                return (
+                    <label 
+                    key={item.id} 
+                    onClick={() => toggleDiscount(item.id)}
+                    className="flex items-center gap-[10px] cursor-pointer group"
+                    >
+                    <div className={`w-[18px] h-[18px] rounded-[4px] flex items-center justify-center shrink-0 transition-colors ${
+                        isDiscountActive ? 'bg-[#173B33] border-none' : 'border border-[#D1D5DB] bg-white group-hover:border-[#9CA3AF]'
+                    }`}>
+                        {isDiscountActive && <CheckIcon />}
+                    </div>
+                    <span className="flex-1 text-[13px] font-medium text-[#374151]">{item.name}</span>
+                    <span className="text-[12px] text-[#9CA3AF]">{item.count}</span>
+                    </label>
+                );
+                })}
+            </div>
+            </div>
+
           <button 
             onClick={resetFilters}
             className="w-full border border-[#E5E7EB] bg-white rounded-[8px] py-[10px] font-inter text-[14px] font-semibold text-[#6D8279] transition-colors hover:bg-[#F9FAFB] cursor-pointer"
@@ -624,7 +660,7 @@ export function MainContent() {
               return (
                 <div key={product.id} className="border border-[#E5E7EB] rounded-[12px] p-[16px] flex flex-col bg-white hover:shadow-sm transition-shadow">
                   {/* Беджі та вподобане */}
-                  <div className="flex justify-between items-start mb-[12px] min-h-[24px]">
+                  <div className="flex justify-between items-start  min-h-[24px]">
                     <div className="flex gap-[4px]">
                       {discountPercent > 0 && (
                         <span className="text-[10px] font-bold px-[6px] py-[2px] rounded-[4px] bg-[#FFD600] text-[#111827]">
@@ -632,19 +668,16 @@ export function MainContent() {
                         </span>
                       )}
                     </div>
-                    <button className="bg-transparent border-none cursor-pointer hover:text-red-500 transition-colors text-[#111827]">
-                      <HeartIcon />
-                    </button>
                   </div>
                   
                   {/* Фото товару */}
-                  <div className="w-full h-[140px] bg-[#F9FAFB] rounded-[8px] flex items-center justify-center mb-[16px] overflow-hidden p-[8px]">
+                  <Link to={`/product/${product.id}`} className="w-full h-[140px] bg-[#F9FAFB] rounded-[8px] flex items-center justify-center mb-[16px] overflow-hidden p-[8px]">
                     {product.image_url ? (
                       <img src={product.image_url} alt={product.title} className="max-w-full max-h-full object-contain mix-blend-multiply" />
                     ) : (
                       <div className="w-[40px] h-[40px] bg-[#E5E7EB] rounded-[6px] opacity-40" />
                     )}
-                  </div>
+                  </Link>
                   
                   {/* Інформація */}
                   <div className="flex flex-col flex-1">
@@ -679,17 +712,25 @@ export function MainContent() {
                             {currentPrice} ₴
                           </span>
                         </div>
+                        
                         {oldPrice && (
                           <div className="flex flex-col items-end gap-[4px]">
-                            <span className="text-[11px] text-[#9CA3AF] line-through leading-none">
+                            {discountAmount > 0 && (
+                              <span className="text-[11px] text-[#9CA3AF] line-through leading-none">
                               {oldPrice} ₴
-                            </span>
-                            <span className="bg-[#EAF7F2] text-[#265447] text-[10px] font-bold px-[4px] py-[2px] rounded-[4px] leading-none">
-                              -{discountAmount} ₴
-                            </span>
+                              </span>
+                            )}
+                            
+                            {/* Показуємо бейдж зі знижкою лише якщо вона більша за 0 */}
+                            {discountAmount > 0 && (
+                              <span className="bg-[#EAF7F2] text-[#265447] text-[10px] font-bold px-[4px] py-[2px] rounded-[4px] leading-none">
+                                -{discountAmount} ₴
+                              </span>
+                            )}
                           </div>
                         )}
                       </div>
+                      
                       <button 
                         className={`w-full py-[8px] rounded-[6px] font-semibold text-[13px] border cursor-pointer transition-colors ${
                           oldPrice 
@@ -700,6 +741,7 @@ export function MainContent() {
                         Порівняти
                       </button>
                     </div>
+
                   </div>
                 </div>
               );

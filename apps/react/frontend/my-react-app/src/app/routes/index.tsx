@@ -10,6 +10,7 @@ const LoginPage = lazy(() => import('@/pages/Login/ui/LoginPage'));
 const ProductDetailPage = lazy(() => import('@/pages/ProductDetail/ui/ProductDetail'));
 const ProfilePage = lazy(() => import('@/pages/Profile/ui/ProfilePage'));
 const CatalogPage = lazy(() => import('@/pages/Catalog/ui/Catalog'));
+const ShopsPage = lazy(() => import('@/pages/Shops/ui/ShopPage'));
 const CartPage = lazy(() => import('@/pages/Cart/ui/CartPage.tsx').then(m => ({ default: m.CartPage })));
 
 const ConfidentialPolicyPage = lazy(() => import('@/pages/ConfidentionalPolicy/ui/ConfidentialPolicyPage'));
@@ -70,6 +71,10 @@ const router = createBrowserRouter([
       {
         path: '/using-conditions',
         element: <Suspense fallback={fallback}><UsingConditionsPage /></Suspense>,
+      },
+      {
+        path: '/shops',
+        element: <Suspense fallback={fallback}><ShopsPage /></Suspense>,
       }
     ]
   }
