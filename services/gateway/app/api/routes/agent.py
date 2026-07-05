@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, HTTPException, Depends
+from fastapi import APIRouter, Request, Depends, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 import httpx
 
@@ -48,7 +48,7 @@ async def proxy_to_agent(
         if response.status_code >= 400:
             body = await response.aread()
             await response.aclose()
-            return JSONResponse(
+            return Response(
                 status_code=response.status_code,
                 content=body,
                 media_type="application/json",

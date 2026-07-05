@@ -226,6 +226,7 @@ async def login(
             secure=_COOKIE_SECURE,
             samesite="lax",
             max_age=_REFRESH_TOKEN_MAX_AGE,
+            path="/",
         )
 
         logger.success(f"Користувач {_mask_email(body.email)} успішно авторизований. ID: {user.id}")
@@ -322,6 +323,18 @@ async def refresh(request: Request, response: Response, db: AsyncSession = Depen
     logger.info(
         f"Успішно оновлено токени для користувача з ID: {payload.get('sub')} (роль: {user.role})"
     )
+
+    old_jti = payload.get("jti")
+    if old_jti:
+        exp_ts = payload.get("exp")
+        if exp_ts:
+            if isinstance(exp_ts, datetime):
+                old_ttl = int((exp_ts - datetime.now(UTC)).total_seconds())
+            else:
+                old_ttl = int(exp_ts - datetime.now(UTC).timestamp())
+            if old_ttl > 0:
+                await blacklist_token(old_jti, old_ttl)
+
     new_access_token = create_access_token(str(user.id), user.role, user.email)
     new_refresh_token = create_refresh_token(str(user.id), user.role, user.email)
 
@@ -332,6 +345,7 @@ async def refresh(request: Request, response: Response, db: AsyncSession = Depen
         secure=_COOKIE_SECURE,
         samesite="lax",
         max_age=_REFRESH_TOKEN_MAX_AGE,
+        path="/",
     )
     return TokenResponse(
         access_token=new_access_token,
@@ -406,6 +420,7 @@ async def logout(request: Request, response: Response):
         httponly=True,
         secure=_COOKIE_SECURE,
         samesite="lax",
+        path="/",
     )
     return
 

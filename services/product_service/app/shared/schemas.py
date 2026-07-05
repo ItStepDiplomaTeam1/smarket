@@ -18,7 +18,9 @@ class StoreStatsResponse(BaseModel):
     total_products: int
     promo_products: int
     max_savings: int
-
+    store_name: str
+    store_description: str
+    store_logo_url: str
 
 
 class CategoryResponse(BaseModel):
@@ -141,6 +143,7 @@ class ProductFilters(BaseModel):
 
 class ProductVisibilityUpdate(BaseModel):
     is_hidden: bool
+
 
 class CategoryVisibilityUpdate(BaseModel):
     is_hidden: bool

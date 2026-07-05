@@ -12,9 +12,14 @@ async def lifespan(app: FastAPI):
         limits=httpx.Limits(max_keepalive_connections=50, max_connections=100),
         timeout=10.0,
     )
+    app.state.auth_http_client = httpx.AsyncClient(
+        limits=httpx.Limits(max_keepalive_connections=10, max_connections=20),
+        timeout=10.0,
+    )
 
     yield
     await app.state.http_client.aclose()
+    await app.state.auth_http_client.aclose()
 
 
 app = FastAPI(title="Api Gateway", version="0.1.0", lifespan=lifespan, redirect_slashes=False)

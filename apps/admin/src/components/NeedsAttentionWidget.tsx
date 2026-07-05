@@ -1,6 +1,7 @@
 import React from 'react';
 import type { DashboardData } from '@/hooks/useDashboardData';
-import { AlertTriangle, RefreshCw, Info } from 'lucide-react';
+import { AlertTriangle, RefreshCw, Info, ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface NeedsAttentionWidgetProps {
   items: DashboardData['needsAttention'];
@@ -35,6 +36,12 @@ export const NeedsAttentionWidget: React.FC<NeedsAttentionWidgetProps> = ({ item
             </li>
           ))}
         </ul>
+      </div>
+
+      <div className="px-5 py-3 border-t border-border mt-auto">
+        <Link to="/products" className="text-sm font-medium text-textMuted hover:text-primary transition-colors flex items-center">
+          Перейти до товарів <ChevronRight size={16} className="ml-1" />
+        </Link>
       </div>
     </div>
   );

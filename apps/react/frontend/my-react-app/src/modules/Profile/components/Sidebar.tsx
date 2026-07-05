@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { useFetchMe } from '@/hooks/api/useAuthApi';
+import { apiClient } from '@/shared/api/apiClient';
 
 import profileHome from '@/shared/assets/profile-home.svg';
 import profileCart from '@/shared/assets/profile-cart.svg';
@@ -41,7 +42,12 @@ export const Sidebar = () => {
 
   const progress = user?.name ? 40 : 20;
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await apiClient.post('/api/v1/auth/logout');
+    } catch {
+      // Clear local state regardless of server response
+    }
     logout();
     navigate('/');
   };

@@ -96,7 +96,7 @@ func ExtractLoadWorker(conn *amqp.Connection, mongoDB *mongo.Database, queueName
 	log.Printf("[ExtractLoad] Очікування задач у черзі %q...", queueName)
 
 	for msg := range msgs {
-		processExtractTask(msg, mongoDB)
+		processExtractTask(ch, msg, mongoDB)
 	}
 
 	log.Println("[ExtractLoad] Канал RabbitMQ закрито, горутина завершена.")
@@ -106,7 +106,7 @@ func ExtractLoadWorker(conn *amqp.Connection, mongoDB *mongo.Database, queueName
 // При помилці повертає повідомлення в чергу (nack + requeue), але не більше maxRetries разів.
 const maxRetries = 3
 
-func processExtractTask(msg amqp.Delivery, mongoDB *mongo.Database) {
+func processExtractTask(ch *amqp.Channel, msg amqp.Delivery, mongoDB *mongo.Database) {
 	var task ETLTask
 	if err := json.Unmarshal(msg.Body, &task); err != nil {
 		log.Printf("[ExtractLoad] Помилка десеріалізації задачі: %v | body: %s", err, msg.Body)
@@ -142,9 +142,33 @@ func processExtractTask(msg amqp.Delivery, mongoDB *mongo.Database) {
 				task.StoreID, maxRetries, err)
 			_ = msg.Nack(false, false) // дропаємо — більше не реквюїмо
 		} else {
-			log.Printf("[ExtractLoad] ✗ ETL для store_id=%s: спроба %d/%d, повертаємо у чергу: %v",
+			log.Printf("[ExtractLoad] ✗ ETL для store_id=%s: спроба %d/%d, повторно публікуємо у чергу: %v",
 				task.StoreID, retryCount+1, maxRetries, err)
-			_ = msg.Nack(false, true) // повертаємо в чергу
+			
+			// Копіюємо і оновлюємо хедери для ретраю
+			headers := msg.Headers
+			if headers == nil {
+				headers = amqp.Table{}
+			}
+			headers["x-retry-count"] = retryCount + 1
+
+			errPublish := ch.Publish(
+				msg.Exchange,
+				msg.RoutingKey,
+				false,
+				false,
+				amqp.Publishing{
+					ContentType: msg.ContentType,
+					Body:        msg.Body,
+					Headers:     headers,
+				},
+			)
+			if errPublish != nil {
+				log.Printf("[ExtractLoad] ✗ Помилка републікації для ретраю: %v. Використовуємо Nack(requeue=true) як запасний варіант", errPublish)
+				_ = msg.Nack(false, true)
+			} else {
+				_ = msg.Ack(false)
+			}
 		}
 		return
 	}

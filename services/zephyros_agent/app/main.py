@@ -165,7 +165,17 @@ async def chat(
                     )
                 )
             elif msg.role == "assistant":
-                content_str = msg.content if isinstance(msg.content, str) else json.dumps(msg.content, ensure_ascii=False)
+                if isinstance(msg.content, str):
+                    content_str = msg.content.strip()
+                    if content_str.startswith("```"):
+                        lines = content_str.splitlines()
+                        if lines[0].startswith("```"):
+                            lines = lines[1:]
+                        if lines and lines[-1].startswith("```"):
+                            lines = lines[:-1]
+                        content_str = "\n".join(lines).strip()
+                else:
+                    content_str = json.dumps(msg.content, ensure_ascii=False)
                 message_history.append(
                     pydantic_ai_msgs.ModelResponse(
                         parts=[pydantic_ai_msgs.TextPart(content=content_str)],

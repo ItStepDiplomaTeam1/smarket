@@ -184,7 +184,7 @@ async def get_products(
         .where(Price.product_id.in_(product_ids))
     )
     if store_ids:
-        offers_stmt = offers_stmt.where(Price.store_id.in_(store_ids))
+        offers_stmt = offers_stmt.join(Store, Price.store_id == Store.external_id).where(Store.retail_chain.in_(store_ids))
 
     offers_result = await db.execute(offers_stmt)
     prices = offers_result.scalars().all()
