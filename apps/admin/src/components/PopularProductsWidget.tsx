@@ -1,6 +1,7 @@
 import React from 'react';
 import type { DashboardData } from '@/hooks/useDashboardData';
 import { Star } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface PopularProductsWidgetProps {
   products: DashboardData['popularProducts'];
@@ -42,9 +43,12 @@ export const PopularProductsWidget: React.FC<PopularProductsWidgetProps> = ({ pr
       </div>
 
       <div className="p-4 border-t border-border mt-auto">
-        <button className="w-full py-2 bg-background border border-border rounded-lg text-sm font-medium text-textMain hover:bg-secondary hover:text-primary transition-colors">
+        <Link 
+          to="/products"
+          className="w-full block text-center py-2 bg-background border border-border rounded-lg text-sm font-medium text-textMain hover:bg-secondary hover:text-primary transition-colors"
+        >
           Переглянути всі
-        </button>
+        </Link>
       </div>
     </div>
   );

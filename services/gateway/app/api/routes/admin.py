@@ -90,6 +90,59 @@ async def get_recent_users(request: Request):
     return await _proxy_to_auth(request, "recent-users", payload)
 
 
+@router.get("/dashboard-summary")
+async def get_dashboard_summary(request: Request):
+    """
+    Returns aggregate stats and mock data for the admin dashboard.
+    Fetches real metrics from product_service and auth_service.
+    """
+    _verify_admin_token(request)
+    client: httpx.AsyncClient = request.app.state.http_client
+
+    async def fetch_product_stats():
+        try:
+            resp = await client.get(f"{settings.PRODUCT_SERVICE_URL}/api/v1/internal/dashboard-stats", timeout=5.0)
+            if resp.status_code == 200:
+                return resp.json()
+        except Exception:
+            pass
+        return {"totalProducts": 0, "totalStores": 0, "pricesUpdatedToday": 0}
+
+    async def fetch_auth_stats():
+        try:
+            resp = await client.get(f"{settings.AUTH_SERVICE_URL}/internal/dashboard-stats", timeout=5.0)
+            if resp.status_code == 200:
+                return resp.json()
+        except Exception:
+            pass
+        return {"totalUsers": 0}
+
+    prod_stats, auth_stats = await asyncio.gather(fetch_product_stats(), fetch_auth_stats())
+
+    return JSONResponse(content={
+        "metrics": {
+            "totalProducts": prod_stats.get("totalProducts", 0),
+            "totalStores": prod_stats.get("totalStores", 0),
+            "totalUsers": auth_stats.get("totalUsers", 0),
+            "pricesUpdatedToday": prod_stats.get("pricesUpdatedToday", 0),
+        },
+        "priceDynamics": [],
+        "systemLogs": [],
+        "needsAttention": [],
+        "popularCategories": [],
+        "newUsers": [],
+        "searchQueries": [],
+        "dataCollection": {
+            "updatedToday": 0,
+            "activeParsers": 0,
+            "errors": 0
+        },
+        "sourceStatus": [],
+        "systemStatus": [],
+        "popularProducts": []
+    })
+
+
 
 async def _probe_http_service(client: httpx.AsyncClient, url: str, timeout: float = 3.0) -> str:
     try:

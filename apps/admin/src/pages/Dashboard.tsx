@@ -2,13 +2,11 @@ import React from 'react';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { MetricCard } from '@/components/MetricCard';
 import { SystemLogsTable } from '@/components/SystemLogsTable';
-import { SystemStatusWidget } from '@/components/SystemStatusWidget';
 import { QuickActions } from '@/components/QuickActions';
 
 import { NeedsAttentionWidget } from '@/components/NeedsAttentionWidget';
 import { PopularCategoriesWidget } from '@/components/PopularCategoriesWidget';
 import { NewUsersWidget } from '@/components/NewUsersWidget';
-import { SearchQueriesWidget } from '@/components/SearchQueriesWidget';
 import { PopularProductsWidget } from '@/components/PopularProductsWidget';
 
 import { Package, Store, Users, Tag } from 'lucide-react';
@@ -54,28 +52,24 @@ const Dashboard: React.FC = () => {
               value={data.metrics.totalProducts.toLocaleString('uk-UA')}
               icon={Package}
               iconBgColor="#10B981"
-              trend={{ value: data.metrics.totalProductsTrend, isPositive: true, text: 'від учора' }}
             />
             <MetricCard
               title="Магазинів"
               value={data.metrics.totalStores}
               icon={Store}
               iconBgColor="#F59E0B"
-              trend={{ value: data.metrics.totalStoresTrend, isPositive: true, text: 'нових' }}
             />
             <MetricCard
               title="Користувачів"
               value={data.metrics.totalUsers.toLocaleString('uk-UA')}
               icon={Users}
               iconBgColor="#8B5CF6"
-              trend={{ value: data.metrics.totalUsersTrend, isPositive: true, text: 'від учора' }}
             />
             <MetricCard
               title="Цін оновлено сьогодні"
               value={data.metrics.pricesUpdatedToday.toLocaleString('uk-UA')}
               icon={Tag}
               iconBgColor="#3B82F6"
-              trend={{ value: data.metrics.pricesUpdatedTrend, isPositive: true, text: 'від учора' }}
             />
           </div>
 
@@ -85,18 +79,16 @@ const Dashboard: React.FC = () => {
           <SystemLogsTable logs={data.systemLogs} />
 
           {/* 4-col bottom widgets */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             <NeedsAttentionWidget items={data.needsAttention} />
             <NewUsersWidget />
             <PopularCategoriesWidget categories={data.popularCategories} />
-            <SearchQueriesWidget queries={data.searchQueries} />
           </div>
         </div>
 
         {/* Right Column ("Sidebar" of widgets) */}
         <div className="flex flex-col gap-6">
           <QuickActions />
-          <SystemStatusWidget />
           <PopularProductsWidget products={data.popularProducts} />
         </div>
         
