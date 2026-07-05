@@ -2,9 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/shared/api/apiClient';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 
-// -------------------------------------------------------
-//  Типи для відгуків (відповідають ReviewResponse з бекенду)
-// -------------------------------------------------------
 
 export interface Review {
   id: string;
@@ -23,9 +20,6 @@ export interface ReviewCreatePayload {
   user_name?: string;
 }
 
-// -------------------------------------------------------
-//  GET — завантажити відгуки для конкретного товару
-// -------------------------------------------------------
 
 export const useFetchProductReviews = (productId: number) => {
   return useQuery<Review[]>({
@@ -40,9 +34,27 @@ export const useFetchProductReviews = (productId: number) => {
   });
 };
 
-// -------------------------------------------------------
-//  POST — створити новий відгук
-// -------------------------------------------------------
+export const useFetchUserReviews = (userId: string | undefined) => {
+  return useQuery<Review[]>({
+    queryKey: ['reviews', 'user', userId],
+    queryFn: async () => {
+      try {
+        const response = await apiClient.get<Review[]>(
+          `/api/v1/reviews/user/${userId}`
+        );
+        return response.data;
+      } catch (error: any) {
+        // Якщо ендпоінт ще не задеплоєно (405/404) — повертаємо пустий масив
+        if (error?.response?.status === 405 || error?.response?.status === 404) {
+          return [];
+        }
+        throw error;
+      }
+    },
+    enabled: !!userId,
+    retry: false,
+  });
+};
 
 export const useCreateReview = () => {
   const queryClient = useQueryClient();
@@ -62,9 +74,6 @@ export const useCreateReview = () => {
   });
 };
 
-// -------------------------------------------------------
-//  DELETE — видалити свій відгук
-// -------------------------------------------------------
 
 export const useDeleteReview = (productId: number) => {
   const queryClient = useQueryClient();

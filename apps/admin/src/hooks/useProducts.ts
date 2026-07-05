@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 
 export interface MeiliSearchProduct {
@@ -12,6 +12,7 @@ export interface MeiliSearchProduct {
   category_id: number | null;
   category_slug: string | null;
   category_name: string | null;
+  is_hidden: boolean;
   offers: Array<{
     store: {
       id: string;
@@ -49,6 +50,7 @@ const fetchProducts = async (params: FetchProductsParams): Promise<MeiliSearchRe
     q: params.q?.trim() || '',
     limit: params.limit,
     offset,
+    show_hidden: true, // Адмінка завжди повинна мати доступ до прихованих товарів
   };
 
   if (params.categorySlug) {
@@ -67,15 +69,52 @@ const fetchProducts = async (params: FetchProductsParams): Promise<MeiliSearchRe
   return data;
 };
 
-/**
- * Custom TanStack Query hook to search products indexed in Meilisearch.
- *
- * @param params - Search and filter parameters (query, page, limit, category, retailer, inStock).
- */
 export function useProducts(params: FetchProductsParams) {
   return useQuery<MeiliSearchResponse, Error>({
     queryKey: ['productsSearch', params],
     queryFn: () => fetchProducts(params),
-    staleTime: 30_000, // 30 seconds cache
+    staleTime: 30_000,
   });
 }
+
+export const useToggleProductVisibility = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ productId, isHidden }: { productId: number; isHidden: boolean }) => {
+      await apiClient.patch(`/products/${productId}/visibility`, { is_hidden: isHidden });
+      return { productId, isHidden };
+    },
+    onMutate: async ({ productId, isHidden }) => {
+      // Cancel any outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ['productsSearch'] });
+
+      // Snapshot the previous value
+      const previousQueries = queryClient.getQueriesData({ queryKey: ['productsSearch'] });
+
+      // Optimistically update to the new value
+      queryClient.setQueriesData(
+        { queryKey: ['productsSearch'] },
+        (oldData: MeiliSearchResponse | undefined) => {
+          if (!oldData) return oldData;
+          return {
+            ...oldData,
+            hits: oldData.hits.map((hit) =>
+              hit.id === productId ? { ...hit, is_hidden: isHidden } : hit
+            ),
+          };
+        }
+      );
+
+      return { previousQueries };
+    },
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousQueries) {
+        context.previousQueries.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+    },
+  });
+};

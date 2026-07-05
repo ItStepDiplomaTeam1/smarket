@@ -4,23 +4,34 @@ import { useSystemStatus, type ServiceStatus } from '@/hooks/useSystemStatus';
 // ── Display config ────────────────────────────────────────────────────────────
 
 const SERVICE_LABELS: Record<string, string> = {
-  'API Gateway': 'API Gateway',
-  'Search Service': 'Пошуковий сервіс (Rust)',
-  PostgreSQL:    'PostgreSQL',
-  Redis:         'Redis',
-  RabbitMQ:      'RabbitMQ',
-  Meilisearch:   'Meilisearch',
+  'API Gateway':      'API Gateway',
+  'Auth Service':     'Служба авторизації (FastAPI)',
+  'Product Service':  'Служба товарів (FastAPI)',
+  'Cart Service':     'Служба кошика (FastAPI)',
+  'Reviews Service':  'Служба відгуків (FastAPI)',
+  'Search Service':   'Пошуковий сервіс (Rust)',
+  'ETL Service':      'Служба імпорту (Go ETL)',
+  'Email Worker':     'Служба розсилок (FastStream)',
 };
 
-// Ordered list — Gateway always first as it's the "entry point"
-const SERVICE_ORDER = ['API Gateway', 'Search Service', 'PostgreSQL', 'Redis', 'RabbitMQ', 'Meilisearch'];
+// Ordered list of microservices only
+const SERVICE_ORDER = [
+  'API Gateway',
+  'Auth Service',
+  'Product Service',
+  'Cart Service',
+  'Reviews Service',
+  'Search Service',
+  'ETL Service',
+  'Email Worker',
+];
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 const StatusDot: React.FC<{ status: ServiceStatus }> = ({ status }) => {
   const isOk = status === 'Працює';
   return (
-    <div className="relative flex h-2.5 w-2.5 items-center justify-center">
+    <div className="relative flex h-2.5 w-2.5 items-center justify-center shrink-0">
       {isOk && (
         <>
           {/* Pulsing ring for healthy services */}
@@ -46,8 +57,8 @@ const StatusText: React.FC<{ status: ServiceStatus }> = ({ status }) => {
 
 // Skeleton row shown while data is loading
 const SkeletonRow: React.FC = () => (
-  <div className="flex justify-between items-center">
-    <div className="h-3 w-24 bg-border rounded animate-pulse" />
+  <div className="flex justify-between items-center py-1">
+    <div className="h-3 w-32 bg-border rounded animate-pulse" />
     <div className="h-3 w-14 bg-border rounded animate-pulse" />
   </div>
 );
@@ -77,7 +88,7 @@ export const SystemStatusWidget: React.FC = () => {
       </div>
 
       {/* Service rows */}
-      <div className="space-y-3">
+      <div className="space-y-3.5">
         {isLoading && SERVICE_ORDER.map((name) => (
           <SkeletonRow key={name} />
         ))}

@@ -14,10 +14,18 @@ class StoreResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class StoreStatsResponse(BaseModel):
+    total_products: int
+    promo_products: int
+    max_savings: int
+
+
+
 class CategoryResponse(BaseModel):
     id: int
     slug: str
     name: str
+    is_hidden: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -54,6 +62,7 @@ class ProductResponse(BaseModel):
     canonical_category_id: Optional[int] = None
     category: Optional[CategoryResponse] = None
     created_at: datetime.datetime
+    is_hidden: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -128,3 +137,10 @@ class ProductFilters(BaseModel):
     search: Optional[str] = None
     skip: int = 0
     limit: int = 100
+
+
+class ProductVisibilityUpdate(BaseModel):
+    is_hidden: bool
+
+class CategoryVisibilityUpdate(BaseModel):
+    is_hidden: bool

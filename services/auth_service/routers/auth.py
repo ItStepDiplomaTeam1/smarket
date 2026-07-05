@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from services.auth_service.database.models import User
 from services.auth_service.database.session import get_db
 from services.auth_service.plugins.checking.user import get_authenticated_user
-from services.auth_service.plugins.security.hash.password import hash_password
+from services.auth_service.plugins.security.hash.password import hash_password, verify_password
 from services.auth_service.plugins.security.jwt_handler import (
     JWTExpiredError,
     JWTInvalidError,
@@ -31,12 +31,20 @@ from services.auth_service.shared.DTO import (
     RegisterResponse,
     TokenResponse,
     UserResponse,
+    ChangePasswordRequest,
+    UpdateSettingsRequest,
 )
 
 router = APIRouter(default_response_class=ORJSONResponse)
 
+def _get_cookie_secure() -> bool:
+    val = os.getenv("COOKIE_SECURE")
+    if val is not None:
+        return val.lower() in ("true", "1", "yes")
+    return os.getenv("DEBUG", "False").lower() not in ("true", "1", "yes")
+
 _REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60
-_COOKIE_SECURE = os.getenv("DEBUG", "False").lower() not in ("true", "1", "yes")
+_COOKIE_SECURE = _get_cookie_secure()
 _security = HTTPBearer()
 
 
@@ -342,7 +350,34 @@ async def get_me(current_user: User = Depends(_get_current_user)):
         "email": current_user.email,
         "username": username,
         "role": current_user.role,
+        "settings": current_user.settings or {},
     }
+
+@router.patch("/password", status_code=status.HTTP_200_OK)
+async def change_password(
+    body: ChangePasswordRequest,
+    current_user: User = Depends(_get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verify_password(body.old_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Поточний пароль вказано неправильно",
+        )
+    
+    current_user.hashed_password = hash_password(body.new_password)
+    await db.commit()
+    return {"message": "Пароль успішно змінено"}
+
+@router.patch("/settings", status_code=status.HTTP_200_OK)
+async def update_settings(
+    body: UpdateSettingsRequest,
+    current_user: User = Depends(_get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    current_user.settings = body.settings
+    await db.commit()
+    return {"message": "Налаштування збережено", "settings": current_user.settings}
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

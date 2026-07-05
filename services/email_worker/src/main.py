@@ -8,11 +8,26 @@ from src.schemas import EmailEvent
 from src.services import process_email_sending
 
 
+import asyncio
+
 # 1.1 Створюємо брокер (з'єднання з RabbitMQ)
 broker = RabbitBroker(url=settings.rabbitmq_url)
 
 # 1.2 Створюємо FastStream і передаємо йому брокер
 app = FastStream(broker=broker)
+
+async def handle_health_check(reader, writer):
+    writer.write(b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{\"status\":\"ok\"}\n")
+    await writer.drain()
+    writer.close()
+    await writer.wait_closed()
+
+@app.after_startup
+async def start_health_server():
+    server = await asyncio.start_server(handle_health_check, '0.0.0.0', 8085)
+    asyncio.create_task(server.serve_forever())
+    print("[!] HEALTH SERVER RUNNING ON PORT 8085")
+
 
 # 2.1 Створюємо чергу для помилок (Мертва черга)
 dlq = RabbitQueue("email_dead_letter_queue")

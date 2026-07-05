@@ -95,3 +95,21 @@ async def get_current_user(
 async def get_user_by_id(request: Request, user_id: str):
     """Отримати інформацію про користувача за його ID (включаючи ім'я)."""
     return await proxy_request(request, f"users/{user_id}")
+
+
+@router.patch("/password")
+async def change_password(
+    request: Request,
+    _: dict = Depends(verify_jwt),
+):
+    """Зміна пароля користувача."""
+    return await proxy_request(request, "password")
+
+
+@router.patch("/settings")
+async def update_settings(
+    request: Request,
+    _: dict = Depends(verify_jwt),
+):
+    """Оновлення налаштувань користувача."""
+    return await proxy_request(request, "settings")

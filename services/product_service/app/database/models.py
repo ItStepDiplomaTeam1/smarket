@@ -77,6 +77,7 @@ class Category(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(
         "created_at", DateTime(timezone=True), nullable=False
     )
+    is_hidden: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     products: Mapped[list["Product"]] = relationship(
         "Product", back_populates="category"
@@ -115,6 +116,7 @@ class Product(Base):
     created_at: Mapped[datetime.datetime] = mapped_column(
         "created_at", DateTime(timezone=True), nullable=False
     )
+    is_hidden: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
     prices: Mapped[list["Price"]] = relationship("Price", back_populates="product")
     store_products: Mapped[list["StoreProduct"]] = relationship(

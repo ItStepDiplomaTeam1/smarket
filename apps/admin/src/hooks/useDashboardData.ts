@@ -28,22 +28,16 @@ export interface DashboardData {
   popularProducts: Array<{ id: string; name: string; category: string; rating: number; reviews: number; image: string; volume?: string }>;
 }
 
-// NOTE: Replace this with a real API call when the backend is ready:
-// import { axiosInstance } from '@/api/axiosInstance';
-// const fetchDashboardData = async (): Promise<DashboardData> => {
-//   try {
-//     const response = await axiosInstance.get<DashboardData>('/admin/dashboard-summary');
-//     if (!response.data?.metrics) return getMockDashboardData();
-//     return response.data;
-//   } catch {
-//     return getMockDashboardData();
-//   }
-// };
+import { apiClient } from '@/lib/apiClient';
 
 const fetchDashboardData = async (): Promise<DashboardData> => {
-  // Simulates a network delay so Suspense / loading states work correctly
-  await new Promise((resolve) => setTimeout(resolve, 400));
-  return getMockDashboardData();
+  try {
+    const response = await apiClient.get<DashboardData>('/admin/dashboard-summary');
+    if (!response.data?.metrics) return getMockDashboardData();
+    return response.data;
+  } catch {
+    return getMockDashboardData();
+  }
 };
 
 export const useDashboardData = () => {

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+# Trigger CI rebuild 2
 from fastapi.responses import ORJSONResponse
-from sqlalchemy import select, func, and_
+from sqlalchemy import select, func, and_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from typing import Optional
@@ -23,6 +24,9 @@ from app.shared.schemas import (
     ProductWithStoresResponse,
     CategoryResponse,
     PaginatedProductsResponse,
+    ProductResponse,
+    ProductVisibilityUpdate,
+    CategoryVisibilityUpdate,
 )
 
 from app.database.session import get_db
@@ -128,9 +132,10 @@ async def get_products(
         base_stmt = base_stmt.where(product_stats_subq.c.has_promo.is_(True))
 
     if "new" in offer_list:
-        # Товари, додані за останні 14 днів
         fourteen_days_ago = datetime.now(timezone.utc) - timedelta(days=14)
         base_stmt = base_stmt.where(Product.created_at >= fourteen_days_ago)
+
+    base_stmt = base_stmt.where(Product.is_hidden == False)
 
     # 7. Підрахунок загальної кількості для пагінації
     count_stmt = select(func.count()).select_from(base_stmt.subquery())
@@ -275,6 +280,7 @@ async def get_products_by_store(
                 StoreProduct.store_id == store_id,
             ),
         )
+        .where(Product.is_hidden == False)
     )
 
     if category_id is not None:
@@ -352,6 +358,68 @@ async def get_products_by_store(
 
 
 @router.get(
+    "/categories",
+    response_model=list[CategoryResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Отримати список категорій",
+)
+async def get_categories(
+    db: AsyncSession = Depends(get_db),
+):
+    stmt = select(Category).order_by(Category.name)
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
+
+
+@router.patch(
+    "/categories/{category_id}/visibility",
+    response_model=CategoryResponse,
+)
+async def update_category_visibility(
+    category_id: int,
+    body: CategoryVisibilityUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Category).where(Category.id == category_id)
+    )
+    category = result.scalar_one_or_none()
+
+    if category is None:
+        raise HTTPException(status_code=404, detail="Категорію не знайдено")
+
+    category.is_hidden = body.is_hidden
+    await db.commit()
+    await db.refresh(category)
+    return category
+
+
+@router.patch(
+    "/{product_id}/visibility",
+    response_model=ProductResponse,
+)
+async def update_product_visibility(
+    product_id: int,
+    body: ProductVisibilityUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Product)
+        .options(selectinload(Product.category))
+        .where(Product.id == product_id)
+    )
+    product = result.scalar_one_or_none()
+
+    if product is None:
+        raise HTTPException(status_code=404, detail="Товар не знайдено")
+
+    product.is_hidden = body.is_hidden
+    await db.commit()
+    await db.refresh(product)
+    return product
+
+
+@router.get(
     "/{product_id}",
     response_model=ProductDetail,
     status_code=status.HTTP_200_OK,
@@ -367,7 +435,7 @@ async def get_product(
         .options(selectinload(Product.category))
         .where(Product.id == product_id)
     )
-    if not product:
+    if not product or product.is_hidden:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Товар з id={product_id} не знайдено",
@@ -439,7 +507,7 @@ async def get_product_stores(
     result = await db.execute(stmt)
     product = result.scalar_one_or_none()
 
-    if not product:
+    if not product or product.is_hidden:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Товар з id={product_id} не знайдено",
@@ -471,7 +539,7 @@ async def get_product_offers(
         .options(selectinload(Product.category))
         .where(Product.id == product_id)
     )
-    if product is None:
+    if product is None or product.is_hidden:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Товар з id={product_id} не знайдено",
@@ -575,19 +643,5 @@ async def get_product_prices(
         stmt = stmt.where(Price.in_stock == in_stock)
 
     stmt = stmt.limit(limit)
-    result = await db.execute(stmt)
-    return list(result.scalars().all())
-
-
-@router.get(
-    "/categories",
-    response_model=list[CategoryResponse],
-    status_code=status.HTTP_200_OK,
-    summary="Отримати список категорій",
-)
-async def get_categories(
-    db: AsyncSession = Depends(get_db),
-):
-    stmt = select(Category).order_by(Category.name)
     result = await db.execute(stmt)
     return list(result.scalars().all())

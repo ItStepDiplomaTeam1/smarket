@@ -11,9 +11,13 @@ import os
 import httpx
 from fastapi import APIRouter
 from fastapi.responses import ORJSONResponse
-from sqlalchemy import text
+from app.database.session import _get_engine, get_db
+from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import Depends
+from sqlalchemy import text, select, func
+from datetime import datetime, timezone
 
-from app.database.session import _get_engine
+from app.database.models import Product, Store, Price
 
 logger = logging.getLogger(__name__)
 
@@ -109,5 +113,32 @@ async def internal_health_check() -> dict:
         "PostgreSQL": pg,
         "Redis": redis,
         "Meilisearch": meili,
-        "RabbitMQ": rmq,
     }
+
+
+@router.get("/dashboard-stats")
+async def internal_dashboard_stats(db: AsyncSession = Depends(get_db)) -> dict:
+    """
+    Returns aggregate stats for the admin dashboard.
+    """
+    try:
+        total_products = await db.scalar(select(func.count(Product.id)))
+        total_stores = await db.scalar(select(func.count(Store.external_id)))
+        
+        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+        prices_updated_today = await db.scalar(
+            select(func.count(Price.id)).where(Price.recorded_at >= today)
+        )
+        
+        return {
+            "totalProducts": total_products or 0,
+            "totalStores": total_stores or 0,
+            "pricesUpdatedToday": prices_updated_today or 0
+        }
+    except Exception as exc:
+        logger.error(f"[dashboard-stats] failed: {exc}")
+        return {
+            "totalProducts": 0,
+            "totalStores": 0,
+            "pricesUpdatedToday": 0
+        }

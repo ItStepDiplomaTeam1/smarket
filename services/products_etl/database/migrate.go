@@ -139,10 +139,9 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 		{
 			name: "fix kopeck prices",
 			sql: `
-				UPDATE prices SET
-					price = price / 100.0,
-					old_price = old_price / 100.0
-				WHERE price > 1000
+				-- Замінено на SELECT 1, оскільки ця міграція не є безпечною для повторного запуску
+				-- і псує реальні ціни товарів дорожчих за 1000 грн.
+				SELECT 1;
 			`,
 		},
 		// ---------------------------------------------------------------
@@ -253,6 +252,20 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			// а products.canonical_category_id — це FK на categories(id).
 			name: "drop store_categories_mapping",
 			sql:  `DROP TABLE IF EXISTS store_categories_mapping`,
+		},
+		{
+			name: "add is_hidden to products",
+			sql: `
+				ALTER TABLE products
+					ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN NOT NULL DEFAULT FALSE
+			`,
+		},
+		{
+			name: "add is_hidden to categories",
+			sql: `
+				ALTER TABLE categories
+					ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN NOT NULL DEFAULT FALSE
+			`,
 		},
 	}
 

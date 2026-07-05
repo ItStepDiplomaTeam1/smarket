@@ -33,15 +33,37 @@ import (
 
 // healthHandler provides health check info
 // @Summary     Перевірка стану сервісу
-// @Description Повертає статус "ok" якщо сервіс запущений і доступний
+// @Description Повертає статус "ok" якщо сервіс запущений і доступний, а також перевіряє MongoDB
 // @Tags        system
 // @Produce     json
-// @Success     200 {object} map[string]string "{"status":"ok"}"
+// @Success     200 {object} map[string]string "{"status":"ok","mongodb":"ok"}"
 // @Router      /health [get]
-func healthHandler(w http.ResponseWriter, _ *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte(`{"status":"ok"}`))
+func healthHandler(infra *database.Infrastructure) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+
+		mongoStatus := "ok"
+		if infra.MongoClient != nil {
+			if err := infra.MongoClient.Ping(ctx, nil); err != nil {
+				mongoStatus = "error"
+			}
+		} else {
+			mongoStatus = "missing"
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		if mongoStatus != "ok" {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			_, _ = w.Write([]byte(fmt.Sprintf(`{"status":"error","mongodb":"%s"}`, mongoStatus)))
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"ok","mongodb":"ok"}`))
+	}
 }
+
 
 // getProductsHandler returns a list of products
 // @Summary     Отримати список товарів з Zakaz.ua
@@ -141,7 +163,7 @@ func main() {
 			log.Println("[main] Swagger UI увімкнено (development mode)")
 		}
 
-		mux.HandleFunc("/health", healthHandler)
+		mux.HandleFunc("/health", healthHandler(infra))
 		mux.HandleFunc("GET /product/get", getProductsHandler)
 		mux.HandleFunc("POST /backfill", backfillHandler(infra.PgPool, cfg.SearchServiceURL))
 
@@ -192,6 +214,16 @@ func main() {
 
 		// Функція перевірки застарілих магазинів
 		runSchedulerCheck := func() {
+			log.Println("[Scheduler] Синхронізація магазинів та категорій перед перевіркою застарілих даних...")
+			syncCtx, syncCancel := context.WithTimeout(context.Background(), 120*time.Second)
+			if err := service.SeedStores(syncCtx, infra.PgPool); err != nil {
+				log.Printf("[Scheduler] WARN: не вдалось синхронізувати магазини: %v", err)
+			}
+			if err := service.SeedCategories(syncCtx, infra.PgPool); err != nil {
+				log.Printf("[Scheduler] WARN: не вдалось синхронізувати категорії: %v", err)
+			}
+			syncCancel()
+
 			log.Println("[Scheduler] Перевірка застарілих даних магазинів...")
 			rows, err := infra.PgPool.Query(context.Background(),
 				// last_parsed_at — індексована колонка, яку TransformLoadWorker оновлює

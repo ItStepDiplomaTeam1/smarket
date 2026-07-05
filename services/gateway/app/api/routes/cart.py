@@ -10,6 +10,18 @@ router = APIRouter()
 
 # Усі запити до /cart/* вимагають наявності токена!
 @router.api_route(
+    "",
+    methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
+    include_in_schema=False,
+)
+async def proxy_to_cart_root(
+    request: Request,
+    token_payload: dict = Depends(verify_jwt),
+):
+    return await proxy_to_cart(request, "", token_payload)
+
+
+@router.api_route(
     "/{path:path}",
     methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
     include_in_schema=False,

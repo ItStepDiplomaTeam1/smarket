@@ -4,15 +4,15 @@ import {
   ShoppingBag, 
   Menu, 
   Tag, 
-  Trash, 
-  Edit, 
-  Plus, 
   ChevronLeft, 
   ChevronRight,
   ChevronDown,
-  AlertCircle
+  AlertCircle,
+  Eye,
+  EyeOff,
+  XCircle,
 } from 'lucide-react';
-import { useProducts } from '@/hooks/useProducts';
+import { useProducts, useToggleProductVisibility } from '@/hooks/useProducts';
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -115,6 +115,9 @@ const ProductRowSkeleton: React.FC = () => (
     <td className="py-4 px-3">
       <div className="h-5 w-16 rounded bg-secondary" />
     </td>
+    <td className="py-4 px-3">
+      <div className="h-5 w-16 rounded bg-secondary" />
+    </td>
     <td className="py-4 px-3 text-right">
       <div className="h-4 w-16 rounded bg-secondary inline-block" />
     </td>
@@ -134,6 +137,8 @@ const ProductsTable: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState('');
   const [page, setPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const { mutate: toggleVisibility, isPending: isTogglingVisibility } = useToggleProductVisibility();
 
   const limit = 10;
   const { data, isLoading, isError } = useProducts({
@@ -211,7 +216,7 @@ const ProductsTable: React.FC = () => {
     if (isError) {
       return (
         <tr>
-          <td colSpan={8} className="py-8 text-center">
+          <td colSpan={9} className="py-8 text-center">
             <div className="flex flex-col items-center justify-center gap-2">
               <AlertCircle size={24} className="text-accentRed opacity-70" />
               <p className="text-sm text-textMuted font-medium">
@@ -228,7 +233,7 @@ const ProductsTable: React.FC = () => {
     if (products.length === 0) {
       return (
         <tr>
-          <td colSpan={8} className="py-8 text-center text-sm text-textMuted font-medium">
+          <td colSpan={9} className="py-8 text-center text-sm text-textMuted font-medium">
             Товарів не знайдено за вказаними фільтрами.
           </td>
         </tr>
@@ -316,16 +321,34 @@ const ProductsTable: React.FC = () => {
           <td className="py-4 px-3">
             <IssueBadge issue={issueStr} />
           </td>
+          <td className="py-4 px-3">
+            <button
+              onClick={() => toggleVisibility({ productId: product.id, isHidden: !product.is_hidden })}
+              disabled={isTogglingVisibility}
+              className={`flex items-center gap-1.5 text-xs font-medium rounded-md px-2 py-1 transition-colors ${
+                product.is_hidden
+                  ? 'text-red-500 bg-red-50 hover:bg-red-100'
+                  : 'text-green-600 bg-green-50 hover:bg-green-100'
+              }`}
+              title={product.is_hidden ? 'Натисніть, щоб показати клієнтам' : 'Натисніть, щоб приховати'}
+            >
+              {product.is_hidden ? <EyeOff size={13} /> : <Eye size={13} />}
+              {product.is_hidden ? 'Приховано' : 'Видимий'}
+            </button>
+          </td>
           <td className="py-4 px-3 text-sm text-textMuted text-right whitespace-nowrap">
             Нещодавно
           </td>
           <td className="py-4 pl-3 pr-6 text-right">
-            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button className="p-1.5 text-textMuted hover:text-primary hover:bg-secondary rounded-md transition-colors" title="Редагувати">
-                <Edit size={16} />
-              </button>
-              <button className="p-1.5 text-textMuted hover:text-accentRed hover:bg-accentRed/10 rounded-md transition-colors" title="Видалити">
-                <Trash size={16} />
+            <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={() => toggleVisibility({ productId: product.id, isHidden: !product.is_hidden })}
+                disabled={isTogglingVisibility}
+                className="flex items-center gap-1.5 text-xs font-medium rounded-md px-2.5 py-1.5 transition-colors text-red-500 bg-red-50 hover:bg-red-100"
+                title={product.is_hidden ? 'Показати товар' : 'Приховати товар'}
+              >
+                <EyeOff size={13} />
+                {product.is_hidden ? 'Показати' : 'Приховати'}
               </button>
             </div>
           </td>
@@ -383,7 +406,7 @@ const ProductsTable: React.FC = () => {
         <MetricCard 
           title="Неактивні" 
           value={5} 
-          icon={Trash} 
+          icon={XCircle} 
           iconBg="bg-[#fce8e6]" 
           iconColor="text-[#d93025]"
           trendText="1.4% від учора"
@@ -496,11 +519,6 @@ const ProductsTable: React.FC = () => {
             </button>
           </div>
         </div>
-
-        <button className="h-[38px] flex items-center justify-center gap-2 px-5 py-2 bg-[#1a4731] hover:bg-[#133524] text-white rounded-lg text-sm font-medium transition-colors w-full lg:w-auto">
-          <Plus size={16} />
-          <span>Додати товар</span>
-        </button>
       </div>
 
       {/* ── Data Table ── */}
@@ -522,6 +540,7 @@ const ProductsTable: React.FC = () => {
                 <th className="py-4 px-3 text-xs font-semibold text-textMain w-[22%]">Ціна</th>
                 <th className="py-4 px-3 text-xs font-semibold text-textMain w-[10%]">Статус</th>
                 <th className="py-4 px-3 text-xs font-semibold text-textMain w-[10%]">Проблема</th>
+                <th className="py-3 px-3 text-xs font-semibold text-textMuted uppercase tracking-wider">Видимість</th>
                 <th className="py-4 px-3 text-xs font-semibold text-textMain text-right w-[10%]">Оновлення</th>
                 <th className="py-4 pl-3 pr-6 text-xs font-semibold text-textMain text-right w-[5%]">Дії</th>
               </tr>

@@ -19,6 +19,7 @@ from services.auth_service.plugins.security.secrets.load_secret import get_secre
 from services.auth_service.routers.auth import router as auth_router
 from services.auth_service.routers.oauth import router as oauth_router
 from services.auth_service.routers.admin import router as admin_router
+from services.auth_service.routers.internal import router as internal_router
 
 setup_logger()
 
@@ -68,6 +69,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router, prefix="/auth", tags=["auth"])
     app.include_router(oauth_router, prefix="/auth", tags=["oauth"])
     app.include_router(admin_router, prefix="/admin", tags=["admin"])
+    app.include_router(internal_router, prefix="/internal", tags=["internal"])
 
     @app.get("/health", tags=["system"])
     async def health() -> dict:
@@ -88,3 +90,6 @@ if __name__ == "__main__":
         workers=_coerce_int(get_secret("APP_WORKERS"), 2),
         reload=False,
     ).serve()
+
+# Force rebuild of auth_service to deploy new admin routes
+
