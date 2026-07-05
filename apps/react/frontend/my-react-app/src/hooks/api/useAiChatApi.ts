@@ -40,7 +40,7 @@ export const useSendAiMessage = () => {
           model_name: model_name ?? null,
           history: history ?? null,
         },
-        { timeout: 30000 },
+        { timeout: 120000 },
       );
       return data;
     },

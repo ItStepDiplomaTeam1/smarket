@@ -87,5 +87,10 @@ class ZephyrosResponse(BaseModel):
     blocks: list[UIBlock]
 
 
+class ErrorResponse(BaseModel):
+    error: str
+    detail: str
+
+
 TabItem.model_rebuild()
 TabsBlock.model_rebuild()

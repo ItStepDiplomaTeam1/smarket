@@ -560,9 +560,41 @@ function ChatWindow({ expanded, onToggleExpand }: { expanded: boolean; onToggleE
           setLastFailedMessage(null);
           addMessage({ id: generateId(), role: 'assistant', content: data, timestamp: new Date() });
         },
-        onError: () => {
+        onError: (error: any) => {
           setPendingStatus('Думаю над запитом...');
           setLastFailedMessage(messageText);
+
+          console.error('[Zephyros] Chat request failed:', error);
+
+          const errorData = error?.response?.data;
+          const errorType = errorData?.error;
+          const detail = errorData?.detail;
+
+          let message = 'Не вдалося отримати відповідь. Спробуйте ще раз.';
+          let suggestion = 'Перевірте підключення або повторіть запит.';
+
+          if (detail) {
+            message = detail;
+          }
+
+          if (errorType === 'provider_auth_error') {
+            suggestion = 'Зверніться до адміністратора для перевірки ключів провайдера.';
+          } else if (errorType === 'provider_rate_limited') {
+            suggestion = 'Зачекайте хвилину та спробуйте знову.';
+          } else if (errorType === 'provider_http_error') {
+            suggestion = 'Спробуйте інший провайдер або зачекайте.';
+          } else if (errorType === 'response_parse_error') {
+            suggestion = 'Спробуйте переформулювати запит.';
+          } else if (errorType === 'no_providers' || errorType === 'all_providers_exhausted') {
+            suggestion = 'ШІ-сервіс тимчасово недоступний. Спробуйте пізніше.';
+          } else if (error?.code === 'ECONNABORTED' || error?.message?.includes('timeout')) {
+            message = 'Запит тривав занадто довго.';
+            suggestion = 'Спробуйте спростити запит або зачекайте.';
+          } else if (!error?.response) {
+            message = 'Перевірте підключення до інтернету.';
+            suggestion = 'Сервер може бути тимчасово недоступний.';
+          }
+
           addMessage({
             id: generateId(),
             role: 'assistant',
@@ -570,8 +602,8 @@ function ChatWindow({ expanded, onToggleExpand }: { expanded: boolean; onToggleE
               blocks: [
                 {
                   type: 'fallback',
-                  message: 'Не вдалося отримати відповідь. Спробуйте ще раз.',
-                  suggestion: 'Перевірте підключення або повторіть запит.',
+                  message,
+                  suggestion,
                 },
               ],
             },

@@ -8,7 +8,7 @@ from typing import Any
 import httpx
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import ORJSONResponse
+from fastapi.responses import JSONResponse, ORJSONResponse
 from loguru import logger
 from pydantic import BaseModel, ValidationError
 from pydantic_ai.exceptions import ModelHTTPError
@@ -18,7 +18,7 @@ from app.agent.zephyros import agent, available_provider_chain, build_model
 from app.config import settings
 from app.deps import AgentDeps
 from app.logging import setup_logging
-from app.schemas import ZephyrosResponse
+from app.schemas import ErrorResponse, ZephyrosResponse
 
 setup_logging(level=settings.LOG_LEVEL, json_logs=settings.LOG_JSON)
 
@@ -29,6 +29,13 @@ def _truncate(value: str | None, limit: int = 240) -> str:
     if not value:
         return ""
     return value if len(value) <= limit else f"{value[:limit]}..."
+
+
+def _error_response(error: str, detail: str, status_code: int = 502) -> JSONResponse:
+    return JSONResponse(
+        status_code=status_code,
+        content=ErrorResponse(error=error, detail=detail).model_dump(),
+    )
 
 
 def _mark_down(provider: str, seconds: float) -> None:
@@ -177,9 +184,10 @@ async def chat(
 
     if not candidates:
         chat_log.error("No AI providers configured")
-        raise HTTPException(
+        return _error_response(
+            error="no_providers",
+            detail="ШІ-провайдери не налаштовані на сервері.",
             status_code=503,
-            detail="Жоден AI-провайдер не налаштований на сервері.",
         )
 
     chat_log.bind(provider_candidates=candidates).info("Provider candidates resolved")
@@ -249,5 +257,42 @@ async def chat(
             continue
 
     chat_log.bind(last_error=repr(last_error)).error("All providers exhausted")
-    detail_msg = "Агент тимчасово недоступний. Спробуйте за хвилину."
-    raise HTTPException(status_code=503, detail=detail_msg)
+
+    if last_error is None:
+        return _error_response(
+            error="all_providers_exhausted",
+            detail="Усі ШІ-провайдери тимчасово недоступні. Спробуйте за хвилину.",
+            status_code=503,
+        )
+
+    if isinstance(last_error, ModelHTTPError):
+        if last_error.status_code == 401:
+            return _error_response(
+                error="provider_auth_error",
+                detail="Помилка автентифікації ШІ-провайдера. Зверніться до адміністратора.",
+                status_code=502,
+            )
+        if last_error.status_code == 429:
+            return _error_response(
+                error="provider_rate_limited",
+                detail="Забагато запитів до ШІ-провайдера. Спробуйте за хвилину.",
+                status_code=429,
+            )
+        return _error_response(
+            error="provider_http_error",
+            detail="ШІ-провайдер тимчасово недоступний. Спробуйте інший провайдер.",
+            status_code=502,
+        )
+
+    if isinstance(last_error, ValidationError):
+        return _error_response(
+            error="response_parse_error",
+            detail="Агент повернув некоректну відповідь. Спробуйте ще раз.",
+            status_code=502,
+        )
+
+    return _error_response(
+        error="provider_http_error",
+        detail="ШІ-провайдер тимчасово недоступний. Спробуйте інший провайдер.",
+        status_code=502,
+    )
