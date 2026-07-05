@@ -10,7 +10,7 @@
 @keyframes chatIn {
   from {
     opacity: 0;
-    transform: scale(0.85) translateY(12px);
+    transform: scale(0.97) translateY(8px);
   }
   to {
     opacity: 1;
@@ -37,5 +37,23 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes sweep {
+  from {
+    transform: translateX(-40%);
+  }
+  to {
+    transform: translateX(140%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }
