@@ -9,6 +9,7 @@ import {
   ChevronDown,
   AlertCircle,
   EyeOff,
+  XCircle,
 } from 'lucide-react';
 import { useProducts, useToggleProductVisibility } from '@/hooks/useProducts';
 
@@ -404,7 +405,7 @@ const ProductsTable: React.FC = () => {
         <MetricCard 
           title="Неактивні" 
           value={5} 
-          icon={Trash} 
+          icon={XCircle} 
           iconBg="bg-[#fce8e6]" 
           iconColor="text-[#d93025]"
           trendText="1.4% від учора"
