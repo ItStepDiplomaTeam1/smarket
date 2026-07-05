@@ -108,7 +108,7 @@ export const useToggleProductVisibility = () => {
 
       return { previousQueries };
     },
-    onError: (err, variables, context) => {
+    onError: (_err, _variables, context) => {
       // Rollback on error
       if (context?.previousQueries) {
         context.previousQueries.forEach(([queryKey, data]) => {

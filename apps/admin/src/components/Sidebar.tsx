@@ -2,8 +2,7 @@ import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import { 
-  Home, Package, Layers, Store, Percent, 
-  Activity, FileText, MessageSquare, Users, LifeBuoy, 
+  Home, Package, Layers, Store, Users, LifeBuoy, 
   Settings, ScrollText, LogOut 
 } from 'lucide-react';
 import { cn } from '@/lib/utils';

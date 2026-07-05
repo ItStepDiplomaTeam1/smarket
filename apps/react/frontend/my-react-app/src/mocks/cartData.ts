@@ -25,6 +25,7 @@ export interface CartListItem {
 
 // Деталі конкретного товару в кошику
 export interface CartItemDetail {
+  id: string;
   productId: string;
   name: string;
   imageUrl?: string;
@@ -74,6 +75,7 @@ export const mockCartDetails: Record<string, CartDetailResponse> = {
     ...mockCartsList[0],
     items: [
       {
+        id: 'i1',
         productId: 'i1',
         name: 'Йогурт Галичина Карпатський без цукру 3.2% 350г',
         basePrice: 25.50,
@@ -81,6 +83,7 @@ export const mockCartDetails: Record<string, CartDetailResponse> = {
         totalItemPrice: 51.00,
       },
       {
+        id: 'i2',
         productId: 'i2',
         name: 'Яблука Чемпіон Україна, 1 кг',
         basePrice: 32.00,
@@ -88,6 +91,7 @@ export const mockCartDetails: Record<string, CartDetailResponse> = {
         totalItemPrice: 32.00,
       },
       {
+        id: 'i3',
         productId: 'i3',
         name: 'Хліб Київхліб Український столичний 950г',
         basePrice: 28.00,
@@ -95,6 +99,7 @@ export const mockCartDetails: Record<string, CartDetailResponse> = {
         totalItemPrice: 28.00,
       },
       {
+        id: 'i4',
         productId: 'i4',
         name: 'Молоко Яготинське 2.6% 900г плівка',
         basePrice: 36.50,
@@ -102,6 +107,7 @@ export const mockCartDetails: Record<string, CartDetailResponse> = {
         totalItemPrice: 109.50,
       },
       {
+        id: 'i5',
         productId: 'i5',
         name: 'Яйця курячі Ясенсвіт С1 10шт',
         basePrice: 65.00,
@@ -109,6 +115,7 @@ export const mockCartDetails: Record<string, CartDetailResponse> = {
         totalItemPrice: 130.00,
       },
       {
+        id: 'i6',
         productId: 'i6',
         name: 'Сир Комо Тенеро 50% 160г',
         basePrice: 85.00,

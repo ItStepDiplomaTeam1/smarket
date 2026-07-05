@@ -47,7 +47,7 @@ export const useToggleCategoryVisibility = () => {
 
       return { previousCategories };
     },
-    onError: (err, variables, context) => {
+    onError: (_err, _variables, context) => {
       if (context?.previousCategories) {
         queryClient.setQueryData(['categories'], context.previousCategories);
       }

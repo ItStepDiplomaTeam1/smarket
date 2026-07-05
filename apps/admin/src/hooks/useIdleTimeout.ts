@@ -3,7 +3,7 @@ import { useAuthStore } from '../store/useAuthStore';
 
 export const useIdleTimeout = (timeoutMinutes: number | null) => {
   const logout = useAuthStore((state) => state.logout);
-  const timeoutId = useRef<NodeJS.Timeout | null>(null);
+  const timeoutId = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const resetTimer = () => {
     if (timeoutId.current) {

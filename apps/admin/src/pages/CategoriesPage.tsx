@@ -1,10 +1,7 @@
 import React, { useState } from 'react';
 import {
   Search,
-  Edit,
-  MoreVertical,
   AlertCircle,
-  Package,
   ChevronLeft,
   ChevronRight,
   Eye,
