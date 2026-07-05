@@ -260,6 +260,13 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 					ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN NOT NULL DEFAULT FALSE
 			`,
 		},
+		{
+			name: "add is_hidden to categories",
+			sql: `
+				ALTER TABLE categories
+					ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN NOT NULL DEFAULT FALSE
+			`,
+		},
 	}
 
 	for _, m := range migrations {

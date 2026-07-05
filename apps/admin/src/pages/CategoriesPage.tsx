@@ -7,8 +7,10 @@ import {
   Package,
   ChevronLeft,
   ChevronRight,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
-import { useCategories } from '@/hooks/useCategories';
+import { useCategories, useToggleCategoryVisibility } from '@/hooks/useCategories';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -57,13 +59,11 @@ const StatusBadge: React.FC<{ isHidden?: boolean }> = ({ isHidden }) => {
 const CategoryRowSkeleton: React.FC = () => (
   <tr className="animate-pulse border-b border-border/50 last:border-0">
     <td className="py-4 pl-6 pr-3">
-      <div className="flex items-center gap-3">
-        <div className="w-9 h-9 rounded-xl bg-secondary shrink-0" />
-        <div className="h-4 w-32 rounded bg-secondary" />
-      </div>
+      <div className="h-4 w-32 rounded bg-secondary" />
     </td>
-    <td className="py-4 px-3"><div className="h-4 w-8 rounded bg-secondary" /></td>
     <td className="py-4 px-3"><div className="h-5 w-16 rounded bg-secondary" /></td>
+    <td className="py-4 px-3"><div className="h-4 w-28 rounded bg-secondary" /></td>
+    <td className="py-4 pl-3 pr-6 text-right"><div className="h-5 w-12 rounded bg-secondary inline-block" /></td>
     <td className="py-4 px-3"><div className="h-4 w-28 rounded bg-secondary" /></td>
     <td className="py-4 pl-3 pr-6 text-right"><div className="h-5 w-12 rounded bg-secondary inline-block" /></td>
   </tr>
@@ -145,6 +145,7 @@ const CategoriesPage: React.FC = () => {
   const [page, setPage] = useState(1);
 
   const { data: categories = [], isLoading, isError } = useCategories();
+  const { mutate: toggleVisibility, isPending: isToggling } = useToggleCategoryVisibility();
 
   // Локальна фільтрація
   const filtered = categories.filter((c) => {
@@ -174,7 +175,7 @@ const CategoriesPage: React.FC = () => {
     if (isError) {
       return (
         <tr>
-          <td colSpan={5} className="py-12 text-center">
+          <td colSpan={4} className="py-12 text-center">
             <div className="flex flex-col items-center gap-2">
               <AlertCircle size={24} className="text-[#c5221f] opacity-70" />
               <p className="text-sm text-textMuted font-medium">
@@ -190,7 +191,7 @@ const CategoriesPage: React.FC = () => {
     if (paginated.length === 0) {
       return (
         <tr>
-          <td colSpan={5} className="py-12 text-center text-sm text-textMuted font-medium">
+          <td colSpan={4} className="py-12 text-center text-sm text-textMuted font-medium">
             Категорій не знайдено.
           </td>
         </tr>
@@ -204,15 +205,8 @@ const CategoriesPage: React.FC = () => {
       >
         {/* Назва категорії */}
         <td className="py-4 pl-6 pr-3">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-white border border-border flex items-center justify-center shrink-0 text-textMuted">
-              <Package size={18} strokeWidth={1.5} />
-            </div>
-            <span className="text-sm font-semibold text-textMain">{category.name}</span>
-          </div>
+          <span className="text-sm font-semibold text-textMain">{category.name}</span>
         </td>
-        {/* Товарів (заглушка — бекенд не повертає count) */}
-        <td className="py-4 px-3 text-sm text-textMuted text-center">—</td>
         {/* Статус */}
         <td className="py-4 px-3">
           <StatusBadge isHidden={category.is_hidden} />
@@ -225,16 +219,16 @@ const CategoriesPage: React.FC = () => {
         <td className="py-4 pl-3 pr-6">
           <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <button
-              className="p-1.5 text-textMuted hover:text-primary hover:bg-secondary rounded-md transition-colors"
-              title="Редагувати"
+              onClick={() => toggleVisibility({ categoryId: category.id, isHidden: !category.is_hidden })}
+              disabled={isToggling}
+              className={`p-1.5 rounded-md transition-colors ${
+                category.is_hidden
+                  ? 'text-textMuted hover:text-textMain hover:bg-secondary'
+                  : 'text-textMuted hover:text-[#c5221f] hover:bg-[#c5221f]/10'
+              } disabled:opacity-50`}
+              title={category.is_hidden ? 'Показати' : 'Приховати'}
             >
-              <Edit size={16} />
-            </button>
-            <button
-              className="p-1.5 text-textMuted hover:text-textMain hover:bg-secondary rounded-md transition-colors"
-              title="Більше дій"
-            >
-              <MoreVertical size={16} />
+              {category.is_hidden ? <Eye size={16} /> : <EyeOff size={16} />}
             </button>
           </div>
         </td>
@@ -300,9 +294,6 @@ const CategoriesPage: React.FC = () => {
               <tr className="border-b border-border bg-secondary/30">
                 <th className="py-3 pl-6 pr-3 text-xs font-semibold text-textMuted uppercase tracking-wider">
                   Назва категорії
-                </th>
-                <th className="py-3 px-3 text-xs font-semibold text-textMuted uppercase tracking-wider text-center">
-                  Товарів
                 </th>
                 <th className="py-3 px-3 text-xs font-semibold text-textMuted uppercase tracking-wider">
                   Статус

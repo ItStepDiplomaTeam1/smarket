@@ -26,6 +26,7 @@ from app.shared.schemas import (
     PaginatedProductsResponse,
     ProductResponse,
     ProductVisibilityUpdate,
+    CategoryVisibilityUpdate,
 )
 
 from app.database.session import get_db
@@ -368,6 +369,29 @@ async def get_categories(
     stmt = select(Category).order_by(Category.name)
     result = await db.execute(stmt)
     return list(result.scalars().all())
+
+
+@router.patch(
+    "/categories/{category_id}/visibility",
+    response_model=CategoryResponse,
+)
+async def update_category_visibility(
+    category_id: int,
+    body: CategoryVisibilityUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Category).where(Category.id == category_id)
+    )
+    category = result.scalar_one_or_none()
+
+    if category is None:
+        raise HTTPException(status_code=404, detail="Категорію не знайдено")
+
+    category.is_hidden = body.is_hidden
+    await db.commit()
+    await db.refresh(category)
+    return category
 
 
 @router.patch(

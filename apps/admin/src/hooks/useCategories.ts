@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 
 export interface Category {
@@ -27,3 +27,30 @@ export function useCategories() {
     staleTime: 60_000, // 1 хвилина кешу
   });
 }
+
+export const useToggleCategoryVisibility = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ categoryId, isHidden }: { categoryId: number; isHidden: boolean }) => {
+      await apiClient.patch(`/products/categories/${categoryId}/visibility`, { is_hidden: isHidden });
+      return { categoryId, isHidden };
+    },
+    onMutate: async ({ categoryId, isHidden }) => {
+      await queryClient.cancelQueries({ queryKey: ['categories'] });
+      const previousCategories = queryClient.getQueryData<Category[]>(['categories']);
+
+      queryClient.setQueryData<Category[]>(['categories'], (old) => {
+        if (!old) return old;
+        return old.map(c => c.id === categoryId ? { ...c, is_hidden: isHidden } : c);
+      });
+
+      return { previousCategories };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousCategories) {
+        queryClient.setQueryData(['categories'], context.previousCategories);
+      }
+    }
+  });
+};

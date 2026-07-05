@@ -18,6 +18,7 @@ class CategoryResponse(BaseModel):
     id: int
     slug: str
     name: str
+    is_hidden: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -132,4 +133,7 @@ class ProductFilters(BaseModel):
 
 
 class ProductVisibilityUpdate(BaseModel):
+    is_hidden: bool
+
+class CategoryVisibilityUpdate(BaseModel):
     is_hidden: bool
