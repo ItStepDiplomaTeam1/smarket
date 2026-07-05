@@ -83,8 +83,41 @@ export const useToggleProductVisibility = () => {
   return useMutation({
     mutationFn: async ({ productId, isHidden }: { productId: number; isHidden: boolean }) => {
       await apiClient.patch(`/products/${productId}/visibility`, { is_hidden: isHidden });
+      return { productId, isHidden };
     },
-    onSuccess: () => {
+    onMutate: async ({ productId, isHidden }) => {
+      // Cancel any outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ['productsSearch'] });
+
+      // Snapshot the previous value
+      const previousQueries = queryClient.getQueriesData({ queryKey: ['productsSearch'] });
+
+      // Optimistically update to the new value
+      queryClient.setQueriesData(
+        { queryKey: ['productsSearch'] },
+        (oldData: MeiliSearchResponse | undefined) => {
+          if (!oldData) return oldData;
+          return {
+            ...oldData,
+            hits: oldData.hits.map((hit) =>
+              hit.id === productId ? { ...hit, is_hidden: isHidden } : hit
+            ),
+          };
+        }
+      );
+
+      return { previousQueries };
+    },
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousQueries) {
+        context.previousQueries.forEach(([queryKey, data]) => {
+          queryClient.setQueryData(queryKey, data);
+        });
+      }
+    },
+    onSettled: () => {
+      // Invalidate to ensure we eventually sync with the server (though Meilisearch might take time to index)
       queryClient.invalidateQueries({ queryKey: ['productsSearch'] });
     },
   });
