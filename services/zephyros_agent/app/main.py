@@ -1,6 +1,9 @@
+import json
 import time
 import uuid
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
+from typing import Any
 
 import httpx
 from fastapi import FastAPI, Header, HTTPException, Request
@@ -9,6 +12,7 @@ from fastapi.responses import ORJSONResponse
 from loguru import logger
 from pydantic import BaseModel, ValidationError
 from pydantic_ai.exceptions import ModelHTTPError
+import pydantic_ai.messages as pydantic_ai_msgs
 
 from app.agent.zephyros import agent, available_provider_chain, build_model
 from app.config import settings
@@ -102,10 +106,16 @@ async def request_logging_middleware(request: Request, call_next):
     return response
 
 
+class ChatMessage(BaseModel):
+    role: str
+    content: str | dict[str, Any]
+
+
 class ChatRequest(BaseModel):
     message: str
     provider: str | None = None
     model_name: str | None = None
+    history: list[ChatMessage] | None = None
 
 
 @app.get("/health", tags=["System"])
@@ -136,6 +146,28 @@ async def chat(
 
     deps = AgentDeps(http_client=app.state.http_client, user_id=user_id)
 
+    message_history = []
+    if request.history:
+        for msg in request.history:
+            utc_now = datetime.now(timezone.utc)
+            if msg.role == "user":
+                content_str = msg.content if isinstance(msg.content, str) else json.dumps(msg.content, ensure_ascii=False)
+                message_history.append(
+                    pydantic_ai_msgs.ModelRequest(
+                        parts=[pydantic_ai_msgs.UserPromptPart(content=content_str, timestamp=utc_now)]
+                    )
+                )
+            elif msg.role == "assistant":
+                content_str = msg.content if isinstance(msg.content, str) else json.dumps(msg.content, ensure_ascii=False)
+                message_history.append(
+                    pydantic_ai_msgs.ModelResponse(
+                        parts=[pydantic_ai_msgs.TextPart(content=content_str)],
+                        timestamp=utc_now,
+                    )
+                )
+
+    run_history = message_history if message_history else None
+
     # Explicit provider in request -> use only that one.
     # Autoselection is used only when provider is not passed.
     if request.provider:
@@ -164,7 +196,12 @@ async def chat(
             current_model = build_model(provider, request.model_name)
             model_name = getattr(current_model, "model_name", request.model_name or "default")
             provider_log.bind(model_name=model_name).info("Running agent with provider")
-            result = await agent.run(request.message, deps=deps, model=current_model)
+            result = await agent.run(
+                request.message,
+                deps=deps,
+                model=current_model,
+                message_history=run_history,
+            )
             elapsed_ms = round((time.perf_counter() - started_at) * 1000, 2)
             provider_log.bind(elapsed_ms=elapsed_ms).info("Provider returned successful response")
             return result.output

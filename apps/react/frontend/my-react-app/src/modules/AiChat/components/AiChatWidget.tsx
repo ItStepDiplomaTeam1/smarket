@@ -537,6 +537,11 @@ function ChatWindow({ expanded, onToggleExpand }: { expanded: boolean; onToggleE
     const messageText = text ?? input.trim();
     if (!messageText || isPending) return;
 
+    const historyPayload = messages.map((msg) => ({
+      role: msg.role,
+      content: msg.content,
+    }));
+
     addMessage({ id: generateId(), role: 'user', content: messageText, timestamp: new Date() });
     setInput('');
     setPendingStatus('Думаю над запитом...');
@@ -544,6 +549,7 @@ function ChatWindow({ expanded, onToggleExpand }: { expanded: boolean; onToggleE
     sendMessage(
       {
         message: messageText,
+        history: historyPayload,
         provider,
         model_name: modelName,
         onStatusChange: (s) => setPendingStatus(s),
