@@ -15,7 +15,7 @@ from app.database.session import _get_engine, get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends
 from sqlalchemy import text, select, func
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 
 from app.database.models import Product, Store, Price
 
@@ -126,40 +126,19 @@ async def internal_dashboard_stats(db: AsyncSession = Depends(get_db)) -> dict:
         total_stores = await db.scalar(select(func.count(Store.external_id)))
         
         today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-        yesterday = today - timedelta(days=1)
-        
-        products_today = await db.scalar(select(func.count(Product.id)).where(Product.created_at >= today)) or 0
-        total_products_yesterday = total_products - products_today
-        products_trend = round((products_today / total_products_yesterday * 100), 1) if total_products_yesterday > 0 else 0.0
-        
         prices_updated_today = await db.scalar(
             select(func.count(Price.id)).where(Price.recorded_at >= today)
-        ) or 0
-        
-        prices_updated_yesterday = await db.scalar(
-            select(func.count(Price.id)).where(Price.recorded_at >= yesterday).where(Price.recorded_at < today)
-        ) or 0
-        
-        if prices_updated_yesterday > 0:
-            prices_trend = round(((prices_updated_today - prices_updated_yesterday) / prices_updated_yesterday) * 100, 1)
-        else:
-            prices_trend = 100.0 if prices_updated_today > 0 else 0.0
+        )
         
         return {
             "totalProducts": total_products or 0,
-            "totalProductsTrend": products_trend,
             "totalStores": total_stores or 0,
-            "totalStoresTrend": 0.0,
-            "pricesUpdatedToday": prices_updated_today or 0,
-            "pricesUpdatedTrend": prices_trend
+            "pricesUpdatedToday": prices_updated_today or 0
         }
     except Exception as exc:
         logger.error(f"[dashboard-stats] failed: {exc}")
         return {
             "totalProducts": 0,
-            "totalProductsTrend": 0.0,
             "totalStores": 0,
-            "totalStoresTrend": 0.0,
-            "pricesUpdatedToday": 0,
-            "pricesUpdatedTrend": 0.0
+            "pricesUpdatedToday": 0
         }

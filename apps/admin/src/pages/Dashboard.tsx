@@ -54,28 +54,24 @@ const Dashboard: React.FC = () => {
               value={data.metrics.totalProducts.toLocaleString('uk-UA')}
               icon={Package}
               iconBgColor="#10B981"
-              trend={{ value: data.metrics.totalProductsTrend, isPositive: true, text: 'від учора' }}
             />
             <MetricCard
               title="Магазинів"
               value={data.metrics.totalStores}
               icon={Store}
               iconBgColor="#F59E0B"
-              trend={{ value: data.metrics.totalStoresTrend, isPositive: true, text: 'нових' }}
             />
             <MetricCard
               title="Користувачів"
               value={data.metrics.totalUsers.toLocaleString('uk-UA')}
               icon={Users}
               iconBgColor="#8B5CF6"
-              trend={{ value: data.metrics.totalUsersTrend, isPositive: true, text: 'від учора' }}
             />
             <MetricCard
               title="Цін оновлено сьогодні"
               value={data.metrics.pricesUpdatedToday.toLocaleString('uk-UA')}
               icon={Tag}
               iconBgColor="#3B82F6"
-              trend={{ value: data.metrics.pricesUpdatedTrend, isPositive: true, text: 'від учора' }}
             />
           </div>
 
