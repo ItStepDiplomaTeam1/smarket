@@ -4,8 +4,7 @@ import { MetricCard } from '@/components/MetricCard';
 import { SystemLogsTable } from '@/components/SystemLogsTable';
 import { SystemStatusWidget } from '@/components/SystemStatusWidget';
 import { QuickActions } from '@/components/QuickActions';
-import { DataCollectionWidget } from '@/components/DataCollectionWidget';
-import { SourceStatusWidget } from '@/components/SourceStatusWidget';
+
 import { NeedsAttentionWidget } from '@/components/NeedsAttentionWidget';
 import { PopularCategoriesWidget } from '@/components/PopularCategoriesWidget';
 import { NewUsersWidget } from '@/components/NewUsersWidget';
@@ -13,15 +12,7 @@ import { SearchQueriesWidget } from '@/components/SearchQueriesWidget';
 import { PopularProductsWidget } from '@/components/PopularProductsWidget';
 
 import { Package, Store, Users, Tag } from 'lucide-react';
-import { 
-  ResponsiveContainer, 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip 
-} from 'recharts';
+
 
 const Dashboard: React.FC = () => {
   const { data, isLoading, isError } = useDashboardData();
@@ -88,50 +79,7 @@ const Dashboard: React.FC = () => {
             />
           </div>
 
-          {/* Price dynamics chart */}
-          <div className="bg-surface border border-border rounded-2xl p-6 shadow-sm">
-            <h3 className="font-semibold text-lg text-textMain mb-5">Динаміка оновлення цін</h3>
-            <div className="w-full h-[320px] overflow-hidden">
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                <LineChart data={data.priceDynamics} margin={{ top: 5, right: 0, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" vertical={false} />
-                  <XAxis
-                    dataKey="name"
-                    stroke="#9CA3AF"
-                    tick={{ fill: '#6D8279', fontSize: 11 }}
-                    axisLine={false}
-                    tickLine={false}
-                    dy={10}
-                  />
-                  <YAxis
-                    stroke="#9CA3AF"
-                    tick={{ fill: '#6D8279', fontSize: 11 }}
-                    axisLine={false}
-                    tickLine={false}
-                    tickFormatter={(val) => `${val / 1000} тис`}
-                  />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: '#FFFFFF',
-                      borderColor: '#E5E7EB',
-                      color: '#111827',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
-                    }}
-                    itemStyle={{ color: '#265447' }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#265447"
-                    strokeWidth={2}
-                    dot={false}
-                    activeDot={{ r: 5, fill: '#265447', stroke: '#fff', strokeWidth: 2 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+
 
           {/* System logs */}
           <SystemLogsTable logs={data.systemLogs} />
@@ -147,8 +95,6 @@ const Dashboard: React.FC = () => {
 
         {/* Right Column ("Sidebar" of widgets) */}
         <div className="flex flex-col gap-6">
-          <DataCollectionWidget data={data.dataCollection} />
-          <SourceStatusWidget sources={data.sourceStatus} />
           <QuickActions />
           <SystemStatusWidget />
           <PopularProductsWidget products={data.popularProducts} />
