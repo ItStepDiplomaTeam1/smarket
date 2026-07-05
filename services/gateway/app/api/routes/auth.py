@@ -10,7 +10,7 @@ router = APIRouter()
 
 async def proxy_request(request: Request, path: str):
     """Допоміжна функція для проксування запитів до Auth Service."""
-    client: httpx.AsyncClient = request.app.state.http_client
+    client: httpx.AsyncClient = request.app.state.auth_http_client
     target_url = f"{settings.AUTH_SERVICE_URL}/auth/{path}"
 
     headers = dict(request.headers)

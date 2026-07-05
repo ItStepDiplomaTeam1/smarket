@@ -152,7 +152,7 @@ const fetchProducts = async (filters: FetchFilters): Promise<ProductsResponse> =
     url.searchParams.append('offset', skip.toString());
     
     if (filters.stores.length > 0) {
-        url.searchParams.append('store_id', filters.stores[0]);
+        url.searchParams.append('retail_chain', filters.stores[0]);
     }
     if (filters.category !== 'products') {
         url.searchParams.append('category_slug', filters.category);

@@ -159,6 +159,7 @@ async def oauth_google_login(
         secure=_COOKIE_SECURE,
         samesite="lax",
         max_age=_REFRESH_TOKEN_MAX_AGE,
+        path="/",
     )
 
     return LoginResponse(

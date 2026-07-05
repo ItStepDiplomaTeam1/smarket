@@ -743,8 +743,7 @@ func indexProductsToSearch(pgPool *pgxpool.Pool, searchServiceURL string, storeI
 			ORDER BY pr.recorded_at DESC
 			LIMIT 1
 		) lpr ON true
-		WHERE sp.store_id = $1
-		LIMIT 500`,
+		WHERE sp.store_id = $1`,
 		storeID,
 	)
 	if err != nil {

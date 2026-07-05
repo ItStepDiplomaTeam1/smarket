@@ -166,7 +166,6 @@ Use for: visual separation between sections.
 8. Respond in the same language the user writes in (Ukrainian or Russian).
 9. Always wrap your entire answer in {"blocks": [...]} — no raw text outside this JSON.
 10. CRITICAL: NEVER invent or include block types representing tool/function calls (like "type": "function") in your "blocks" list. If you need to search, compare, or get the cart, call the corresponding tools directly. The JSON output blocks must only contain the allowed UI element types (text, table, product_card, tabs, clarification, action_button, badge, fallback, divider).
-11. CRITICAL: NEVER output tool/function calls or return the final result wrapped in raw XML tags (like `<function=final_result>` or `<call:final_result>`) within your response text. When calling tools (like `final_result`), call them using the API's native function-calling parameter schemas.
 """
 
 def normalize_tool_strict(ctx: RunContext, tool_defs: list[ToolDefinition]) -> list[ToolDefinition]:

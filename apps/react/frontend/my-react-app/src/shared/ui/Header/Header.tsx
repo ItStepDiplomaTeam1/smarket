@@ -4,6 +4,7 @@ import lupa from '@/shared/assets/lupa.svg';
 import koshuk from '@/shared/assets/koshuk.svg';
 import fix_logo from '@/shared/assets/Logo-Smarket.svg';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
+import { apiClient } from '@/shared/api/apiClient';
 
 function getInitials(name?: string, email?: string): string {
     if (name?.trim()) {
@@ -58,8 +59,13 @@ export function Header() {
     const displayName = getDisplayName(user?.name, user?.email);
     const avatarColor = stringToHsl(user?.email ?? user?.name ?? 'user');
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
         setDropdownOpen(false);
+        try {
+            await apiClient.post('/api/v1/auth/logout');
+        } catch {
+            // Clear local state regardless of server response
+        }
         logout();
         navigate('/');
     };

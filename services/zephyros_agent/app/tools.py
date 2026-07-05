@@ -25,7 +25,10 @@ async def search_catalog(
     """
     params: dict = {"q": query, "in_stock": str(in_stock).lower()}
     if store_id:
-        params["store_id"] = store_id
+        if store_id.lower() in ("atb", "silpo", "novus", "metro", "auchan", "varus", "ultramarket"):
+            params["retail_chain"] = store_id
+        else:
+            params["store_id"] = store_id
     if price_min is not None:
         params["price_min"] = price_min
     if price_max is not None:
