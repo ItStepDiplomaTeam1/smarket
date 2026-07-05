@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Shield, Bell } from 'lucide-react';
+import { Shield, Bell, ChevronDown } from 'lucide-react';
 import { useSystemStatus } from '@/hooks/useSystemStatus';
 
 // ── Components ────────────────────────────────────────────────────────────────
