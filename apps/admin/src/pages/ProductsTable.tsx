@@ -4,14 +4,10 @@ import {
   ShoppingBag, 
   Menu, 
   Tag, 
-  Trash, 
-  Edit, 
-  Plus, 
   ChevronLeft, 
   ChevronRight,
   ChevronDown,
   AlertCircle,
-  Eye,
   EyeOff,
 } from 'lucide-react';
 import { useProducts, useToggleProductVisibility } from '@/hooks/useProducts';
@@ -342,12 +338,15 @@ const ProductsTable: React.FC = () => {
             Нещодавно
           </td>
           <td className="py-4 pl-3 pr-6 text-right">
-            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button className="p-1.5 text-textMuted hover:text-primary hover:bg-secondary rounded-md transition-colors" title="Редагувати">
-                <Edit size={16} />
-              </button>
-              <button className="p-1.5 text-textMuted hover:text-accentRed hover:bg-accentRed/10 rounded-md transition-colors" title="Видалити">
-                <Trash size={16} />
+            <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={() => toggleVisibility({ productId: product.id, isHidden: !product.is_hidden })}
+                disabled={isTogglingVisibility}
+                className="flex items-center gap-1.5 text-xs font-medium rounded-md px-2.5 py-1.5 transition-colors text-red-500 bg-red-50 hover:bg-red-100"
+                title={product.is_hidden ? 'Показати товар' : 'Приховати товар'}
+              >
+                <EyeOff size={13} />
+                {product.is_hidden ? 'Показати' : 'Приховати'}
               </button>
             </div>
           </td>
@@ -518,11 +517,6 @@ const ProductsTable: React.FC = () => {
             </button>
           </div>
         </div>
-
-        <button className="h-[38px] flex items-center justify-center gap-2 px-5 py-2 bg-[#1a4731] hover:bg-[#133524] text-white rounded-lg text-sm font-medium transition-colors w-full lg:w-auto">
-          <Plus size={16} />
-          <span>Додати товар</span>
-        </button>
       </div>
 
       {/* ── Data Table ── */}
