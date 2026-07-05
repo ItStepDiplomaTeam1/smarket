@@ -106,7 +106,7 @@ async def get_dashboard_summary(request: Request):
                 return resp.json()
         except Exception:
             pass
-        return {"totalProducts": 0, "totalStores": 0, "pricesUpdatedToday": 0}
+        return {"totalProducts": 0, "totalProductsTrend": 0.0, "totalStores": 0, "totalStoresTrend": 0.0, "pricesUpdatedToday": 0, "pricesUpdatedTrend": 0.0}
 
     async def fetch_auth_stats():
         try:
@@ -115,20 +115,20 @@ async def get_dashboard_summary(request: Request):
                 return resp.json()
         except Exception:
             pass
-        return {"totalUsers": 0}
+        return {"totalUsers": 0, "totalUsersTrend": 0.0}
 
     prod_stats, auth_stats = await asyncio.gather(fetch_product_stats(), fetch_auth_stats())
 
     return JSONResponse(content={
         "metrics": {
             "totalProducts": prod_stats.get("totalProducts", 0),
-            "totalProductsTrend": 5.2,
+            "totalProductsTrend": prod_stats.get("totalProductsTrend", 0.0),
             "totalStores": prod_stats.get("totalStores", 0),
-            "totalStoresTrend": 2.0,
+            "totalStoresTrend": prod_stats.get("totalStoresTrend", 0.0),
             "totalUsers": auth_stats.get("totalUsers", 0),
-            "totalUsersTrend": 3.7,
+            "totalUsersTrend": auth_stats.get("totalUsersTrend", 0.0),
             "pricesUpdatedToday": prod_stats.get("pricesUpdatedToday", 0),
-            "pricesUpdatedTrend": 9.1
+            "pricesUpdatedTrend": prod_stats.get("pricesUpdatedTrend", 0.0)
         },
         "priceDynamics": [],
         "systemLogs": [],
