@@ -93,10 +93,6 @@ const SettingsPage: React.FC = () => {
         <Card>
           <SectionHeader icon={Shield} title="Безпека" />
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-textMain">Двофакторна авторизація</span>
-              <Toggle checked={security.twoFactor} onChange={(v) => setSecurity({ ...security, twoFactor: v })} />
-            </div>
 
             <div className="flex items-center gap-6">
               <div className="flex-1">
