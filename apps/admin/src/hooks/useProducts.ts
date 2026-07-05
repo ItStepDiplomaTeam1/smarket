@@ -116,9 +116,5 @@ export const useToggleProductVisibility = () => {
         });
       }
     },
-    onSettled: () => {
-      // Invalidate to ensure we eventually sync with the server (though Meilisearch might take time to index)
-      queryClient.invalidateQueries({ queryKey: ['productsSearch'] });
-    },
   });
 };
