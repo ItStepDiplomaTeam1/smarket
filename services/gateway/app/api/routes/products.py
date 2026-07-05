@@ -48,7 +48,7 @@ async def proxy_to_product(request: Request, path: str):
 
             # ПЕРЕВІРКА НА АДМІНА:
             # Якщо роль користувача не 'admin', Gateway дає відсіч і не пускає запит у мережу
-            if payload.get("role") != "admin":
+            if payload.get("role") not in ("admin", "superadmin"):
                 raise HTTPException(
                     status_code=403,
                     detail="Доступ заборонено. Потрібні права адміністратора!",

@@ -380,7 +380,9 @@ async def update_product_visibility(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(Product).where(Product.id == product_id)
+        select(Product)
+        .options(selectinload(Product.category))
+        .where(Product.id == product_id)
     )
     product = result.scalar_one_or_none()
 
