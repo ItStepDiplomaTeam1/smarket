@@ -1,8 +1,5 @@
 import React, { useState } from 'react';
 import { Shield, Bell, ChevronDown } from 'lucide-react';
-import { useSystemStatus } from '@/hooks/useSystemStatus';
-
-// ── Components ────────────────────────────────────────────────────────────────
 
 const Toggle = ({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) => {
   // In the mockup, active is yellow/orange, inactive is light teal/green
@@ -75,23 +72,9 @@ const ButtonOutline = ({ children, onClick }: { children: React.ReactNode; onCli
   </button>
 );
 
-const StatusIndicator = ({ status }: { status: string }) => {
-  const isOk = status === 'Працює';
-  return (
-    <div className="flex items-center gap-2">
-      <div className={`w-2.5 h-2.5 rounded-full ${isOk ? 'bg-[#10b981]' : 'bg-[#ef4444]'}`} />
-      <span className={`text-sm font-medium ${isOk ? 'text-[#10b981]' : 'text-[#ef4444]'}`}>
-        {isOk ? 'Працює' : 'Помилка'}
-      </span>
-    </div>
-  );
-};
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 const SettingsPage: React.FC = () => {
-  const { data: systemStatus, isLoading } = useSystemStatus();
-
   // State
   const [security, setSecurity] = useState({ twoFactor: true, logoutTime: '30 хв', password: '••••••••' });
   const [notifications, setNotifications] = useState({ parserErrors: true, dailyReport: false, newUsers: false, parserRun: false, email: true });
@@ -105,11 +88,9 @@ const SettingsPage: React.FC = () => {
         <p className="text-sm text-textMuted mt-2">Керування параметрами платформи</p>
       </div>
 
-
-      {/* Grid for Security and System Status */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="space-y-6">
         {/* Security */}
-        <Card className="lg:col-span-2">
+        <Card>
           <SectionHeader icon={Shield} title="Безпека" />
           <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -140,29 +121,6 @@ const SettingsPage: React.FC = () => {
                 <ButtonOutline>Змінити пароль</ButtonOutline>
               </div>
             </div>
-          </div>
-        </Card>
-
-        {/* System Status */}
-        <Card className="lg:col-span-1">
-          <h2 className="text-lg font-bold text-textMain mb-6">Статус системи</h2>
-          <div className="space-y-4">
-            {[
-              { key: 'PostgreSQL', label: 'PostgreSQL' },
-              { key: 'Redis', label: 'Redis' },
-              { key: 'RabbitMQ', label: 'Rabit MQ' },
-              { key: 'Meilisearch', label: 'Meilisearch' },
-              { key: 'API Gateway', label: 'API Gateway' },
-            ].map((service) => (
-              <div key={service.key} className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-textMain">{service.label}</span>
-                {isLoading ? (
-                  <div className="h-4 w-16 bg-secondary rounded animate-pulse" />
-                ) : (
-                  <StatusIndicator status={systemStatus?.[service.key] || 'Помилка'} />
-                )}
-              </div>
-            ))}
           </div>
         </Card>
       </div>
