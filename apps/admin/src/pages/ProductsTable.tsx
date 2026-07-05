@@ -8,6 +8,7 @@ import {
   ChevronRight,
   ChevronDown,
   AlertCircle,
+  Eye,
   EyeOff,
   XCircle,
 } from 'lucide-react';
