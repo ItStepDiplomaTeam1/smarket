@@ -14,6 +14,13 @@ class StoreResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class StoreStatsResponse(BaseModel):
+    total_products: int
+    promo_products: int
+    max_savings: int
+
+
+
 class CategoryResponse(BaseModel):
     id: int
     slug: str
