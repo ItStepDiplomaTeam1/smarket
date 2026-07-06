@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Search,
-  Eye,
   MoreVertical,
   Users,
   UserCheck,
@@ -9,6 +8,7 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
+  Trash2,
 } from 'lucide-react';
 import { useUsers, type AdminUser } from '@/hooks/useUsers';
 
@@ -113,26 +113,20 @@ const ActionsMenu: React.FC<{ user: AdminUser }> = ({ user }) => {
         <MoreVertical size={16} />
       </button>
       {open && (
-        <div className="absolute right-0 top-8 z-50 bg-white border border-border rounded-lg shadow-lg py-1 min-w-[160px]">
-          <button
-            className="w-full text-left px-4 py-2 text-sm text-textMain hover:bg-secondary transition-colors"
-            onClick={() => setOpen(false)}
-          >
-            Переглянути профіль
-          </button>
+        <div className="absolute right-0 top-8 z-50 bg-white border border-border rounded-lg shadow-lg p-2 min-w-[160px]">
           {isBlocked ? (
             <button
-              className="w-full text-left px-4 py-2 text-sm text-[#1e8e3e] hover:bg-[#e6f4ea] transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-white bg-[#1e8e3e] rounded-md hover:bg-[#177330] transition-colors"
               onClick={() => setOpen(false)}
             >
-              Розблокувати
+              <UserCheck size={16} /> Розблокувати
             </button>
           ) : (
             <button
-              className="w-full text-left px-4 py-2 text-sm text-[#c5221f] hover:bg-[#fce8e6] transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-white bg-[#c00000] rounded-md hover:bg-[#a00000] transition-colors font-medium"
               onClick={() => setOpen(false)}
             >
-              Заблокувати
+              <Trash2 size={16} /> Заблокувати
             </button>
           )}
         </div>
@@ -346,12 +340,6 @@ const UsersPage: React.FC = () => {
           {/* Дії */}
           <td className="py-3.5 pl-3 pr-6">
             <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button
-                className="p-1.5 text-textMuted hover:text-primary hover:bg-secondary rounded-md transition-colors"
-                title="Переглянути профіль"
-              >
-                <Eye size={16} />
-              </button>
               <ActionsMenu user={user} />
             </div>
           </td>
