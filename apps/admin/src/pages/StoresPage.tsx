@@ -208,8 +208,8 @@ const StoresPage: React.FC = () => {
         <td className="py-4 px-3 text-sm text-textMuted whitespace-nowrap">
           {formatDate(store.synced_at)}
         </td>
-        <td className="py-4 pl-3 pr-6 text-right">
-          <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <td className="py-4 pl-3 pr-10 text-right">
+          <div className="flex items-center justify-end gap-1">
             <button className="p-1.5 text-textMuted hover:text-primary hover:bg-secondary rounded-md transition-colors" title="Редагувати">
               <Edit size={16} />
             </button>
@@ -313,7 +313,7 @@ const StoresPage: React.FC = () => {
                 <th className="py-3 px-3 text-xs font-semibold text-textMuted uppercase tracking-wider">
                   Останній імпорт
                 </th>
-                <th className="py-3 pl-3 pr-6 text-right text-xs font-semibold text-textMuted uppercase tracking-wider">
+                <th className="py-3 pl-3 pr-10 text-right text-xs font-semibold text-textMuted uppercase tracking-wider w-24">
                   Дії
                 </th>
               </tr>
