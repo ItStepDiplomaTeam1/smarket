@@ -34,6 +34,7 @@ export function useUsers() {
     queryKey: ['admin-users'],
     queryFn: fetchRecentUsers,
     staleTime: 30_000,
+  });
 }
 
 export function useBlockUser() {
