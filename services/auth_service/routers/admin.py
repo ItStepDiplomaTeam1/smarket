@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Header, status
 from fastapi.responses import ORJSONResponse
@@ -83,3 +84,47 @@ async def get_recent_users(
 
     logger.info(f"Admin requested {limit} recent users — returned {len(users)} records")
     return [_format_user(u) for u in users]
+
+@router.post("/users/{user_id}/block")
+async def block_user(
+    user_id: str,
+    x_user_role: str | None = Header(None, alias="X-User-Role"),
+    db: AsyncSession = Depends(get_db),
+):
+    _require_admin_from_header(x_user_role)
+    try:
+        uid = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid user ID format")
+    
+    result = await db.execute(select(User).where(User.id == uid))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="Користувача не знайдено")
+        
+    user.is_active = False
+    await db.commit()
+    logger.info(f"Admin blocked user {user_id}")
+    return {"status": "ok", "message": "Користувача заблоковано"}
+
+@router.post("/users/{user_id}/unblock")
+async def unblock_user(
+    user_id: str,
+    x_user_role: str | None = Header(None, alias="X-User-Role"),
+    db: AsyncSession = Depends(get_db),
+):
+    _require_admin_from_header(x_user_role)
+    try:
+        uid = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid user ID format")
+    
+    result = await db.execute(select(User).where(User.id == uid))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="Користувача не знайдено")
+        
+    user.is_active = True
+    await db.commit()
+    logger.info(f"Admin unblocked user {user_id}")
+    return {"status": "ok", "message": "Користувача розблоковано"}

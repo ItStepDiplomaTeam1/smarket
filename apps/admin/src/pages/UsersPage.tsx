@@ -10,7 +10,7 @@ import {
   ChevronRight,
   Trash2,
 } from 'lucide-react';
-import { useUsers, type AdminUser } from '@/hooks/useUsers';
+import { useUsers, useBlockUser, useUnblockUser, type AdminUser } from '@/hooks/useUsers';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -95,6 +95,21 @@ const ActionsMenu: React.FC<{ user: AdminUser }> = ({ user }) => {
   const isBlocked = user.status === 'Неактивний' || user.status === 'Заблокований';
   const ref = useRef<HTMLDivElement>(null);
 
+  const { mutate: blockUser, isPending: isBlocking } = useBlockUser();
+  const { mutate: unblockUser, isPending: isUnblocking } = useUnblockUser();
+
+  const handleBlock = () => {
+    blockUser(user.id, {
+      onSuccess: () => setOpen(false),
+    });
+  };
+
+  const handleUnblock = () => {
+    unblockUser(user.id, {
+      onSuccess: () => setOpen(false),
+    });
+  };
+
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -116,15 +131,17 @@ const ActionsMenu: React.FC<{ user: AdminUser }> = ({ user }) => {
         <div className="absolute right-0 top-8 z-50 bg-white border border-border rounded-lg shadow-lg p-2 min-w-[160px]">
           {isBlocked ? (
             <button
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-white bg-[#1e8e3e] rounded-md hover:bg-[#177330] transition-colors"
-              onClick={() => setOpen(false)}
+              disabled={isUnblocking}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-white bg-[#1e8e3e] rounded-md hover:bg-[#177330] transition-colors disabled:opacity-50"
+              onClick={handleUnblock}
             >
               <UserCheck size={16} /> Розблокувати
             </button>
           ) : (
             <button
-              className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-white bg-[#c00000] rounded-md hover:bg-[#a00000] transition-colors font-medium"
-              onClick={() => setOpen(false)}
+              disabled={isBlocking}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-white bg-[#c00000] rounded-md hover:bg-[#a00000] transition-colors font-medium disabled:opacity-50"
+              onClick={handleBlock}
             >
               <Trash2 size={16} /> Заблокувати
             </button>

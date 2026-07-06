@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 
 export interface AdminUser {
@@ -34,5 +34,30 @@ export function useUsers() {
     queryKey: ['admin-users'],
     queryFn: fetchRecentUsers,
     staleTime: 30_000,
+}
+
+export function useBlockUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const { data } = await apiClient.post(`/admin/users/${userId}/block`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+    },
+  });
+}
+
+export function useUnblockUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const { data } = await apiClient.post(`/admin/users/${userId}/unblock`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
+    },
   });
 }

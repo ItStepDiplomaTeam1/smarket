@@ -310,3 +310,13 @@ async def get_etl_health(request: Request):
             content={"status": "timeout", "error": "ETL service timed out"},
             status_code=504,
         )
+
+@router.post("/users/{user_id}/block")
+async def block_user(user_id: str, request: Request):
+    payload = _verify_admin_token(request)
+    return await _proxy_to_auth(request, f"users/{user_id}/block", payload)
+
+@router.post("/users/{user_id}/unblock")
+async def unblock_user(user_id: str, request: Request):
+    payload = _verify_admin_token(request)
+    return await _proxy_to_auth(request, f"users/{user_id}/unblock", payload)
