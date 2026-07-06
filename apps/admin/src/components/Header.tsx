@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Search, ChevronDown, LogOut, User } from 'lucide-react';
+import { Bell, ChevronDown, LogOut, User } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { apiClient } from '@/lib/apiClient';
 
@@ -37,20 +37,8 @@ export const Header: React.FC = () => {
   const initials = displayName.slice(0, 2).toUpperCase();
 
   return (
-    <header className="h-[68px] flex items-center justify-between px-6 bg-surface border border-border rounded-xl shadow-sm z-10 sticky top-0 shrink-0">
-      {/* Search */}
-      <div className="flex items-center gap-4 flex-1">
-        <div className="hidden md:flex relative w-full max-w-md">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search size={16} className="text-textMuted" />
-          </div>
-          <input
-            type="text"
-            placeholder="Пошук товарів, категорій, замовлень"
-            className="w-full pl-10 pr-4 py-2 border border-border rounded-lg text-sm text-textMain focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all bg-surface"
-          />
-        </div>
-      </div>
+    <header className="h-[68px] flex items-center justify-end px-6 bg-surface border border-border rounded-xl shadow-sm z-10 sticky top-0 shrink-0">
+
 
       {/* Right side */}
       <div className="flex items-center gap-3">
