@@ -80,7 +80,7 @@ const UserRowSkeleton: React.FC = () => (
       </div>
     </td>
     <td className="py-3.5 px-3"><div className="h-4 w-36 rounded bg-secondary" /></td>
-    <td className="py-3.5 px-3"><div className="h-5 w-20 rounded bg-secondary" /></td>
+    <td className="py-3.5 px-3 text-center"><div className="h-5 w-20 rounded bg-secondary mx-auto" /></td>
     <td className="py-3.5 px-3"><div className="h-4 w-6 rounded bg-secondary" /></td>
     <td className="py-3.5 px-3"><div className="h-4 w-6 rounded bg-secondary" /></td>
     <td className="py-3.5 px-3"><div className="h-4 w-28 rounded bg-secondary" /></td>
@@ -322,7 +322,7 @@ const UsersPage: React.FC = () => {
           {/* E-mail */}
           <td className="py-3.5 px-3 text-sm text-textMuted whitespace-nowrap">{user.email}</td>
           {/* Статус */}
-          <td className="py-3.5 px-3">
+          <td className="py-3.5 px-3 text-center">
             <StatusBadge status={user.status} />
           </td>
           {/* Кошиків (заглушка) */}
@@ -429,7 +429,7 @@ const UsersPage: React.FC = () => {
                 <th className="py-3 px-3 text-xs font-semibold text-textMuted uppercase tracking-wider">
                   E-mail
                 </th>
-                <th className="py-3 px-3 text-xs font-semibold text-textMuted uppercase tracking-wider">
+                <th className="py-3 px-3 text-xs font-semibold text-textMuted uppercase tracking-wider text-center">
                   Статус
                 </th>
                 <th className="py-3 px-3 text-xs font-semibold text-textMuted uppercase tracking-wider text-center">
