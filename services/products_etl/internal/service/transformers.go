@@ -569,13 +569,17 @@ func batchUpsertPage(
 			INSERT INTO prices (product_id, store_id, price, old_price, in_stock, recorded_at)
 			SELECT $1, $2, $3, $4, $5, NOW()
 			WHERE NOT EXISTS (
-				SELECT 1 FROM prices
-				WHERE product_id = $1
-				  AND store_id   = $2
-				  AND price      = $3
-				  AND in_stock   = $5
-				  AND (old_price IS NOT DISTINCT FROM $4)
-				  AND recorded_at > NOW() - INTERVAL '3 hours'
+				SELECT 1 FROM (
+					SELECT price, old_price, in_stock
+					FROM prices
+					WHERE product_id = $1
+					  AND store_id   = $2
+					ORDER BY recorded_at DESC
+					LIMIT 1
+				) latest
+				WHERE latest.price = $3
+				  AND latest.in_stock = $5
+				  AND (latest.old_price IS NOT DISTINCT FROM $4)
 			)`,
 			productID, storeID, priceUAH, oldPriceUAH, p.InStock,
 		)
