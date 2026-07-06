@@ -213,8 +213,8 @@ const CategoriesPage: React.FC = () => {
           {formatDate(category.updated_at || category.created_at)}
         </td>
         {/* Дії */}
-        <td className="py-4 pl-3 pr-10">
-          <div className="flex items-center justify-end gap-1">
+        <td className="py-4 px-3 text-center">
+          <div className="flex items-center justify-center gap-1">
             <button
               onClick={() => toggleVisibility({ categoryId: category.id, isHidden: !category.is_hidden })}
               disabled={isToggling}
@@ -298,7 +298,7 @@ const CategoriesPage: React.FC = () => {
                 <th className="py-3 px-3 text-xs font-semibold text-textMuted uppercase tracking-wider">
                   Оновлення
                 </th>
-                <th className="py-3 pl-3 pr-10 text-right text-xs font-semibold text-textMuted uppercase tracking-wider w-24">
+                <th className="py-3 px-3 text-center text-xs font-semibold text-textMuted uppercase tracking-wider w-24">
                   Дії
                 </th>
               </tr>

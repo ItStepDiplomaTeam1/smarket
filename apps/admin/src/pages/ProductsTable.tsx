@@ -339,8 +339,8 @@ const ProductsTable: React.FC = () => {
           <td className="py-4 px-3 text-sm text-textMuted text-right whitespace-nowrap">
             Нещодавно
           </td>
-          <td className="py-4 pl-3 pr-6 text-right">
-            <div className="flex items-center justify-end opacity-0 group-hover:opacity-100 transition-opacity">
+          <td className="py-4 px-3 text-center">
+            <div className="flex items-center justify-center">
               <button
                 onClick={() => toggleVisibility({ productId: product.id, isHidden: !product.is_hidden })}
                 disabled={isTogglingVisibility}
@@ -542,7 +542,7 @@ const ProductsTable: React.FC = () => {
                 <th className="py-4 px-3 text-xs font-semibold text-textMain w-[10%]">Проблема</th>
                 <th className="py-3 px-3 text-xs font-semibold text-textMuted uppercase tracking-wider">Видимість</th>
                 <th className="py-4 px-3 text-xs font-semibold text-textMain text-right w-[10%]">Оновлення</th>
-                <th className="py-4 pl-3 pr-6 text-xs font-semibold text-textMain text-right w-[5%]">Дії</th>
+                <th className="py-4 px-3 text-xs font-semibold text-textMain text-center w-[5%]">Дії</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">

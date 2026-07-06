@@ -355,8 +355,8 @@ const UsersPage: React.FC = () => {
             {formatDate(user.created_at)}
           </td>
           {/* Дії */}
-          <td className="py-3.5 pl-3 pr-10">
-            <div className="flex items-center justify-end gap-1">
+          <td className="py-3.5 px-3 text-center">
+            <div className="flex items-center justify-center gap-1">
               <ActionsMenu user={user} />
             </div>
           </td>
@@ -458,7 +458,7 @@ const UsersPage: React.FC = () => {
                 <th className="py-3 px-3 text-xs font-semibold text-textMuted uppercase tracking-wider">
                   Дата реєстрації
                 </th>
-                <th className="py-3 pl-3 pr-10 text-right text-xs font-semibold text-textMuted uppercase tracking-wider w-24">
+                <th className="py-3 px-3 text-center text-xs font-semibold text-textMuted uppercase tracking-wider w-24">
                   Дії
                 </th>
               </tr>
