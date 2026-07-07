@@ -20,7 +20,7 @@ const DISCOUNT_OPTIONS = [
   { id: '0-10', name: 'до 10%', count: 120 },
   { id: '10-30', name: 'від 10% до 30%', count: 85 },
   { id: '30-50', name: 'від 30% до 50%', count: 43 },
-  { id: '50+', name: 'більше 50%', count: 14 },
+  { id: '50', name: 'більше 50%', count: 14 },
 ];
 
 const GridIcon = () => (
@@ -93,89 +93,39 @@ interface ProductsResponse {
   total: number;
 }
 
-// Інтерфейс для передачі всіх фільтрів у функцію fetchProducts
 interface FetchFilters {
   page: number;
   category: string;
   stores: string[];
   subcategories: string[];
   offers: string[];
-  discounts: string[]; // Додали знижки, яких не вистачало
+  discounts: string[]; // <-- Додано типізацію для знижок
   maxPrice: number;
   search: string;
   sortBy: string;
 }
 
-// ================= ФУНКЦІЯ ОТРИМАННЯ ДАНИХ =================
-const fetchProducts = async (filters: FetchFilters): Promise<ProductsResponse> => {
-    const limit = 12;
-    const skip = (filters.page - 1) * limit;
-    
-    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://157.180.74.21:8080';
-    const url = new URL(`${apiBaseUrl}/api/v1/search/search`);
-    
-    // 1. Базові параметри пошуку та пагінації
-    url.searchParams.append('q', filters.search.trim());
-    url.searchParams.append('limit', limit.toString());
-    url.searchParams.append('offset', skip.toString());
-    
-    // 2. Фільтр категорії (якщо це не дефолтні "products")
-    if (filters.category !== 'products') {
-        url.searchParams.append('category_slug', filters.category);
-    }
-    
-    // 3. Максимальна ціна
-    if (filters.maxPrice < 2000) {
-        url.searchParams.append('price_max', filters.maxPrice.toString());
-    }
-    
-    // 4. Магазини (відправляємо всі вибрані як повторювані параметри)
-    filters.stores.forEach(store => {
-        url.searchParams.append('retail_chain', store);
-    });
-    
-    // 5. Підкатегорії
-    filters.subcategories.forEach(sub => {
-        url.searchParams.append('subcategory_slug', sub);
-    });
-    
-    // 6. Пропозиції (Тільки акції, Новинки тощо)
-    filters.offers.forEach(offer => {
-        url.searchParams.append('offer_type', offer);
-    });
-
-    // 7. Розмір знижки (0-10, 10-30 тощо)
-    filters.discounts.forEach(discount => {
-        url.searchParams.append('discount_range', discount);
-    });
-    
-    // 8. Сортування
-    if (filters.sortBy !== 'best_price' && filters.sortBy !== 'everything') {
-        const sortDirection = filters.sortBy === 'cheapest_first' ? 'asc' : 'desc';
-        url.searchParams.append('sort', `price:${sortDirection}`);
-    }
-    
-    const res = await fetch(url.toString());
-    if (!res.ok) {
-        throw new Error('Помилка завантаження товарів');
-    }
-    
-    const searchData = await res.json();
-    return {
-        items: searchData.hits || [],
-        total: searchData.total_hits || searchData.nb_hits || 0
-    };
-};
-
 // ================= КОНСТАНТИ ФІЛЬТРІВ (ДИНАМІЧНІ МАСИВИ) =================
+export const MAIN_CATEGORIES = [
+  { id: 1, slug: 'products', name: 'Продукти' },
+  { id: 2, slug: 'drinks', name: 'Напої' },
+  { id: 3, slug: 'snacks', name: 'Солодощі та снеки' },
+  { id: 4, slug: 'alcohol-tobacco', name: 'Алкоголь та тютюн' },
+  { id: 5, slug: 'household', name: 'Товари для дому' },
+  { id: 6, slug: 'health-beauty', name: "Здоров'я та догляд" },
+  { id: 7, slug: 'pets', name: 'Зоотовари' },
+  { id: 8, slug: 'babies', name: 'Дитячі товари' },
+  { id: 9, slug: 'hobby-rest', name: 'Хобі та відпочинок' },
+  { id: 10, slug: 'promo', name: 'Акції та промо' }
+];
+
 const CATEGORY_OPTIONS = [
   { id: 'products', icon: '🥦', name: 'Продукти', count: '1 240' },
   { id: 'drinks', icon: '🥤', name: 'Напої', count: '380' },
-  { id: 'baby', icon: '🍼', name: 'Дитячі товари', count: '214' },
-  { id: 'chemistry', icon: '🧴', name: 'Побутова хімія', count: '176' },
-  { id: 'beauty', icon: '💄', name: 'Краса та догляд', count: '290' },
-  { id: 'home', icon: '🪴', name: 'Товари для дому', count: '134' },
-  { id: 'zoo', icon: '🐾', name: 'Зоотовари', count: '98' },
+  { id: 'babies', icon: '🍼', name: 'Дитячі товари', count: '214' },
+  { id: 'household', icon: '🪴', name: 'Товари для дому', count: '176' },
+  { id: 'health-beauty', icon: '💄', name: 'Краса та догляд', count: '290' },
+  { id: 'pets', icon: '🐾', name: 'Зоотовари', count: '98' },
 ];
 
 const STORE_OPTIONS = [
@@ -203,17 +153,86 @@ const PROPOSAL_OPTIONS = [
   { id: 'save', name: 'Найбільша економія', count: '120' },
 ];
 
+const fetchProducts = async (filters: FetchFilters): Promise<ProductsResponse> => {
+    const limit = 12;
+    const skip = (filters.page - 1) * limit;
+    
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://157.180.74.21:8080';
+    // 100% залишаємо твій старий ендпоінт пошуку
+    const url = new URL(`${apiBaseUrl}/api/v1/search/search`);
+    
+    // 1. Базові параметри пошуку та пагінації (ЯК БУЛО)
+    url.searchParams.append('q', filters.search.trim());
+    url.searchParams.append('limit', limit.toString());
+    url.searchParams.append('offset', skip.toString());
+    
+    // --- ФІЛЬТР КАТЕГОРІЇ (ОНОВЛЕНО) ---
+    if (filters.category && filters.category !== 'products') {
+        url.searchParams.append('category_slug', filters.category);
+    }
+    
+    // 3. Максимальна ціна (ЯК БУЛО)
+    if (filters.maxPrice < 2000) {
+        url.searchParams.append('price_max', filters.maxPrice.toString());
+    }
+    
+    // 4. Магазини
+    if (filters.stores.length > 0) {
+        url.searchParams.append('retail_chain', filters.stores.join(','));
+    }
+    
+    // 5. Підкатегорії (ЯК БУЛО - циклом через subcategory_slug)
+    filters.subcategories.forEach(sub => {
+        url.searchParams.append('subcategory_slug', sub);
+    });
+    
+    // 6. Пропозиції (ЯК БУЛО - циклом через offer_type)
+    filters.offers.forEach(offer => {
+        url.searchParams.append('offer_type', offer);
+    });
+
+    // 7. Розмір знижки (ПОВЕРНУЛИ ЯК БУЛО - циклом через discount_range)
+    filters.discounts.forEach(discount => {
+        url.searchParams.append('discount_range', discount);
+    });
+    
+    // 8. СОРТУВАННЯ (ВИПРАВЛЕНО ТА ОНОВЛЕНО)
+    if (filters.sortBy === 'cheapest_first') {
+        url.searchParams.append('sort', 'price:asc');
+    } else if (filters.sortBy === 'expensive_first') {
+        url.searchParams.append('sort', 'price:desc');
+    } else if (filters.sortBy === 'biggest_discount' || filters.sortBy === 'discount') {
+        // Залежно від того, як поле знижки названо у твоєму Meilisearch індексі,
+        // тут має бути або 'discount_percent:desc', або 'discount_range:desc', або просто 'discount:desc'.
+        // Найчастіше це саме 'discount_percent:desc'
+        url.searchParams.append('sort', 'discount_percent:desc');
+    }
+    // Якщо значення 'best_price' або 'everything' — параметр 'sort' не додається, як і було раніше.
+    
+    const res = await fetch(url.toString());
+    if (!res.ok) {
+        throw new Error('Помилка завантаження товарів');
+    }
+    
+    const searchData = await res.json();
+    return {
+        items: searchData.hits || [],
+        total: searchData.total_hits || searchData.nb_hits || 0
+    };
+};
+
+
 export function MainContent() {
   const [page, setPage] = useState(1);
   
-  // Клієнтські стейти для всіх типів фільтрів
-    const [maxPrice, setMaxPrice] = useState<number>(1000); 
-    const [selectedCategory, setSelectedCategory] = useState<string>('products'); 
-    const [selectedStores, setSelectedStores] = useState<string[]>([]);
-    const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>([]); 
-    const [selectedOffers, setSelectedOffers] = useState<string[]>([]);
-    const [selectedDiscounts, setSelectedDiscounts] = useState<string[]>([]);
-  // НОВІ СТЕЙТИ: пошук, сортування, вигляд
+  // Клієнтські стейти
+  const [maxPrice, setMaxPrice] = useState<number>(1000); 
+  const [selectedCategory, setSelectedCategory] = useState<string>('products'); 
+  const [selectedStores, setSelectedStores] = useState<string[]>([]);
+  const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>([]); 
+  const [selectedOffers, setSelectedOffers] = useState<string[]>([]);
+  const [selectedDiscounts, setSelectedDiscounts] = useState<string[]>([]);
+  
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [debouncedSearch, setDebouncedSearch] = useState<string>('');
   const [sortBy, setSortBy] = useState<string>('best_price');
@@ -223,7 +242,7 @@ export function MainContent() {
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(searchQuery);
-    }, 500); // 500мс затримка перед запитом на бекенд
+    }, 500);
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
@@ -234,7 +253,7 @@ export function MainContent() {
     stores: selectedStores,
     subcategories: selectedSubcategories,
     offers: selectedOffers,
-    discounts: selectedDiscounts, // Обов'язково додаємо цей рядок!
+    discounts: selectedDiscounts, // <-- Додано сюди! Тепер React Query реагуватиме на зміни
     maxPrice,
     search: debouncedSearch,
     sortBy
@@ -274,7 +293,7 @@ export function MainContent() {
         prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
     );
     setPage(1);
-};
+  };
 
   const toggleOffer = (offerId: string) => {
     setSelectedOffers(prev => 
@@ -283,23 +302,22 @@ export function MainContent() {
     setPage(1);
   };
 
-  // Повне скидання абсолютно всіх фільтрів
+  // Повне скидання фільтрів
   const resetFilters = () => {
     setSelectedCategory('products');
     setSelectedStores([]);
     setSelectedSubcategories([]);
-    setSelectedOffers([]); // Скидаємо пропозиції
-    setSelectedDiscounts([]); // Скидаємо розмір знижки
+    setSelectedOffers([]); 
+    setSelectedDiscounts([]); 
     setMaxPrice(1000);
-    setSearchQuery(''); // Скидаємо пошук
-    setSortBy('everything'); // Скидаємо сортування
+    setSearchQuery(''); 
+    setSortBy('everything'); 
     setPage(1);
   };
 
-  // Розрахунок загальної кількості сторінок
+  // Розрахунок кількості сторінок
   const totalPages = Math.ceil(totalProducts / 12);
   
-  // Логіка генерації масиву пагінації (з трьома крапками)
   let paginationNumbers = [];
   if (totalPages <= 7) {
     paginationNumbers = Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -319,7 +337,7 @@ export function MainContent() {
       {/* ================= LEFT SIDEBAR ================= */}
       <aside className="w-[280px] bg-white rounded-[16px] border border-[#E5E7EB] p-[24px] flex flex-col font-inter shrink-0">
       
-        {/* ================= КАТЕГОРІЇ (ДИНАМІЧНІ) ================= */}
+        {/* ================= КАТЕГОРІЇ ================= */}
         <div className="mb-[32px]">
           <h3 className="font-manrope text-[13px] font-bold text-[#6D8279] tracking-[0.06em] uppercase mb-[12px]">
             Категорії
@@ -363,8 +381,8 @@ export function MainContent() {
           </h3>
           <hr className="border-t border-[#F3F4F6] mb-[20px]" />
 
-            {/* 1. ЦІНА */}
-            <div className="mb-[24px]">
+          {/* 1. ЦІНА */}
+          <div className="mb-[24px]">
             <h4 className="font-manrope text-[12px] font-bold text-[#6D8279] tracking-[0.06em] uppercase mb-[12px]">
                 Ціна до (ГРН)
             </h4>
@@ -380,7 +398,6 @@ export function MainContent() {
                 />
             </div>
             
-            {/* Робочий повзунок */}
             <div className="relative flex items-center mx-[4px]">
                 <input 
                 type="range" 
@@ -394,9 +411,9 @@ export function MainContent() {
                 className="w-full h-[4px] bg-[#F3F4F6] rounded-[2px] appearance-none cursor-pointer accent-[#173B33]"
                 />
             </div>
-            </div>
+          </div>
 
-          {/* 2. МАГАЗИНИ (РОБОЧІ) */}
+          {/* 2. МАГАЗИНИ */}
           <div className="mb-[24px]">
             <h4 className="font-manrope text-[12px] font-bold text-[#6D8279] tracking-[0.06em] uppercase mb-[12px]">
               Магазини
@@ -421,7 +438,7 @@ export function MainContent() {
             </div>
           </div>
 
-          {/* 3. ПІДКАТЕГОРІЯ (ДИНАМІЧНА) */}
+          {/* 3. ПІДКАТЕГОРІЯ */}
           <div className="mb-[24px]">
             <h4 className="font-manrope text-[12px] font-bold text-[#6D8279] tracking-[0.06em] uppercase mb-[12px]">
               Підкатегорія
@@ -448,7 +465,7 @@ export function MainContent() {
             </div>
           </div>
 
-          {/* 4. ПРОПОЗИЦІЇ (ДИНАМІЧНІ) */}
+          {/* {/* 4. ПРОПОЗИЦІЇ *}
           <div className="mb-[24px]">
             <h4 className="font-manrope text-[12px] font-bold text-[#6D8279] tracking-[0.06em] uppercase mb-[12px]">
               Пропозиції
@@ -474,12 +491,13 @@ export function MainContent() {
               })}
             </div>
           </div>
+          */}
 
-            {/* 5. РОЗМІР ЗНИЖКИ (ДИНАМІЧНИЙ) */}
-            <div className="mb-[24px]">
-                <h4 className="font-manrope text-[12px] font-bold text-[#6D8279] tracking-[0.06em] uppercase mb-[12px]">
-                    Розмір знижки
-                </h4>
+          {/* 5. РОЗМІР ЗНИЖКИ */}
+          <div className="mb-[24px]">
+            <h4 className="font-manrope text-[12px] font-bold text-[#6D8279] tracking-[0.06em] uppercase mb-[12px]">
+                Розмір знижки
+            </h4>
             <div className="flex flex-col gap-[12px]">
                 {DISCOUNT_OPTIONS.map((item) => {
                 const isDiscountActive = selectedDiscounts.includes(item.id);
@@ -500,7 +518,7 @@ export function MainContent() {
                 );
                 })}
             </div>
-            </div>
+          </div>
 
           <button 
             onClick={resetFilters}
@@ -587,14 +605,13 @@ export function MainContent() {
           </div>
         </div>
 
-        {/* ================= АКТИВНІ ТЕГИ (ПОВНІСТЮ ДИНАМІЧНІ) ================= */}
+        {/* ================= АКТИВНІ ТЕГИ ================= */}
         <div className="flex items-center flex-wrap gap-[12px] mb-[24px]">
           <p className="text-[13px] text-[#6D8279] m-0">
               Знайдено <span className="font-bold text-[#111827]">{totalProducts} товарів</span>
           </p>
           
           <div className="flex gap-[8px] flex-wrap">
-            {/* Теги категорій (показуємо, якщо це не дефолтні продукти, або виводимо поточну активну) */}
             {selectedCategory && selectedCategory !== 'products' && (
               <span 
                 onClick={() => setSelectedCategory('products')}
@@ -607,7 +624,6 @@ export function MainContent() {
               </span>
             )}
 
-            {/* Теги магазинів */}
             {selectedStores.map(storeId => {
               const storeLabel = STORE_OPTIONS.find(s => s.id === storeId)?.label;
               return (
@@ -624,7 +640,6 @@ export function MainContent() {
               );
             })}
 
-            {/* Теги підкатегорій */}
             {selectedSubcategories.map(subId => {
               const subLabel = SUBCATEGORY_OPTIONS.find(s => s.id === subId)?.name;
               return (
@@ -641,7 +656,6 @@ export function MainContent() {
               );
             })}
 
-            {/* Теги пропозицій */}
             {selectedOffers.map(offerId => {
               const offerLabel = PROPOSAL_OPTIONS.find(o => o.id === offerId)?.name;
               return (
@@ -657,11 +671,27 @@ export function MainContent() {
                 </span>
               );
             })}
+
+            {/* НОВИЙ БЛОК: Теги для розміру знижки */}
+            {selectedDiscounts.map(discountId => {
+              const discountLabel = DISCOUNT_OPTIONS.find(d => d.id === discountId)?.name;
+              return (
+                <span 
+                  key={`tag-discount-${discountId}`} 
+                  onClick={() => toggleDiscount(discountId)}
+                  className="flex items-center gap-[6px] bg-[#EAF7F2] text-[#265447] px-[10px] py-[4px] rounded-[100px] text-[12px] font-medium cursor-pointer hover:bg-[#D1E8DD] transition-colors group"
+                >
+                  Знижка: {discountLabel}
+                  <span className="text-[#A6C4B9] group-hover:text-[#265447] transition-colors">
+                    <CloseIcon />
+                  </span>
+                </span>
+              );
+            })}
           </div>
         </div>
 
         {/* ================= СІТКА ПРОДУКТІВ ================= */}
-        {/* Застосовуємо зміну сітки в залежності від viewMode */}
         <div className={`grid gap-[16px] ${viewMode === 'grid' ? 'grid-cols-4' : 'grid-cols-1'}`}>
           {isLoading ? (
             <div className="col-span-full text-center py-10 font-medium text-[#6D8279]">
@@ -684,8 +714,7 @@ export function MainContent() {
 
               return (
                 <div key={product.id} className="border border-[#E5E7EB] rounded-[12px] p-[16px] flex flex-col bg-white hover:shadow-sm transition-shadow">
-                  {/* Беджі та вподобане */}
-                  <div className="flex justify-between items-start  min-h-[24px]">
+                  <div className="flex justify-between items-start min-h-[24px]">
                     <div className="flex gap-[4px]">
                       {discountPercent > 0 && (
                         <span className="text-[10px] font-bold px-[6px] py-[2px] rounded-[4px] bg-[#FFD600] text-[#111827]">
@@ -695,7 +724,6 @@ export function MainContent() {
                     </div>
                   </div>
                   
-                  {/* Фото товару */}
                   <Link to={`/product/${product.id}`} className="w-full h-[140px] bg-[#F9FAFB] rounded-[8px] flex items-center justify-center mb-[16px] overflow-hidden p-[8px]">
                     {product.image_url ? (
                       <img src={product.image_url} alt={product.title} className="max-w-full max-h-full object-contain mix-blend-multiply" />
@@ -704,7 +732,6 @@ export function MainContent() {
                     )}
                   </Link>
                   
-                  {/* Інформація */}
                   <div className="flex flex-col flex-1">
                     <span className="text-[10px] font-bold text-[#9CA3AF] uppercase tracking-[0.05em] mb-[4px] truncate">
                       {product.category?.name || 'Продукти'}
@@ -716,7 +743,6 @@ export function MainContent() {
                       {product.brand || 'Без бренду'} · {product.weight} {product.unit === 'pcs' ? 'шт' : 'г'}
                     </span>
                     
-                    {/* Наявність */}
                     <div className="flex items-center gap-[6px] mb-[16px]">
                       <div className="flex gap-[2px]">
                         <span className={`w-[4px] h-[4px] rounded-full ${storesCount >= 1 ? 'bg-[#10B981]' : 'bg-[#D1D5DB]'}`}></span>
@@ -728,7 +754,6 @@ export function MainContent() {
                       </span>
                     </div>
                     
-                    {/* Ціни та кнопка */}
                     <div className="mt-auto flex flex-col gap-[16px]">
                       <div className="flex justify-between items-end min-h-[36px]">
                         <div className="flex flex-col">
@@ -745,8 +770,6 @@ export function MainContent() {
                               {oldPrice} ₴
                               </span>
                             )}
-                            
-                            {/* Показуємо бейдж зі знижкою лише якщо вона більша за 0 */}
                             {discountAmount > 0 && (
                               <span className="bg-[#EAF7F2] text-[#265447] text-[10px] font-bold px-[4px] py-[2px] rounded-[4px] leading-none">
                                 -{discountAmount} ₴
@@ -777,8 +800,6 @@ export function MainContent() {
         {/* Блок пагінації */}
         {products.length > 0 && (
           <div className="flex items-center justify-between border-t border-[#E5E7EB] pt-[20px] mt-[32px] w-full">
-            
-            {/* Кнопка Попередня */}
             <button 
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
@@ -794,7 +815,6 @@ export function MainContent() {
               Попередня
             </button>
 
-            {/* Номери сторінок */}
             <div className="flex items-center gap-[4px] hidden sm:flex">
               {paginationNumbers.map((p, index) => (
                 p === '...' ? (
@@ -817,7 +837,6 @@ export function MainContent() {
               ))}
             </div>
 
-            {/* Кнопка Наступна */}
             <button 
               onClick={() => setPage(p => p + 1)}
               disabled={page >= totalPages} 

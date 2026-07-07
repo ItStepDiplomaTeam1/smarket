@@ -15,7 +15,7 @@ const Badge: React.FC<BadgeProps> = ({ text }) => {
 
 export const HeadlineShops: React.FC = () => {
   return (
-    <div className="w-full max-w-[1130px] mx-auto font-sans px-4 md:px-0 py-3">
+    <div className="w-full max-w-[1130px] mx-auto font-sans px-4 md:px-0 py-3 mt-5">
       
       {/* Хлібні крихти (Breadcrumbs) */}
       <nav className="flex items-center space-x-2 text-[14px] mb-4 text-[#70807E]">

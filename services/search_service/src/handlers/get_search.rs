@@ -190,7 +190,13 @@ pub async fn search_handler(
         filter_conditions.push(format!("store_id = \"{}\"", store));
     }
     if let Some(ref chain) = filters.retail_chain {
-        filter_conditions.push(format!("retail_chain = \"{}\"", chain));
+        let chains: Vec<&str> = chain.split(',').collect();
+        if chains.len() == 1 {
+            filter_conditions.push(format!("retail_chain = \"{}\"", chains[0]));
+        } else {
+            let in_clause = chains.iter().map(|c| format!("\"{}\"", c)).collect::<Vec<_>>().join(", ");
+            filter_conditions.push(format!("retail_chain IN [{}]", in_clause));
+        }
     }
     if let Some(p_min) = filters.price_min {
         filter_conditions.push(format!("price >= {}", p_min));
