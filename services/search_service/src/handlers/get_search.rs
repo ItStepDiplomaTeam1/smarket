@@ -191,22 +191,31 @@ pub async fn search_handler(
     if let Some(cat_id) = filters.category_id {
         filter_conditions.push(format!("category_id = {}", cat_id));
     }
+    // Category slug filter (supports multiple values)
     if let Some(ref cat_slug) = filters.category_slug {
         let cats: Vec<&str> = cat_slug.split(',').collect();
         if cats.len() == 1 {
-            filter_conditions.push(format!("(category_slug = \"{}\" OR parent_category_slug = \"{}\")", cats[0], cats[0]));
+            filter_conditions.push(format!(
+                "(category_slug = \"{}\" OR category_name = \"{}\" OR parent_category_slug = \"{}\")",
+                cats[0], cats[0], cats[0]
+            ));
         } else {
             let in_clause = cats.iter().map(|c| format!("\"{}\"", c)).collect::<Vec<_>>().join(", ");
-            filter_conditions.push(format!("(category_slug IN [{}] OR parent_category_slug IN [{}])", in_clause, in_clause));
+            filter_conditions.push(format!(
+                "(category_slug IN [{}] OR category_name IN [{}] OR parent_category_slug IN [{}])",
+                in_clause, in_clause, in_clause
+            ));
         }
-        if let Some(ref subcat_slug) = filters.subcategory_slug {
-            let subcats: Vec<&str> = subcat_slug.split(',').collect();
-            if subcats.len() == 1 {
-                filter_conditions.push(format!("subcategory_slug = \"{}\"", subcats[0]));
-            } else {
-                let in_clause = subcats.iter().map(|c| format!("\"{}\"", c)).collect::<Vec<_>>().join(", ");
-                filter_conditions.push(format!("subcategory_slug IN [{}]", in_clause));
-            }
+    }
+
+    // Subcategory slug filter (independent of category_slug)
+    if let Some(ref subcat_slug) = filters.subcategory_slug {
+        let subcats: Vec<&str> = subcat_slug.split(',').collect();
+        if subcats.len() == 1 {
+            filter_conditions.push(format!("subcategory_slug = \"{}\"", subcats[0]));
+        } else {
+            let in_clause = subcats.iter().map(|c| format!("\"{}\"", c)).collect::<Vec<_>>().join(", ");
+            filter_conditions.push(format!("subcategory_slug IN [{}]", in_clause));
         }
     }
     if let Some(ref store) = filters.store_id {
@@ -254,6 +263,12 @@ pub async fn search_handler(
     search_builder.with_offset(offset);
 
     let filter_str: String;
+    // Log the constructed Meilisearch filter string for debugging
+    if let Some(ref f) = meili_filter {
+        info!("[search] Constructed Meilisearch filter: {}", f);
+    } else {
+        info!("[search] No Meilisearch filter applied (fetching all visible products)");
+    }
     if let Some(ref f) = meili_filter {
         filter_str = f.clone();
         search_builder.with_filter(&filter_str);
