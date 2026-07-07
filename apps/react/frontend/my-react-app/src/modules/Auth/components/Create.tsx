@@ -414,7 +414,7 @@ export function Create() {
                             </button>
 
                             <p className="text-center text-[14px] mt-[24px] text-[#6B7280]">
-                                Вже маєте акаунт? <Link to="/auth" className="text-[#265447] font-semibold no-underline hover:underline">Увійти</Link>
+                                Вже маєте акаунт? <Link to="/auth" viewTransition className="text-[#265447] font-semibold no-underline hover:underline">Увійти</Link>
                             </p>
                         </form>
                     </div>

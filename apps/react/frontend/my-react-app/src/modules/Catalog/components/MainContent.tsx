@@ -696,9 +696,9 @@ export function MainContent() {
                   </div>
                   
                   {/* Фото товару */}
-                  <Link to={`/product/${product.id}`} className="w-full h-[140px] bg-[#F9FAFB] rounded-[8px] flex items-center justify-center mb-[16px] overflow-hidden p-[8px]">
+                  <Link to={`/product/${product.id}`} viewTransition className="w-full h-[140px] bg-[#F9FAFB] rounded-[8px] flex items-center justify-center mb-[16px] overflow-hidden p-[8px]">
                     {product.image_url ? (
-                      <img src={product.image_url} alt={product.title} className="max-w-full max-h-full object-contain mix-blend-multiply" />
+                      <img src={product.image_url} alt={product.title} className="max-w-full max-h-full object-contain mix-blend-multiply" style={{ viewTransitionName: `product-image-${product.id}` }} />
                     ) : (
                       <div className="w-[40px] h-[40px] bg-[#E5E7EB] rounded-[6px] opacity-40" />
                     )}

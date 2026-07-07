@@ -75,16 +75,16 @@ export function Header() {
             {/* Виправлено ширину контейнера на 1230px */}
             <div className="max-w-[1230px] mx-auto px-6 h-full flex justify-between items-center">
 
-                <Link to="/" className="flex items-center h-full py-0">
+                <Link to="/" viewTransition className="flex items-center h-full py-0">
                     <img src={fix_logo} alt="Smarket Logo" className="h-8 w-auto block object-contain" />
                 </Link>
 
                 {/* Оновлено список посилань відповідно до макета */}
                 <nav className="flex items-center gap-8">
-                    <NavLink to="/" className={navLinkClass}>Головна</NavLink>
-                    <NavLink to="/catalog" className={navLinkClass}>Каталог</NavLink>
-                    <NavLink to="/shops" className={navLinkClass}>Магазини</NavLink>
-                    <NavLink to="/cart" className={navLinkClass}>Кошик</NavLink>
+                    <NavLink to="/" viewTransition className={navLinkClass}>Головна</NavLink>
+                    <NavLink to="/catalog" viewTransition className={navLinkClass}>Каталог</NavLink>
+                    <NavLink to="/shops" viewTransition className={navLinkClass}>Магазини</NavLink>
+                    <NavLink to="/cart" viewTransition className={navLinkClass}>Кошик</NavLink>
                 </nav>
 
                 <div className="flex items-center gap-6">
@@ -187,6 +187,7 @@ export function Header() {
                         /* Замінено текстову кнопку "Увійти" на іконку користувача з макета */
                         <Link
                             to="/auth"
+                            viewTransition
                             className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0 w-5 h-5 text-[#173B33] hover:text-[#265447] transition-colors duration-200"
                             aria-label="Увійти"
                         >

@@ -1,6 +1,7 @@
 import { Suspense, lazy } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { MainLayout } from '../layouts/MainLayout';
+import { CatalogSkeleton, ShopsSkeleton, PageSkeleton, ProductDetailSkeleton } from '@/shared/ui';
 
 const HomePage = lazy(() => import('@/pages/Home/ui/Home.tsx'));
 const AuthPage = lazy(() => import('@/pages/Auth'));
@@ -25,7 +26,7 @@ const router = createBrowserRouter([
       {
         path: '/',
         element: (
-          <Suspense fallback={<div>Завантаження сторінки...</div>}>
+          <Suspense fallback={<PageSkeleton />}>
             <HomePage />
           </Suspense>
         ),
@@ -33,7 +34,7 @@ const router = createBrowserRouter([
       {
         path: '/auth',
         element: (
-          <Suspense fallback={<div>Завантаження авторизації...</div>}>
+          <Suspense fallback={<PageSkeleton />}>
             <AuthPage />
           </Suspense>
         ),
@@ -41,7 +42,7 @@ const router = createBrowserRouter([
       {
         path: '/register',
         element: (
-          <Suspense fallback={<div>Завантаження реєстрації...</div>}>
+          <Suspense fallback={<PageSkeleton />}>
             <Registerform />
           </Suspense>
         ),
@@ -49,7 +50,7 @@ const router = createBrowserRouter([
       {
         path: '/forgot-password',
         element: (
-          <Suspense fallback={<div>Завантаження відновлення пароля...</div>}>
+          <Suspense fallback={<PageSkeleton />}>
             <ForgotPassword />
           </Suspense>
         ),
@@ -57,7 +58,7 @@ const router = createBrowserRouter([
       {
         path: '/login',
         element: (
-          <Suspense fallback={<div>Завантаження входу...</div>}>
+          <Suspense fallback={<PageSkeleton />}>
             <LoginPage />
           </Suspense>
         ),
@@ -65,7 +66,7 @@ const router = createBrowserRouter([
       {
         path: '/product/:id',
         element: (
-          <Suspense fallback={<div>Завантаження деталей продукту...</div>}>
+          <Suspense fallback={<ProductDetailSkeleton />}>
             <ProductDetail />
           </Suspense>
         ),
@@ -73,7 +74,7 @@ const router = createBrowserRouter([
       {
         path: '/profile',
         element: (
-          <Suspense fallback={<div>Завантаження профілю...</div>}>
+          <Suspense fallback={<PageSkeleton />}>
             <Profile />
           </Suspense>
         ),
@@ -81,7 +82,7 @@ const router = createBrowserRouter([
       {
         path: '/catalog',
         element: (
-          <Suspense fallback={<div>Завантаження каталогу...</div>}>
+          <Suspense fallback={<CatalogSkeleton />}>
             <Catalog />
           </Suspense>
         ),
@@ -89,7 +90,7 @@ const router = createBrowserRouter([
       {
         path: '/cart',
         element: (
-          <Suspense fallback={<div>Завантаження кошика...</div>}>
+          <Suspense fallback={<PageSkeleton />}>
             <CartPage />
           </Suspense>
         ),
@@ -97,7 +98,7 @@ const router = createBrowserRouter([
       {
         path: '/ConfidentialPolicy',
         element: (
-          <Suspense fallback={<div>Завантаження політики конфіденційності...</div>}>
+          <Suspense fallback={<PageSkeleton />}>
             <ConfidentialPolicy />
           </Suspense>
         ),
@@ -105,7 +106,7 @@ const router = createBrowserRouter([
       {
         path: '/Privacy',
         element: (
-          <Suspense fallback={<div>Завантаження обробки персональних даних...</div>}>
+          <Suspense fallback={<PageSkeleton />}>
             <Privacy />
           </Suspense>
         ),
@@ -113,7 +114,7 @@ const router = createBrowserRouter([
       {
         path: '/UsingConditions',
         element: (
-          <Suspense fallback={<div>Завантаження умов використання...</div>}>
+          <Suspense fallback={<PageSkeleton />}>
             <UsingConditions />
           </Suspense>
         ),
@@ -121,7 +122,7 @@ const router = createBrowserRouter([
       {
         path: '/Shops',
         element: (
-          <Suspense fallback={<div>Завантаження магазинів...</div>}>
+          <Suspense fallback={<ShopsSkeleton />}>
             <ShopsPage />
           </Suspense>
         ),

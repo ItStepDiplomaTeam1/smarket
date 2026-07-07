@@ -84,6 +84,7 @@ const SmCard = ({ product }: { product: Product }) => {
     return (
         <Link 
             to={`/product/${product.id}-${generateSlug(product.title)}`}
+            viewTransition
             className="w-[271px] h-[489px] shrink-0 bg-white border border-[rgba(38,84,71,0.08)] rounded-[16px] p-[16px] flex flex-col box-border cursor-pointer transition-shadow hover:shadow-[0_4px_12px_rgba(38,84,71,0.08)] no-underline text-inherit block"
         >
             <div className="w-full h-[339px] rounded-[10px] flex justify-center items-center mb-[16px] overflow-hidden">
@@ -91,6 +92,7 @@ const SmCard = ({ product }: { product: Product }) => {
                     src={product.image_url || zagluska} 
                     alt={product.title} 
                     className="max-w-[80%] max-h-[80%] object-contain" 
+                    style={{ viewTransitionName: `product-image-${product.id}` }}
                 />
             </div>
             <h3 
