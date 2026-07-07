@@ -22,12 +22,13 @@ async def proxy_to_stores(request: Request, path: str):
     headers.pop("host", None)
 
     try:
+        body_content = b"" if request.method == "GET" else request.stream()
         req = client.build_request(
             method=request.method,
             url=target_url,
             headers=headers,
             params=request.query_params,
-            content=request.stream(),
+            content=body_content,
         )
         response = await client.send(req, stream=True)
         return StreamingResponse(
