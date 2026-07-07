@@ -30,10 +30,8 @@ type ETLTask struct {
 // API віддає голий масив: [{"id": "fresh-meat", ...}, ...].
 // Поле називається "id", а не "slug" — саме воно використовується як slug у URL продуктів.
 type categoryItem struct {
-	Slug     string         `json:"id"`    // в API це поле "id", але семантично — slug для URL
-	Title    string         `json:"title"` // українська назва категорії (напр. "Свіже м'ясо")
-	ParentID *string        `json:"parent_id"`
-	Children []categoryItem `json:"children"`
+	Slug  string `json:"id"`    // в API це поле "id", але семантично — slug для URL
+	Title string `json:"title"` // українська назва категорії (напр. "Свіже м'ясо")
 }
 
 // productsPageMeta — мінімальні поля сторінки продуктів (для пагінації).

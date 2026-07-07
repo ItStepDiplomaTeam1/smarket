@@ -48,15 +48,13 @@ async fn configure_meilisearch_index(client: &meilisearch_sdk::client::Client) {
         .with_filterable_attributes([
             "category_id",
             "category_slug",
-            "parent_category_slug",
             "store_id",
             "retail_chain",
             "price",
-            "discount_percent",
             "in_stock",
             "is_hidden",
         ])
-        .with_sortable_attributes(["price", "title", "discount_percent"])
+        .with_sortable_attributes(["price", "title"])
         .with_displayed_attributes(["*"])
         .with_pagination(PaginationSetting {
             max_total_hits: 100000,

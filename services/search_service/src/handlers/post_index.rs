@@ -51,12 +51,6 @@ pub struct ProductDocument {
 
     #[serde(default)]
     pub is_hidden: bool,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub parent_category_slug: Option<String>,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub discount_percent: Option<i32>,
 }
 
 #[derive(Debug, Deserialize)]
