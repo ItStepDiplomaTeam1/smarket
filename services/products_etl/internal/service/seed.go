@@ -149,11 +149,15 @@ func SeedCategories(ctx context.Context, pool *pgxpool.Pool) error {
 				continue
 			}
 
+			mainCatID := ResolveMainCategoryID(c.Slug)
+
 			const query = `
-				INSERT INTO categories (slug, name) VALUES ($1, $2)
-				ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
+				INSERT INTO categories (slug, name, main_category_id) VALUES ($1, $2, $3)
+				ON CONFLICT (slug) DO UPDATE SET
+					name             = EXCLUDED.name,
+					main_category_id = EXCLUDED.main_category_id
 			`
-			tag, err := pool.Exec(ctx, query, c.Slug, c.Title)
+			tag, err := pool.Exec(ctx, query, c.Slug, c.Title, mainCatID)
 			if err != nil {
 				log.Printf("[seed] WARN: не вдалось зберегти категорію %s: %v", c.Slug, err)
 				continue

@@ -651,11 +651,13 @@ func ResolveCategoryID(ctx context.Context, pgPool *pgxpool.Pool, categorySlug s
 	// 2. Не знайдено — ліниве авто-створення.
 	//    ON CONFLICT (slug) DO NOTHING захищає від гонки між воркерами.
 	//    RETURNING id спрацює лише якщо цей виклик вставив рядок.
+	mainCatID := ResolveMainCategoryID(categorySlug)
 	err = pgPool.QueryRow(ctx, `
-		INSERT INTO categories (slug, name) VALUES ($1, '')
+		INSERT INTO categories (slug, name, main_category_id) VALUES ($1, '', $2)
 		ON CONFLICT (slug) DO NOTHING
 		RETURNING id`,
 		categorySlug,
+		mainCatID,
 	).Scan(&id)
 
 	if err == nil {
@@ -685,23 +687,24 @@ func ResolveCategoryID(ctx context.Context, pgPool *pgxpool.Pool, categorySlug s
 // SearchProductDocument — DTO для надсилання в search_service /api/v1/index.
 // Повинен відповідати структурі ProductDocument у search_service/src/handlers/post_index.rs.
 type SearchProductDocument struct {
-	ID           int64    `json:"id"`
-	Title        string   `json:"title"`
-	Brand        string   `json:"brand,omitempty"`
-	Unit         string   `json:"unit,omitempty"`
-	Weight       float64  `json:"weight,omitempty"`
-	ImageURL     string   `json:"image_url,omitempty"`
-	CanonicalEAN string   `json:"canonical_ean,omitempty"`
-	CategoryID   *int     `json:"category_id,omitempty"`
-	CategorySlug string   `json:"category_slug,omitempty"`
-	CategoryName string   `json:"category_name,omitempty"`
-	StoreID      string   `json:"store_id"`
-	StoreName    string   `json:"store_name,omitempty"`
-	RetailChain  string   `json:"retail_chain,omitempty"`
-	Price        float64  `json:"price"`
-	OldPrice     *float64 `json:"old_price,omitempty"`
-	InStock      bool     `json:"in_stock"`
-	IsHidden     bool     `json:"is_hidden"`
+	ID             int64    `json:"id"`
+	Title          string   `json:"title"`
+	Brand          string   `json:"brand,omitempty"`
+	Unit           string   `json:"unit,omitempty"`
+	Weight         float64  `json:"weight,omitempty"`
+	ImageURL       string   `json:"image_url,omitempty"`
+	CanonicalEAN   string   `json:"canonical_ean,omitempty"`
+	CategoryID     *int     `json:"category_id,omitempty"`
+	CategorySlug   string   `json:"category_slug,omitempty"`
+	CategoryName   string   `json:"category_name,omitempty"`
+	MainCategoryID *int     `json:"main_category_id,omitempty"`
+	StoreID        string   `json:"store_id"`
+	StoreName      string   `json:"store_name,omitempty"`
+	RetailChain    string   `json:"retail_chain,omitempty"`
+	Price          float64  `json:"price"`
+	OldPrice       *float64 `json:"old_price,omitempty"`
+	InStock        bool     `json:"in_stock"`
+	IsHidden       bool     `json:"is_hidden"`
 }
 
 type searchIndexRequest struct {
@@ -729,6 +732,7 @@ func indexProductsToSearch(pgPool *pgxpool.Pool, searchServiceURL string, storeI
 			p.canonical_category_id,
 			COALESCE(c.slug, '')               AS category_slug,
 			COALESCE(c.name, '')               AS category_name,
+			c.main_category_id,
 			sp.store_id,
 			COALESCE(s.name, '')               AS store_name,
 			COALESCE(s.retail_chain, '')        AS retail_chain,
@@ -760,6 +764,7 @@ func indexProductsToSearch(pgPool *pgxpool.Pool, searchServiceURL string, storeI
 	for rows.Next() {
 		var doc SearchProductDocument
 		var categoryID *int
+		var mainCatID *int
 		var oldPrice *float64
 
 		if err := rows.Scan(
@@ -773,6 +778,7 @@ func indexProductsToSearch(pgPool *pgxpool.Pool, searchServiceURL string, storeI
 			&categoryID,
 			&doc.CategorySlug,
 			&doc.CategoryName,
+			&mainCatID,
 			&doc.StoreID,
 			&doc.StoreName,
 			&doc.RetailChain,
@@ -785,6 +791,7 @@ func indexProductsToSearch(pgPool *pgxpool.Pool, searchServiceURL string, storeI
 			continue
 		}
 		doc.CategoryID = categoryID
+		doc.MainCategoryID = mainCatID
 		doc.OldPrice = oldPrice
 		docs = append(docs, doc)
 	}
@@ -871,6 +878,7 @@ func RunFullBackfill(pgPool *pgxpool.Pool, searchServiceURL string) (int, error)
 			p.canonical_category_id,
 			COALESCE(c.slug, '')               AS category_slug,
 			COALESCE(c.name, '')               AS category_name,
+			c.main_category_id,
 			sp.store_id,
 			COALESCE(s.name, '')               AS store_name,
 			COALESCE(s.retail_chain, '')        AS retail_chain,
@@ -921,6 +929,7 @@ func RunFullBackfill(pgPool *pgxpool.Pool, searchServiceURL string) (int, error)
 	for rows.Next() {
 		var doc SearchProductDocument
 		var categoryID *int
+		var mainCatID *int
 		var oldPrice *float64
 
 		if err := rows.Scan(
@@ -934,6 +943,7 @@ func RunFullBackfill(pgPool *pgxpool.Pool, searchServiceURL string) (int, error)
 			&categoryID,
 			&doc.CategorySlug,
 			&doc.CategoryName,
+			&mainCatID,
 			&doc.StoreID,
 			&doc.StoreName,
 			&doc.RetailChain,
@@ -946,6 +956,7 @@ func RunFullBackfill(pgPool *pgxpool.Pool, searchServiceURL string) (int, error)
 			continue
 		}
 		doc.CategoryID = categoryID
+		doc.MainCategoryID = mainCatID
 		doc.OldPrice = oldPrice
 		docs = append(docs, doc)
 
