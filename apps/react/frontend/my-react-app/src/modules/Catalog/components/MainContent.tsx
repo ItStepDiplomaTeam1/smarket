@@ -100,10 +100,72 @@ interface FetchFilters {
   stores: string[];
   subcategories: string[];
   offers: string[];
+  discounts: string[]; // Додали знижки, яких не вистачало
   maxPrice: number;
   search: string;
   sortBy: string;
 }
+
+// ================= ФУНКЦІЯ ОТРИМАННЯ ДАНИХ =================
+const fetchProducts = async (filters: FetchFilters): Promise<ProductsResponse> => {
+    const limit = 12;
+    const skip = (filters.page - 1) * limit;
+    
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://157.180.74.21:8080';
+    const url = new URL(`${apiBaseUrl}/api/v1/search/search`);
+    
+    // 1. Базові параметри пошуку та пагінації
+    url.searchParams.append('q', filters.search.trim());
+    url.searchParams.append('limit', limit.toString());
+    url.searchParams.append('offset', skip.toString());
+    
+    // 2. Фільтр категорії (якщо це не дефолтні "products")
+    if (filters.category !== 'products') {
+        url.searchParams.append('category_slug', filters.category);
+    }
+    
+    // 3. Максимальна ціна
+    if (filters.maxPrice < 2000) {
+        url.searchParams.append('price_max', filters.maxPrice.toString());
+    }
+    
+    // 4. Магазини (відправляємо всі вибрані як повторювані параметри)
+    filters.stores.forEach(store => {
+        url.searchParams.append('retail_chain', store);
+    });
+    
+    // 5. Підкатегорії
+    filters.subcategories.forEach(sub => {
+        url.searchParams.append('subcategory_slug', sub);
+    });
+    
+    // 6. Пропозиції (Тільки акції, Новинки тощо)
+    filters.offers.forEach(offer => {
+        url.searchParams.append('offer_type', offer);
+    });
+
+    // 7. Розмір знижки (0-10, 10-30 тощо)
+    filters.discounts.forEach(discount => {
+        url.searchParams.append('discount_range', discount);
+    });
+    
+    // 8. Сортування
+    if (filters.sortBy !== 'best_price' && filters.sortBy !== 'everything') {
+        const sortDirection = filters.sortBy === 'cheapest_first' ? 'asc' : 'desc';
+        url.searchParams.append('sort', `price:${sortDirection}`);
+    }
+    
+    const res = await fetch(url.toString());
+    if (!res.ok) {
+        throw new Error('Помилка завантаження товарів');
+    }
+    
+    const searchData = await res.json();
+    return {
+        items: searchData.hits || [],
+        total: searchData.total_hits || searchData.nb_hits || 0
+    };
+};
 
 // ================= КОНСТАНТИ ФІЛЬТРІВ (ДИНАМІЧНІ МАСИВИ) =================
 const CATEGORY_OPTIONS = [
@@ -141,45 +203,6 @@ const PROPOSAL_OPTIONS = [
   { id: 'save', name: 'Найбільша економія', count: '120' },
 ];
 
-// ================= ФУНКЦІЯ ОТРИМАННЯ ДАНИХ =================
-const fetchProducts = async (filters: FetchFilters): Promise<ProductsResponse> => {
-    const limit = 12;
-    const skip = (filters.page - 1) * limit;
-    
-    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://157.180.74.21:8080';
-    
-    const url = new URL(`${apiBaseUrl}/api/v1/search/search`);
-    url.searchParams.append('q', filters.search.trim());
-    url.searchParams.append('limit', limit.toString());
-    url.searchParams.append('offset', skip.toString());
-    
-    if (filters.stores.length > 0) {
-        url.searchParams.append('retail_chain', filters.stores[0]);
-    }
-    if (filters.category !== 'products') {
-        url.searchParams.append('category_slug', filters.category);
-    }
-    if (filters.maxPrice < 2000) {
-        url.searchParams.append('price_max', filters.maxPrice.toString());
-    }
-    if (filters.sortBy !== 'best_price' && filters.sortBy !== 'everything') {
-        const sortDirection = filters.sortBy === 'cheapest_first' ? 'asc' : 'desc';
-        url.searchParams.append('sort', `price:${sortDirection}`);
-    }
-    
-    const res = await fetch(url.toString());
-    if (!res.ok) {
-        throw new Error('Помилка завантаження товарів');
-    }
-    
-    const searchData = await res.json();
-    return {
-        items: searchData.hits || [],
-        total: searchData.total_hits || searchData.nb_hits || 0
-    };
-};
-
-
 export function MainContent() {
   const [page, setPage] = useState(1);
   
@@ -211,6 +234,7 @@ export function MainContent() {
     stores: selectedStores,
     subcategories: selectedSubcategories,
     offers: selectedOffers,
+    discounts: selectedDiscounts, // Обов'язково додаємо цей рядок!
     maxPrice,
     search: debouncedSearch,
     sortBy
@@ -264,7 +288,8 @@ export function MainContent() {
     setSelectedCategory('products');
     setSelectedStores([]);
     setSelectedSubcategories([]);
-    setSelectedOffers([]);
+    setSelectedOffers([]); // Скидаємо пропозиції
+    setSelectedDiscounts([]); // Скидаємо розмір знижки
     setMaxPrice(1000);
     setSearchQuery(''); // Скидаємо пошук
     setSortBy('everything'); // Скидаємо сортування

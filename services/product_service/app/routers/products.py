@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 # Trigger CI rebuild 2
 from fastapi.responses import ORJSONResponse
-from sqlalchemy import select, func, and_, update
+from sqlalchemy import select, func, and_, update, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from typing import Optional
@@ -39,21 +39,16 @@ router = APIRouter(tags=["Products"], default_response_class=ORJSONResponse)
     response_model=PaginatedProductsResponse,
     status_code=status.HTTP_200_OK,
     summary="Список товарів",
-    description="Повертає каталог товарів з підтримкою фільтрів (ціна, магазини, акції) та глобальним сортуванням.",
 )
 async def get_products(
     skip: int = Query(0, ge=0),
     limit: int = Query(12, ge=1, le=1000),
-    stores: Optional[str] = Query(
-        None, description="Магазини через кому (напр. 'atb,novus')"
-    ),
-    category: Optional[str] = Query(None, description="ID категорії або 'products'"),
-    subcategories: Optional[str] = Query(
-        None, description="Слаги підкатегорій через кому"
-    ),
-    offers: Optional[str] = Query(
-        None, description="Фільтри пропозицій (promo, new, save)"
-    ),
+    stores: Optional[str] = Query(None, description="Магазини через кому"),
+    category: Optional[str] = Query(None, description="ID категорії"),
+    subcategories: Optional[str] = Query(None, description="Слаги підкатегорій"),
+    offers: Optional[str] = Query(None, description="Фільтри пропозицій (promo, new, save)"),
+    # === НОВИЙ ПАРАМЕТР З ФРОНТЕНДУ ===
+    discounts: Optional[str] = Query(None, description="Розмір знижки через кому (напр. '10,20,30-50')"),
     max_price: Optional[float] = Query(None, description="Максимальна ціна"),
     search: Optional[str] = Query(None, description="Пошук по назві товару"),
     sort_by: Optional[str] = Query("best_price", description="Сортування"),
@@ -63,9 +58,10 @@ async def get_products(
     store_ids = [s.strip() for s in stores.split(",")] if stores else []
     subcat_list = [s.strip() for s in subcategories.split(",")] if subcategories else []
     offer_list = [o.strip() for o in offers.split(",")] if offers else []
+    # Парсинг знижок
+    discount_list = [d.strip() for d in discounts.split(",")] if discounts else []
 
-    # 2. CTE (Common Table Expression) для ОСТАННІХ ЦІН
-    # Спочатку знаходимо найсвіжіший запис для кожного товару в кожному магазині
+    # 2. CTE для ОСТАННІХ ЦІН (залишається без змін)
     latest_price_subq = (
         select(
             Price.product_id,
@@ -74,7 +70,7 @@ async def get_products(
         ).group_by(Price.product_id, Price.store_id)
     ).subquery("latest_prices")
 
-    # 3. CTE актуальних цін (приєднуємо самі ціни)
+    # 3. CTE актуальних цін (залишається без змін)
     current_prices_stmt = select(
         Price.product_id, Price.store_id, Price.price, Price.old_price, Price.in_stock
     ).join(
@@ -86,7 +82,6 @@ async def get_products(
         ),
     )
 
-    # Якщо користувач вибрав конкретні магазини, шукаємо по МЕРЕЖІ (retail_chain)
     if store_ids:
         current_prices_stmt = current_prices_stmt.join(
             Store, Price.store_id == Store.external_id
@@ -94,17 +89,23 @@ async def get_products(
 
     current_prices_cte = current_prices_stmt.cte("current_prices")
 
-    # 4. Агрегація цін для кожного товару (знаходимо мінімальну ціну та чи є акція)
+    # === 4. МОДИФІКАЦІЯ: Агрегація цін + розрахунок МАКСИМАЛЬНОГО ВІДСОТКА ЗНИЖКИ ===
+    discount_percent_expr = func.coalesce(
+        ((current_prices_cte.c.old_price - current_prices_cte.c.price) / current_prices_cte.c.old_price) * 100,
+        0
+    )
+
     product_stats_subq = (
         select(
             current_prices_cte.c.product_id,
             func.min(current_prices_cte.c.price).label("min_price"),
-            # Використовуємо bool_or щоб перевірити чи є хоча б в одному магазині стара ціна
             func.bool_or(current_prices_cte.c.old_price.isnot(None)).label("has_promo"),
+            # Обчислюємо найкращу знижку на товар серед усіх доступних магазинів
+            func.max(discount_percent_expr).label("max_discount_percent"),
         ).group_by(current_prices_cte.c.product_id)
     ).subquery("product_stats")
 
-    # 5. Будуємо базовий запит Товарів, приєднуючи статистику цін
+    # 5. Будуємо базовий запит Товарів
     base_stmt = (
         select(Product, product_stats_subq.c.min_price, product_stats_subq.c.has_promo)
         .join(product_stats_subq, Product.id == product_stats_subq.c.product_id)
@@ -114,26 +115,44 @@ async def get_products(
     # 6. Застосування Фільтрів Фронтенду
     if search:
         base_stmt = base_stmt.where(Product.title.ilike(f"%{search}%"))
-
-    # Фільтр по категорії (ігноруємо текстове 'products' з фронтенду)
     if category and category.isdigit():
         base_stmt = base_stmt.where(Product.canonical_category_id == int(category))
-
-    # Фільтр "Підкатегорії" (якщо є поле slug в Category)
     if subcat_list:
         base_stmt = base_stmt.join(Category).where(Category.slug.in_(subcat_list))
-
-    # Фільтр "Ціна до"
     if max_price is not None:
         base_stmt = base_stmt.where(product_stats_subq.c.min_price <= max_price)
 
-    # Фільтри пропозицій
+    # Фільтри пропозицій (вже працюють за ключами 'promo', 'new', 'save')
     if "promo" in offer_list or "save" in offer_list:
         base_stmt = base_stmt.where(product_stats_subq.c.has_promo.is_(True))
-
     if "new" in offer_list:
         fourteen_days_ago = datetime.now(timezone.utc) - timedelta(days=14)
         base_stmt = base_stmt.where(Product.created_at >= fourteen_days_ago)
+
+    # === НОВИЙ ФІЛЬТР: Розмір знижки ===
+    if discount_list:
+        discount_conditions = []
+        for d in discount_list:
+            if "-" in d:  # Якщо прийшов діапазон, наприклад "10-30"
+                try:
+                    low, high = map(float, d.split("-"))
+                    discount_conditions.append(
+                        and_(
+                            product_stats_subq.c.max_discount_percent >= low,
+                            product_stats_subq.c.max_discount_percent <= high
+                        )
+                    )
+                except ValueError:
+                    continue
+            else:  # Якщо прийшло одне число, наприклад "20" (означає від 20% і вище)
+                try:
+                    val = float(d)
+                    discount_conditions.append(product_stats_subq.c.max_discount_percent >= val)
+                except ValueError:
+                    continue
+        
+        if discount_conditions:
+            base_stmt = base_stmt.where(or_(*discount_conditions))
 
     base_stmt = base_stmt.where(Product.is_hidden == False)
 
