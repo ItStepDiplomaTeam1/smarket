@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { useFetchCarts } from '@/hooks/api/useCartApi';
 import { useFetchUserReviews } from '@/hooks/api/useReviewsApi';
@@ -19,13 +20,20 @@ export function MainContent() {
   const { data: carts } = useFetchCarts();
   const { data: userReviews = [], isLoading: reviewsLoading, isError: reviewsError } = useFetchUserReviews(user?.id);
 
+
+  const latestReviews = useMemo(() => {
+    return [...userReviews]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 4);
+  }, [userReviews]);
+
   // Завантажуємо інформацію про товари для відгуків (назва, фото)
   const [productsMap, setProductsMap] = useState<Record<number, { title: string; image_url: string | null }>>({}); 
 
   useEffect(() => {
-    if (userReviews.length === 0) return;
+    if (latestReviews.length === 0) return;
 
-    const productIds = [...new Set(userReviews.map((r) => r.product_id))];
+    const productIds = [...new Set(latestReviews.map((r) => r.product_id))];
     const idsToFetch = productIds.filter((id) => !productsMap[id]);
     if (idsToFetch.length === 0) return;
 
@@ -49,7 +57,7 @@ export function MainContent() {
       }
     })();
     return () => { cancelled = true; };
-  }, [userReviews]);
+  }, [latestReviews]);
 
   // Відображуване ім'я для привітання: якщо є name — ім'я, інакше email
   const userName = user?.name || user?.email || 'Користувачу';
@@ -216,7 +224,7 @@ export function MainContent() {
           )}
 
           {/* Пустий стан */}
-          {!reviewsLoading && !reviewsError && userReviews.length === 0 && (
+          {!reviewsLoading && !reviewsError && latestReviews.length === 0 && (
             <div className="flex flex-col items-center justify-center py-[32px]">
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="mb-[12px]">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -227,10 +235,10 @@ export function MainContent() {
           )}
 
           {/* Список відгуків */}
-          {!reviewsLoading && !reviewsError && userReviews.length > 0 && (
+          {!reviewsLoading && !reviewsError && latestReviews.length > 0 && (
             <>
               <div className="flex flex-col gap-[24px] mb-[24px]">
-                {userReviews.map((review) => {
+                {latestReviews.map((review) => {
                   const productInfo = productsMap[review.product_id];
                   const productTitle = productInfo?.title || `Товар #${review.product_id}`;
                   const productImage = productInfo?.image_url;
@@ -263,10 +271,10 @@ export function MainContent() {
                 })}
               </div>
 
-              <a href="#" className="flex items-center gap-[2px] font-inter text-[14px] font-semibold text-[#6D8279] mt-auto hover:text-[#265447] transition-colors w-full">
+              <Link to="/profile/reviews" className="flex items-center gap-[2px] font-inter text-[14px] font-semibold text-[#6D8279] mt-auto hover:text-[#265447] transition-colors w-full">
                 Переглянути всі відгуки
                 <ArrowRightIcon />
-              </a>
+              </Link>
             </>
           )}
         </div>

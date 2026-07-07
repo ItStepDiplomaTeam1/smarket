@@ -1,6 +1,5 @@
 export { Sidebar } from './components/Sidebar'
 export { MainContent } from './components/MainContent'
-export { DraftCard } from './components/Reviews/DraftCard'
 export { ReviewCard } from './components/Reviews/ReviewCard'
 export { EmptyState } from './components/Reviews/EmptyState'
 export { ReviewsContent } from './components/Reviews/ReviewsContent'

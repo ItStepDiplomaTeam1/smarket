@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useDeleteReview, useUpdateReview } from '@/hooks/api/useReviewsApi';
 
-// Імпорти іконок
 import editIcon from '@/shared/assets/redact_reviews.svg';
 import deleteIcon from '@/shared/assets/delete_reviews.svg';
 import goldStar from '@/shared/assets/gold-star.svg';
@@ -17,7 +16,6 @@ const StarIcon = ({ filled, onClick }: { filled: boolean; onClick?: () => void }
   />
 );
 
-/** Форматує ISO-дату у зручний вигляд, напр. "01 червня 2026" */
 function formatDate(iso: string): string {
   const months = [
     'січня', 'лютого', 'березня', 'квітня', 'травня', 'червня',
@@ -49,7 +47,6 @@ export function ReviewCard({ reviewId, rating, text, createdAt, productTitle, pr
   const deleteMutation = useDeleteReview();
   const updateMutation = useUpdateReview();
 
-  // Закриваємо меню при кліку за межами
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
@@ -87,12 +84,10 @@ export function ReviewCard({ reviewId, rating, text, createdAt, productTitle, pr
     setIsEditing(false);
   };
 
-  // --- Режим редагування ---
   if (isEditing) {
     return (
       <div className="w-full bg-white border border-[#6FE3C2] shadow-[0_4px_12px_rgba(23,59,51,0.06)] rounded-[16px] p-[24px] flex flex-col gap-[16px]">
         <div className="flex items-center gap-[16px]">
-          {/* Зображення товару */}
           <div className="w-[44px] h-[56px] shrink-0 border border-[#265447]/[0.08] rounded-[5px] flex items-center justify-center overflow-hidden">
             {productImage ? (
               <img src={productImage} alt={productTitle} className="w-full h-full object-cover" />
@@ -142,7 +137,6 @@ export function ReviewCard({ reviewId, rating, text, createdAt, productTitle, pr
     );
   }
 
-  // --- Підтвердження видалення ---
   if (showDeleteConfirm) {
     return (
       <div className="w-full bg-white border border-[#FECACA] shadow-[0_4px_12px_rgba(23,59,51,0.06)] rounded-[16px] p-[24px] flex items-center justify-between">
@@ -175,11 +169,9 @@ export function ReviewCard({ reviewId, rating, text, createdAt, productTitle, pr
     );
   }
 
-  // --- Звичайний стан ---
   return (
     <div className="w-full bg-white border border-[#265447]/[0.08] shadow-[0_4px_12px_rgba(23,59,51,0.06)] rounded-[16px] p-[24px] flex items-center justify-between relative">
       
-      {/* 1. Зображення товару */}
       <div className="w-[44px] h-[56px] shrink-0 border border-[#265447]/[0.08] rounded-[5px] flex items-center justify-center overflow-hidden">
         {productImage ? (
           <img src={productImage} alt={productTitle} className="w-full h-full object-cover" />
@@ -194,7 +186,6 @@ export function ReviewCard({ reviewId, rating, text, createdAt, productTitle, pr
         )}
       </div>
 
-      {/* 2. Заголовок та зірки */}
       <div className="flex flex-col gap-[12px] w-[156px] shrink-0 ml-[16px]">
         <h4 className="font-inter text-[12px] font-medium text-[#265447] leading-none m-0">
           {productTitle}
@@ -206,17 +197,15 @@ export function ReviewCard({ reviewId, rating, text, createdAt, productTitle, pr
         </div>
       </div>
 
-      {/* 3. Текст відгуку */}
       <p className="flex-1 min-w-0 py-[6px] font-inter text-[12px] font-medium text-[#6D8279] leading-[18px] m-0 shrink-0 line-clamp-2 mx-[16px]">
         {text || 'Без коментаря'}
       </p>
 
-      {/* 4. Дата */}
+
       <span className="font-inter text-[12px] text-[#6D8279] shrink-0">
         {formatDate(createdAt)}
       </span>
 
-      {/* 5. Кнопка меню */}
       <div ref={menuRef} className="shrink-0 relative z-10 ml-[12px]">
         <div 
           onClick={() => setMenuOpen(!menuOpen)} 

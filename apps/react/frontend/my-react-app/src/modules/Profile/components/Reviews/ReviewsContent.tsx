@@ -16,7 +16,6 @@ export function ReviewsContent() {
   const user = useAuthStore((s) => s.user);
   const { data: userReviews = [], isLoading, isError } = useFetchUserReviews(user?.id);
 
-  const [activeTab, setActiveTab] = useState<'all' | 'drafts'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [sortOrder, setSortOrder] = useState<'newest' | 'oldest'>('newest');
 
@@ -91,60 +90,23 @@ export function ReviewsContent() {
           Мої відгуки
         </h1>
 
-        {/* Таби */}
-        <div className="flex gap-[32px] border-b border-[#265447]/[0.08] mb-[24px]">
-          <button 
-            onClick={() => setActiveTab('all')}
-            className={`pb-[12px] font-inter text-[14px] leading-[21.45px] transition-colors relative bg-transparent border-none cursor-pointer ${
-              activeTab === 'all' 
-                ? 'font-bold text-[#265447]' 
-                : 'font-normal text-[#6D8279] hover:text-[#265447]'
-            }`}
+        <div className="flex gap-[16px] mb-[24px]">
+          <div 
+            className="h-[30px] border border-[#265447]/[0.16] rounded-[6px] px-[12px] flex items-center justify-between cursor-pointer bg-white gap-[8px]"
+            onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
           >
-            Всі відгуки
-            {activeTab === 'all' && (
-              <span className="absolute bottom-[-1px] left-0 w-full h-[2px] bg-[#6FE3C2] rounded-t-[2px]"></span>
-            )}
-          </button>
-          <button 
-            onClick={() => setActiveTab('drafts')}
-            className={`pb-[12px] font-inter text-[14px] leading-[21.45px] transition-colors relative bg-transparent border-none cursor-pointer ${
-              activeTab === 'drafts' 
-                ? 'font-bold text-[#265447]' 
-                : 'font-normal text-[#6D8279] hover:text-[#265447]'
-            }`}
-          >
-            Чернетки
-            {activeTab === 'drafts' && (
-              <span className="absolute bottom-[-1px] left-0 w-full h-[2px] bg-[#6FE3C2] rounded-t-[2px]"></span>
-            )}
-          </button>
-        </div>
-
-        {/* Фільтри — показуємо тільки для вкладки "Всі відгуки" */}
-        {activeTab === 'all' && (
-          <div className="flex gap-[16px] mb-[24px]">
-            <div className="w-[138px] h-[30px] border border-[#265447]/[0.16] rounded-[6px] px-[12px] flex items-center justify-between cursor-pointer bg-white">
-              <span className="font-inter text-[10px] font-normal text-[#6D8279]">Всі категорії</span>
-              <img src={rightVector} alt="v" className="w-[10px] h-[10px] object-contain rotate-90" />
-            </div>
-            <div 
-              className="h-[30px] border border-[#265447]/[0.16] rounded-[6px] px-[12px] flex items-center justify-between cursor-pointer bg-white gap-[8px]"
-              onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
-            >
-              <span className="font-inter text-[10px] font-normal text-[#6D8279] whitespace-nowrap">
-                {sortOrder === 'newest' ? 'Сортування: нові спочатку' : 'Сортування: старі спочатку'}
-              </span>
-              <img src={rightVector} alt="v" className="w-[10px] h-[10px] object-contain rotate-90" />
-            </div>
+            <span className="font-inter text-[10px] font-normal text-[#6D8279] whitespace-nowrap">
+              {sortOrder === 'newest' ? 'Сортування: нові спочатку' : 'Сортування: старі спочатку'}
+            </span>
+            <img src={rightVector} alt="v" className="w-[10px] h-[10px] object-contain rotate-90" />
           </div>
-        )}
+        </div>
 
         {/* --- Динамічний контент --- */}
         <div className="flex flex-col">
           
           {/* Стан завантаження */}
-          {activeTab === 'all' && isLoading && (
+          {isLoading && (
             <div className="flex items-center justify-center py-[64px]">
               <svg className="animate-spin mr-[8px]" width="20" height="20" viewBox="0 0 24 24" fill="none">
                 <circle cx="12" cy="12" r="10" stroke="rgba(38,84,71,0.2)" strokeWidth="3" />
@@ -155,7 +117,7 @@ export function ReviewsContent() {
           )}
 
           {/* Помилка */}
-          {activeTab === 'all' && isError && (
+          {isError && (
             <div className="flex items-center gap-[8px] bg-[#FEF2F2] border border-[#FECACA] rounded-[12px] px-[20px] py-[16px]">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
@@ -166,8 +128,7 @@ export function ReviewsContent() {
             </div>
           )}
 
-          {/* Вкладка "Всі відгуки" — реальні дані */}
-          {activeTab === 'all' && !isLoading && !isError && (
+          {!isLoading && !isError && (
             <>
               <div className="flex flex-col gap-[16px]">
                 {paginatedReviews.length > 0 ? (
@@ -240,10 +201,6 @@ export function ReviewsContent() {
             </>
           )}
 
-          {/* Вкладка "Чернетки" — заглушка */}
-          {activeTab === 'drafts' && (
-            <EmptyState />
-          )}
 
         </div>
 

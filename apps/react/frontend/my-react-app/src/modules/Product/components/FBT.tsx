@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Link } from 'react-router-dom';
+import { generateSlug } from '@/shared/utils/url';
 import zagluska from '@/shared/assets/products-zaglushka.svg';
 import { apiClient } from '../../../shared/api/apiClient';
 import { type Product } from '../type';
@@ -77,7 +79,10 @@ const RecentlyViewedCard = ({ product }: { product: Product }) => {
     };
 
     return (
-        <div className="w-[175px] h-[296px] shrink-0 bg-white border border-[rgba(38,84,71,0.08)] rounded-[16px] p-[16px] flex flex-col box-border">
+        <Link 
+            to={`/product/${product.id}-${generateSlug(product.title)}`}
+            className="w-[175px] h-[296px] shrink-0 bg-white border border-[rgba(38,84,71,0.08)] rounded-[16px] p-[16px] flex flex-col box-border cursor-pointer transition-shadow hover:shadow-[0_4px_12px_rgba(38,84,71,0.08)] no-underline text-inherit block"
+        >
             <div className="w-full h-[141px] rounded-[10px] flex justify-center items-center mb-[16px]">
                 <img 
                     src={product.image_url || zagluska} 
@@ -116,7 +121,7 @@ const RecentlyViewedCard = ({ product }: { product: Product }) => {
                     )}
                 </button>
             </div>
-        </div>
+        </Link>
     );
 };
 
