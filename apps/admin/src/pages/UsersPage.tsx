@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   Search,
-  Eye,
   MoreVertical,
   Users,
   UserCheck,
@@ -9,8 +8,9 @@ import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
+  Trash2,
 } from 'lucide-react';
-import { useUsers, type AdminUser } from '@/hooks/useUsers';
+import { useUsers, useBlockUser, useUnblockUser, type AdminUser } from '@/hooks/useUsers';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -80,7 +80,7 @@ const UserRowSkeleton: React.FC = () => (
       </div>
     </td>
     <td className="py-3.5 px-3"><div className="h-4 w-36 rounded bg-secondary" /></td>
-    <td className="py-3.5 px-3"><div className="h-5 w-20 rounded bg-secondary" /></td>
+    <td className="py-3.5 px-3 text-center"><div className="h-5 w-20 rounded bg-secondary mx-auto" /></td>
     <td className="py-3.5 px-3"><div className="h-4 w-6 rounded bg-secondary" /></td>
     <td className="py-3.5 px-3"><div className="h-4 w-6 rounded bg-secondary" /></td>
     <td className="py-3.5 px-3"><div className="h-4 w-28 rounded bg-secondary" /></td>
@@ -94,6 +94,21 @@ const ActionsMenu: React.FC<{ user: AdminUser }> = ({ user }) => {
   const [open, setOpen] = useState(false);
   const isBlocked = user.status === 'Неактивний' || user.status === 'Заблокований';
   const ref = useRef<HTMLDivElement>(null);
+
+  const { mutate: blockUser, isPending: isBlocking } = useBlockUser();
+  const { mutate: unblockUser, isPending: isUnblocking } = useUnblockUser();
+
+  const handleBlock = () => {
+    blockUser(user.id, {
+      onSuccess: () => setOpen(false),
+    });
+  };
+
+  const handleUnblock = () => {
+    unblockUser(user.id, {
+      onSuccess: () => setOpen(false),
+    });
+  };
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {
@@ -113,26 +128,22 @@ const ActionsMenu: React.FC<{ user: AdminUser }> = ({ user }) => {
         <MoreVertical size={16} />
       </button>
       {open && (
-        <div className="absolute right-0 top-8 z-50 bg-white border border-border rounded-lg shadow-lg py-1 min-w-[160px]">
-          <button
-            className="w-full text-left px-4 py-2 text-sm text-textMain hover:bg-secondary transition-colors"
-            onClick={() => setOpen(false)}
-          >
-            Переглянути профіль
-          </button>
+        <div className="absolute right-0 top-8 z-50 bg-white border border-border rounded-lg shadow-lg p-2 min-w-[160px]">
           {isBlocked ? (
             <button
-              className="w-full text-left px-4 py-2 text-sm text-[#1e8e3e] hover:bg-[#e6f4ea] transition-colors"
-              onClick={() => setOpen(false)}
+              disabled={isUnblocking}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-white bg-[#1e8e3e] rounded-md hover:bg-[#177330] transition-colors disabled:opacity-50"
+              onClick={handleUnblock}
             >
-              Розблокувати
+              <UserCheck size={16} /> Розблокувати
             </button>
           ) : (
             <button
-              className="w-full text-left px-4 py-2 text-sm text-[#c5221f] hover:bg-[#fce8e6] transition-colors"
-              onClick={() => setOpen(false)}
+              disabled={isBlocking}
+              className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm text-white bg-[#c00000] rounded-md hover:bg-[#a00000] transition-colors font-medium disabled:opacity-50"
+              onClick={handleBlock}
             >
-              Заблокувати
+              <Trash2 size={16} /> Заблокувати
             </button>
           )}
         </div>
@@ -328,7 +339,7 @@ const UsersPage: React.FC = () => {
           {/* E-mail */}
           <td className="py-3.5 px-3 text-sm text-textMuted whitespace-nowrap">{user.email}</td>
           {/* Статус */}
-          <td className="py-3.5 px-3">
+          <td className="py-3.5 px-3 text-center">
             <StatusBadge status={user.status} />
           </td>
           {/* Кошиків (заглушка) */}
@@ -344,14 +355,8 @@ const UsersPage: React.FC = () => {
             {formatDate(user.created_at)}
           </td>
           {/* Дії */}
-          <td className="py-3.5 pl-3 pr-6">
-            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button
-                className="p-1.5 text-textMuted hover:text-primary hover:bg-secondary rounded-md transition-colors"
-                title="Переглянути профіль"
-              >
-                <Eye size={16} />
-              </button>
+          <td className="py-3.5 px-3 text-center">
+            <div className="flex items-center justify-center gap-1">
               <ActionsMenu user={user} />
             </div>
           </td>
@@ -441,7 +446,7 @@ const UsersPage: React.FC = () => {
                 <th className="py-3 px-3 text-xs font-semibold text-textMuted uppercase tracking-wider">
                   E-mail
                 </th>
-                <th className="py-3 px-3 text-xs font-semibold text-textMuted uppercase tracking-wider">
+                <th className="py-3 px-3 text-xs font-semibold text-textMuted uppercase tracking-wider text-center">
                   Статус
                 </th>
                 <th className="py-3 px-3 text-xs font-semibold text-textMuted uppercase tracking-wider text-center">
@@ -453,7 +458,7 @@ const UsersPage: React.FC = () => {
                 <th className="py-3 px-3 text-xs font-semibold text-textMuted uppercase tracking-wider">
                   Дата реєстрації
                 </th>
-                <th className="py-3 pl-3 pr-6 text-right text-xs font-semibold text-textMuted uppercase tracking-wider">
+                <th className="py-3 px-3 text-center text-xs font-semibold text-textMuted uppercase tracking-wider w-24">
                   Дії
                 </th>
               </tr>

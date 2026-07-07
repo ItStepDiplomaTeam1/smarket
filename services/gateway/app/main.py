@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import httpx
@@ -24,6 +25,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Api Gateway", version="0.1.0", lifespan=lifespan, redirect_slashes=False)
 
+cors_origins_env = os.getenv("CORS_ORIGINS", "")
 origins = [
     "http://localhost:3000",
     "http://localhost:5173",
@@ -36,6 +38,12 @@ origins = [
     "http://157.180.74.21:80",
     "http://157.180.74.21:8080",
 ]
+
+if cors_origins_env:
+    origins.extend([o.strip() for o in cors_origins_env.split(",") if o.strip()])
+else:
+    # Fallback to allow pages.dev domains by default
+    origins.append("https://smarket-7go.pages.dev")
 
 app.add_middleware(
     CORSMiddleware,

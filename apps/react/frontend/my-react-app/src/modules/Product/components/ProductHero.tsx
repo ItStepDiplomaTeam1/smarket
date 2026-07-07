@@ -227,6 +227,7 @@ export function ProductHero({ product }: ProductHeroProps) {
                                     src={product.image_url || mainMilk}
                                     alt={product.title}
                                     className="max-w-full max-h-full object-contain"
+                                    style={{ viewTransitionName: `product-image-${product.id}` }}
                                 />
                             </div>
                         </div>

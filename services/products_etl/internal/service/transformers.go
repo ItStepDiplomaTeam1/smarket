@@ -577,13 +577,17 @@ func batchUpsertPage(
 			INSERT INTO prices (product_id, store_id, price, old_price, in_stock, recorded_at)
 			SELECT $1, $2, $3, $4, $5, NOW()
 			WHERE NOT EXISTS (
-				SELECT 1 FROM prices
-				WHERE product_id = $1
-				  AND store_id   = $2
-				  AND price      = $3
-				  AND in_stock   = $5
-				  AND (old_price IS NOT DISTINCT FROM $4)
-				  AND recorded_at > NOW() - INTERVAL '3 hours'
+				SELECT 1 FROM (
+					SELECT price, old_price, in_stock
+					FROM prices
+					WHERE product_id = $1
+					  AND store_id   = $2
+					ORDER BY recorded_at DESC
+					LIMIT 1
+				) latest
+				WHERE latest.price = $3
+				  AND latest.in_stock = $5
+				  AND (latest.old_price IS NOT DISTINCT FROM $4)
 			)`,
 			productID, storeID, priceUAH, oldPriceUAH, p.InStock,
 		)
@@ -655,11 +659,13 @@ func ResolveCategoryID(ctx context.Context, pgPool *pgxpool.Pool, categorySlug s
 	// 2. Не знайдено — ліниве авто-створення.
 	//    ON CONFLICT (slug) DO NOTHING захищає від гонки між воркерами.
 	//    RETURNING id спрацює лише якщо цей виклик вставив рядок.
+	mainCatID := ResolveMainCategoryID(categorySlug)
 	err = pgPool.QueryRow(ctx, `
-		INSERT INTO categories (slug, name) VALUES ($1, '')
+		INSERT INTO categories (slug, name, main_category_id) VALUES ($1, '', $2)
 		ON CONFLICT (slug) DO NOTHING
 		RETURNING id`,
 		categorySlug,
+		mainCatID,
 	).Scan(&id)
 
 	if err == nil {
@@ -735,6 +741,7 @@ func indexProductsToSearch(pgPool *pgxpool.Pool, searchServiceURL string, storeI
 			p.canonical_category_id,
 			COALESCE(c.slug, '')               AS category_slug,
 			COALESCE(c.name, '')               AS category_name,
+			c.main_category_id,
 			sp.store_id,
 			COALESCE(s.name, '')               AS store_name,
 			COALESCE(s.retail_chain, '')        AS retail_chain,
@@ -768,6 +775,7 @@ func indexProductsToSearch(pgPool *pgxpool.Pool, searchServiceURL string, storeI
 	for rows.Next() {
 		var doc SearchProductDocument
 		var categoryID *int
+		var mainCatID *int
 		var oldPrice *float64
 
 		if err := rows.Scan(
@@ -781,6 +789,7 @@ func indexProductsToSearch(pgPool *pgxpool.Pool, searchServiceURL string, storeI
 			&categoryID,
 			&doc.CategorySlug,
 			&doc.CategoryName,
+			&mainCatID,
 			&doc.StoreID,
 			&doc.StoreName,
 			&doc.RetailChain,
@@ -794,6 +803,7 @@ func indexProductsToSearch(pgPool *pgxpool.Pool, searchServiceURL string, storeI
 			continue
 		}
 		doc.CategoryID = categoryID
+		doc.MainCategoryID = mainCatID
 		doc.OldPrice = oldPrice
 
 		if doc.OldPrice != nil && *doc.OldPrice > doc.Price && *doc.OldPrice > 0 {
@@ -887,6 +897,7 @@ func RunFullBackfill(pgPool *pgxpool.Pool, searchServiceURL string) (int, error)
 			p.canonical_category_id,
 			COALESCE(c.slug, '')               AS category_slug,
 			COALESCE(c.name, '')               AS category_name,
+			c.main_category_id,
 			sp.store_id,
 			COALESCE(s.name, '')               AS store_name,
 			COALESCE(s.retail_chain, '')        AS retail_chain,
@@ -937,6 +948,7 @@ func RunFullBackfill(pgPool *pgxpool.Pool, searchServiceURL string) (int, error)
 	for rows.Next() {
 		var doc SearchProductDocument
 		var categoryID *int
+		var mainCatID *int
 		var oldPrice *float64
 
 		if err := rows.Scan(
@@ -950,6 +962,7 @@ func RunFullBackfill(pgPool *pgxpool.Pool, searchServiceURL string) (int, error)
 			&categoryID,
 			&doc.CategorySlug,
 			&doc.CategoryName,
+			&mainCatID,
 			&doc.StoreID,
 			&doc.StoreName,
 			&doc.RetailChain,
@@ -962,6 +975,7 @@ func RunFullBackfill(pgPool *pgxpool.Pool, searchServiceURL string) (int, error)
 			continue
 		}
 		doc.CategoryID = categoryID
+		doc.MainCategoryID = mainCatID
 		doc.OldPrice = oldPrice
 		docs = append(docs, doc)
 

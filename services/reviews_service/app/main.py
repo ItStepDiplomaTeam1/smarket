@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers.reviews import router as reviews_router
+from app.routers import internal
 
 app = FastAPI(
     title="Reviews Service",
@@ -18,6 +19,7 @@ app.add_middleware(
 )
 
 app.include_router(reviews_router, prefix="/api/v1")
+app.include_router(internal.router, prefix="/internal", tags=["Internal"])
 
 
 @app.get("/health", tags=["System"])

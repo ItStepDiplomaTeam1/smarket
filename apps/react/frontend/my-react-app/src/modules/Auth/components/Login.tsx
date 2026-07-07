@@ -112,7 +112,7 @@ export const LoginForm = () => {
 
             <p className="text-center text-[14px] mt-[24px] text-[#6B7280]">
                 У вас немає акаунту?{' '}
-                <Link to="/register" className="text-[#265447] font-semibold no-underline hover:underline">
+                <Link to="/register" viewTransition className="text-[#265447] font-semibold no-underline hover:underline">
                     Зареєструватися
                 </Link>
             </p>

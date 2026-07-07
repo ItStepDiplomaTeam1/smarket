@@ -83,11 +83,56 @@ async def _proxy_to_auth(
 @router.get("/recent-users")
 async def get_recent_users(request: Request):
     """
-    Returns the most recently registered users.
+    Returns the most recently registered users with their cart and review counts.
     Requires admin role — validated locally at the Gateway before proxying.
     """
     payload = _verify_admin_token(request)
-    return await _proxy_to_auth(request, "recent-users", payload)
+    client: httpx.AsyncClient = request.app.state.http_client
+    
+    target_url = f"{settings.AUTH_SERVICE_URL}/admin/recent-users"
+    headers = dict(request.headers)
+    headers.pop("host", None)
+    headers["X-User-Id"] = str(payload.get("sub", ""))
+    headers["X-User-Role"] = str(payload.get("role", ""))
+
+    try:
+        resp = await client.get(target_url, headers=headers, params=request.query_params)
+        if resp.status_code != 200:
+            return JSONResponse(content={"detail": "Auth service error"}, status_code=resp.status_code)
+        users = resp.json()
+    except httpx.ConnectError:
+        raise HTTPException(status_code=503, detail="Auth service unavailable")
+
+    users_list = users if isinstance(users, list) else users.get("users", [])
+    if not users_list:
+        return JSONResponse(content=users)
+
+    user_ids = [str(u.get("id")) for u in users_list if u.get("id")]
+
+    async def fetch_counts(service_url: str, endpoint: str):
+        try:
+            r = await client.post(f"{service_url}{endpoint}", json={"user_ids": user_ids}, timeout=5.0)
+            if r.status_code == 200:
+                return r.json()
+        except Exception:
+            pass
+        return {}
+
+    cart_counts, review_counts = await asyncio.gather(
+        fetch_counts(settings.CART_SERVICE_URL, "/internal/carts/counts"),
+        fetch_counts(settings.REVIEWS_SERVICE_URL, "/internal/reviews/counts")
+    )
+
+    for u in users_list:
+        uid = str(u.get("id"))
+        u["cart_count"] = cart_counts.get(uid, 0)
+        u["reviews_count"] = review_counts.get(uid, 0)
+
+    if isinstance(users, list):
+        return JSONResponse(content=users_list)
+    else:
+        users["users"] = users_list
+        return JSONResponse(content=users)
 
 
 @router.get("/dashboard-summary")
@@ -265,3 +310,13 @@ async def get_etl_health(request: Request):
             content={"status": "timeout", "error": "ETL service timed out"},
             status_code=504,
         )
+
+@router.post("/users/{user_id}/block")
+async def block_user(user_id: str, request: Request):
+    payload = _verify_admin_token(request)
+    return await _proxy_to_auth(request, f"users/{user_id}/block", payload)
+
+@router.post("/users/{user_id}/unblock")
+async def unblock_user(user_id: str, request: Request):
+    payload = _verify_admin_token(request)
+    return await _proxy_to_auth(request, f"users/{user_id}/unblock", payload)
