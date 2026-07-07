@@ -268,10 +268,10 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			`,
 		},
 		{
-			name: "add main_category_id to categories",
+			name: "add parent_id to categories",
 			sql: `
 				ALTER TABLE categories
-					ADD COLUMN IF NOT EXISTS main_category_id INTEGER
+					ADD COLUMN IF NOT EXISTS parent_id INTEGER REFERENCES categories(id) ON DELETE SET NULL
 			`,
 		},
 	}

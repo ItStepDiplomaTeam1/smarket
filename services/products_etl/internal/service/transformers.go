@@ -237,9 +237,11 @@ type rawProduct struct {
 	Brand    string   `json:"brand"` // бренд (плоске поле, fallback)
 
 	// Вкладені об'єкти — API Zakaz.ua може повертати дані у вкладених структурах
-	Producer *rawProducer    `json:"producer"`
-	Discount *rawDiscount    `json:"discount"`
-	Img      json.RawMessage `json:"img"` // може бути рядком або об'єктом
+	Producer           *rawProducer    `json:"producer"`
+	Discount           *rawDiscount    `json:"discount"`
+	Img                json.RawMessage `json:"img"` // може бути рядком або об'єктом
+	CategoryID         string          `json:"category_id"`
+	ParentCategoryID   string          `json:"parent_category_id"`
 }
 
 // resolvedBrand повертає бренд: спочатку плоске поле, потім producer.trademark.
@@ -422,10 +424,16 @@ func batchUpsertPage(
 		var tag pgconn.CommandTag
 		var err error
 
+		// Resolving product specific category ID, not the page top-level category
+		prodCategoryID, prodCatErr := ResolveCategoryID(ctx, pgPool, p.CategoryID)
+		if prodCatErr != nil {
+			prodCategoryID = categoryID // fallback to top level
+		}
+
 		if canonicalEAN != nil {
 			// Товар з валідним EAN — conflict по canonical_ean.
 			// EAN є глобальним ідентифікатором — один товар з різних мереж
-			// відображається в одному рядку products.
+
 			tag, err = tx.Exec(ctx, `
 				INSERT INTO products
 					(canonical_ean, store_product_id, title, brand, unit, weight, image_url, canonical_category_id, created_at)
@@ -437,7 +445,7 @@ func batchUpsertPage(
 					weight    = EXCLUDED.weight,
 					image_url = COALESCE(NULLIF(EXCLUDED.image_url, ''), products.image_url),
 					canonical_category_id = EXCLUDED.canonical_category_id`,
-				canonicalEAN, storeProductID, p.Title, brand, p.Unit, p.Weight, imageURL, categoryID,
+				canonicalEAN, storeProductID, p.Title, brand, p.Unit, p.Weight, imageURL, prodCategoryID,
 			)
 		} else {
 			// Товар без EAN — прив'язаний до конкретного магазину через store_id.
@@ -454,7 +462,7 @@ func batchUpsertPage(
 					weight    = EXCLUDED.weight,
 					image_url = COALESCE(NULLIF(EXCLUDED.image_url, ''), products.image_url),
 					canonical_category_id = EXCLUDED.canonical_category_id`,
-				storeProductID, storeID, p.Title, brand, p.Unit, p.Weight, imageURL, categoryID,
+				storeProductID, storeID, p.Title, brand, p.Unit, p.Weight, imageURL, prodCategoryID,
 			)
 		}
 
@@ -687,24 +695,25 @@ func ResolveCategoryID(ctx context.Context, pgPool *pgxpool.Pool, categorySlug s
 // SearchProductDocument — DTO для надсилання в search_service /api/v1/index.
 // Повинен відповідати структурі ProductDocument у search_service/src/handlers/post_index.rs.
 type SearchProductDocument struct {
-	ID             int64    `json:"id"`
-	Title          string   `json:"title"`
-	Brand          string   `json:"brand,omitempty"`
-	Unit           string   `json:"unit,omitempty"`
-	Weight         float64  `json:"weight,omitempty"`
-	ImageURL       string   `json:"image_url,omitempty"`
-	CanonicalEAN   string   `json:"canonical_ean,omitempty"`
-	CategoryID     *int     `json:"category_id,omitempty"`
-	CategorySlug   string   `json:"category_slug,omitempty"`
-	CategoryName   string   `json:"category_name,omitempty"`
-	MainCategoryID *int     `json:"main_category_id,omitempty"`
-	StoreID        string   `json:"store_id"`
-	StoreName      string   `json:"store_name,omitempty"`
-	RetailChain    string   `json:"retail_chain,omitempty"`
-	Price          float64  `json:"price"`
-	OldPrice       *float64 `json:"old_price,omitempty"`
-	InStock        bool     `json:"in_stock"`
-	IsHidden       bool     `json:"is_hidden"`
+	ID           int64    `json:"id"`
+	Title        string   `json:"title"`
+	Brand        string   `json:"brand,omitempty"`
+	Unit         string   `json:"unit,omitempty"`
+	Weight       float64  `json:"weight,omitempty"`
+	ImageURL     string   `json:"image_url,omitempty"`
+	CanonicalEAN string   `json:"canonical_ean,omitempty"`
+	CategoryID   *int     `json:"category_id,omitempty"`
+	CategorySlug string   `json:"category_slug,omitempty"`
+	CategoryName string   `json:"category_name,omitempty"`
+	StoreID            string   `json:"store_id"`
+	StoreName          string   `json:"store_name,omitempty"`
+	RetailChain        string   `json:"retail_chain,omitempty"`
+	Price              float64  `json:"price"`
+	OldPrice           *float64 `json:"old_price,omitempty"`
+	InStock            bool     `json:"in_stock"`
+	IsHidden           bool     `json:"is_hidden"`
+	ParentCategorySlug string   `json:"parent_category_slug,omitempty"`
+	DiscountPercent    int      `json:"discount_percent,omitempty"`
 }
 
 type searchIndexRequest struct {
@@ -739,11 +748,13 @@ func indexProductsToSearch(pgPool *pgxpool.Pool, searchServiceURL string, storeI
 			lpr.price,
 			lpr.old_price,
 			lpr.in_stock,
-			p.is_hidden
+			p.is_hidden,
+			COALESCE(parent.slug, '')          AS parent_category_slug
 		FROM store_products sp
 		JOIN products p ON p.id = sp.product_id
 		JOIN stores s   ON s.external_id = sp.store_id
 		LEFT JOIN categories c ON c.id = p.canonical_category_id
+		LEFT JOIN categories parent ON parent.id = c.parent_id
 		JOIN LATERAL (
 			SELECT price, old_price, in_stock
 			FROM prices pr
@@ -786,6 +797,7 @@ func indexProductsToSearch(pgPool *pgxpool.Pool, searchServiceURL string, storeI
 			&oldPrice,
 			&doc.InStock,
 			&doc.IsHidden,
+			&doc.ParentCategorySlug,
 		); err != nil {
 			log.Printf("[SearchIndex] WARN: scan row: %v", err)
 			continue
@@ -793,6 +805,13 @@ func indexProductsToSearch(pgPool *pgxpool.Pool, searchServiceURL string, storeI
 		doc.CategoryID = categoryID
 		doc.MainCategoryID = mainCatID
 		doc.OldPrice = oldPrice
+
+		if doc.OldPrice != nil && *doc.OldPrice > doc.Price && *doc.OldPrice > 0 {
+			doc.DiscountPercent = int(((*doc.OldPrice - doc.Price) / *doc.OldPrice) * 100)
+		} else {
+			doc.DiscountPercent = 0
+		}
+
 		docs = append(docs, doc)
 	}
 	if err := rows.Err(); err != nil {
