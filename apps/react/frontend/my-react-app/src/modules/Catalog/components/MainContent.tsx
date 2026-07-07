@@ -153,36 +153,6 @@ const PROPOSAL_OPTIONS = [
   { id: 'save', name: 'Найбільша економія', count: '120' },
 ];
 
-const getCategorySlugs = (categoryId: string): string => {
-  const storeSuffixes = ['atb', 'silpo', 'novus', 'metro', 'auchan'];
-  let prefix = categoryId;
-  
-  if (categoryId === 'household') prefix = 'household-goods';
-  if (categoryId === 'health-beauty') prefix = 'personal-hygiene';
-  if (categoryId === 'pets') prefix = 'for-animals';
-  if (categoryId === 'snacks') prefix = 'snacks-and-sweets';
-  if (categoryId === 'alcohol-tobacco') prefix = 'eighteen-plus';
-  if (categoryId === 'hobby-rest') prefix = 'hobby-and-rest';
-  
-  return storeSuffixes.map(store => `${prefix}-${store}`).join(',');
-};
-
-const getSubcategorySlugs = (subcategoryId: string): string => {
-  const storeSuffixes = ['atb', 'silpo', 'novus', 'metro', 'auchan'];
-  let prefixes = [subcategoryId];
-  
-  if (subcategoryId === 'molochni-produkty') prefixes = ['milk', 'cheese', 'yogurt', 'butter-and-margarine', 'sour-milk'];
-  if (subcategoryId === 'myaso-ta-ptytsya') prefixes = ['fresh-meat', 'sausages-and-burgers', 'delicatessen'];
-  if (subcategoryId === 'hlib-ta-vypichka') prefixes = ['bread', 'lavash', 'crispbread', 'sweet-pastry'];
-  if (subcategoryId === 'vegetables') prefixes = ['vegetables', 'fruits', 'mushrooms', 'greens'];
-  if (subcategoryId === 'fish') prefixes = ['fresh-fish', 'chilled-seafood', 'smoked-and-salted-fish'];
-  if (subcategoryId === 'grains') prefixes = ['pulses-and-grain', 'pasta', 'rice'];
-  if (subcategoryId === 'frozen') prefixes = ['frozen-vegetables', 'frozen-fish', 'half-made-food'];
-  if (subcategoryId === 'cans') prefixes = ['canned-vegetables', 'canned-fish', 'canned-meat'];
-  
-  return prefixes.flatMap(prefix => storeSuffixes.map(store => `${prefix}-${store}`)).join(',');
-};
-
 const fetchProducts = async (filters: FetchFilters): Promise<ProductsResponse> => {
     const limit = 12;
     const skip = (filters.page - 1) * limit;
@@ -198,8 +168,7 @@ const fetchProducts = async (filters: FetchFilters): Promise<ProductsResponse> =
     
     // --- ФІЛЬТР КАТЕГОРІЇ (ОНОВЛЕНО) ---
     if (filters.category && filters.category !== 'products') {
-        const slugs = getCategorySlugs(filters.category);
-        url.searchParams.append('category_slug', slugs);
+        url.searchParams.append('category_slug', filters.category);
     }
     
     // 3. Максимальна ціна (ЯК БУЛО)
@@ -212,10 +181,9 @@ const fetchProducts = async (filters: FetchFilters): Promise<ProductsResponse> =
         url.searchParams.append('retail_chain', filters.stores.join(','));
     }
     
-    // 5. Підкатегорії (ОНОВЛЕНО)
+    // 5. Підкатегорії (ЯК БУЛО - циклом через subcategory_slug)
     filters.subcategories.forEach(sub => {
-        const slugs = getSubcategorySlugs(sub);
-        url.searchParams.append('subcategory_slug', slugs);
+        url.searchParams.append('subcategory_slug', sub);
     });
     
     // 6. Пропозиції (ЯК БУЛО - циклом через offer_type)
@@ -758,7 +726,7 @@ export function MainContent() {
                   
                   <Link to={`/product/${product.id}`} className="w-full h-[140px] bg-[#F9FAFB] rounded-[8px] flex items-center justify-center mb-[16px] overflow-hidden p-[8px]">
                     {product.image_url ? (
-                      <img src={product.image_url} alt={product.title} className="max-w-full max-h-full object-contain mix-blend-multiply" style={{ viewTransitionName: `product-image-${product.id}` }} />
+                      <img src={product.image_url} alt={product.title} className="max-w-full max-h-full object-contain mix-blend-multiply" />
                     ) : (
                       <div className="w-[40px] h-[40px] bg-[#E5E7EB] rounded-[6px] opacity-40" />
                     )}

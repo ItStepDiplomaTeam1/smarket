@@ -145,47 +145,30 @@ func SeedCategories(ctx context.Context, pool *pgxpool.Pool) error {
 		log.Printf("[seed] Магазин %s: отримано %d категорій", storeID, len(categories))
 
 		for _, c := range categories {
-			if err := seedCategoryRecursive(ctx, pool, c, nil, &totalInserted, &totalUpdated); err != nil {
+			if c.Slug == "" {
+				continue
+			}
+
+			const query = `
+				INSERT INTO categories (slug, name) VALUES ($1, $2)
+				ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name
+			`
+			tag, err := pool.Exec(ctx, query, c.Slug, c.Title)
+			if err != nil {
 				log.Printf("[seed] WARN: не вдалось зберегти категорію %s: %v", c.Slug, err)
+				continue
+			}
+
+			// RowsAffected = 1 — insert, 2 — update (postgres UPSERT поведінка)
+			if tag.RowsAffected() == 1 {
+				totalInserted++
+			} else {
+				totalUpdated++
 			}
 		}
 	}
 
 	log.Printf("[seed] ✓ Категорії синхронізовано: %d нових, %d оновлено.", totalInserted, totalUpdated)
-	return nil
-}
-
-func seedCategoryRecursive(
-	ctx context.Context, 
-	pool *pgxpool.Pool, 
-	c categoryItem, 
-	parentID *int, 
-	inserted *int, 
-	updated *int,
-) error {
-	if c.Slug == "" {
-		return nil
-	}
-
-	const query = `
-		INSERT INTO categories (slug, name, parent_id) VALUES ($1, $2, $3)
-		ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, parent_id = EXCLUDED.parent_id
-		RETURNING id
-	`
-	var id int
-	err := pool.QueryRow(ctx, query, c.Slug, c.Title, parentID).Scan(&id)
-	if err != nil {
-		return fmt.Errorf("upsert %s: %w", c.Slug, err)
-	}
-
-	// Ми не маємо доступу до RowsAffected через QueryRow, але можемо приблизно рахувати (для логів не критично)
-	*updated++ 
-
-	for _, child := range c.Children {
-		if err := seedCategoryRecursive(ctx, pool, child, &id, inserted, updated); err != nil {
-			log.Printf("[seed] WARN: не вдалось зберегти підкатегорію %s: %v", child.Slug, err)
-		}
-	}
 	return nil
 }
 

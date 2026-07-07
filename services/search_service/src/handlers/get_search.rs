@@ -34,12 +34,10 @@ where
 pub struct ProductFilters {
     pub category_id: Option<i32>,
     pub category_slug: Option<String>,
-    pub subcategory_slug: Option<String>,
     pub store_id: Option<String>,
     pub retail_chain: Option<String>,
     pub price_min: Option<f64>,
     pub price_max: Option<f64>,
-    pub discount_range: Option<String>,
     pub in_stock: Option<bool>,
 }
 
@@ -135,8 +133,6 @@ pub struct SearchRequest {
     #[serde(default)]
     pub category_slug: Option<String>,
     #[serde(default)]
-    pub subcategory_slug: Option<String>,
-    #[serde(default)]
     pub store_id: Option<String>,
     #[serde(default)]
     pub retail_chain: Option<String>,
@@ -144,8 +140,6 @@ pub struct SearchRequest {
     pub price_min: Option<f64>,
     #[serde(default, deserialize_with = "deserialize_f64_opt")]
     pub price_max: Option<f64>,
-    #[serde(default)]
-    pub discount_range: Option<String>,
     #[serde(default, deserialize_with = "deserialize_bool_opt")]
     pub in_stock: Option<bool>,
 }
@@ -177,12 +171,10 @@ pub async fn search_handler(
     let filters = ProductFilters {
         category_id: payload.category_id,
         category_slug: payload.category_slug.clone(),
-        subcategory_slug: payload.subcategory_slug.clone(),
         store_id: payload.store_id.clone(),
         retail_chain: payload.retail_chain.clone(),
         price_min: payload.price_min,
         price_max: payload.price_max,
-        discount_range: payload.discount_range.clone(),
         in_stock: payload.in_stock,
     };
 
@@ -191,32 +183,8 @@ pub async fn search_handler(
     if let Some(cat_id) = filters.category_id {
         filter_conditions.push(format!("category_id = {}", cat_id));
     }
-    // Category slug filter (supports multiple values)
     if let Some(ref cat_slug) = filters.category_slug {
-        let cats: Vec<&str> = cat_slug.split(',').collect();
-        if cats.len() == 1 {
-            filter_conditions.push(format!(
-                "(category_slug = \"{}\" OR category_name = \"{}\" OR parent_category_slug = \"{}\")",
-                cats[0], cats[0], cats[0]
-            ));
-        } else {
-            let in_clause = cats.iter().map(|c| format!("\"{}\"", c)).collect::<Vec<_>>().join(", ");
-            filter_conditions.push(format!(
-                "(category_slug IN [{}] OR category_name IN [{}] OR parent_category_slug IN [{}])",
-                in_clause, in_clause, in_clause
-            ));
-        }
-    }
-
-    // Subcategory slug filter (independent of category_slug)
-    if let Some(ref subcat_slug) = filters.subcategory_slug {
-        let subcats: Vec<&str> = subcat_slug.split(',').collect();
-        if subcats.len() == 1 {
-            filter_conditions.push(format!("subcategory_slug = \"{}\"", subcats[0]));
-        } else {
-            let in_clause = subcats.iter().map(|c| format!("\"{}\"", c)).collect::<Vec<_>>().join(", ");
-            filter_conditions.push(format!("subcategory_slug IN [{}]", in_clause));
-        }
+        filter_conditions.push(format!("category_slug = \"{}\"", cat_slug));
     }
     if let Some(ref store) = filters.store_id {
         filter_conditions.push(format!("store_id = \"{}\"", store));
@@ -236,15 +204,6 @@ pub async fn search_handler(
     if let Some(p_max) = filters.price_max {
         filter_conditions.push(format!("price <= {}", p_max));
     }
-    if let Some(ref discount) = filters.discount_range {
-        // discount_range format expected: "0-10", "10-30", "30-50", "50"
-        let parts: Vec<&str> = discount.split('-').collect();
-        if parts.len() == 2 {
-            filter_conditions.push(format!("discount_percent >= {} AND discount_percent <= {}", parts[0], parts[1]));
-        } else if parts.len() == 1 {
-            filter_conditions.push(format!("discount_percent >= {}", parts[0]));
-        }
-    }
     if let Some(stock) = filters.in_stock {
         filter_conditions.push(format!("in_stock = {}", stock));
     }
@@ -263,12 +222,6 @@ pub async fn search_handler(
     search_builder.with_offset(offset);
 
     let filter_str: String;
-    // Log the constructed Meilisearch filter string for debugging
-    if let Some(ref f) = meili_filter {
-        info!("[search] Constructed Meilisearch filter: {}", f);
-    } else {
-        info!("[search] No Meilisearch filter applied (fetching all visible products)");
-    }
     if let Some(ref f) = meili_filter {
         filter_str = f.clone();
         search_builder.with_filter(&filter_str);
