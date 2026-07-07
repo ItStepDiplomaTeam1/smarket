@@ -81,6 +81,7 @@ export function Header() {
 
                 {/* Оновлено список посилань відповідно до макета */}
                 <nav className="flex items-center gap-8">
+                    <NavLink to="/" className={navLinkClass}>Головна</NavLink>
                     <NavLink to="/catalog" className={navLinkClass}>Каталог</NavLink>
                     <NavLink to="/shops" className={navLinkClass}>Магазини</NavLink>
                     <NavLink to="/cart" className={navLinkClass}>Кошик</NavLink>
