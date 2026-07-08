@@ -148,6 +148,19 @@ services:
     env_file:
       - ../services/reviews_service/.env
 
+  audit_migration_job:
+    <<: *runtime-local
+    restart: "no"
+    build:
+      context: ..
+      dockerfile: services/audit_service/Dockerfile
+    command:
+      - sh
+      - -c
+      - alembic upgrade head
+    env_file:
+      - ../services/audit_service/.env
+
   # ─── Application Services ──────────────────────────────────────────────────
 
   auth_service:
@@ -268,6 +281,35 @@ services:
       <<: *healthcheck-local
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8004/health', timeout=3).read()\""]
 
+  audit_service:
+    <<: *api-local
+    build:
+      context: ..
+      dockerfile: services/audit_service/Dockerfile
+    command:
+      - granian
+      - --interface
+      - asgi
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8006"
+      - --workers
+      - "1"
+      - app.main:app
+    ports:
+      - "8006:8006"
+    env_file:
+      - ../services/audit_service/.env
+    environment:
+      ENV: development
+    depends_on:
+      audit_migration_job:
+        condition: service_completed_successfully
+    healthcheck:
+      <<: *healthcheck-local
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8006/health', timeout=3).read()\""]
+
   gateway_service:
     <<: *api-local
     build:
@@ -298,6 +340,8 @@ services:
       product_service:
         condition: service_healthy
       reviews_service:
+        condition: service_healthy
+      audit_service:
         condition: service_healthy
       search_service:
         condition: service_healthy

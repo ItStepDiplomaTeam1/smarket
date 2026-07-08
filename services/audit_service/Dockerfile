@@ -16,5 +16,4 @@ COPY src/ ./src/
 COPY alembic.ini .
 COPY migrations/ ./migrations/
 
-# Run migrations then start the application
-CMD alembic upgrade head && uvicorn src.main:app --host 0.0.0.0 --port 8006
+CMD uvicorn src.main:app --host 0.0.0.0 --port 8006

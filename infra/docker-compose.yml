@@ -251,6 +251,19 @@ services:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8004/health', timeout=3).read()\""]
       start_period: "${SMARKET_API_HEALTH_START_PERIOD:-30s}"
 
+  audit_migration_job:
+    <<: *job-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/audit_service:${IMAGE_TAG:-develop}
+    build:
+      context: ..
+      dockerfile: services/audit_service/Dockerfile
+    command:
+      - sh
+      - -c
+      - alembic upgrade head
+    env_file:
+      - ../services/audit_service/.env
+
   audit_service:
     <<: *api-defaults
     image: ghcr.io/itstepdiplomateam1/smarket/audit_service:${IMAGE_TAG:-develop}
@@ -263,6 +276,9 @@ services:
       RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
     env_file:
       - ../services/audit_service/.env
+    depends_on:
+      audit_migration_job:
+        condition: service_completed_successfully
     healthcheck:
       <<: *healthcheck-defaults
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8006/health', timeout=3).read()\""]
