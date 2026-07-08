@@ -22,6 +22,7 @@ async def lifespan(app: FastAPI):
     yield
     await broker.close()
 
+
 app = FastAPI(
     title="Audit Service",
     version="1.0.0",
