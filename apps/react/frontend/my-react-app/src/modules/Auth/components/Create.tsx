@@ -295,7 +295,7 @@ export function Create() {
                         </button>
 
                         <TelegramLoginButton 
-                            botName={import.meta.env.VITE_TELEGRAM_BOT_NAME || 'smarket_login_bot'} 
+                            botName={import.meta.env.VITE_TELEGRAM_BOT_NAME || 'smarket_verify_bot'} 
                             onAuth={(user) => telegramOAuthMutation.mutate(user)}
                             disabled={telegramOAuthMutation.isPending}
                         />
