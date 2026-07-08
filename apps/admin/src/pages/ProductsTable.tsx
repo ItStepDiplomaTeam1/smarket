@@ -11,6 +11,7 @@ import {
   Eye,
   EyeOff,
   XCircle,
+  MoreVertical,
 } from 'lucide-react';
 import { useProducts, useToggleProductVisibility } from '@/hooks/useProducts';
 
@@ -126,6 +127,46 @@ const ProductRowSkeleton: React.FC = () => (
     </td>
   </tr>
 );
+
+const ProductActionsMenu: React.FC<{ product: any, toggleVisibility: any, isToggling: boolean }> = ({ product, toggleVisibility, isToggling }) => {
+  const [open, setOpen] = useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="p-1.5 text-textMuted hover:text-textMain hover:bg-secondary rounded-md transition-colors"
+        title="Більше дій"
+      >
+        <MoreVertical size={16} />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-8 z-50 bg-white border border-border rounded-lg shadow-lg p-2 min-w-[160px]">
+          <button
+            disabled={isToggling}
+            className="w-full flex items-center justify-start gap-2 px-3 py-2 text-sm text-textMain hover:bg-secondary rounded-md transition-colors disabled:opacity-50"
+            onClick={() => {
+              toggleVisibility({ productId: product.id, isHidden: !product.is_hidden });
+              setOpen(false);
+            }}
+          >
+            {product.is_hidden ? <Eye size={16} /> : <EyeOff size={16} />}
+            {product.is_hidden ? 'Показати' : 'Приховати'}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ── Main Component ────────────────────────────────────────────────────────
 
@@ -295,12 +336,12 @@ const ProductsTable: React.FC = () => {
               </div>
             </div>
           </td>
-          <td className="py-4 px-3 text-sm text-textMuted">
+          <td className="py-4 px-3 text-sm text-textMuted text-center">
             {categoryName || <span className="text-textMuted/50">—</span>}
           </td>
-          <td className="py-4 px-3 text-sm font-medium text-textMain whitespace-nowrap">
+          <td className="py-4 px-3 text-sm font-medium text-textMain text-center whitespace-nowrap">
             {price && price > 0 ? (
-              <div className="flex flex-col items-start">
+              <div className="flex flex-col items-center">
                 <span className="whitespace-nowrap">від {price.toFixed(2)} грн</span>
                 {firstOffer?.store?.name && (
                   <span 
@@ -315,41 +356,31 @@ const ProductsTable: React.FC = () => {
               <span className="text-textMuted/50">—</span>
             )}
           </td>
-          <td className="py-4 px-3">
-            <StatusBadge status={statusStr} />
+          <td className="py-4 px-3 text-center">
+            <div className="flex flex-col gap-1.5 items-center">
+              <StatusBadge status={statusStr} />
+              <div 
+                className={`flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md ${
+                  product.is_hidden
+                    ? 'text-red-600 bg-red-50 border border-red-100'
+                    : 'text-green-600 bg-green-50 border border-green-100'
+                }`}
+                title={product.is_hidden ? 'Приховано від клієнтів' : 'Видимо для клієнтів'}
+              >
+                {product.is_hidden ? <EyeOff size={11} /> : <Eye size={11} />}
+                {product.is_hidden ? 'Приховано' : 'Видимий'}
+              </div>
+            </div>
           </td>
-          <td className="py-4 px-3">
+          <td className="py-4 px-3 text-center">
             <IssueBadge issue={issueStr} />
           </td>
-          <td className="py-4 px-3">
-            <button
-              onClick={() => toggleVisibility({ productId: product.id, isHidden: !product.is_hidden })}
-              disabled={isTogglingVisibility}
-              className={`flex items-center gap-1.5 text-xs font-medium rounded-md px-2 py-1 transition-colors ${
-                product.is_hidden
-                  ? 'text-red-500 bg-red-50 hover:bg-red-100'
-                  : 'text-green-600 bg-green-50 hover:bg-green-100'
-              }`}
-              title={product.is_hidden ? 'Натисніть, щоб показати клієнтам' : 'Натисніть, щоб приховати'}
-            >
-              {product.is_hidden ? <EyeOff size={13} /> : <Eye size={13} />}
-              {product.is_hidden ? 'Приховано' : 'Видимий'}
-            </button>
-          </td>
-          <td className="py-4 px-3 text-sm text-textMuted text-right whitespace-nowrap">
+          <td className="py-4 px-3 text-sm text-textMuted text-center whitespace-nowrap">
             Нещодавно
           </td>
           <td className="py-4 px-3 text-center">
             <div className="flex items-center justify-center">
-              <button
-                onClick={() => toggleVisibility({ productId: product.id, isHidden: !product.is_hidden })}
-                disabled={isTogglingVisibility}
-                className="flex items-center gap-1.5 text-xs font-medium rounded-md px-2.5 py-1.5 transition-colors text-red-500 bg-red-50 hover:bg-red-100"
-                title={product.is_hidden ? 'Показати товар' : 'Приховати товар'}
-              >
-                <EyeOff size={13} />
-                {product.is_hidden ? 'Показати' : 'Приховати'}
-              </button>
+              <ProductActionsMenu product={product} toggleVisibility={toggleVisibility} isToggling={isTogglingVisibility} />
             </div>
           </td>
         </tr>
@@ -535,13 +566,12 @@ const ProductsTable: React.FC = () => {
                     onChange={toggleSelectAll}
                   />
                 </th>
-                <th className="py-4 px-3 text-xs font-semibold text-textMain w-[38%]">Товар</th>
-                <th className="py-4 px-3 text-xs font-semibold text-textMain w-[15%]">Категорія</th>
-                <th className="py-4 px-3 text-xs font-semibold text-textMain w-[22%]">Ціна</th>
-                <th className="py-4 px-3 text-xs font-semibold text-textMain w-[10%]">Статус</th>
-                <th className="py-4 px-3 text-xs font-semibold text-textMain w-[10%]">Проблема</th>
-                <th className="py-3 px-3 text-xs font-semibold text-textMuted uppercase tracking-wider">Видимість</th>
-                <th className="py-4 px-3 text-xs font-semibold text-textMain text-right w-[10%]">Оновлення</th>
+                <th className="py-4 px-3 text-xs font-semibold text-textMain w-[32%]">Товар</th>
+                <th className="py-4 px-3 text-xs font-semibold text-textMain text-center w-[14%]">Категорія</th>
+                <th className="py-4 px-3 text-xs font-semibold text-textMain text-center w-[19%]">Ціна</th>
+                <th className="py-4 px-3 text-xs font-semibold text-textMain text-center w-[10%]">Статус</th>
+                <th className="py-4 px-3 text-xs font-semibold text-textMain text-center w-[10%]">Проблема</th>
+                <th className="py-4 px-3 text-xs font-semibold text-textMain text-center w-[10%]">Оновлення</th>
                 <th className="py-4 px-3 text-xs font-semibold text-textMain text-center w-[5%]">Дії</th>
               </tr>
             </thead>

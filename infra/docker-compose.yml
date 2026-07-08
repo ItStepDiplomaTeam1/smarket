@@ -177,6 +177,8 @@ services:
       - app.main:app
     expose:
       - "8000"
+    environment:
+      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
     env_file:
       - ../services/product_service/.env
     depends_on:
@@ -237,6 +239,8 @@ services:
       - app.main:app
     expose:
       - "8004"
+    environment:
+      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
     env_file:
       - ../services/reviews_service/.env
     depends_on:
@@ -245,6 +249,23 @@ services:
     healthcheck:
       <<: *healthcheck-defaults
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8004/health', timeout=3).read()\""]
+      start_period: "${SMARKET_API_HEALTH_START_PERIOD:-30s}"
+
+  audit_service:
+    <<: *api-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/audit_service:${IMAGE_TAG:-develop}
+    build:
+      context: ..
+      dockerfile: services/audit_service/Dockerfile
+    expose:
+      - "8006"
+    environment:
+      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
+    env_file:
+      - ../services/audit_service/.env
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8006/health', timeout=3).read()\""]
       start_period: "${SMARKET_API_HEALTH_START_PERIOD:-30s}"
 
   redis:

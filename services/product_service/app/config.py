@@ -5,6 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     # SQLAlchemy async DSN (postgresql+asyncpg://...)
     DATABASE_URL: str
+    RABBITMQ_URL: str = "amqp://guest:guest@localhost:5672/"
 
     # asyncpg DSN для LISTEN/NOTIFY (postgresql://... — БЕЗ +asyncpg).
     # Якщо не задано явно — дериватується з DATABASE_URL автоматично.

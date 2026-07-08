@@ -7,13 +7,52 @@ from app.config import settings
 from faststream.rabbit import RabbitBroker
 from contextlib import asynccontextmanager
 
+import uuid
+import datetime
+
 broker = RabbitBroker(settings.RABBITMQ_URL)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await broker.connect()
+    try:
+        await broker.connect()
+        await broker.publish(
+            {
+                "event_id": str(uuid.uuid4()),
+                "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+                "actor": "system",
+                "event_type": "service.lifecycle",
+                "entity_type": "service",
+                "entity_id": "cart_service",
+                "message": "Cart Service started",
+                "details": {},
+                "severity": "info"
+            },
+            exchange="smarket_events",
+            routing_key="service.lifecycle"
+        )
+    except Exception as e:
+        pass
     yield
-    await broker.close()
+    try:
+        await broker.publish(
+            {
+                "event_id": str(uuid.uuid4()),
+                "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+                "actor": "system",
+                "event_type": "service.lifecycle",
+                "entity_type": "service",
+                "entity_id": "cart_service",
+                "message": "Cart Service shutting down",
+                "details": {},
+                "severity": "warning"
+            },
+            exchange="smarket_events",
+            routing_key="service.lifecycle"
+        )
+        await broker.close()
+    except Exception:
+        pass
 
 app = FastAPI(
     title="Cart Service",

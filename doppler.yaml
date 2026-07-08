@@ -31,3 +31,8 @@ setup:
     config: dev_zephyros_agent
     path: services/zephyros_agent
 
+  - project: smarket-services-secrets
+    config: dev_audit_service
+    path: services/audit_service
+
+
