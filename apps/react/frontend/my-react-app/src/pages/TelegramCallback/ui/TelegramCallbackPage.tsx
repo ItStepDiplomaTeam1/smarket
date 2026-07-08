@@ -18,6 +18,28 @@ function getTelegramParams(): Record<string, string> {
         }
     }
 
+    const tgAuthResult = params['tgAuthResult'];
+    if (tgAuthResult) {
+        try {
+            let base64 = tgAuthResult.replace(/-/g, '+').replace(/_/g, '/');
+            while (base64.length % 4) {
+                base64 += '=';
+            }
+            const binaryString = atob(base64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            const decodedJson = new TextDecoder().decode(bytes);
+            const decodedData = JSON.parse(decodedJson);
+            for (const [key, value] of Object.entries(decodedData)) {
+                params[key] = String(value);
+            }
+        } catch (e) {
+            console.error('Failed to parse tgAuthResult:', e);
+        }
+    }
+
     return params;
 }
 

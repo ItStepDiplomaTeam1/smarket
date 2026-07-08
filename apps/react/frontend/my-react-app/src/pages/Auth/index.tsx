@@ -84,7 +84,7 @@ export default function AuthPage() {
                             <span>{googleOAuthMutation.isPending ? 'Завантаження...' : 'Продовжити з Google'}</span>
                         </button>
                         <TelegramLoginButton 
-                            botId={import.meta.env.VITE_TELEGRAM_BOT_ID || '7243912952'} 
+                            botId={import.meta.env.VITE_TELEGRAM_BOT_ID || '8912413936'}
                         />
 
                         {/* OR divider */}

@@ -283,7 +283,7 @@ export function Create() {
                             <span>{googleOAuthMutation.isPending ? 'Завантаження...' : 'Продовжити з Google'}</span>
                         </button>
                         <TelegramLoginButton 
-                            botId={import.meta.env.VITE_TELEGRAM_BOT_ID || '7243912952'} 
+                            botId={import.meta.env.VITE_TELEGRAM_BOT_ID || '8912413936'}
                         />
 
                         <div className="flex items-center text-[#6D8279] text-[13px] mt-[24px] mb-[24px] gap-[10px]">

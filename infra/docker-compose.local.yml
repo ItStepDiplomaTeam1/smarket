@@ -296,7 +296,7 @@ services:
       - "8006"
       - --workers
       - "1"
-      - app.main:app
+      - src.main:app
     ports:
       - "8006:8006"
     env_file:
