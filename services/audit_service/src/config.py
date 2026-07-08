@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -10,5 +11,12 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str
     RABBITMQ_URL: str
+
+    @field_validator("DATABASE_URL")
+    @classmethod
+    def normalize_db_url(cls, v: str) -> str:
+        return v.replace(
+            "postgresql+psycopg2://", "postgresql+asyncpg://"
+        ).replace("postgresql://", "postgresql+asyncpg://")
 
 settings = Settings()
