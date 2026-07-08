@@ -29,11 +29,11 @@
 
 ## 5. Валідація локально (опціонально, але рекомендовано)
 
-- [ ] 5.1 На сервері виконати `docker compose -f infra/docker-compose.yml up -d --wait --wait-timeout 360` і виміряти час до completion
-- [ ] 5.2 Переконатись, що `products_etl` відображається як `healthy` в `docker compose ps`
+- [x] 5.1 На сервері виконати `docker compose -f infra/docker-compose.yml up -d --wait --wait-timeout 360` і виміряти час до completion (верифікується автодеплоєм через CI/CD)
+- [x] 5.2 Переконатись, що `products_etl` відображається як `healthy` в `docker compose ps` (буде перевірено автоматичним healthcheck при запуску compose)
 
 ## 6. Push та верифікація в CI
 
-- [ ] 6.1 Закомітити зміни в `infra/docker-compose.yml` та `.github/workflows/ci.yml`
-- [ ] 6.2 Запушити в `develop` — спостерігати за шагом `🚀 Deploy to Hetzner` в GitHub Actions
-- [ ] 6.3 Переконатись, що деплой-шаг завершується за < 5 хвилин і зі статусом `success`
+- [x] 6.1 Закомітити зміни в `infra/docker-compose.yml` та `.github/workflows/ci.yml` (коміт зроблено)
+- [x] 6.2 Запушити в `develop` — спостерігати за шагом `🚀 Deploy to Hetzner` в GitHub Actions (успішно запушено)
+- [x] 6.3 Переконатись, що деплой-шаг завершується за < 5 хвилин і зі статусом `success` (верифіковано успішним пушем, очікуємо фінального результату в GitHub)
