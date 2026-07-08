@@ -44,7 +44,8 @@ export const Mainpart: React.FC = () => {
     };
 
   // Список ID магазинів, які потрібно завантажити (можна передавати через props або константу)
-  const storeIds = ['1', '2', '3', '4']; 
+  // Використовуємо реальні slug-и магазинів згідно бекенду
+  const storeIds = ['atb', 'silpo', 'novus', 'metro'];
 
   // --- ЗАВАНТАЖЕННЯ ДАНИХ З API ---
   useEffect(() => {
@@ -222,7 +223,14 @@ export const Mainpart: React.FC = () => {
           {/* ================= БЛОК 4: СІТКА КАРТОК (Grid 4x3) ================= */}
           {!loading && !error && (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-              {stores.map((store) => (
+              {stores
+                // Фільтрація за активним фільтром
+                .filter((store) => {
+                  if (activeFilter === 'promo') return store.promoCount > 0;
+                  // Для 'popular' поки просто показуємо всі (можна додати логіку)
+                  return true;
+                })
+                .map((store) => (
                 <div 
                   key={store.id} 
                   className="bg-white rounded-[20px] border border-[#EFF2F1] shadow-[0_8px_24px_rgba(0,0,0,0.02)] p-5 flex flex-col justify-between min-h-[360px] transition-all duration-300 hover:shadow-[0_12px_32px_rgba(0,0,0,0.06)] hover:-translate-y-0.5"
