@@ -23,6 +23,7 @@ from app.shared.schemas import (
     ProductOffersResponse,
     ProductWithStoresResponse,
     CategoryResponse,
+    SubcategoryResponse,
     PaginatedProductsResponse,
     ProductResponse,
     ProductVisibilityUpdate,
@@ -385,9 +386,66 @@ async def get_products_by_store(
 async def get_categories(
     db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(Category).order_by(Category.name)
+    stmt = select(Category).where(Category.is_hidden == False).order_by(Category.name)
     result = await db.execute(stmt)
     return list(result.scalars().all())
+
+
+@router.get(
+    "/categories/{main_category_id}/subcategories",
+    response_model=list[SubcategoryResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Підкатегорії за головною категорією",
+    description=(
+        "Повертає всі неприховані категорії (підкатегорії) "
+        "для заданого main_category_id (цілочисельний ідентифікатор 1–10). "
+        "Кожна підкатегорія містить product_count — кількість видимих "
+        "товарів в цій підкатегорії."
+    ),
+)
+async def get_subcategories_by_main_category(
+    main_category_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Повертає підкатегорії (з product_count) для заданого main_category_id."""
+    product_count_expr = (
+        select(func.count(Product.id))
+        .where(
+            Product.canonical_category_id == Category.id,
+            Product.is_hidden == False,
+        )
+        .correlate(Category)
+        .scalar_subquery()
+    )
+
+    stmt = (
+        select(
+            Category.id,
+            Category.slug,
+            Category.name,
+            Category.main_category_id,
+            product_count_expr.label("product_count"),
+        )
+        .where(
+            Category.main_category_id == main_category_id,
+            Category.is_hidden == False,
+        )
+        .order_by(Category.name)
+    )
+
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    return [
+        SubcategoryResponse(
+            id=row.id,
+            slug=row.slug,
+            name=row.name,
+            main_category_id=row.main_category_id,
+            product_count=row.product_count or 0,
+        )
+        for row in rows
+    ]
 
 
 @router.patch(
