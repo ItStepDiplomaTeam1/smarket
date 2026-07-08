@@ -13,6 +13,11 @@
 
 - [x] 3.1 Прибрати `alembic upgrade head &&` з CMD у `services/audit_service/Dockerfile` — залишити тільки `uvicorn src.main:app --host 0.0.0.0 --port 8006`
 
+## 3. Dockerfile Build Context Fix
+
+- [x] 3.2 Виправити шляхи в Dockerfile: COPY з `services/audit_service/` префіксом, щоб збігалося з контекстом `.` в CI та Compose
+- [x] 3.3 Виправити CMD на JSON-синтаксис (`CMD ["uvicorn", ...]`)
+
 ## 4. Build & Push Docker Image
 
 - [ ] 4.1 Зібрати образ локально: `docker build -f services/audit_service/Dockerfile -t ghcr.io/itstepdiplomateam1/smarket/audit_service:develop .`
