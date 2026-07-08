@@ -8,6 +8,7 @@ interface OAuthUser {
     id: string;
     email: string;
     role: string;
+    settings?: Record<string, any>;
 }
 
 interface OAuthResponse {
@@ -21,6 +22,7 @@ export interface MeResponse {
     email: string;
     username: string;
     role: string;
+    photo_url?: string;
 }
 
 export const useFetchMe = () => {
@@ -60,11 +62,12 @@ export const useGoogleOAuth = () => {
                 id: data.user.id,
                 email: data.user.email,
                 role: data.user.role,
+                photoUrl: data.user.settings?.photo_url,
             });
             try {
                 const { data: me } = await apiClient.get<MeResponse>('/api/v1/auth/me');
                 useAuthStore.setState((state) => ({
-                    user: state.user ? { ...state.user, name: me.username } : state.user,
+                    user: state.user ? { ...state.user, name: me.username, photoUrl: me.photo_url || state.user.photoUrl } : state.user,
                 }));
             } catch {
                 // fallback
@@ -97,11 +100,12 @@ export const useTelegramOAuth = () => {
                 id: data.user.id,
                 email: data.user.email,
                 role: data.user.role,
+                photoUrl: data.user.settings?.photo_url,
             });
             try {
                 const { data: me } = await apiClient.get<MeResponse>('/api/v1/auth/me');
                 useAuthStore.setState((state) => ({
-                    user: state.user ? { ...state.user, name: me.username } : state.user,
+                    user: state.user ? { ...state.user, name: me.username, photoUrl: me.photo_url || state.user.photoUrl } : state.user,
                 }));
             } catch {
                 // fallback

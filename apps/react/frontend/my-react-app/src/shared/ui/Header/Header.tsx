@@ -101,10 +101,14 @@ export function Header() {
                                 aria-label="Профіль"
                             >
                                 <span
-                                    className="w-8.5 h-8.5 rounded-full flex items-center justify-center text-[12px] font-bold text-white shrink-0 select-none"
+                                    className="w-8.5 h-8.5 rounded-full flex items-center justify-center text-[12px] font-bold text-white shrink-0 select-none overflow-hidden"
                                     style={{ backgroundColor: avatarColor }}
                                 >
-                                    {initials}
+                                    {user.photoUrl ? (
+                                        <img src={user.photoUrl} alt="Avatar" className="w-full h-full object-cover" />
+                                    ) : (
+                                        initials
+                                    )}
                                 </span>
                                 <span className="text-[13px] font-semibold text-[#173B33] max-w-22.5 truncate leading-none">
                                     {displayName}
@@ -128,10 +132,14 @@ export function Header() {
                                 <div className="px-4 pt-4 pb-3 border-b border-[rgba(38,84,71,0.08)]">
                                     <div className="flex items-center gap-3">
                                         <span
-                                            className="w-10 h-10 rounded-full flex items-center justify-center text-[14px] font-bold text-white shrink-0"
+                                            className="w-10 h-10 rounded-full flex items-center justify-center text-[14px] font-bold text-white shrink-0 overflow-hidden"
                                             style={{ backgroundColor: avatarColor }}
                                         >
-                                            {initials}
+                                            {user.photoUrl ? (
+                                                <img src={user.photoUrl} alt="Avatar" className="w-full h-full object-cover" />
+                                            ) : (
+                                                initials
+                                            )}
                                         </span>
                                         <div className="min-w-0">
                                             <p className="text-[13px] font-semibold text-[#111827] truncate m-0 leading-4.5">

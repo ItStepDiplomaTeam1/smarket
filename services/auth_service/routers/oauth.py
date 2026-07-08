@@ -21,8 +21,8 @@ from services.auth_service.routers.auth import _mask_email
 from services.auth_service.shared.DTO import (
     GoogleOAuthRequest,
     LoginResponse,
-    UserResponse,
     TelegramAuthSchema,
+    UserResponse,
 )
 
 router = APIRouter(
@@ -31,11 +31,13 @@ router = APIRouter(
     default_response_class=ORJSONResponse,
 )
 
+
 def _get_cookie_secure() -> bool:
     val = os.getenv("COOKIE_SECURE")
     if val is not None:
         return val.lower() in ("true", "1", "yes")
     return os.getenv("DEBUG", "False").lower() not in ("true", "1", "yes")
+
 
 _REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60
 _COOKIE_SECURE = _get_cookie_secure()
@@ -130,12 +132,23 @@ async def oauth_google_login(
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
 
+    google_name = claims.get("name")
+    google_picture = claims.get("picture")
+
     if user is None:
+        settings_dict = {}
+        if google_name:
+            settings_dict["google_name"] = google_name
+        if google_picture:
+            settings_dict["google_picture"] = google_picture
+            settings_dict["photo_url"] = google_picture
+
         user = User(
             email=email,
             hashed_password="OAUTH_NO_PASSWORD",
             role="user",
             is_active=True,
+            settings=settings_dict,
             created_at=datetime.now(UTC),
             updated_at=datetime.now(UTC),
         )
@@ -151,6 +164,17 @@ async def oauth_google_login(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="User account is disabled",
             )
+        # Update user settings with any updated Google data
+        updated_settings = dict(user.settings or {})
+        if google_name:
+            updated_settings["google_name"] = google_name
+        if google_picture:
+            updated_settings["google_picture"] = google_picture
+            updated_settings["photo_url"] = google_picture
+        user.settings = updated_settings
+        user.updated_at = datetime.now(UTC)
+        await db.commit()
+        await db.refresh(user)
         logger.info(
             f"Google OAuth: існуючий користувач {_mask_email(email)} (ID: {user.id}) увійшов"
         )
@@ -175,6 +199,7 @@ async def oauth_google_login(
             id=str(user.id),
             email=user.email,
             role=user.role,
+            settings=user.settings or {},
         ),
     )
 
@@ -203,7 +228,7 @@ async def oauth_telegram_login(
     if user is None:
         # User not found -> Register new user with placeholder email
         email = f"tg_{body.id}@smarket.local"
-        
+
         # In case a user already exists with this generated email
         email_check = await db.execute(select(User).where(User.email == email))
         if email_check.scalar_one_or_none():
@@ -245,12 +270,14 @@ async def oauth_telegram_login(
             )
         # Update user settings with any updated Telegram data
         updated_settings = dict(user.settings or {})
-        updated_settings.update({
-            "telegram_first_name": body.first_name,
-            "telegram_last_name": body.last_name,
-            "telegram_username": body.username,
-            "photo_url": body.photo_url,
-        })
+        updated_settings.update(
+            {
+                "telegram_first_name": body.first_name,
+                "telegram_last_name": body.last_name,
+                "telegram_username": body.username,
+                "photo_url": body.photo_url,
+            }
+        )
         user.settings = updated_settings
         user.updated_at = datetime.now(UTC)
         await db.commit()
@@ -283,4 +310,3 @@ async def oauth_telegram_login(
             settings=user.settings or {},
         ),
     )
-

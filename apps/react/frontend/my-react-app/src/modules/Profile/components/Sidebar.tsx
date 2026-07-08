@@ -61,7 +61,11 @@ export const Sidebar = () => {
           className="w-[100px] h-[100px] rounded-full overflow-hidden shrink-0 flex items-center justify-center text-white text-[32px] font-bold select-none"
           style={{ backgroundColor: avatarColor }}
         >
-          {initials}
+          {user?.photoUrl ? (
+            <img src={user.photoUrl} alt="Avatar" className="w-full h-full object-cover" />
+          ) : (
+            initials
+          )}
         </div>
         <div className="flex flex-col w-[202px] gap-[6px]">
           <h2 className="text-[14px] font-semibold text-[#265447] leading-none truncate">{displayName}</h2>

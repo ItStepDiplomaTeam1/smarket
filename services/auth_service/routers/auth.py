@@ -26,22 +26,24 @@ from services.auth_service.plugins.security.token_blacklist import (
     is_token_blacklisted,
 )
 from services.auth_service.shared.DTO import (
+    ChangePasswordRequest,
     LoginResponse,
     RegisterRequest,
     RegisterResponse,
     TokenResponse,
-    UserResponse,
-    ChangePasswordRequest,
     UpdateSettingsRequest,
+    UserResponse,
 )
 
 router = APIRouter(default_response_class=ORJSONResponse)
+
 
 def _get_cookie_secure() -> bool:
     val = os.getenv("COOKIE_SECURE")
     if val is not None:
         return val.lower() in ("true", "1", "yes")
     return os.getenv("DEBUG", "False").lower() not in ("true", "1", "yes")
+
 
 _REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60
 _COOKIE_SECURE = _get_cookie_secure()
@@ -358,14 +360,32 @@ async def get_me(current_user: User = Depends(_get_current_user)):
     logger.info(
         f"Користувач {current_user.email} (ID: {current_user.id}) запитав інформацію про себе"
     )
-    username = current_user.email.split("@")[0] if "@" in current_user.email else current_user.email
+    settings_dict = current_user.settings or {}
+    username = None
+
+    if settings_dict.get("telegram_username"):
+        username = settings_dict.get("telegram_username")
+    elif settings_dict.get("telegram_first_name"):
+        username = settings_dict.get("telegram_first_name")
+    elif settings_dict.get("google_name"):
+        username = settings_dict.get("google_name")
+
+    if not username:
+        username = (
+            current_user.email.split("@")[0] if "@" in current_user.email else current_user.email
+        )
+
+    photo_url = settings_dict.get("photo_url")
+
     return {
         "id": str(current_user.id),
         "email": current_user.email,
         "username": username,
         "role": current_user.role,
-        "settings": current_user.settings or {},
+        "settings": settings_dict,
+        "photo_url": photo_url,
     }
+
 
 @router.patch("/password", status_code=status.HTTP_200_OK)
 async def change_password(
@@ -378,10 +398,11 @@ async def change_password(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Поточний пароль вказано неправильно",
         )
-    
+
     current_user.hashed_password = hash_password(body.new_password)
     await db.commit()
     return {"message": "Пароль успішно змінено"}
+
 
 @router.patch("/settings", status_code=status.HTTP_200_OK)
 async def update_settings(
