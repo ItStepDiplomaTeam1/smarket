@@ -17,6 +17,6 @@
 
 ## 4. Verification & Testing
 
-- [ ] 4.1 Test category filtering via category_slug: `curl "http://localhost:8083/search?category_slug=drinks&limit=5"` -> should return only drinks
-- [ ] 4.2 Test subcategory filtering via subcategory_slug: `curl "http://localhost:8083/search?subcategory_slug=molochni-produkty&limit=5"` -> should return only dairy products
-- [ ] 4.3 Test multiple subcategories: `curl "http://localhost:8083/search?subcategory_slug=molochni-produkty&subcategory_slug=frozen&limit=5"` -> should return dairy and frozen products
+- [x] 4.1 Test category filtering via category_slug: `curl "http://localhost:8083/search?category_slug=drinks&limit=5"` -> should return only drinks
+- [x] 4.2 Test subcategory filtering via subcategory_slug: `curl "http://localhost:8083/search?subcategory_slug=molochni-produkty&limit=5"` -> should return only dairy products
+- [x] 4.3 Test multiple subcategories: `curl "http://localhost:8083/search?subcategory_slug=molochni-produkty&subcategory_slug=frozen&limit=5"` -> should return dairy and frozen products
