@@ -12,7 +12,6 @@ import { TelegramLoginButton } from './TelegramLoginButton';
 
 import eyeIcon from '@/shared/assets/ButtonEye.svg';
 import btngoogle from '@/shared/assets/google.svg';
-import btnfacebook from '@/shared/assets/facebook.svg';
 import checkIcon from '@/shared/assets/checkgreen.svg';
 import logo from '@/shared/assets/logo.svg';
 import basketImage from '@/shared/assets/logindefault.svg';
@@ -289,13 +288,8 @@ export function Create() {
                             )}
                             <span>{googleOAuthMutation.isPending ? 'Завантаження...' : 'Продовжити з Google'}</span>
                         </button>
-                        <button className="flex items-center justify-center gap-[8px] w-full h-[44px] bg-white border border-[rgba(38,84,71,0.16)] rounded-[10px] mb-[12px] cursor-pointer font-inter text-[13px] font-semibold text-[#111827] transition-all duration-200 hover:bg-[#F9FAFB] hover:shadow-sm">
-                            <img src={btnfacebook} alt="Facebook" className="w-[20px] h-[20px]" />
-                            <span>Продовжити з Facebook</span>
-                        </button>
-
                         <TelegramLoginButton 
-                            botName={import.meta.env.VITE_TELEGRAM_BOT_NAME || 'smarket_verify_bot'} 
+                            botId={import.meta.env.VITE_TELEGRAM_BOT_ID || '7243912952'} 
                             onAuth={(user) => telegramOAuthMutation.mutate(user)}
                             disabled={telegramOAuthMutation.isPending}
                         />

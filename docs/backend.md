@@ -609,6 +609,8 @@ db (healthy)
 | `APP_WORKERS`  | `2`                                 | Кількість Granian воркерів        |
 | `DEBUG`        | `False`                             | Якщо `True` — логує SQL запити    |
 | `LOG_LEVEL`    | `INFO`                              | Рівень логування                  |
+| `TELEGRAM_BOT_TOKEN` | `<bot_token_from_botfather>`  | Токен Telegram бота для перевірки підпису OAuth |
+
 
 ### `services/api/.env`
 

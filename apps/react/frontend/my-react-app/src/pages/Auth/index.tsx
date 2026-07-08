@@ -1,5 +1,4 @@
 import btngoogle from '@/shared/assets/google.svg';
-import btnfacebook from '@/shared/assets/facebook.svg';
 import checkIcon from '@/shared/assets/checkgreen.svg';
 import logo from '@/shared/assets/logo.svg';
 import basketImage from '@/shared/assets/logindefault.svg';
@@ -90,13 +89,8 @@ export default function AuthPage() {
                             <img src={btngoogle} alt="Google" className="w-[20px] h-[20px]" />
                             <span>{googleOAuthMutation.isPending ? 'Завантаження...' : 'Продовжити з Google'}</span>
                         </button>
-                        <button className="flex items-center justify-center gap-[8px] w-full h-[44px] bg-white border border-[rgba(38,84,71,0.16)] rounded-[10px] mb-[12px] cursor-pointer font-inter text-[13px] font-semibold text-[#265447] transition-colors duration-200 hover:bg-[#F9FAFB]">
-                            <img src={btnfacebook} alt="Facebook" className="w-[20px] h-[20px]" />
-                            <span>Продовжити з Facebook</span>
-                        </button>
-
                         <TelegramLoginButton 
-                            botName={import.meta.env.VITE_TELEGRAM_BOT_NAME || 'smarket_verify_bot'} 
+                            botId={import.meta.env.VITE_TELEGRAM_BOT_ID || '7243912952'} 
                             onAuth={(user) => telegramOAuthMutation.mutate(user)}
                             disabled={telegramOAuthMutation.isPending}
                         />
