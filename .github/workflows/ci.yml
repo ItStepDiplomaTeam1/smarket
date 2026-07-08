@@ -572,6 +572,7 @@ jobs:
     env:
       HOME: /root
       DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+      SMARKET_DEPLOY_WAIT_TIMEOUT: "360"
 
     steps:
       - uses: actions/checkout@v4

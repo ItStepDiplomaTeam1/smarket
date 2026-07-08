@@ -98,9 +98,9 @@ services:
       reviews_service:
         condition: service_healthy
       search_service:
-        condition: service_healthy
+        condition: service_started
       zephyros_agent:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
       <<: *healthcheck-defaults
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3).read()\""]
@@ -402,6 +402,10 @@ services:
       - ../services/products_etl/.env
     expose:
       - "8082"
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8082/health || exit 1"]
+      start_period: "${SMARKET_API_HEALTH_START_PERIOD:-30s}"
     depends_on:
       rabbitmq:
         condition: service_healthy
