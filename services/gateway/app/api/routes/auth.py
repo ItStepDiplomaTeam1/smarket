@@ -69,6 +69,12 @@ async def google_oauth(request: Request):
     return await proxy_request(request, "oauth/google")
 
 
+@router.post("/telegram")
+async def telegram_oauth(request: Request):
+    """Telegram OAuth — верифікація Telegram Login Widget даних і видача системних JWT."""
+    return await proxy_request(request, "oauth/telegram")
+
+
 # ---------------------------------------------------------------
 #  Захищені роути (вимагають валідний Bearer токен)
 #  Gateway перевіряє JWT локально (без зайвого мережевого запиту),

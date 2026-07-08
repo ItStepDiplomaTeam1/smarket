@@ -3,12 +3,14 @@ import { useGoogleLogin } from '@react-oauth/google';
 import eyeIcon from '@/shared/assets/ButtonEye.svg';
 import btngoogle from '@/shared/assets/google.svg';
 import btnfacebook from '@/shared/assets/facebook.svg';
-import { useGoogleOAuth } from '@/hooks/api/useAuthApi';
+import { useGoogleOAuth, useTelegramOAuth } from '@/hooks/api/useAuthApi';
+import { TelegramLoginButton } from './TelegramLoginButton';
 
 export function Popup() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
     const googleOAuthMutation = useGoogleOAuth();
+    const telegramOAuthMutation = useTelegramOAuth();
 
     const handleGoogleLogin = useGoogleLogin({
         onSuccess: (tokenResponse: { access_token: string }) => {
@@ -30,10 +32,15 @@ export function Popup() {
                         Почніть порівнювати ціни та збирати вигідні кошики вже сьогодні.
                     </p>
 
-                    {/* Social buttons */}
+                     {/* Social buttons */}
                     {googleOAuthMutation.isError && (
                         <p className="text-red-500 text-[12px] mb-[8px] text-center">
                             {googleOAuthMutation.error?.message}
+                        </p>
+                    )}
+                    {telegramOAuthMutation.isError && (
+                        <p className="text-red-500 text-[12px] mb-[8px] text-center">
+                            {telegramOAuthMutation.error?.message}
                         </p>
                     )}
 
@@ -51,6 +58,12 @@ export function Popup() {
                         <img src={btnfacebook} alt="Facebook" className="w-[20px] h-[20px]" />
                         <span>Продовжити з Facebook</span>
                     </button>
+
+                    <TelegramLoginButton 
+                        botName={import.meta.env.VITE_TELEGRAM_BOT_NAME || 'smarket_login_bot'} 
+                        onAuth={(user) => telegramOAuthMutation.mutate(user)}
+                        disabled={telegramOAuthMutation.isPending}
+                    />
 
                     {/* OR divider */}
                     <div className="flex items-center text-[#6D8279] text-[13px] my-[24px] gap-[10px]">
