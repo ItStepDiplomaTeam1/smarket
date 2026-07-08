@@ -4,12 +4,13 @@ import checkIcon from '@/shared/assets/checkgreen.svg';
 import logo from '@/shared/assets/logo.svg';
 import basketImage from '@/shared/assets/logindefault.svg';
 
-import { LoginForm } from '@/modules/Auth';
+import { LoginForm, TelegramLoginButton } from '@/modules/Auth';
 import { useGoogleLogin } from '@react-oauth/google';
-import { useGoogleOAuth } from '@/hooks/api/useAuthApi';
+import { useGoogleOAuth, useTelegramOAuth } from '@/hooks/api/useAuthApi';
 
 export default function AuthPage() {
     const googleOAuthMutation = useGoogleOAuth();
+    const telegramOAuthMutation = useTelegramOAuth();
 
     const handleGoogleLogin = useGoogleLogin({
         onSuccess: (tokenResponse: { access_token: string }) => {
@@ -73,6 +74,11 @@ export default function AuthPage() {
                                 {googleOAuthMutation.error?.message}
                             </p>
                         )}
+                        {telegramOAuthMutation.isError && (
+                            <p className="text-red-500 text-[12px] mb-[8px] text-center">
+                                {telegramOAuthMutation.error?.message}
+                            </p>
+                        )}
 
                         <button
                             id="btn-google-login"
@@ -88,6 +94,12 @@ export default function AuthPage() {
                             <img src={btnfacebook} alt="Facebook" className="w-[20px] h-[20px]" />
                             <span>Продовжити з Facebook</span>
                         </button>
+
+                        <TelegramLoginButton 
+                            botName={import.meta.env.VITE_TELEGRAM_BOT_NAME || 'smarket_login_bot'} 
+                            onAuth={(user) => telegramOAuthMutation.mutate(user)}
+                            disabled={telegramOAuthMutation.isPending}
+                        />
 
                         {/* OR divider */}
                         <div className="flex items-center text-[#6D8279] text-[13px] mt-[24px] mb-[24px] gap-[10px]">

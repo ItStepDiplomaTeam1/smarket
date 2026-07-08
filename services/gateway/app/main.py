@@ -41,8 +41,9 @@ origins = [
 
 if cors_origins_env:
     origins.extend([o.strip() for o in cors_origins_env.split(",") if o.strip()])
-else:
-    # Fallback to allow pages.dev domains by default
+
+# Always ensure pages.dev production domain is allowed
+if "https://smarket-7go.pages.dev" not in origins:
     origins.append("https://smarket-7go.pages.dev")
 
 app.add_middleware(
