@@ -53,6 +53,7 @@ services:
       - "8001"
     environment:
       COOKIE_SECURE: "${COOKIE_SECURE:-false}"
+      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
     env_file:
       - ../services/auth_service/.env
     depends_on:

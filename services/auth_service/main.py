@@ -26,7 +26,7 @@ from services.auth_service.routers.internal import router as internal_router
 
 setup_logger()
 
-rmq_url = get_secret("RABBITMQ_URL") or "amqp://localhost:5672/"
+rmq_url = os.getenv("RABBITMQ_URL") or "amqp://localhost:5672/"
 broker = RabbitBroker(rmq_url)
 
 def _coerce_int(value: Any, default: int) -> int:
