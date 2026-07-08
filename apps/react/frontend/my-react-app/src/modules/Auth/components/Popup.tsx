@@ -2,14 +2,13 @@ import { useState } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import eyeIcon from '@/shared/assets/ButtonEye.svg';
 import btngoogle from '@/shared/assets/google.svg';
-import { useGoogleOAuth, useTelegramOAuth } from '@/hooks/api/useAuthApi';
+import { useGoogleOAuth } from '@/hooks/api/useAuthApi';
 import { TelegramLoginButton } from './TelegramLoginButton';
 
 export function Popup() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
     const googleOAuthMutation = useGoogleOAuth();
-    const telegramOAuthMutation = useTelegramOAuth();
 
     const handleGoogleLogin = useGoogleLogin({
         onSuccess: (tokenResponse: { access_token: string }) => {
@@ -37,11 +36,6 @@ export function Popup() {
                             {googleOAuthMutation.error?.message}
                         </p>
                     )}
-                    {telegramOAuthMutation.isError && (
-                        <p className="text-red-500 text-[12px] mb-[8px] text-center">
-                            {telegramOAuthMutation.error?.message}
-                        </p>
-                    )}
 
                     <button
                         id="btn-google-popup"
@@ -55,8 +49,6 @@ export function Popup() {
                     </button>
                     <TelegramLoginButton 
                         botId={import.meta.env.VITE_TELEGRAM_BOT_ID || '7243912952'} 
-                        onAuth={(user) => telegramOAuthMutation.mutate(user)}
-                        disabled={telegramOAuthMutation.isPending}
                     />
 
                     {/* OR divider */}

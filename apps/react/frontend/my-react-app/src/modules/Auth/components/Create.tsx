@@ -7,7 +7,7 @@ import { apiClient } from '@/shared/api/apiClient';
 import { Loader2, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
-import { useGoogleOAuth, useTelegramOAuth, type MeResponse } from '@/hooks/api/useAuthApi';
+import { useGoogleOAuth, type MeResponse } from '@/hooks/api/useAuthApi';
 import { TelegramLoginButton } from './TelegramLoginButton';
 
 import eyeIcon from '@/shared/assets/ButtonEye.svg';
@@ -116,7 +116,6 @@ export function Create() {
     const navigate = useNavigate();
     const setAuth = useAuthStore((state) => state.setAuth);
     const googleOAuthMutation = useGoogleOAuth();
-    const telegramOAuthMutation = useTelegramOAuth();
 
     const handleGoogleLogin = useGoogleLogin({
         onSuccess: (tokenResponse: { access_token: string }) => {
@@ -268,11 +267,6 @@ export function Create() {
                                 {googleOAuthMutation.error?.message}
                             </p>
                         )}
-                        {telegramOAuthMutation.isError && (
-                            <p className="text-red-500 text-[12px] mb-[8px] text-center">
-                                {telegramOAuthMutation.error?.message}
-                            </p>
-                        )}
 
                         <button
                             id="btn-google-register"
@@ -290,8 +284,6 @@ export function Create() {
                         </button>
                         <TelegramLoginButton 
                             botId={import.meta.env.VITE_TELEGRAM_BOT_ID || '7243912952'} 
-                            onAuth={(user) => telegramOAuthMutation.mutate(user)}
-                            disabled={telegramOAuthMutation.isPending}
                         />
 
                         <div className="flex items-center text-[#6D8279] text-[13px] mt-[24px] mb-[24px] gap-[10px]">

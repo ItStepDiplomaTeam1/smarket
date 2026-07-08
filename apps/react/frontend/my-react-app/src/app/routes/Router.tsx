@@ -17,6 +17,7 @@ const CartPage = lazy(() => import('@/pages/Cart/ui/CartPage.tsx').then(m => ({ 
 const ConfidentialPolicy = lazy(() => import('@/pages/ConfidentionalPolicy/ui/ConfidentialPolicyPage.tsx'));
 const Privacy = lazy(() => import('@/pages/Privacy/ui/PrivacyPage.tsx'));
 const UsingConditions = lazy(() => import('@/pages/UsingConditions/ui/UsingConditionsPage.tsx'));
+const TelegramCallbackPage = lazy(() => import('@/pages/TelegramCallback/ui/TelegramCallbackPage.tsx'));
 
 const router = createBrowserRouter([
   {
@@ -124,6 +125,14 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<ShopsSkeleton />}>
             <ShopsPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: '/auth/telegram/callback',
+        element: (
+          <Suspense fallback={<PageSkeleton />}>
+            <TelegramCallbackPage />
           </Suspense>
         ),
       }

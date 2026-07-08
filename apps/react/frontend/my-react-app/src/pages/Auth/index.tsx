@@ -5,11 +5,10 @@ import basketImage from '@/shared/assets/logindefault.svg';
 
 import { LoginForm, TelegramLoginButton } from '@/modules/Auth';
 import { useGoogleLogin } from '@react-oauth/google';
-import { useGoogleOAuth, useTelegramOAuth } from '@/hooks/api/useAuthApi';
+import { useGoogleOAuth } from '@/hooks/api/useAuthApi';
 
 export default function AuthPage() {
     const googleOAuthMutation = useGoogleOAuth();
-    const telegramOAuthMutation = useTelegramOAuth();
 
     const handleGoogleLogin = useGoogleLogin({
         onSuccess: (tokenResponse: { access_token: string }) => {
@@ -73,11 +72,6 @@ export default function AuthPage() {
                                 {googleOAuthMutation.error?.message}
                             </p>
                         )}
-                        {telegramOAuthMutation.isError && (
-                            <p className="text-red-500 text-[12px] mb-[8px] text-center">
-                                {telegramOAuthMutation.error?.message}
-                            </p>
-                        )}
 
                         <button
                             id="btn-google-login"
@@ -91,8 +85,6 @@ export default function AuthPage() {
                         </button>
                         <TelegramLoginButton 
                             botId={import.meta.env.VITE_TELEGRAM_BOT_ID || '7243912952'} 
-                            onAuth={(user) => telegramOAuthMutation.mutate(user)}
-                            disabled={telegramOAuthMutation.isPending}
                         />
 
                         {/* OR divider */}
