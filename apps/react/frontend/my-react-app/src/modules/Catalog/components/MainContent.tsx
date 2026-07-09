@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate} from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 
 // ================= SVG ІКОНКИ ДЛЯ МАКЕТУ =================
@@ -218,6 +218,8 @@ const fetchProducts = async (filters: FetchFilters): Promise<ProductsResponse> =
 };
 
 export function MainContent() {
+  const navigate = useNavigate();
+
   const [page, setPage] = useState(1);
   
   const [maxPrice, setMaxPrice] = useState<number>(2000); 
@@ -798,15 +800,15 @@ export function MainContent() {
                           )}
                         </div>
                         
-                        {/* <button 
+                        <button onClick={() => navigate(`/product/${product.id}`)}
                           className={`w-full py-[8px] rounded-[6px] font-bold text-[13px] border cursor-pointer transition-colors ${
                             oldPrice 
                               ? 'bg-[#265447] text-white border-[#265447] hover:bg-[#1A3E2F] dark:bg-[#3CD27D] dark:text-[#0B120F] dark:border-transparent dark:hover:bg-[#34B86D]' 
                               : 'bg-white text-[#265447] border-[#E5E7EB] hover:border-[#265447] dark:bg-[#3CD27D] dark:text-[#0B120F] dark:border-transparent dark:hover:bg-[#34B86D]'
                           }`}
                         >
-                          Порівняти
-                        </button>Іконка серця */}
+                          До Товару
+                        </button>
                       </div>
 
                     </div>
