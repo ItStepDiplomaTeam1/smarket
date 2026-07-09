@@ -52,7 +52,9 @@ services:
     expose:
       - "8001"
     environment:
-      COOKIE_SECURE: "${COOKIE_SECURE:-false}"
+      COOKIE_SECURE: "${COOKIE_SECURE:-true}"
+      COOKIE_SAMESITE: "${COOKIE_SAMESITE:-none}"
+      COOKIE_DOMAIN: "${COOKIE_DOMAIN:-smarket-api.duckdns.org}"
       RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
     env_file:
       - ../services/auth_service/.env

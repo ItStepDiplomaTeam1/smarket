@@ -50,6 +50,33 @@ _COOKIE_SECURE = _get_cookie_secure()
 _security = HTTPBearer()
 
 
+def _build_cookie_params(value: str | None = None, is_delete: bool = False) -> dict:
+    """
+    Builds parameters for set_cookie or delete_cookie based on env variables.
+    """
+    samesite = os.getenv("COOKIE_SAMESITE", "lax").lower()
+    domain = os.getenv("COOKIE_DOMAIN")
+
+    params = {
+        "key": "refresh_token",
+        "httponly": True,
+        "secure": _COOKIE_SECURE,
+        "samesite": samesite,
+        "path": "/",
+    }
+
+    if domain:
+        params["domain"] = domain
+
+    if not is_delete:
+        if value is not None:
+            params["value"] = value
+        params["max_age"] = _REFRESH_TOKEN_MAX_AGE
+
+    return params
+
+
+
 def _mask_email(email: str) -> str:
     """Mask email for safe logging (GDPR compliance)."""
     if "@" not in email:
@@ -146,14 +173,7 @@ async def register(
         access_token = create_access_token(str(inner_user.id), inner_user.role, inner_user.email)
         refresh_token = create_refresh_token(str(inner_user.id), inner_user.role, inner_user.email)
 
-        response.set_cookie(
-            key="refresh_token",
-            value=refresh_token,
-            httponly=True,
-            secure=_COOKIE_SECURE,
-            samesite="lax",
-            max_age=_REFRESH_TOKEN_MAX_AGE,
-        )
+        response.set_cookie(**_build_cookie_params(value=refresh_token))
 
         logger.success(
             f"Користувача {_mask_email(body.email)} успішно зареєстровано з ID: {inner_user.id}"
@@ -221,15 +241,7 @@ async def login(
         access_token = create_access_token(str(user.id), user.role, user.email)
         refresh_token = create_refresh_token(str(user.id), user.role, user.email)
 
-        response.set_cookie(
-            key="refresh_token",
-            value=refresh_token,
-            httponly=True,
-            secure=_COOKIE_SECURE,
-            samesite="lax",
-            max_age=_REFRESH_TOKEN_MAX_AGE,
-            path="/",
-        )
+        response.set_cookie(**_build_cookie_params(value=refresh_token))
 
         logger.success(f"Користувач {_mask_email(body.email)} успішно авторизований. ID: {user.id}")
         return LoginResponse(
@@ -340,15 +352,7 @@ async def refresh(request: Request, response: Response, db: AsyncSession = Depen
     new_access_token = create_access_token(str(user.id), user.role, user.email)
     new_refresh_token = create_refresh_token(str(user.id), user.role, user.email)
 
-    response.set_cookie(
-        key="refresh_token",
-        value=new_refresh_token,
-        httponly=True,
-        secure=_COOKIE_SECURE,
-        samesite="lax",
-        max_age=_REFRESH_TOKEN_MAX_AGE,
-        path="/",
-    )
+    response.set_cookie(**_build_cookie_params(value=new_refresh_token))
     return TokenResponse(
         access_token=new_access_token,
         token_type="bearer",
@@ -436,13 +440,7 @@ async def logout(request: Request, response: Response):
                         await blacklist_token(jti, ttl)
         except Exception:
             logger.exception("Не вдалося заблокувати refresh токен при logout")
-    response.delete_cookie(
-        key="refresh_token",
-        httponly=True,
-        secure=_COOKIE_SECURE,
-        samesite="lax",
-        path="/",
-    )
+    response.delete_cookie(**_build_cookie_params(is_delete=True))
     return
 
 

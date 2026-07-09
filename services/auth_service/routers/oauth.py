@@ -17,7 +17,7 @@ from services.auth_service.plugins.security.jwt_handler import (
 )
 from services.auth_service.plugins.security.secrets.load_secret import get_secret
 from services.auth_service.plugins.security.telegram_validator import verify_telegram_auth
-from services.auth_service.routers.auth import _mask_email
+from services.auth_service.routers.auth import _mask_email, _build_cookie_params
 from services.auth_service.shared.DTO import (
     GoogleOAuthRequest,
     LoginResponse,
@@ -32,15 +32,7 @@ router = APIRouter(
 )
 
 
-def _get_cookie_secure() -> bool:
-    val = os.getenv("COOKIE_SECURE")
-    if val is not None:
-        return val.lower() in ("true", "1", "yes")
-    return os.getenv("DEBUG", "False").lower() not in ("true", "1", "yes")
-
-
-_REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60
-_COOKIE_SECURE = _get_cookie_secure()
+# Cookie configuration parameters are imported from auth.py router
 _GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs"
 _GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v3/userinfo"
 
@@ -182,15 +174,7 @@ async def oauth_google_login(
     access_token = create_access_token(str(user.id), user.role, user.email)
     refresh_token = create_refresh_token(str(user.id), user.role, user.email)
 
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        httponly=True,
-        secure=_COOKIE_SECURE,
-        samesite="lax",
-        max_age=_REFRESH_TOKEN_MAX_AGE,
-        path="/",
-    )
+    response.set_cookie(**_build_cookie_params(value=refresh_token))
 
     return LoginResponse(
         access_token=access_token,
@@ -290,15 +274,7 @@ async def oauth_telegram_login(
     access_token = create_access_token(str(user.id), user.role, user.email)
     refresh_token = create_refresh_token(str(user.id), user.role, user.email)
 
-    response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        httponly=True,
-        secure=_COOKIE_SECURE,
-        samesite="lax",
-        max_age=_REFRESH_TOKEN_MAX_AGE,
-        path="/",
-    )
+    response.set_cookie(**_build_cookie_params(value=refresh_token))
 
     return LoginResponse(
         access_token=access_token,
