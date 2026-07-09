@@ -1,6 +1,5 @@
 import product1 from '@/shared/assets/div.product-visual.svg';
 
-// Іконки для темної теми як на макеті
 const DARK_ICONS = [
   <svg key="1" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3CD27D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 7h-3a2 2 0 0 1-2-2V2"/><path d="M9 18a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h7l4 4v10a2 2 0 0 1-2 2z"/><path d="M3 15h6"/><path d="M3 18h6"/><path d="M3 21h6"/></svg>,
   <svg key="2" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3CD27D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>,
@@ -11,21 +10,21 @@ const DARK_ICONS = [
 
 export function ProductsSec() {
   return (
-    <section className="w-full py-[96px] bg-white dark:bg-[#0B120F] transition-colors duration-300">
-      <div className="w-full max-w-[1228px] mx-auto px-[20px] flex flex-col gap-[48px]">
+    <section className="w-full py-[60px] sm:py-[96px] bg-white dark:bg-[#0B120F] transition-colors duration-300">
+      <div className="w-full max-w-[1228px] mx-auto px-[20px] flex flex-col gap-[32px] sm:gap-[48px]">
 
         {/* Heading block */}
-        <div className="max-w-[600px] mx-auto flex flex-col items-center text-center gap-[16px]">
-          <h2 className="font-manrope text-[40px] font-extrabold text-[#173B33] dark:text-white m-0 leading-[1.2] transition-colors">
+        <div className="max-w-[600px] mx-auto flex flex-col items-center text-center gap-[12px] sm:gap-[16px]">
+          <h2 className="font-manrope text-[28px] sm:text-[40px] font-extrabold text-[#173B33] dark:text-white m-0 leading-tight transition-colors">
             Популярні товари для порівняння
           </h2>
-          <p className="font-inter text-[16px] text-[#6D8279] dark:text-[#A4B3AF] leading-[1.5] m-0 transition-colors">
-            Швидко перевіряйте ціни на товари, які найчастіше додають у <br className="hidden sm:block" /> кошик.
+          <p className="font-inter text-[15px] sm:text-[16px] text-[#6D8279] dark:text-[#A4B3AF] leading-[1.5] m-0 transition-colors">
+            Швидко перевіряйте ціни на товари, які найчастіше додають у кошик.
           </p>
         </div>
 
-        {/* 5-column product grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-[20px]">
+        {/* 5-column responsive product grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-[20px]">
           {[
             { name: 'Молоко 2,5%',       info: 'від 38 грн · 4 магазини',     discount: 'Економія до 17 грн' },
             { name: 'Кава мелена',       info: 'від 129 грн · 3 магазини',    discount: 'Економія до 42 грн' },
@@ -37,13 +36,11 @@ export function ProductsSec() {
               key={name}
               className="bg-white dark:bg-[#15231D] border border-[#F3F4F6] dark:border-transparent rounded-[16px] px-[20px] py-[24px] flex flex-col items-center text-center transition-all duration-300 hover:shadow-[0_10px_25px_rgba(0,0,0,0.05)] dark:hover:shadow-none hover:-translate-y-1"
             >
-              {/* Product icon for Light Theme */}
               <img 
                 src={product1} 
                 alt={name} 
                 className="w-full max-w-[80px] h-auto mb-[24px] block dark:hidden" 
               />
-              {/* Product icon for Dark Theme (as in the screenshot) */}
               <div className="hidden dark:flex w-[100px] h-[100px] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#1A3B2A] to-[#111C17] rounded-[16px] border border-[#1A3125] items-center justify-center mb-[24px]">
                 {DARK_ICONS[index]}
               </div>

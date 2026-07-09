@@ -56,14 +56,9 @@ const fetchStoreStats = async (storeId: string): Promise<StoreStats> => {
   return res.json();
 };
 
-/**
- * Групуємо магазини за retail_chain і беремо один (перший) з кожної мережі.
- * Потім для кожного магазину-представника запитуємо /stats.
- */
 const fetchStoresWithStats = async (): Promise<StoreCard[]> => {
   const stores = await fetchStores();
   
-  // Групуємо по retail_chain, беремо першого як представника
   const chainMap = new Map<string, StoreFromAPI>();
   for (const store of stores) {
     if (!chainMap.has(store.retail_chain)) {
@@ -73,7 +68,6 @@ const fetchStoresWithStats = async (): Promise<StoreCard[]> => {
   
   const representatives = Array.from(chainMap.values());
   
-  // Запитуємо статистику паралельно для всіх представників
   const results = await Promise.allSettled(
     representatives.map(async (store): Promise<StoreCard> => {
       try {
@@ -90,7 +84,6 @@ const fetchStoresWithStats = async (): Promise<StoreCard[]> => {
           city: store.city || '',
         };
       } catch {
-        // Фолбек якщо /stats не відповів
         return {
           id: store.external_id,
           name: store.name,
@@ -109,7 +102,7 @@ const fetchStoresWithStats = async (): Promise<StoreCard[]> => {
   return results
     .filter((r): r is PromiseFulfilledResult<StoreCard> => r.status === 'fulfilled')
     .map(r => r.value)
-    .sort((a, b) => b.prod - a.prod); // Сортуємо по кількості товарів
+    .sort((a, b) => b.prod - a.prod);
 };
 
 // ================= СКЕЛЕТОН КАРТКИ =================
@@ -139,25 +132,22 @@ export const Mainpart: React.FC = () => {
   const { data: stores, isLoading } = useQuery<StoreCard[]>({
     queryKey: ['storesList'],
     queryFn: fetchStoresWithStats,
-    staleTime: 5 * 60 * 1000, // 5 хвилин кеш
+    staleTime: 5 * 60 * 1000, 
   });
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
   };
 
-  // Скидання сторінки при зміні пошуку або табу
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, activeCategoryTab]);
 
-  // Фільтрація і сортування
   const filteredStores = useMemo(() => {
     if (!stores) return [];
     
     let result = [...stores];
     
-    // Пошук
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(s => 
@@ -167,21 +157,12 @@ export const Mainpart: React.FC = () => {
       );
     }
     
-    // Сортування за табами
     switch (activeCategoryTab) {
-      case 'promo':
-        result.sort((a, b) => b.promo - a.promo);
-        break;
-      case 'products':
-        result.sort((a, b) => b.prod - a.prod);
-        break;
-      case 'economy':
-        result.sort((a, b) => b.eco - a.eco);
-        break;
+      case 'promo': result.sort((a, b) => b.promo - a.promo); break;
+      case 'products': result.sort((a, b) => b.prod - a.prod); break;
+      case 'economy': result.sort((a, b) => b.eco - a.eco); break;
       case 'popular':
-      default:
-        result.sort((a, b) => b.prod - a.prod);
-        break;
+      default: result.sort((a, b) => b.prod - a.prod); break;
     }
     
     return result;
@@ -193,20 +174,19 @@ export const Mainpart: React.FC = () => {
     currentPage * itemsPerPage
   );
 
-  // Агрегована статистика для Headline
   const totalPromos = stores?.reduce((sum, s) => sum + s.promo, 0) || 0;
   const maxEconomy = stores?.reduce((max, s) => Math.max(max, s.eco), 0) || 0;
 
   return (
     <div className="w-full bg-[#F8FAF9] dark:bg-[#0B120F] transition-colors duration-300 pb-10">
-      <div className="w-full max-w-[1230px] mx-auto px-[20px] font-sans">
+      <div className="w-full max-w-[1230px] mx-auto px-[16px] md:px-[20px] font-sans">
         
         {/* ================= БЛОК ПОШУКУ ================= */}
-        <div className="w-full bg-white dark:bg-[#15231D] rounded-[16px] border border-[#E5E7EB] dark:border-[#1F3227] p-[20px] mb-[40px] transition-colors">
+        <div className="w-full bg-white dark:bg-[#15231D] rounded-[16px] border border-[#E5E7EB] dark:border-[#1F3227] p-[16px] md:p-[20px] mb-[32px] md:mb-[40px] transition-colors">
           <form onSubmit={handleSearch} className="flex flex-col gap-[16px]">
             
             {/* Інпут та кнопка */}
-            <div className="flex flex-col sm:flex-row items-center gap-[12px] w-full">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-[12px] w-full">
               <div className="relative flex-1 w-full">
                 <span className="absolute left-[16px] top-1/2 -translate-y-1/2 text-[#9CA3AF] dark:text-[#7A8D85] transition-colors">
                   <SearchIcon />
@@ -216,12 +196,12 @@ export const Mainpart: React.FC = () => {
                   placeholder="Пошук магазину..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full h-[48px] bg-[#F9FAFB] dark:bg-[#0D1612] border border-[#E5E7EB] dark:border-[#1F3227] rounded-[8px] pl-[44px] pr-[16px] text-[14px] text-[#111827] dark:text-white placeholder-[#9CA3AF] dark:placeholder-[#7A8D85] outline-none focus:border-[#265447] dark:focus:border-[#3CD27D] transition-colors"
+                  className="w-full h-[46px] md:h-[48px] bg-[#F9FAFB] dark:bg-[#0D1612] border border-[#E5E7EB] dark:border-[#1F3227] rounded-[8px] pl-[44px] pr-[16px] text-[14px] text-[#111827] dark:text-white placeholder-[#9CA3AF] dark:placeholder-[#7A8D85] outline-none focus:border-[#265447] dark:focus:border-[#3CD27D] transition-colors"
                 />
               </div>
               <button
                 type="submit"
-                className="h-[48px] px-[32px] w-full sm:w-auto bg-[#265447] dark:bg-[#3CD27D] hover:bg-[#1A3E2F] dark:hover:bg-[#34B86D] text-white dark:text-[#0B120F] font-semibold text-[14px] rounded-[8px] transition-colors"
+                className="w-full sm:w-auto h-[46px] md:h-[48px] px-[32px] bg-[#265447] dark:bg-[#3CD27D] hover:bg-[#1A3E2F] dark:hover:bg-[#34B86D] text-white dark:text-[#0B120F] font-semibold text-[14px] rounded-[8px] transition-colors"
               >
                 Знайти
               </button>
@@ -229,14 +209,14 @@ export const Mainpart: React.FC = () => {
 
             {/* Статистичні бейджі */}
             {stores && stores.length > 0 && (
-              <div className="flex flex-wrap items-center gap-[10px]">
-                <span className="px-[12px] py-[5px] rounded-[100px] bg-[#EAF7F2] dark:bg-[#1A3026] text-[#265447] dark:text-[#3CD27D] text-[12px] font-semibold">
+              <div className="flex flex-wrap items-center gap-[8px] md:gap-[10px]">
+                <span className="px-[10px] md:px-[12px] py-[4px] md:py-[5px] rounded-[100px] bg-[#EAF7F2] dark:bg-[#1A3026] text-[#265447] dark:text-[#3CD27D] text-[11px] md:text-[12px] font-semibold">
                   {stores.length} мереж
                 </span>
-                <span className="px-[12px] py-[5px] rounded-[100px] bg-[#FEF3C7] dark:bg-[#332B00] text-[#92400E] dark:text-[#FFB020] text-[12px] font-semibold">
+                <span className="px-[10px] md:px-[12px] py-[4px] md:py-[5px] rounded-[100px] bg-[#FEF3C7] dark:bg-[#332B00] text-[#92400E] dark:text-[#FFB020] text-[11px] md:text-[12px] font-semibold">
                   {totalPromos}+ акцій
                 </span>
-                <span className="px-[12px] py-[5px] rounded-[100px] bg-[#F3E8FF] dark:bg-[#2D1B52] text-[#7C3AED] dark:text-[#A78BFA] text-[12px] font-semibold">
+                <span className="px-[10px] md:px-[12px] py-[4px] md:py-[5px] rounded-[100px] bg-[#F3E8FF] dark:bg-[#2D1B52] text-[#7C3AED] dark:text-[#A78BFA] text-[11px] md:text-[12px] font-semibold">
                   до {maxEconomy}% економії
                 </span>
               </div>
@@ -245,17 +225,17 @@ export const Mainpart: React.FC = () => {
         </div>
 
         {/* ================= ЗАГОЛОВОК СІТКИ ТА ТАБИ ================= */}
-        <div className="mb-[24px]">
-          <h2 className="font-manrope text-[24px] font-bold text-[#111827] dark:text-white mb-[8px] transition-colors">
+        <div className="mb-[16px] md:mb-[24px]">
+          <h2 className="font-manrope text-[20px] md:text-[24px] font-bold text-[#111827] dark:text-white mb-[8px] transition-colors">
             Усі магазини
           </h2>
-          <p className="font-inter text-[14px] text-[#6D8279] dark:text-[#A4B3AF] transition-colors">
+          <p className="font-inter text-[13px] md:text-[14px] text-[#6D8279] dark:text-[#A4B3AF] transition-colors">
             Обирайте магазин, переглядайте актуальні акції та додавайте товари у кошик для порівняння.
           </p>
         </div>
 
         {/* Таби категорій */}
-        <div className="flex flex-wrap items-center gap-[10px] mb-[32px]">
+        <div className="flex flex-wrap items-center gap-[8px] md:gap-[10px] mb-[24px] md:mb-[32px]">
           {[
             { id: 'popular', label: 'Популярні' },
             { id: 'promo', label: 'Більше акцій' },
@@ -265,7 +245,7 @@ export const Mainpart: React.FC = () => {
             <button
               key={tab.id}
               onClick={() => setActiveCategoryTab(tab.id)}
-              className={`px-[16px] py-[8px] rounded-[100px] text-[13px] font-medium transition-colors ${
+              className={`px-[14px] md:px-[16px] py-[6px] md:py-[8px] rounded-[100px] text-[12px] md:text-[13px] font-medium transition-colors ${
                 activeCategoryTab === tab.id
                   ? 'bg-[#265447] dark:bg-[#3CD27D] text-white dark:text-[#0B120F]'
                   : 'bg-[#F3F4F6] dark:bg-[#1A2E25] text-[#6D8279] dark:text-[#7A8D85] hover:bg-[#E5E7EB] dark:hover:bg-[#233F32]'
@@ -278,40 +258,39 @@ export const Mainpart: React.FC = () => {
 
         {/* ================= СІТКА КАРТОК ================= */}
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-[20px]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-[16px] md:gap-[20px]">
             {Array.from({ length: 8 }).map((_, i) => (
               <StoreCardSkeleton key={i} />
             ))}
           </div>
         ) : filteredStores.length === 0 ? (
           <div className="w-full text-center py-16">
-            <p className="text-[16px] text-[#6D8279] dark:text-[#7A8D85]">
+            <p className="text-[14px] md:text-[16px] text-[#6D8279] dark:text-[#7A8D85]">
               {searchQuery ? 'Магазинів за вашим запитом не знайдено' : 'Магазини не знайдено'}
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-[20px]">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-[16px] md:gap-[20px]">
             {paginatedStores.map((store) => (
               <div 
                 key={store.id} 
-                className="bg-white dark:bg-[#15231D] border border-[#E5E7EB] dark:border-transparent rounded-[16px] p-[20px] flex flex-col hover:shadow-sm dark:hover:shadow-none transition-all group"
+                className="bg-white dark:bg-[#15231D] border border-[#E5E7EB] dark:border-transparent rounded-[16px] p-[16px] md:p-[20px] flex flex-col hover:shadow-sm dark:hover:shadow-none transition-all group"
               >
                 {/* Логотип та Бейдж */}
                 <div className="flex justify-between items-start mb-[16px]">
-                  <div className="w-[52px] h-[52px] rounded-[12px] border border-[#E5E7EB] dark:border-[#2B4236] bg-white flex items-center justify-center p-[6px] overflow-hidden shrink-0">
+                  <div className="w-[48px] h-[48px] md:w-[52px] md:h-[52px] rounded-[12px] border border-[#E5E7EB] dark:border-[#2B4236] bg-white flex items-center justify-center p-[6px] overflow-hidden shrink-0">
                     {store.logo_url ? (
                       <img 
                         src={store.logo_url} 
                         alt={store.name} 
                         className="w-full h-full object-contain"
                         onError={(e) => {
-                          // Фолбек якщо картинка не завантажилась
                           (e.target as HTMLImageElement).style.display = 'none';
                           (e.target as HTMLImageElement).parentElement!.innerHTML = `<span class="font-black text-[#111827] text-[11px] text-center leading-tight">${store.retail_chain.slice(0, 4).toUpperCase()}</span>`;
                         }}
                       />
                     ) : (
-                      <span className="font-black text-[#111827] text-[14px] text-center leading-tight">
+                      <span className="font-black text-[#111827] text-[12px] md:text-[14px] text-center leading-tight">
                         {store.retail_chain.slice(0, 4).toUpperCase()}
                       </span>
                     )}
@@ -325,26 +304,26 @@ export const Mainpart: React.FC = () => {
                 </div>
 
                 {/* Текст */}
-                <h3 className="font-manrope text-[18px] font-bold text-[#111827] dark:text-white mb-[4px] leading-tight transition-colors">
+                <h3 className="font-manrope text-[16px] md:text-[18px] font-bold text-[#111827] dark:text-white mb-[4px] leading-tight transition-colors">
                   {store.name}
                 </h3>
-                <p className="text-[13px] text-[#6D8279] dark:text-[#7A8D85] mb-[20px] line-clamp-2 leading-[1.4] h-[36px] transition-colors">
+                <p className="text-[12px] md:text-[13px] text-[#6D8279] dark:text-[#7A8D85] mb-[16px] md:mb-[20px] line-clamp-2 leading-[1.4] h-[34px] md:h-[36px] transition-colors">
                   {store.desc}
                 </p>
 
                 {/* Статистика */}
-                <div className="flex flex-col mb-[24px]">
-                  <div className="flex justify-between items-center py-[8px] border-b border-[#F3F4F6] dark:border-[#1F3227] transition-colors">
-                    <span className="text-[13px] text-[#6D8279] dark:text-[#7A8D85]">Товарів</span>
-                    <span className="text-[13px] font-bold text-[#111827] dark:text-white">{store.prod.toLocaleString('uk-UA')}</span>
+                <div className="flex flex-col mb-[20px] md:mb-[24px]">
+                  <div className="flex justify-between items-center py-[6px] md:py-[8px] border-b border-[#F3F4F6] dark:border-[#1F3227] transition-colors">
+                    <span className="text-[12px] md:text-[13px] text-[#6D8279] dark:text-[#7A8D85]">Товарів</span>
+                    <span className="text-[12px] md:text-[13px] font-bold text-[#111827] dark:text-white">{store.prod.toLocaleString('uk-UA')}</span>
                   </div>
-                  <div className="flex justify-between items-center py-[8px] border-b border-[#F3F4F6] dark:border-[#1F3227] transition-colors">
-                    <span className="text-[13px] text-[#6D8279] dark:text-[#7A8D85]">Акцій</span>
-                    <span className="text-[13px] font-bold text-[#111827] dark:text-white">{store.promo}</span>
+                  <div className="flex justify-between items-center py-[6px] md:py-[8px] border-b border-[#F3F4F6] dark:border-[#1F3227] transition-colors">
+                    <span className="text-[12px] md:text-[13px] text-[#6D8279] dark:text-[#7A8D85]">Акцій</span>
+                    <span className="text-[12px] md:text-[13px] font-bold text-[#111827] dark:text-white">{store.promo}</span>
                   </div>
-                  <div className="flex justify-between items-center py-[8px]">
-                    <span className="text-[13px] text-[#6D8279] dark:text-[#7A8D85]">Економія</span>
-                    <span className="text-[13px] font-bold text-[#F59E0B] dark:text-[#FFB020]">до {store.eco}%</span>
+                  <div className="flex justify-between items-center py-[6px] md:py-[8px]">
+                    <span className="text-[12px] md:text-[13px] text-[#6D8279] dark:text-[#7A8D85]">Економія</span>
+                    <span className="text-[12px] md:text-[13px] font-bold text-[#F59E0B] dark:text-[#FFB020]">до {store.eco}%</span>
                   </div>
                 </div>
 
@@ -362,20 +341,19 @@ export const Mainpart: React.FC = () => {
 
         {/* ================= ПАГІНАЦІЯ ================= */}
         {!isLoading && filteredStores.length > itemsPerPage && (
-          <div className="flex justify-center items-center gap-[8px] mt-[40px]">
+          <div className="flex justify-center items-center flex-wrap gap-[8px] mt-[32px] md:mt-[40px]">
             <button 
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="w-[40px] h-[40px] rounded-[8px] border border-[#E5E7EB] dark:border-[#1F3227] flex items-center justify-center text-[#6D8279] dark:text-[#7A8D85] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#F3F4F6] dark:hover:bg-[#1A2E25] transition-colors"
+              className="w-[36px] h-[36px] md:w-[40px] md:h-[40px] rounded-[8px] border border-[#E5E7EB] dark:border-[#1F3227] flex items-center justify-center text-[#6D8279] dark:text-[#7A8D85] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#F3F4F6] dark:hover:bg-[#1A2E25] transition-colors"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M15 18l-6-6 6-6"/>
               </svg>
             </button>
             
             {Array.from({ length: totalPages }).map((_, i) => {
               const pageNum = i + 1;
-              // Simple pagination logic to show first, last, current, and adjacent pages
               if (
                 pageNum === 1 || 
                 pageNum === totalPages || 
@@ -385,7 +363,7 @@ export const Mainpart: React.FC = () => {
                   <button
                     key={pageNum}
                     onClick={() => setCurrentPage(pageNum)}
-                    className={`w-[40px] h-[40px] rounded-[8px] font-semibold text-[14px] transition-colors ${
+                    className={`w-[36px] h-[36px] md:w-[40px] md:h-[40px] rounded-[8px] font-semibold text-[13px] md:text-[14px] transition-colors ${
                       currentPage === pageNum 
                         ? 'bg-[#265447] dark:bg-[#3CD27D] text-white dark:text-[#0B120F]' 
                         : 'border border-[#E5E7EB] dark:border-[#1F3227] text-[#6D8279] dark:text-[#7A8D85] hover:bg-[#F3F4F6] dark:hover:bg-[#1A2E25]'
@@ -406,9 +384,9 @@ export const Mainpart: React.FC = () => {
             <button 
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="w-[40px] h-[40px] rounded-[8px] border border-[#E5E7EB] dark:border-[#1F3227] flex items-center justify-center text-[#6D8279] dark:text-[#7A8D85] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#F3F4F6] dark:hover:bg-[#1A2E25] transition-colors"
+              className="w-[36px] h-[36px] md:w-[40px] md:h-[40px] rounded-[8px] border border-[#E5E7EB] dark:border-[#1F3227] flex items-center justify-center text-[#6D8279] dark:text-[#7A8D85] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#F3F4F6] dark:hover:bg-[#1A2E25] transition-colors"
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 18l6-6-6-6"/>
               </svg>
             </button>
