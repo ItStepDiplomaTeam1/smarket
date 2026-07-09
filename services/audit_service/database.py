@@ -2,7 +2,18 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from sqlalchemy.orm import declarative_base
 from config import settings
 
-engine = create_async_engine(settings.DATABASE_URL, echo=False)
+# Для NeonDB (хостинг на neon.tech) примусово включаємо SSL,
+# але робимо це у правильному для asyncpg форматі connect_args
+connect_args = {}
+if "neon.tech" in settings.DATABASE_URL:
+    connect_args = {"ssl": True}
+
+engine = create_async_engine(
+    settings.DATABASE_URL,
+    connect_args=connect_args,
+    echo=False
+)
+
 AsyncSessionLocal = async_sessionmaker(
     bind=engine, class_=AsyncSession, expire_on_commit=False
 )
