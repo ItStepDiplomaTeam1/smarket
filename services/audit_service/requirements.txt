@@ -1,4 +1,8 @@
-fastapi>=0.111.0
+fastapi==0.111.0
 granian>=1.0.0
 orjson>=3.9.0
 pydantic-settings>=2.3.4
+faststream[rabbit]>=0.5.30
+sqlalchemy[asyncio]==2.0.31
+asyncpg==0.29.0
+alembic==1.13.1
