@@ -99,41 +99,44 @@ interface FetchFilters {
   stores: string[];
   subcategories: string[];
   offers: string[];
-  discounts: string[]; // <-- Додано типізацію для знижок
+  discounts: string[];
   maxPrice: number;
   search: string;
   sortBy: string;
 }
 
-// ================= КОНСТАНТИ ФІЛЬТРІВ (ДИНАМІЧНІ МАСИВИ) =================
+// ================= КОНСТАНТИ ФІЛЬТРІВ (ОНОВЛЕНО ПІД БЕКЕНД) =================
 export const MAIN_CATEGORIES = [
   { id: 1, slug: 'products', name: 'Продукти' },
   { id: 2, slug: 'drinks', name: 'Напої' },
   { id: 3, slug: 'snacks', name: 'Солодощі та снеки' },
   { id: 4, slug: 'alcohol-tobacco', name: 'Алкоголь та тютюн' },
-  { id: 5, slug: 'household', name: 'Товари для дому' },
-  { id: 6, slug: 'health-beauty', name: "Здоров'я та догляд" },
-  { id: 7, slug: 'pets', name: 'Зоотовари' },
-  { id: 8, slug: 'babies', name: 'Дитячі товари' },
-  { id: 9, slug: 'hobby-rest', name: 'Хобі та відпочинок' },
-  { id: 10, slug: 'promo', name: 'Акції та промо' }
+  { id: 5, slug: 'home', name: 'Товари для дому' },
+  { id: 6, slug: 'beauty', name: "Краса та догляд" },
+  { id: 7, slug: 'zoo', name: 'Зоотовари' },
+  { id: 8, slug: 'baby', name: 'Дитячі товари' },
+  { id: 9, slug: 'chemistry', name: 'Побутова хімія' },
+  { id: 10, slug: 'hobby-rest', name: 'Хобі та відпочинок' },
+  { id: 11, slug: 'promo', name: 'Акції та промо' }
 ];
 
+// Скарбничка слагов адаптована під search_filtering_guide.md
 const CATEGORY_OPTIONS = [
   { id: 'products', icon: '🥦', name: 'Продукти', count: '1 240' },
   { id: 'drinks', icon: '🥤', name: 'Напої', count: '380' },
-  { id: 'babies', icon: '🍼', name: 'Дитячі товари', count: '214' },
-  { id: 'household', icon: '🪴', name: 'Товари для дому', count: '176' },
-  { id: 'health-beauty', icon: '💄', name: 'Краса та догляд', count: '290' },
-  { id: 'pets', icon: '🐾', name: 'Зоотовари', count: '98' },
+  { id: 'baby', icon: '🍼', name: 'Дитячі товари', count: '214' },
+  { id: 'chemistry', icon: '🧼', name: 'Побутова хімія', count: '102' },
+  { id: 'home', icon: '🪴', name: 'Товари для дому', count: '176' },
+  { id: 'beauty', icon: '💄', name: 'Краса та догляд', count: '290' },
+  { id: 'zoo', icon: '🐾', name: 'Зоотовари', count: '98' },
 ];
 
 const STORE_OPTIONS = [
-  { id: 'atb', label: 'АТБ' },
-  { id: 'silpo', label: 'Сільпо' },
+  { id: 'auchan', label: 'Ашан' },
   { id: 'novus', label: 'Novus' },
   { id: 'metro', label: 'Metro' },
-  { id: 'auchan', label: 'Ашан' }
+  { id: 'zaraz', label: 'За Раз' },
+  { id: 'chudomarket', label: 'Чудо Маркет' },
 ];
 
 const SUBCATEGORY_OPTIONS = [
@@ -157,76 +160,68 @@ const fetchProducts = async (filters: FetchFilters): Promise<ProductsResponse> =
     const limit = 12;
     const skip = (filters.page - 1) * limit;
     
-    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://157.180.74.21:8080';
-    // 100% залишаємо твій старий ендпоінт пошуку
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'https://smarket-api.duckdns.org'; // Backend base URL
     const url = new URL(`${apiBaseUrl}/api/v1/search/search`);
     
-    // 1. Базові параметри пошуку та пагінації (ЯК БУЛО)
-    url.searchParams.append('q', filters.search.trim());
+    // 1. Базові параметри пошуку та пагінації
+    if (filters.search.trim()) {
+        url.searchParams.append('q', filters.search.trim());
+      }
     url.searchParams.append('limit', limit.toString());
     url.searchParams.append('offset', skip.toString());
     
-    // --- ФІЛЬТР КАТЕГОРІЇ (ОНОВЛЕНО) ---
+    // --- ФІЛЬТР КАТЕГОРІЇ (Тепер з правильними слагами) ---
     if (filters.category && filters.category !== 'products') {
         url.searchParams.append('category_slug', filters.category);
     }
     
-    // 3. Максимальна ціна (ЯК БУЛО)
+    // 3. Максимальна ціна
     if (filters.maxPrice < 2000) {
         url.searchParams.append('price_max', filters.maxPrice.toString());
     }
     
     // 4. Магазини
     if (filters.stores.length > 0) {
-        url.searchParams.append('retail_chain', filters.stores.join(','));
+        // Додаємо кожен магазин окремим параметром, як вказано в доці
+        filters.stores.forEach(store => {
+            url.searchParams.append('retail_chain', store);
+        });
     }
     
-    // 5. Підкатегорії (ЯК БУЛО - циклом через subcategory_slug)
+    // 5. Підкатегорії (Динамічно розгортаються на бекенді)
     filters.subcategories.forEach(sub => {
         url.searchParams.append('subcategory_slug', sub);
     });
     
-    // 6. Пропозиції (ЯК БУЛО - циклом через offer_type)
+    // 6. Пропозиції
     filters.offers.forEach(offer => {
         url.searchParams.append('offer_type', offer);
     });
-
-    // 7. Розмір знижки (ПОВЕРНУЛИ ЯК БУЛО - циклом через discount_range)
-    filters.discounts.forEach(discount => {
-        url.searchParams.append('discount_range', discount);
-    });
     
-    // 8. СОРТУВАННЯ (ВИПРАВЛЕНО ТА ОНОВЛЕНО)
+    // 8. Сортування
     if (filters.sortBy === 'cheapest_first') {
         url.searchParams.append('sort', 'price:asc');
     } else if (filters.sortBy === 'expensive_first') {
         url.searchParams.append('sort', 'price:desc');
-    } else if (filters.sortBy === 'biggest_discount' || filters.sortBy === 'discount') {
-        // Залежно від того, як поле знижки названо у твоєму Meilisearch індексі,
-        // тут має бути або 'discount_percent:desc', або 'discount_range:desc', або просто 'discount:desc'.
-        // Найчастіше це саме 'discount_percent:desc'
-        url.searchParams.append('sort', 'discount_percent:desc');
     }
-    // Якщо значення 'best_price' або 'everything' — параметр 'sort' не додається, як і було раніше.
     
     const res = await fetch(url.toString());
+    const json = await res.json();
     if (!res.ok) {
         throw new Error('Помилка завантаження товарів');
     }
-    
-    const searchData = await res.json();
+    const searchData = json;
     return {
         items: searchData.hits || [],
         total: searchData.total_hits || searchData.nb_hits || 0
     };
 };
 
-
 export function MainContent() {
   const [page, setPage] = useState(1);
   
   // Клієнтські стейти
-  const [maxPrice, setMaxPrice] = useState<number>(1000); 
+  const [maxPrice, setMaxPrice] = useState<number>(2000); 
   const [selectedCategory, setSelectedCategory] = useState<string>('products'); 
   const [selectedStores, setSelectedStores] = useState<string[]>([]);
   const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>([]); 
@@ -246,20 +241,18 @@ export function MainContent() {
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  // Об'єднуємо всі параметри в один об'єкт для React Query
   const filterParams: FetchFilters = {
     page,
     category: selectedCategory,
     stores: selectedStores,
     subcategories: selectedSubcategories,
     offers: selectedOffers,
-    discounts: selectedDiscounts, // <-- Додано сюди! Тепер React Query реагуватиме на зміни
+    discounts: selectedDiscounts,
     maxPrice,
     search: debouncedSearch,
     sortBy
   };
 
-  // Синхронізація запиту з реактивними ключами стейтів
   const { data, isLoading } = useQuery<ProductsResponse>({
       queryKey: ['productsList', filterParams],
       queryFn: () => fetchProducts(filterParams),
@@ -271,6 +264,9 @@ export function MainContent() {
   // Хендлери перемикання фільтрів
   const toggleCategory = (categoryId: string) => {
     setSelectedCategory(categoryId);
+    // ПОВ'ЯЗАННЯ ЛОГІКИ: Очищаємо підкатегорії при зміні головної категорії,
+    // щоб уникнути конфліктів у бекенд-пошуку
+    setSelectedSubcategories([]);
     setPage(1);
   };
 
@@ -309,7 +305,8 @@ export function MainContent() {
     setSelectedSubcategories([]);
     setSelectedOffers([]); 
     setSelectedDiscounts([]); 
-    setMaxPrice(1000);
+    setMaxPrice(2000);
+
     setSearchQuery(''); 
     setSortBy('everything'); 
     setPage(1);
@@ -465,7 +462,7 @@ export function MainContent() {
             </div>
           </div>
 
-          {/* {/* 4. ПРОПОЗИЦІЇ *}
+          {/* 4. ПРОПОЗИЦІЇ */}
           <div className="mb-[24px]">
             <h4 className="font-manrope text-[12px] font-bold text-[#6D8279] tracking-[0.06em] uppercase mb-[12px]">
               Пропозиції
@@ -491,34 +488,7 @@ export function MainContent() {
               })}
             </div>
           </div>
-          */}
 
-          {/* 5. РОЗМІР ЗНИЖКИ */}
-          <div className="mb-[24px]">
-            <h4 className="font-manrope text-[12px] font-bold text-[#6D8279] tracking-[0.06em] uppercase mb-[12px]">
-                Розмір знижки
-            </h4>
-            <div className="flex flex-col gap-[12px]">
-                {DISCOUNT_OPTIONS.map((item) => {
-                const isDiscountActive = selectedDiscounts.includes(item.id);
-                return (
-                    <label 
-                    key={item.id} 
-                    onClick={() => toggleDiscount(item.id)}
-                    className="flex items-center gap-[10px] cursor-pointer group"
-                    >
-                    <div className={`w-[18px] h-[18px] rounded-[4px] flex items-center justify-center shrink-0 transition-colors ${
-                        isDiscountActive ? 'bg-[#173B33] border-none' : 'border border-[#D1D5DB] bg-white group-hover:border-[#9CA3AF]'
-                    }`}>
-                        {isDiscountActive && <CheckIcon />}
-                    </div>
-                    <span className="flex-1 text-[13px] font-medium text-[#374151]">{item.name}</span>
-                    <span className="text-[12px] text-[#9CA3AF]">{item.count}</span>
-                    </label>
-                );
-                })}
-            </div>
-          </div>
 
           <button 
             onClick={resetFilters}
@@ -578,9 +548,8 @@ export function MainContent() {
               }}
             >
               <option value="everything">Все</option>
-              <option value="best_price">Найкраща ціна</option>
               <option value="cheapest_first">Спочатку дешевші</option>
-              <option value="popular">За популярністю</option>
+              <option value="expensive_first">Спочатку дорожчі</option>
             </select>
 
             <div className="flex items-center border border-[#E5E7EB] rounded-[8px] overflow-hidden bg-white">
@@ -672,22 +641,6 @@ export function MainContent() {
               );
             })}
 
-            {/* НОВИЙ БЛОК: Теги для розміру знижки */}
-            {selectedDiscounts.map(discountId => {
-              const discountLabel = DISCOUNT_OPTIONS.find(d => d.id === discountId)?.name;
-              return (
-                <span 
-                  key={`tag-discount-${discountId}`} 
-                  onClick={() => toggleDiscount(discountId)}
-                  className="flex items-center gap-[6px] bg-[#EAF7F2] text-[#265447] px-[10px] py-[4px] rounded-[100px] text-[12px] font-medium cursor-pointer hover:bg-[#D1E8DD] transition-colors group"
-                >
-                  Знижка: {discountLabel}
-                  <span className="text-[#A6C4B9] group-hover:text-[#265447] transition-colors">
-                    <CloseIcon />
-                  </span>
-                </span>
-              );
-            })}
           </div>
         </div>
 
