@@ -11,20 +11,20 @@ const CATEGORY_ICONS = [
 
 export function CategoriesSec() {
   return (
-    <section className="w-full py-[80px] bg-[#F6FAF8] dark:bg-[#0B120F] transition-colors duration-300">
-      <div className="w-full max-w-[1228px] mx-auto px-[20px] flex flex-col gap-[48px]">
+    <section className="w-full py-[60px] sm:py-[80px] bg-[#F6FAF8] dark:bg-[#0B120F] transition-colors duration-300">
+      <div className="w-full max-w-[1228px] mx-auto px-[20px] flex flex-col gap-[36px] sm:gap-[48px]">
 
         {/* Heading */}
-        <div className="text-center flex flex-col items-center gap-[16px]">
-          <h2 className="font-manrope text-[40px] font-extrabold text-[#173B33] dark:text-white m-0 leading-[1.2] transition-colors">
+        <div className="text-center flex flex-col items-center gap-[12px] sm:gap-[16px]">
+          <h2 className="font-manrope text-[28px] sm:text-[40px] font-extrabold text-[#173B33] dark:text-white m-0 leading-tight transition-colors">
             Категорії покупок
           </h2>
-          <p className="font-inter text-[16px] text-[#6D8279] dark:text-[#A4B3AF] m-0 leading-[1.5] transition-colors">
-            Знаходьте вигідні пропозиції за основними категоріями <br className="hidden sm:block" /> щоденних покупок.
+          <p className="font-inter text-[15px] sm:text-[16px] text-[#6D8279] dark:text-[#A4B3AF] m-0 leading-[1.5] transition-colors">
+            Знаходьте вигідні пропозиції за основними категоріями щоденних покупок.
           </p>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-[20px]">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-[16px] sm:gap-[20px]">
           {[
             'Продукти',
             'Напої',
@@ -35,28 +35,26 @@ export function CategoriesSec() {
           ].map((name, idx) => (
             <div
               key={name}
-              className="bg-white dark:bg-[#15231D] border border-transparent dark:border-[#1F3227] rounded-[16px] px-[16px] py-[24px] flex flex-col items-center text-center transition-all duration-300 hover:shadow-[0_10px_25px_rgba(0,0,0,0.05)] dark:hover:shadow-none hover:-translate-y-1 cursor-pointer group"
+              className="bg-white dark:bg-[#15231D] border border-transparent dark:border-[#1F3227] rounded-[16px] px-[12px] py-[20px] sm:px-[16px] sm:py-[24px] flex flex-col items-center text-center transition-all duration-300 hover:shadow-[0_10px_25px_rgba(0,0,0,0.05)] dark:hover:shadow-none hover:-translate-y-1 cursor-pointer group"
             >
-              {/* Photo Light Mode */}
               <img 
                 src={product1} 
                 alt={name} 
-                className="w-[64px] h-[64px] mb-[16px] block dark:hidden" 
+                className="w-[54px] h-[54px] sm:w-[64px] sm:h-[64px] mb-[16px] block dark:hidden" 
               />
-              {/* Photo Dark Mode */}
-              <div className="hidden dark:flex w-[64px] h-[64px] rounded-full bg-[#1A2E25] items-center justify-center mb-[16px]">
+              <div className="hidden dark:flex w-[54px] h-[54px] sm:w-[64px] sm:h-[64px] rounded-full bg-[#1A2E25] items-center justify-center mb-[16px]">
                 {CATEGORY_ICONS[idx]}
               </div>
 
-              <h3 className="font-inter text-[15px] font-bold text-[#173B33] dark:text-white m-0 mb-[8px] transition-colors">
+              <h3 className="font-inter text-[14px] sm:text-[15px] font-bold text-[#173B33] dark:text-white m-0 mb-[8px] transition-colors">
                 {name}
               </h3>
 
               <a
                 href="#"
-                className="font-inter text-[13px] font-semibold text-[#265447] dark:text-[#3CD27D] no-underline transition-colors duration-200 hover:text-[#1A453A] dark:hover:text-white"
+                className="font-inter text-[12px] sm:text-[13px] font-semibold text-[#265447] dark:text-[#3CD27D] no-underline transition-colors duration-200 hover:text-[#1A453A] dark:hover:text-white"
               >
-                Переглянути акції <span className="transition-transform group-hover:translate-x-1 inline-block">→</span>
+                Акції <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
               </a>
             </div>
           ))}

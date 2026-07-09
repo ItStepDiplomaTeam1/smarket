@@ -322,14 +322,13 @@ export function MainContent() {
 
   return (
     <div className="w-full bg-white dark:bg-[#0B120F] transition-colors duration-300">
-      <div className="w-full max-w-[1228px] mx-auto px-[20px] py-[40px] flex gap-[40px] items-start mobile:flex-col">
+      <div className="w-full max-w-[1228px] mx-auto px-[16px] md:px-[20px] py-[24px] md:py-[40px] flex flex-col lg:flex-row gap-[24px] md:gap-[40px] items-start">
         
         {/* ================= LEFT SIDEBAR ================= */}
-        {/* Додано правильний фон (bg-[#15231D]) та рамку (border-[#1F3227]) для темної теми */}
-        <aside className="w-[280px] bg-white dark:bg-[#15231D] rounded-[16px] border border-[#E5E7EB] dark:border-[#1F3227] p-[24px] mobile:p-0 flex flex-col font-inter shrink-0 transition-colors">
+        <aside className="w-full lg:w-[280px] bg-white dark:bg-[#15231D] rounded-[16px] border border-[#E5E7EB] dark:border-[#1F3227] p-[20px] md:p-[24px] flex flex-col font-inter shrink-0 transition-colors">
         
           {/* ================= КАТЕГОРІЇ ================= */}
-          <div className="mb-[32px]">
+          <div className="mb-[24px] md:mb-[32px]">
             <h3 className="font-manrope text-[12px] font-bold text-[#6D8279] dark:text-white tracking-[0.06em] uppercase mb-[12px]">
               Категорії
             </h3>
@@ -460,7 +459,7 @@ export function MainContent() {
               </div>
             </div>
 
-            {/* 4. РОЗМІР ЗНИЖКИ (Повернуто на місце!) */}
+            {/* 4. РОЗМІР ЗНИЖКИ */}
             <div className="mb-[24px]">
               <h4 className="font-manrope text-[12px] font-bold text-[#6D8279] dark:text-white tracking-[0.06em] uppercase mb-[12px]">
                 Розмір знижки
@@ -533,10 +532,10 @@ export function MainContent() {
         </aside>
 
         {/* ================= RIGHT MAIN CONTENT ================= */}
-        <main className="flex-1 flex flex-col min-w-0">
+        <main className="flex-1 flex flex-col min-w-0 w-full">
           
           {/* Акційний баннер */}
-          <div className="bg-[#265447] dark:bg-[#132B20] rounded-[12px] p-[20px_24px] flex justify-between items-center mb-[24px] transition-colors">
+          <div className="bg-[#265447] dark:bg-[#132B20] rounded-[12px] p-[16px] md:p-[20px_24px] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-[16px] sm:gap-0 mb-[24px] transition-colors">
             <div className="flex flex-col gap-[4px]">
               <h2 className="text-[14px] font-bold text-white tracking-[0.05em] uppercase m-0">
                 Акційні ціни тижня
@@ -545,14 +544,14 @@ export function MainContent() {
                 До п'ятниці: ексклюзивні знижки в АТБ та Сільпо
               </p>
             </div>
-            <button className="bg-[#FFD600] text-[#111827] font-bold text-[14px] px-[16px] py-[8px] rounded-[100px] border-none cursor-pointer hover:bg-[#FACC15] transition-colors">
+            <button className="w-full sm:w-auto bg-[#FFD600] text-[#111827] font-bold text-[14px] px-[16px] py-[8px] rounded-[100px] border-none cursor-pointer hover:bg-[#FACC15] transition-colors">
               До -30%
             </button>
           </div>
 
           {/* Панель сортування та пошуку */}
-          <div className="flex justify-between items-center mb-[16px]">
-            <div className="flex items-center gap-[10px] border border-[#E5E7EB] dark:border-[#1F3227] rounded-[8px] px-[12px] py-[10px] w-[320px] bg-white dark:bg-[#0D1612] focus-within:border-[#265447] dark:focus-within:border-[#3CD27D] transition-colors text-[#9CA3AF] dark:text-[#7A8D85]">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-[12px] md:gap-0 mb-[16px]">
+            <div className="flex items-center gap-[10px] border border-[#E5E7EB] dark:border-[#1F3227] rounded-[8px] px-[12px] py-[10px] w-full md:w-[320px] bg-white dark:bg-[#0D1612] focus-within:border-[#265447] dark:focus-within:border-[#3CD27D] transition-colors text-[#9CA3AF] dark:text-[#7A8D85]">
               <SearchIcon />
               <input 
                 type="text" 
@@ -566,14 +565,14 @@ export function MainContent() {
               />
             </div>
 
-            <div className="flex items-center gap-[16px]">
+            <div className="flex items-center gap-[12px] md:gap-[16px] w-full md:w-auto">
               <select 
                 value={sortBy}
                 onChange={(e) => {
                   setSortBy(e.target.value);
                   setPage(1);
                 }}
-                className="border border-[#E5E7EB] dark:border-[#1F3227] rounded-[8px] px-[14px] py-[10px] text-[13px] font-medium text-[#374151] dark:text-white outline-none cursor-pointer bg-white dark:bg-[#0D1612] appearance-none pr-[30px] transition-colors" 
+                className="w-full md:w-auto border border-[#E5E7EB] dark:border-[#1F3227] rounded-[8px] px-[14px] py-[10px] text-[13px] font-medium text-[#374151] dark:text-white outline-none cursor-pointer bg-white dark:bg-[#0D1612] appearance-none pr-[30px] transition-colors" 
                 style={{ 
                   backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20width%3D%2212%22%20height%3D%228%22%20viewBox%3D%220%200%2012%208%22%20fill%3D%22none%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%20d%3D%22M1%201.5L6%206.5L11%201.5%22%20stroke%3D%22%236B7280%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3C%2Fsvg%3E")', 
                   backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center' 
@@ -584,7 +583,7 @@ export function MainContent() {
                 <option value="expensive_first">Спочатку дорожчі</option>
               </select>
 
-              <div className="flex items-center border border-[#E5E7EB] dark:border-[#1F3227] rounded-[8px] overflow-hidden bg-white dark:bg-[#0D1612] transition-colors">
+              <div className="flex items-center border border-[#E5E7EB] dark:border-[#1F3227] rounded-[8px] overflow-hidden bg-white dark:bg-[#0D1612] transition-colors shrink-0">
                 <button 
                   onClick={() => setViewMode('grid')}
                   className={`p-[10px] border-none cursor-pointer flex items-center justify-center transition-colors ${
@@ -607,7 +606,7 @@ export function MainContent() {
           </div>
 
           {/* ================= АКТИВНІ ТЕГИ ================= */}
-          <div className="flex items-center flex-wrap gap-[12px] mb-[24px]">
+          <div className="flex flex-col sm:flex-row sm:items-center flex-wrap gap-[8px] sm:gap-[12px] mb-[24px]">
             <p className="text-[13px] text-[#6D8279] dark:text-[#7A8D85] m-0">
                 Знайдено <span className="font-bold text-[#111827] dark:text-[#3CD27D]">{totalProducts} товари</span>
             </p>
@@ -692,7 +691,7 @@ export function MainContent() {
           </div>
 
           {/* ================= СІТКА ПРОДУКТІВ ================= */}
-          <div className={`grid gap-[16px] ${viewMode === 'grid' ? 'grid-cols-4' : 'grid-cols-1'}`}>
+          <div className={`grid gap-[16px] ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'grid-cols-1'}`}>
             {isLoading ? (
               <div className="col-span-full text-center py-10 font-medium text-[#6D8279] dark:text-[#7A8D85]">
                 Завантаження каталогу...
@@ -734,10 +733,10 @@ export function MainContent() {
                           </span>
                         )}
                       </div>
-                      {/* Іконка серця */}
+                      {/* Іконка серця 
                       <button className="text-[#9CA3AF] dark:text-[#3CD27D] hover:scale-110 transition-transform cursor-pointer border-none bg-transparent p-0">
                           <HeartIcon />
-                      </button>
+                      </button>*/}
                     </div>
                     
                     <Link to={`/product/${product.id}`} className="w-full h-[140px] bg-[#F9FAFB] dark:bg-[#1A2E25] rounded-[8px] flex items-center justify-center mb-[16px] mt-[12px] overflow-hidden p-[8px]">
@@ -799,7 +798,7 @@ export function MainContent() {
                           )}
                         </div>
                         
-                        {/* Порівняння <button 
+                        {/* <button 
                           className={`w-full py-[8px] rounded-[6px] font-bold text-[13px] border cursor-pointer transition-colors ${
                             oldPrice 
                               ? 'bg-[#265447] text-white border-[#265447] hover:bg-[#1A3E2F] dark:bg-[#3CD27D] dark:text-[#0B120F] dark:border-transparent dark:hover:bg-[#34B86D]' 
@@ -807,7 +806,7 @@ export function MainContent() {
                           }`}
                         >
                           Порівняти
-                        </button>*/}
+                        </button>Іконка серця */}
                       </div>
 
                     </div>
@@ -819,7 +818,7 @@ export function MainContent() {
 
           {/* Блок пагінації */}
           {products.length > 0 && (
-            <div className="flex items-center justify-center border-t border-[#E5E7EB] dark:border-transparent pt-[20px] mt-[32px] w-full gap-[8px]">
+            <div className="flex items-center justify-center flex-wrap border-t border-[#E5E7EB] dark:border-transparent pt-[20px] mt-[32px] w-full gap-[8px]">
               <button 
                 onClick={() => setPage(p => Math.max(1, p - 1))}
                 disabled={page === 1}
@@ -834,7 +833,7 @@ export function MainContent() {
                 </svg>
               </button>
 
-              <div className="flex items-center gap-[4px] hidden sm:flex">
+              <div className="flex items-center gap-[4px]">
                 {paginationNumbers.map((p, index) => (
                   p === '...' ? (
                     <span key={`dots-${index}`} className="px-[12px] py-[8px] text-[14px] font-medium text-[#6B7280] dark:text-[#7E968C]">
