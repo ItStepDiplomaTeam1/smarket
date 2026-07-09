@@ -263,7 +263,7 @@ services:
     command:
       - sh
       - -c
-      - alembic upgrade head
+      - cd /app/services/audit_service && alembic upgrade head
     environment:
       RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
     env_file:
