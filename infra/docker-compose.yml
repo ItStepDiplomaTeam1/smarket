@@ -499,6 +499,8 @@ services:
       HTTP_PROXY: "${HTTP_PROXY:-}"
       NO_PROXY: "search_service,product_service,cart_service,localhost,127.0.0.1"
     depends_on:
+      redis:
+        condition: service_healthy
       search_service:
         condition: service_started
       product_service:
