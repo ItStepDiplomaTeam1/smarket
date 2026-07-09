@@ -25,14 +25,6 @@ export const Vergleich: React.FC = () => {
             >
               Створити кошик
             </button>
-            
-            <a 
-              href="/promotions" 
-              className="font-inter text-white font-semibold text-[14px] flex items-center gap-[8px] no-underline group transition-all"
-            >
-              <span className="group-hover:mr-[4px] transition-all">Переглянути акції</span>
-              <span className="text-[#64D2B1] dark:text-[#3CD27D] text-[18px] group-hover:translate-x-[4px] transition-all">→</span>
-            </a>
           </div>
 
         </div>

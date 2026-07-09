@@ -1,4 +1,5 @@
 import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 
 interface BadgeProps {
   text: string;
@@ -14,7 +15,34 @@ const Badge: React.FC<BadgeProps> = ({ text }) => {
   );
 };
 
+interface StoreFromAPI {
+  external_id: string;
+  name: string;
+  retail_chain: string;
+  city: string | null;
+  is_active: boolean;
+  synced_at: string;
+}
+
+const API_BASE = import.meta.env.VITE_API_URL || 'https://smarket-api.duckdns.org';
+
 export const HeadlineShops: React.FC = () => {
+  // Використовуємо той самий queryKey що і в Mainpart — дані будуть з кешу TanStack Query
+  const { data: stores } = useQuery<StoreFromAPI[]>({
+    queryKey: ['storesListRaw'],
+    queryFn: async () => {
+      const res = await fetch(`${API_BASE}/api/v1/stores/?is_active=true`);
+      if (!res.ok) throw new Error('Помилка');
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Кількість унікальних мереж
+  const uniqueChains = stores 
+    ? new Set(stores.map(s => s.retail_chain)).size 
+    : 0;
+
   return (
     <div className="w-full bg-[#F8FAF9] dark:bg-[#0B120F] transition-colors duration-300">
       <div className="w-full max-w-[1230px] mx-auto px-[20px] pt-[40px] pb-[20px] font-sans">
@@ -41,9 +69,12 @@ export const HeadlineShops: React.FC = () => {
 
           {/* Права частина: Група бейджів */}
           <div className="flex flex-wrap items-center gap-[12px]">
-            <Badge text="340 акцій" />
-            <Badge text="12 магазинів" />
-            <Badge text="до 30% економії" />
+            {uniqueChains > 0 && (
+              <>
+                <Badge text={`${uniqueChains} мереж`} />
+                <Badge text={`${stores?.length || 0} магазинів`} />
+              </>
+            )}
           </div>
 
         </div>
