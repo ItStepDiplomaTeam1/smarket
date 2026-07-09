@@ -10,4 +10,4 @@
 ## 3. Verify Deployment
 
 - [x] 3.1 Push the changes to trigger a CI/CD rebuild of the `products_etl` Docker image and deployment to Hetzner.
-- [ ] 3.2 Verify on the server that `infra-products_etl-1` becomes `healthy` within 15 seconds of startup.
+- [x] 3.2 Verify on the server that `infra-products_etl-1` becomes `healthy` within 15 seconds of startup.

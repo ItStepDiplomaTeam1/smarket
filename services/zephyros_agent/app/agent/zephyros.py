@@ -14,8 +14,7 @@ from app.config import settings
 from app.deps import AgentDeps
 from app.schemas import ZephyrosResponse
 from app.tools import (
-    search_catalog,
-    compare_product_offers,
+    search_and_compare_offers,
     get_user_cart,
     add_product_to_cart,
 )
@@ -25,7 +24,7 @@ if settings.GEMINI_API_KEY:
     os.environ["GOOGLE_API_KEY"] = settings.GEMINI_API_KEY
 
 # Порядок провайдеров для автоматического перебора, если явный provider не передан
-PROVIDER_CHAIN = ["openrouter", "gemini", "groq", "cerebras"]
+PROVIDER_CHAIN = ["groq", "gemini", "openrouter", "cerebras"]
 
 
 def _provider_available(prov: str) -> bool:
@@ -154,10 +153,10 @@ Use for: visual separation between sections.
 
 ## BEHAVIOR RULES
 
-1. ALWAYS call search_catalog first when a user asks about any product. Never invent product data.
-2. After search results:
-   - match_percentage >= 80% → call compare_product_offers, then build a "table" block with results.
-   - match_percentage < 80% → build a "clarification" block with 2–4 options.
+1. ALWAYS call search_and_compare_offers first when a user asks about any product. Never invent product data.
+2. After tool execution:
+   - If the results contain products with match_percentage >= 80%, build a "table" block with the matched product offers across stores.
+   - If match_percentage < 80% or results are ambiguous, build a "clarification" block with 2–4 options.
 3. After 3 failed clarification attempts → build a "fallback" block.
 4. When showing price comparison: always add a "badge" block with variant "savings" showing how much cheaper the best option is vs the most expensive.
 5. After comparison, add ONE "action_button" with action "add_to_cart" for the best-price product.
@@ -181,7 +180,6 @@ agent: Agent[AgentDeps, ZephyrosResponse] = Agent(
     capabilities=[PrepareTools(normalize_tool_strict)],
 )
 
-agent.tool(search_catalog)
-agent.tool(compare_product_offers)
+agent.tool(search_and_compare_offers)
 agent.tool(get_user_cart)
 agent.tool(add_product_to_cart)

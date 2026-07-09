@@ -1,3 +1,5 @@
+import asyncio
+import json
 import httpx
 from loguru import logger
 from pydantic_ai import RunContext
@@ -211,3 +213,109 @@ async def add_product_to_cart(
             status_code=e.response.status_code,
         ).warning("cart_service returned error")
         return {"error": "cart_service_error", "status_code": e.response.status_code}
+
+
+async def search_and_compare_offers(
+    ctx: RunContext[AgentDeps],
+    query: str,
+    store_id: str | None = None,
+    price_min: float | None = None,
+    price_max: float | None = None,
+    in_stock: bool = True,
+) -> dict:
+    """Search the product catalog and retrieve active store offers for the best matches in a single invocation.
+
+    Args:
+        query: The search term (e.g. 'молоко', 'хліб').
+        store_id: Optional supermarket slug filter (e.g., 'atb', 'novus', 'metro', 'auchan').
+        price_min: Optional minimum price filter in UAH.
+        price_max: Optional maximum price filter in UAH.
+        in_stock: Filter to only return items that are currently in stock (default True).
+    """
+    # 1. Caching key construction
+    cache_key = f"search_offers:{query.strip().lower()}:{store_id or 'all'}:{price_min}:{price_max}:{in_stock}"
+    redis_client = ctx.deps.redis_client
+
+    if redis_client:
+        try:
+            cached_val = await redis_client.get(cache_key)
+            if cached_val:
+                logger.info(f"Cache hit for key {cache_key}")
+                return json.loads(cached_val)
+        except Exception as e:
+            logger.warning(f"Failed to read from Redis cache: {e}")
+
+    # 2. Query search_service
+    params: dict = {"q": query, "in_stock": str(in_stock).lower()}
+    if store_id:
+        if store_id.lower() in ("atb", "silpo", "novus", "metro", "auchan", "varus", "ultramarket"):
+            params["retail_chain"] = store_id
+        else:
+            params["store_id"] = store_id
+    if price_min is not None:
+        params["price_min"] = price_min
+    if price_max is not None:
+        params["price_max"] = price_max
+
+    try:
+        response = await ctx.deps.http_client.get(
+            f"{settings.SEARCH_SERVICE_URL}/search",
+            params=params,
+            timeout=3.0,
+        )
+        response.raise_for_status()
+        search_data = response.json()
+    except Exception as e:
+        logger.warning(f"search_service query failed: {e}")
+        return {"error": "search_service_failed", "detail": str(e)}
+
+    hits = search_data.get("hits", [])
+    if not hits:
+        return {"hits": [], "match_percentage": 0}
+
+    # 3. Fetch offers for top 3 matching products in parallel
+    top_hits = hits[:3]
+
+    async def fetch_product_offers(product_id: int) -> dict:
+        try:
+            res = await ctx.deps.http_client.get(
+                f"{settings.PRODUCT_SERVICE_URL}/products/{product_id}",
+                timeout=3.0,
+            )
+            res.raise_for_status()
+            return res.json()
+        except Exception as err:
+            logger.warning(f"Failed to fetch product offers for product {product_id}: {err}")
+            return {"id": product_id, "error": str(err), "offers": []}
+
+    tasks = [fetch_product_offers(hit["id"]) for hit in top_hits]
+    offers_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Combine hits and offers
+    combined_hits = []
+    for hit, offers_res in zip(top_hits, offers_results):
+        if isinstance(offers_res, Exception):
+            offers_data = {"id": hit["id"], "error": str(offers_res), "offers": []}
+        else:
+            offers_data = offers_res
+
+        combined_hits.append({
+            "product_info": hit,
+            "detailed_offers": offers_data.get("prices", []) or offers_data.get("offers", [])
+        })
+
+    # Simple match percentage rule
+    result = {
+        "hits": combined_hits,
+        "match_percentage": 90 if len(combined_hits) > 0 else 0
+    }
+
+    # Write to Redis Cache (5-minute TTL = 300 seconds)
+    if redis_client:
+        try:
+            await redis_client.setex(cache_key, 300, json.dumps(result, ensure_ascii=False))
+            logger.info(f"Cached results under key {cache_key}")
+        except Exception as e:
+            logger.warning(f"Failed to write to Redis cache: {e}")
+
+    return result

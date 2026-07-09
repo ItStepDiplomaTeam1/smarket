@@ -5,10 +5,11 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any
 
+import redis.asyncio as aioredis
 import httpx
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, ORJSONResponse
+from fastapi.responses import JSONResponse, ORJSONResponse, StreamingResponse
 from loguru import logger
 from pydantic import BaseModel, ValidationError
 from pydantic_ai.exceptions import ModelHTTPError
@@ -58,6 +59,7 @@ async def lifespan(app: FastAPI):
         limits=httpx.Limits(max_keepalive_connections=20, max_connections=50),
         timeout=30.0,
     )
+    app.state.redis = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
     logger.info("Zephyros agent service started")
     try:
         chain = available_provider_chain()
@@ -66,6 +68,7 @@ async def lifespan(app: FastAPI):
         logger.exception("Error checking available providers on startup")
     yield
     await app.state.http_client.aclose()
+    await app.state.redis.close()
     logger.info("Zephyros agent service stopped")
 
 
@@ -151,7 +154,11 @@ async def chat(
     )
     chat_log.info("Chat request received")
 
-    deps = AgentDeps(http_client=app.state.http_client, user_id=user_id)
+    deps = AgentDeps(
+        http_client=app.state.http_client,
+        user_id=user_id,
+        redis_client=app.state.redis,
+    )
 
     message_history = []
     if request.history:
@@ -306,3 +313,114 @@ async def chat(
         detail="ШІ-провайдер тимчасово недоступний. Спробуйте інший провайдер.",
         status_code=502,
     )
+
+
+@app.post("/agent/chat/stream", tags=["Agent"])
+async def chat_stream(
+    request: ChatRequest,
+    x_user_id: str | None = Header(default=None),
+) -> StreamingResponse:
+    user_id: uuid.UUID | None = None
+    if x_user_id:
+        try:
+            user_id = uuid.UUID(x_user_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid X-User-Id format.")
+
+    chat_log = logger.bind(
+        endpoint="/agent/chat/stream",
+        user_id=str(user_id) if user_id else None,
+        requested_provider=request.provider,
+        requested_model=request.model_name,
+        message_length=len(request.message),
+    )
+    chat_log.info("Chat stream request received")
+
+    deps = AgentDeps(
+        http_client=app.state.http_client,
+        user_id=user_id,
+        redis_client=app.state.redis,
+    )
+
+    message_history = []
+    if request.history:
+        for msg in request.history:
+            utc_now = datetime.now(timezone.utc)
+            if msg.role == "user":
+                content_str = msg.content if isinstance(msg.content, str) else json.dumps(msg.content, ensure_ascii=False)
+                message_history.append(
+                    pydantic_ai_msgs.ModelRequest(
+                        parts=[pydantic_ai_msgs.UserPromptPart(content=content_str, timestamp=utc_now)]
+                    )
+                )
+            elif msg.role == "assistant":
+                if isinstance(msg.content, str):
+                    content_str = msg.content.strip()
+                    if content_str.startswith("```"):
+                        lines = content_str.splitlines()
+                        if lines[0].startswith("```"):
+                            lines = lines[1:]
+                        if lines and lines[-1].startswith("```"):
+                            lines = lines[:-1]
+                        content_str = "\n".join(lines).strip()
+                else:
+                    content_str = json.dumps(msg.content, ensure_ascii=False)
+                message_history.append(
+                    pydantic_ai_msgs.ModelResponse(
+                        parts=[pydantic_ai_msgs.TextPart(content=content_str)],
+                        timestamp=utc_now,
+                    )
+                )
+
+    run_history = message_history if message_history else None
+
+    if request.provider:
+        candidates = [request.provider.lower()]
+    else:
+        candidates = available_provider_chain()
+
+    if not candidates:
+        chat_log.error("No AI providers configured")
+        raise HTTPException(
+            status_code=503,
+            detail="ШІ-провайдери не налаштовані на сервері.",
+        )
+
+    async def event_generator():
+        success = False
+        last_error = None
+        for provider in candidates:
+            provider_log = chat_log.bind(provider=provider)
+            if _is_down(provider):
+                provider_log.warning("Provider is in cooldown, skipping")
+                continue
+
+            try:
+                current_model = build_model(provider, request.model_name)
+                model_name = getattr(current_model, "model_name", request.model_name or "default")
+                provider_log.bind(model_name=model_name).info("Running agent stream with provider")
+
+                async with agent.run_stream(
+                    request.message,
+                    deps=deps,
+                    model=current_model,
+                    message_history=run_history,
+                ) as result:
+                    async for message in result.stream():
+                        yield f"data: {message.model_dump_json()}\n\n"
+
+                success = True
+                break
+            except Exception as e:
+                provider_log.exception("Error during agent streaming")
+                last_error = e
+                continue
+
+        if not success:
+            err_msg = {
+                "error": "all_providers_exhausted",
+                "detail": f"Усі ШІ-провайдери тимчасово недоступні. Помилка: {str(last_error)}"
+            }
+            yield f"data: {json.dumps(err_msg, ensure_ascii=False)}\n\n"
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
