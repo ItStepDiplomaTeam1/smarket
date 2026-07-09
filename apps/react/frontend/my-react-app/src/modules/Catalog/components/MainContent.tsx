@@ -518,7 +518,7 @@ export function MainContent() {
               </div>
             </div>
 
-            {/* 5. ПРОПОЗИЦІЇ */}
+            {/* 5. ПРОПОЗИЦІЇ 
             <div className="mb-[24px]">
               <h4 className="font-manrope text-[12px] font-bold text-[#6D8279] dark:text-white tracking-[0.06em] uppercase mb-[12px]">
                 Пропозиції
@@ -547,7 +547,7 @@ export function MainContent() {
                   );
                 })}
               </div>
-            </div>
+            </div>*/}
 
             <button 
               onClick={resetFilters}
@@ -826,7 +826,7 @@ export function MainContent() {
                           )}
                         </div>
                         
-                        <button 
+                        {/* Порівняння <button 
                           className={`w-full py-[8px] rounded-[6px] font-bold text-[13px] border cursor-pointer transition-colors ${
                             oldPrice 
                               ? 'bg-[#265447] text-white border-[#265447] hover:bg-[#1A3E2F] dark:bg-[#3CD27D] dark:text-[#0B120F] dark:border-transparent dark:hover:bg-[#34B86D]' 
@@ -834,7 +834,7 @@ export function MainContent() {
                           }`}
                         >
                           Порівняти
-                        </button>
+                        </button>*/}
                       </div>
 
                     </div>

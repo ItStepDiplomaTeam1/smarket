@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 
 // ================= ІКОНКИ =================
 const SearchIcon = () => (
@@ -8,31 +10,192 @@ const SearchIcon = () => (
   </svg>
 );
 
-// Тимчасові мокові дані для візуалу як на скріншоті
-const MOCK_STORES = [
-  { id: 'atb', name: 'АТБ', desc: 'Супермаркет щоденних покупок', prod: 420, promo: 86, eco: 'до 24%', badge: { text: 'Популярний', type: 'dark' } },
-  { id: 'silpo', name: 'Сільпо', desc: 'Продукти, делікатеси та товари для дому', prod: 380, promo: 72, eco: 'до 22%', badge: { text: '6 акцій', type: 'yellow' } },
-  { id: 'novus', name: 'Novus', desc: 'Супермаркет для великих закупівель', prod: 340, promo: 58, eco: 'до 20%', badge: { text: 'Вигідно', type: 'light' } },
-  { id: 'metro', name: 'Metro', desc: 'Великі закупівлі та професійні товари', prod: 290, promo: 44, eco: 'до 30%' },
-  { id: 'ashan', name: 'Ашан', desc: 'Гіпермаркет продуктів і товарів для дому', prod: 310, promo: 51, eco: 'до 21%' },
-  { id: 'varus', name: 'Varus', desc: 'Продукти, напої та товари щоденного попиту', prod: 260, promo: 39, eco: 'до 18%' },
-  { id: 'eko', name: 'Еко Маркет', desc: 'Супермаркет для сімейних покупок', prod: 245, promo: 34, eco: 'до 17%' },
-  { id: 'fozzy', name: 'Fozzy', desc: 'Великий вибір продуктів і товарів для дому', prod: 225, promo: 31, eco: 'до 19%', badge: { text: 'Вибір тижня', type: 'yellow' } },
-  { id: 'fora', name: 'Фора', desc: 'Магазин біля дому для швидких покупок', prod: 190, promo: 28, eco: 'до 15%' },
-  { id: 'mega', name: 'МегаМаркет', desc: 'Продукти, кулінарія та побутові товари', prod: 210, promo: 26, eco: 'до 16%' },
-  { id: 'tavria', name: 'Таврія В', desc: 'Продукти, напої та акційні пропозиції', prod: 180, promo: 23, eco: 'до 14%' },
-  { id: 'kolo', name: 'Коло', desc: 'Магазин швидких щоденних покупок', prod: 155, promo: 19, eco: 'до 12%' },
-];
+// ================= ТИПИ =================
+interface StoreFromAPI {
+  external_id: string;
+  name: string;
+  retail_chain: string;
+  city: string | null;
+  is_active: boolean;
+  synced_at: string;
+}
 
+interface StoreStats {
+  total_products: number;
+  promo_products: number;
+  max_savings: number;
+  store_name: string;
+  store_description: string;
+  store_logo_url: string;
+}
+
+interface StoreCard {
+  id: string;
+  name: string;
+  retail_chain: string;
+  desc: string;
+  prod: number;
+  promo: number;
+  eco: number;
+  logo_url: string;
+  city: string;
+}
+
+// ================= API =================
+const API_BASE = import.meta.env.VITE_API_URL || 'https://smarket-api.duckdns.org';
+
+const fetchStores = async (): Promise<StoreFromAPI[]> => {
+  const res = await fetch(`${API_BASE}/api/v1/stores/?is_active=true`);
+  if (!res.ok) throw new Error('Помилка завантаження магазинів');
+  return res.json();
+};
+
+const fetchStoreStats = async (storeId: string): Promise<StoreStats> => {
+  const res = await fetch(`${API_BASE}/api/v1/stores/${storeId}/stats`);
+  if (!res.ok) throw new Error(`Помилка завантаження статистики для ${storeId}`);
+  return res.json();
+};
+
+/**
+ * Групуємо магазини за retail_chain і беремо один (перший) з кожної мережі.
+ * Потім для кожного магазину-представника запитуємо /stats.
+ */
+const fetchStoresWithStats = async (): Promise<StoreCard[]> => {
+  const stores = await fetchStores();
+  
+  // Групуємо по retail_chain, беремо першого як представника
+  const chainMap = new Map<string, StoreFromAPI>();
+  for (const store of stores) {
+    if (!chainMap.has(store.retail_chain)) {
+      chainMap.set(store.retail_chain, store);
+    }
+  }
+  
+  const representatives = Array.from(chainMap.values());
+  
+  // Запитуємо статистику паралельно для всіх представників
+  const results = await Promise.allSettled(
+    representatives.map(async (store): Promise<StoreCard> => {
+      try {
+        const stats = await fetchStoreStats(store.external_id);
+        return {
+          id: store.external_id,
+          name: stats.store_name,
+          retail_chain: store.retail_chain,
+          desc: stats.store_description,
+          prod: stats.total_products,
+          promo: stats.promo_products,
+          eco: stats.max_savings,
+          logo_url: stats.store_logo_url,
+          city: store.city || '',
+        };
+      } catch {
+        // Фолбек якщо /stats не відповів
+        return {
+          id: store.external_id,
+          name: store.name,
+          retail_chain: store.retail_chain,
+          desc: `Магазин мережі ${store.retail_chain}`,
+          prod: 0,
+          promo: 0,
+          eco: 0,
+          logo_url: '',
+          city: store.city || '',
+        };
+      }
+    })
+  );
+  
+  return results
+    .filter((r): r is PromiseFulfilledResult<StoreCard> => r.status === 'fulfilled')
+    .map(r => r.value)
+    .sort((a, b) => b.prod - a.prod); // Сортуємо по кількості товарів
+};
+
+// ================= СКЕЛЕТОН КАРТКИ =================
+const StoreCardSkeleton: React.FC = () => (
+  <div className="bg-white dark:bg-[#15231D] border border-[#E5E7EB] dark:border-transparent rounded-[16px] p-[20px] flex flex-col animate-pulse">
+    <div className="flex justify-between items-start mb-[16px]">
+      <div className="w-[52px] h-[52px] rounded-[12px] bg-[#F3F4F6] dark:bg-[#1A2E25]" />
+    </div>
+    <div className="h-[20px] bg-[#F3F4F6] dark:bg-[#1A2E25] rounded mb-[8px] w-[60%]" />
+    <div className="h-[14px] bg-[#F3F4F6] dark:bg-[#1A2E25] rounded mb-[20px] w-[90%]" />
+    <div className="flex flex-col mb-[24px] gap-[8px]">
+      <div className="h-[14px] bg-[#F3F4F6] dark:bg-[#1A2E25] rounded w-full" />
+      <div className="h-[14px] bg-[#F3F4F6] dark:bg-[#1A2E25] rounded w-full" />
+      <div className="h-[14px] bg-[#F3F4F6] dark:bg-[#1A2E25] rounded w-full" />
+    </div>
+    <div className="h-[38px] bg-[#F3F4F6] dark:bg-[#1A2E25] rounded-[8px] mt-auto" />
+  </div>
+);
+
+// ================= КОМПОНЕНТ =================
 export const Mainpart: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState('all');
   const [activeCategoryTab, setActiveCategoryTab] = useState('popular');
-  const [loading, setLoading] = useState(false); // Для імітації можна перемкнути
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 12;
+
+  const { data: stores, isLoading } = useQuery<StoreCard[]>({
+    queryKey: ['storesList'],
+    queryFn: fetchStoresWithStats,
+    staleTime: 5 * 60 * 1000, // 5 хвилин кеш
+  });
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
   };
+
+  // Скидання сторінки при зміні пошуку або табу
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, activeCategoryTab]);
+
+  // Фільтрація і сортування
+  const filteredStores = useMemo(() => {
+    if (!stores) return [];
+    
+    let result = [...stores];
+    
+    // Пошук
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(s => 
+        s.name.toLowerCase().includes(q) || 
+        s.retail_chain.toLowerCase().includes(q) ||
+        s.desc.toLowerCase().includes(q)
+      );
+    }
+    
+    // Сортування за табами
+    switch (activeCategoryTab) {
+      case 'promo':
+        result.sort((a, b) => b.promo - a.promo);
+        break;
+      case 'products':
+        result.sort((a, b) => b.prod - a.prod);
+        break;
+      case 'economy':
+        result.sort((a, b) => b.eco - a.eco);
+        break;
+      case 'popular':
+      default:
+        result.sort((a, b) => b.prod - a.prod);
+        break;
+    }
+    
+    return result;
+  }, [stores, searchQuery, activeCategoryTab]);
+
+  const totalPages = Math.ceil(filteredStores.length / itemsPerPage);
+  const paginatedStores = filteredStores.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  // Агрегована статистика для Headline
+  const totalPromos = stores?.reduce((sum, s) => sum + s.promo, 0) || 0;
+  const maxEconomy = stores?.reduce((max, s) => Math.max(max, s.eco), 0) || 0;
 
   return (
     <div className="w-full bg-[#F8FAF9] dark:bg-[#0B120F] transition-colors duration-300 pb-10">
@@ -64,42 +227,20 @@ export const Mainpart: React.FC = () => {
               </button>
             </div>
 
-            {/* Фільтри (Таби під пошуком) */}
-            <div className="flex flex-wrap items-center gap-[10px]">
-              <button
-                type="button"
-                onClick={() => setActiveFilter('all')}
-                className={`px-[16px] py-[6px] rounded-[100px] text-[13px] font-medium transition-colors ${
-                  activeFilter === 'all'
-                    ? 'bg-[#265447] dark:bg-[#3CD27D] text-white dark:text-[#0B120F] border border-transparent'
-                    : 'bg-white dark:bg-transparent border border-[#E5E7EB] dark:border-[#2B4236] text-[#6D8279] dark:text-[#7A8D85] hover:border-[#D1D5DB] dark:hover:border-[#3CD27D]'
-                }`}
-              >
-                Усі магазини
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveFilter('promo')}
-                className={`px-[16px] py-[6px] rounded-[100px] text-[13px] font-medium transition-colors ${
-                  activeFilter === 'promo'
-                    ? 'bg-[#265447] dark:bg-[#3CD27D] text-white dark:text-[#0B120F] border border-transparent'
-                    : 'bg-white dark:bg-transparent border border-[#E5E7EB] dark:border-[#2B4236] text-[#6D8279] dark:text-[#7A8D85] hover:border-[#D1D5DB] dark:hover:border-[#3CD27D]'
-                }`}
-              >
-                Магазини з акціями
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveFilter('popular')}
-                className={`px-[16px] py-[6px] rounded-[100px] text-[13px] font-medium transition-colors ${
-                  activeFilter === 'popular'
-                    ? 'bg-[#265447] dark:bg-[#3CD27D] text-white dark:text-[#0B120F] border border-transparent'
-                    : 'bg-white dark:bg-transparent border border-[#E5E7EB] dark:border-[#2B4236] text-[#6D8279] dark:text-[#7A8D85] hover:border-[#D1D5DB] dark:hover:border-[#3CD27D]'
-                }`}
-              >
-                Популярні магазини
-              </button>
-            </div>
+            {/* Статистичні бейджі */}
+            {stores && stores.length > 0 && (
+              <div className="flex flex-wrap items-center gap-[10px]">
+                <span className="px-[12px] py-[5px] rounded-[100px] bg-[#EAF7F2] dark:bg-[#1A3026] text-[#265447] dark:text-[#3CD27D] text-[12px] font-semibold">
+                  {stores.length} мереж
+                </span>
+                <span className="px-[12px] py-[5px] rounded-[100px] bg-[#FEF3C7] dark:bg-[#332B00] text-[#92400E] dark:text-[#FFB020] text-[12px] font-semibold">
+                  {totalPromos}+ акцій
+                </span>
+                <span className="px-[12px] py-[5px] rounded-[100px] bg-[#F3E8FF] dark:bg-[#2D1B52] text-[#7C3AED] dark:text-[#A78BFA] text-[12px] font-semibold">
+                  до {maxEconomy}% економії
+                </span>
+              </div>
+            )}
           </form>
         </div>
 
@@ -136,11 +277,21 @@ export const Mainpart: React.FC = () => {
         </div>
 
         {/* ================= СІТКА КАРТОК ================= */}
-        {loading ? (
-          <div className="w-full text-center py-10 text-[#6D8279] dark:text-[#7A8D85]">Завантаження...</div>
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-[20px]">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <StoreCardSkeleton key={i} />
+            ))}
+          </div>
+        ) : filteredStores.length === 0 ? (
+          <div className="w-full text-center py-16">
+            <p className="text-[16px] text-[#6D8279] dark:text-[#7A8D85]">
+              {searchQuery ? 'Магазинів за вашим запитом не знайдено' : 'Магазини не знайдено'}
+            </p>
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-[20px]">
-            {MOCK_STORES.map((store) => (
+            {paginatedStores.map((store) => (
               <div 
                 key={store.id} 
                 className="bg-white dark:bg-[#15231D] border border-[#E5E7EB] dark:border-transparent rounded-[16px] p-[20px] flex flex-col hover:shadow-sm dark:hover:shadow-none transition-all group"
@@ -148,18 +299,27 @@ export const Mainpart: React.FC = () => {
                 {/* Логотип та Бейдж */}
                 <div className="flex justify-between items-start mb-[16px]">
                   <div className="w-[52px] h-[52px] rounded-[12px] border border-[#E5E7EB] dark:border-[#2B4236] bg-white flex items-center justify-center p-[6px] overflow-hidden shrink-0">
-                    <span className="font-black text-[#111827] text-[14px] text-center leading-tight">
-                      {store.name}
-                    </span>
+                    {store.logo_url ? (
+                      <img 
+                        src={store.logo_url} 
+                        alt={store.name} 
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          // Фолбек якщо картинка не завантажилась
+                          (e.target as HTMLImageElement).style.display = 'none';
+                          (e.target as HTMLImageElement).parentElement!.innerHTML = `<span class="font-black text-[#111827] text-[11px] text-center leading-tight">${store.retail_chain.slice(0, 4).toUpperCase()}</span>`;
+                        }}
+                      />
+                    ) : (
+                      <span className="font-black text-[#111827] text-[14px] text-center leading-tight">
+                        {store.retail_chain.slice(0, 4).toUpperCase()}
+                      </span>
+                    )}
                   </div>
                   
-                  {store.badge && (
-                    <span className={`px-[8px] py-[4px] rounded-[6px] text-[10px] font-bold uppercase tracking-wider ${
-                      store.badge.type === 'dark' ? 'bg-[#265447] text-white' :
-                      store.badge.type === 'yellow' ? 'bg-[#FFC72C] text-[#111827]' :
-                      'bg-[#EAF7F2] dark:bg-[#1A3026] text-[#265447] dark:text-[#3CD27D]'
-                    }`}>
-                      {store.badge.text}
+                  {store.promo > 0 && (
+                    <span className="px-[8px] py-[4px] rounded-[6px] text-[10px] font-bold uppercase tracking-wider bg-[#FFC72C] text-[#111827]">
+                      {store.promo} акцій
                     </span>
                   )}
                 </div>
@@ -176,7 +336,7 @@ export const Mainpart: React.FC = () => {
                 <div className="flex flex-col mb-[24px]">
                   <div className="flex justify-between items-center py-[8px] border-b border-[#F3F4F6] dark:border-[#1F3227] transition-colors">
                     <span className="text-[13px] text-[#6D8279] dark:text-[#7A8D85]">Товарів</span>
-                    <span className="text-[13px] font-bold text-[#111827] dark:text-white">{store.prod}</span>
+                    <span className="text-[13px] font-bold text-[#111827] dark:text-white">{store.prod.toLocaleString('uk-UA')}</span>
                   </div>
                   <div className="flex justify-between items-center py-[8px] border-b border-[#F3F4F6] dark:border-[#1F3227] transition-colors">
                     <span className="text-[13px] text-[#6D8279] dark:text-[#7A8D85]">Акцій</span>
@@ -184,16 +344,74 @@ export const Mainpart: React.FC = () => {
                   </div>
                   <div className="flex justify-between items-center py-[8px]">
                     <span className="text-[13px] text-[#6D8279] dark:text-[#7A8D85]">Економія</span>
-                    <span className="text-[13px] font-bold text-[#F59E0B] dark:text-[#FFB020]">{store.eco}</span>
+                    <span className="text-[13px] font-bold text-[#F59E0B] dark:text-[#FFB020]">до {store.eco}%</span>
                   </div>
                 </div>
 
                 {/* Кнопка */}
-                <button className="w-full mt-auto bg-[#EAF7F2] dark:bg-[#1A3026] text-[#265447] dark:text-[#3CD27D] font-semibold text-[13px] py-[10px] rounded-[8px] hover:bg-[#D1E8DD] dark:hover:bg-[#233F32] transition-colors">
+                <Link 
+                  to={`/catalog?store=${store.retail_chain}`}
+                  className="w-full mt-auto bg-[#EAF7F2] dark:bg-[#1A3026] text-[#265447] dark:text-[#3CD27D] font-semibold text-[13px] py-[10px] rounded-[8px] hover:bg-[#D1E8DD] dark:hover:bg-[#233F32] transition-colors text-center no-underline"
+                >
                   Переглянути товари
-                </button>
+                </Link>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* ================= ПАГІНАЦІЯ ================= */}
+        {!isLoading && filteredStores.length > itemsPerPage && (
+          <div className="flex justify-center items-center gap-[8px] mt-[40px]">
+            <button 
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="w-[40px] h-[40px] rounded-[8px] border border-[#E5E7EB] dark:border-[#1F3227] flex items-center justify-center text-[#6D8279] dark:text-[#7A8D85] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#F3F4F6] dark:hover:bg-[#1A2E25] transition-colors"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M15 18l-6-6 6-6"/>
+              </svg>
+            </button>
+            
+            {Array.from({ length: totalPages }).map((_, i) => {
+              const pageNum = i + 1;
+              // Simple pagination logic to show first, last, current, and adjacent pages
+              if (
+                pageNum === 1 || 
+                pageNum === totalPages || 
+                (pageNum >= currentPage - 1 && pageNum <= currentPage + 1)
+              ) {
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setCurrentPage(pageNum)}
+                    className={`w-[40px] h-[40px] rounded-[8px] font-semibold text-[14px] transition-colors ${
+                      currentPage === pageNum 
+                        ? 'bg-[#265447] dark:bg-[#3CD27D] text-white dark:text-[#0B120F]' 
+                        : 'border border-[#E5E7EB] dark:border-[#1F3227] text-[#6D8279] dark:text-[#7A8D85] hover:bg-[#F3F4F6] dark:hover:bg-[#1A2E25]'
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              } else if (
+                pageNum === currentPage - 2 || 
+                pageNum === currentPage + 2
+              ) {
+                return <span key={pageNum} className="text-[#6D8279] dark:text-[#7A8D85]">...</span>;
+              }
+              return null;
+            })}
+
+            <button 
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="w-[40px] h-[40px] rounded-[8px] border border-[#E5E7EB] dark:border-[#1F3227] flex items-center justify-center text-[#6D8279] dark:text-[#7A8D85] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#F3F4F6] dark:hover:bg-[#1A2E25] transition-colors"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 18l6-6-6-6"/>
+              </svg>
+            </button>
           </div>
         )}
 

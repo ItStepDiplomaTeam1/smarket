@@ -1,4 +1,6 @@
 // Іконка кошика
+import { useNavigate } from 'react-router-dom';
+
 const BasketIcon = () => (
   <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path 
@@ -19,6 +21,8 @@ const BasketIcon = () => (
 );
 
 export function CtaSection() {
+  const navigate = useNavigate();
+  
   return (
     <section className="w-full bg-white dark:bg-[#0B120F] transition-colors duration-300">
       <div className="max-w-[1180px] mx-auto py-[80px] px-[20px]">
@@ -33,18 +37,11 @@ export function CtaSection() {
           </p>
 
           <div className="flex items-center gap-[28px]">
-            <button className="bg-[#FFD600] text-[#111827] font-inter font-bold text-[15px] p-[14px_28px] rounded-[100px] border-none flex items-center gap-[10px] cursor-pointer hover:bg-[#FACC15] transition-all active:scale-95 shadow-sm">
+            <button className="bg-[#FFD600] text-[#111827] font-inter font-bold text-[15px] p-[14px_28px] rounded-[100px] border-none flex items-center gap-[10px] cursor-pointer hover:bg-[#FACC15] transition-all active:scale-95 shadow-sm"
+            onClick={() => { navigate('/cart'); }}>
               <BasketIcon />
               <span>Зібрати кошик</span>
             </button>
-
-            <a 
-              href="#promotions" 
-              className="font-inter text-white font-semibold text-[15px] flex items-center gap-[8px] no-underline group transition-all"
-            >
-              <span className="group-hover:mr-[4px] transition-all">Переглянути акції</span>
-              <span className="text-[#64D2B1] dark:text-[#3CD27D] text-[18px] group-hover:translate-x-[4px] transition-all">→</span>
-            </a>
           </div>
 
         </div>
