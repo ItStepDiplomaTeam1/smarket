@@ -410,7 +410,7 @@ services:
       - "8082"
     healthcheck:
       <<: *healthcheck-defaults
-      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8082/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8082/health || exit 1"]
       start_period: "${SMARKET_API_HEALTH_START_PERIOD:-30s}"
     depends_on:
       rabbitmq:
