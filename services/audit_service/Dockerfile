@@ -1,19 +1,27 @@
-FROM python:3.12-slim
+FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
-# Install build dependencies for asyncpg
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir uv
 
-COPY services/audit_service/requirements.txt .
+COPY services/audit_service/requirements.txt ./requirements.txt
+RUN uv pip install --system --no-cache -r requirements.txt
 
-RUN pip install --no-cache-dir -r requirements.txt
+# ── Runtime ───────────────────────────────────────────────────────────────────
 
-COPY services/audit_service/src/ ./src/
-COPY services/audit_service/alembic.ini .
-COPY services/audit_service/migrations/ ./migrations/
+FROM python:3.11-slim
 
-CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8006"]
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app/services/audit_service
+
+WORKDIR /app
+
+COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+COPY services/audit_service/ ./services/audit_service/
+
+EXPOSE 8006
+
+CMD ["sh", "-c", "cd /app/services/audit_service && granian --interface asgi --host 0.0.0.0 --port 8006 --workers 2 main:app"]

@@ -1,10 +1,8 @@
 fastapi==0.111.0
-uvicorn[standard]==0.30.1
-pydantic>=2.0,<2.8
-pydantic-settings==2.3.4
-faststream[rabbit]==0.5.15
+granian>=1.0.0
+orjson>=3.9.0
+pydantic-settings>=2.3.4
+faststream[rabbit]>=0.5.30
 sqlalchemy[asyncio]==2.0.31
 asyncpg==0.29.0
 alembic==1.13.1
-orjson>=3.10.0
-
