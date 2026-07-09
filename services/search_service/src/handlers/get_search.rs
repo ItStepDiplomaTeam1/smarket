@@ -245,7 +245,7 @@ pub async fn search_handler(
                 use_category_slug_filter = false;
             }
             "chemistry" => {
-                mapped_main_category_id = Some(5);
+                mapped_main_category_id = Some(9);
                 use_category_slug_filter = false;
             }
             "beauty" => {
@@ -359,18 +359,33 @@ pub async fn search_handler(
 
         let get_subcategory_prefixes = |sub: &str| -> Vec<String> {
             match sub {
-                "molochni-produkty" => vec!["molochni-produkty".to_string()],
-                "myaso-ta-ptytsya" => vec!["myaso-ta-ptytsya".to_string()],
+                "molochni-produkty" => vec![
+                    "dairy-and-eggs".to_string(),
+                    "molochni-produkty".to_string(),
+                    "milk-cheese-eggs".to_string(),
+                ],
+                "myaso-ta-ptytsya" => vec![
+                    "meat-fish-poultry".to_string(),
+                    "meat-and-sausages".to_string(),
+                    "myaso-ta-ptytsya".to_string(),
+                ],
                 "hlib-ta-vypichka" => vec!["bakery".to_string()],
-                "vegetables" => vec!["fruits-and-vegetables".to_string()],
+                "vegetables" => vec![
+                    "fruits-and-vegetables".to_string(),
+                    "vegetables-and-fruits".to_string(),
+                ],
                 "fish" => vec!["fish-and-seafood".to_string()],
                 "grains" => vec![
                     "grocery".to_string(),
+                    "grocery-and-sweets".to_string(),
                     "packets-cereals".to_string(),
                     "pulses-and-grain".to_string(),
                     "pasta".to_string(),
                 ],
-                "frozen" => vec!["frozen".to_string()],
+                "frozen" => vec![
+                    "frozen".to_string(),
+                    "frozen-food".to_string(),
+                ],
                 "cans" => vec![
                     "canned-food".to_string(),
                     "tins-jars-cooking".to_string(),
