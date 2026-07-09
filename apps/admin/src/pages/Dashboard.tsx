@@ -76,7 +76,7 @@ const Dashboard: React.FC = () => {
 
 
           {/* System logs */}
-          <SystemLogsTable logs={data.systemLogs} />
+          <SystemLogsTable />
 
           {/* 4-col bottom widgets */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">

@@ -13,6 +13,7 @@ const CategoriesPage = React.lazy(() => import('@/pages/CategoriesPage'));
 const StoresPage = React.lazy(() => import('@/pages/StoresPage'));
 const UsersPage = React.lazy(() => import('@/pages/UsersPage'));
 const SettingsPage = React.lazy(() => import('@/pages/SettingsPage'));
+const LogsPage = React.lazy(() => import('@/pages/LogsPage'));
 const Login = React.lazy(() => import('@/pages/Login'));
 
 const queryClient = new QueryClient({
@@ -59,6 +60,7 @@ function AppRoutes() {
             <Route path="/retailers" element={<div className="p-6">Retailers Module (Coming Soon)</div>} />
             <Route path="/clients" element={<UsersPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/logs" element={<LogsPage />} />
           </Route>
         </Route>
 
