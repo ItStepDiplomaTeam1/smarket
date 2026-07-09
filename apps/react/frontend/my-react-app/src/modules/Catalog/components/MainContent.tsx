@@ -91,6 +91,7 @@ interface Product {
 interface ProductsResponse {
   items: Product[];
   total: number;
+  facets?: Record<string, Record<string, number>>;
 }
 
 interface FetchFilters {
@@ -218,7 +219,8 @@ const fetchProducts = async (filters: FetchFilters): Promise<ProductsResponse> =
     const searchData = json;
     return {
         items: searchData.hits || [],
-        total: searchData.total_hits || searchData.nb_hits || 0
+        total: searchData.total_hits || searchData.nb_hits || 0,
+        facets: searchData.facets || {}
     };
 };
 
@@ -265,6 +267,44 @@ export function MainContent() {
 
   const products = data?.items ?? [];
   const totalProducts = data?.total ?? 0;
+  const facets = data?.facets || {};
+
+  // Helpers to get dynamic counts from facets
+  const getCategoryCount = (slug: string) => {
+    if (slug === 'products') return totalProducts;
+    if (!facets.main_category_id) return 0;
+    const mainCat = MAIN_CATEGORIES.find(c => c.slug === slug);
+    if (!mainCat) return 0;
+    return facets.main_category_id[mainCat.id.toString()] || 0;
+  };
+
+  const getStoreCount = (id: string) => {
+    if (!facets.retail_chain) return 0;
+    return facets.retail_chain[id] || 0;
+  };
+
+  const getSubcategoryCount = (id: string) => {
+    if (!facets.category_slug) return 0;
+    let sum = 0;
+    for (const [key, count] of Object.entries(facets.category_slug)) {
+      if (key.startsWith(id)) sum += count;
+    }
+    return sum;
+  };
+
+  const getDiscountCount = (id: string) => {
+    if (!facets.discount_percent) return 0;
+    let sum = 0;
+    for (const [key, count] of Object.entries(facets.discount_percent)) {
+      const dp = parseInt(key, 10);
+      if (isNaN(dp)) continue;
+      if (id === '10' && dp <= 10) sum += count;
+      else if (id === '10-20' && dp >= 10 && dp <= 20) sum += count;
+      else if (id === '20-30' && dp >= 20 && dp <= 30) sum += count;
+      else if (id === '30+' && dp >= 30) sum += count;
+    }
+    return sum;
+  };
 
   // Хендлери перемикання фільтрів
   const toggleCategory = (categoryId: string) => {
@@ -349,6 +389,7 @@ export function MainContent() {
           <ul className="flex flex-col gap-[4px]">
             {CATEGORY_OPTIONS.map((cat) => {
               const isCatActive = selectedCategory === cat.id;
+              const dynCount = getCategoryCount(cat.id);
               return (
                 <li 
                   key={cat.id} 
@@ -368,7 +409,7 @@ export function MainContent() {
                   <span className={`text-[12px] px-[8px] py-[2px] rounded-[100px] ${
                     isCatActive ? 'bg-[#D1E8DD] text-[#173B33] font-bold' : 'bg-[#F3F4F6] text-[#6D8279] font-semibold'
                   }`}>
-                    {cat.count}
+                    {dynCount}
                   </span>
                 </li>
               );
@@ -423,6 +464,7 @@ export function MainContent() {
             <div className="flex flex-wrap gap-[8px]">
               {STORE_OPTIONS.map(store => {
                 const isActive = selectedStores.includes(store.id);
+                const dynCount = getStoreCount(store.id);
                 return (
                   <button 
                     key={store.id}
@@ -433,7 +475,7 @@ export function MainContent() {
                         : 'border-[#E5E7EB] bg-white text-[#6D8279] hover:border-[#D1D5DB]'
                     }`}
                   >
-                    {store.label}
+                    {store.label} <span className="opacity-70 text-[11px] ml-1">{dynCount}</span>
                   </button>
                 );
               })}
@@ -448,6 +490,7 @@ export function MainContent() {
             <div className="flex flex-col gap-[12px]">
               {SUBCATEGORY_OPTIONS.map((item) => {
                 const isSubActive = selectedSubcategories.includes(item.id);
+                const dynCount = getSubcategoryCount(item.id);
                 return (
                   <label 
                     key={item.id} 
@@ -460,7 +503,7 @@ export function MainContent() {
                       {isSubActive && <CheckIcon />}
                     </div>
                     <span className="flex-1 text-[13px] font-medium text-[#374151]">{item.name}</span>
-                    <span className="text-[12px] text-[#9CA3AF]">{item.count}</span>
+                    <span className="text-[12px] text-[#9CA3AF]">{dynCount}</span>
                   </label>
                 );
               })}
@@ -475,6 +518,7 @@ export function MainContent() {
             <div className="flex flex-col gap-[12px]">
               {DISCOUNT_OPTIONS.map((item) => {
                 const isDiscountActive = selectedDiscounts.includes(item.id);
+                const dynCount = getDiscountCount(item.id);
                 return (
                   <label 
                     key={item.id} 
@@ -494,7 +538,7 @@ export function MainContent() {
                       {isDiscountActive && <CheckIcon />}
                     </div>
                     <span className="flex-1 text-[13px] font-medium text-[#374151]">{item.name}</span>
-                    <span className="text-[12px] text-[#9CA3AF]">{item.count}</span>
+                    <span className="text-[12px] text-[#9CA3AF]">{dynCount}</span>
                   </label>
                 );
               })}
