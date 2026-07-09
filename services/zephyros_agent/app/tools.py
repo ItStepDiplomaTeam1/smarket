@@ -319,3 +319,216 @@ async def search_and_compare_offers(
             logger.warning(f"Failed to write to Redis cache: {e}")
 
     return result
+
+
+async def clear_user_cart(ctx: RunContext[AgentDeps]) -> dict:
+    """Clear all items from the authenticated user's shopping cart."""
+    if not ctx.deps.user_id:
+        logger.bind(tool="clear_user_cart").warning("Missing user_id in agent context")
+        return {"error": "User is not authenticated. Cannot clear cart."}
+
+    headers = {"X-User-Id": str(ctx.deps.user_id)}
+    try:
+        logger.bind(tool="clear_user_cart", user_id=str(ctx.deps.user_id)).info(
+            "Fetching carts to clear"
+        )
+        carts_response = await ctx.deps.http_client.get(
+            f"{settings.CART_SERVICE_URL}/",
+            headers=headers,
+            timeout=3.0,
+        )
+        carts_response.raise_for_status()
+        carts = carts_response.json()
+
+        if not carts:
+            return {"status": "success", "message": "Кошик вже порожній."}
+
+        cart_id = carts[0]["id"]
+        logger.bind(tool="clear_user_cart", cart_id=cart_id).info("Clearing cart items")
+        clear_response = await ctx.deps.http_client.delete(
+            f"{settings.CART_SERVICE_URL}/{cart_id}/items",
+            headers=headers,
+            timeout=3.0,
+        )
+        clear_response.raise_for_status()
+        return {"status": "success", "message": "Кошик успішно очищено від усіх товарів."}
+    except httpx.RequestError as e:
+        logger.bind(tool="clear_user_cart", error=str(e)).warning("cart_service unavailable")
+        return {"error": "cart_service_unavailable", "detail": str(e)}
+    except httpx.HTTPStatusError as e:
+        logger.bind(tool="clear_user_cart", status_code=e.response.status_code).warning(
+            "cart_service returned error"
+        )
+        return {"error": "cart_service_error", "status_code": e.response.status_code}
+
+
+async def remove_item_from_cart(ctx: RunContext[AgentDeps], product_id: int) -> dict:
+    """Remove a specific product by its ID from the authenticated user's shopping cart.
+
+    Args:
+        product_id: The unique integer ID of the product to remove.
+    """
+    if not ctx.deps.user_id:
+        logger.bind(tool="remove_item_from_cart").warning("Missing user_id in agent context")
+        return {"error": "User is not authenticated. Cannot modify cart."}
+
+    headers = {"X-User-Id": str(ctx.deps.user_id)}
+    try:
+        logger.bind(tool="remove_item_from_cart", product_id=product_id).info(
+            "Fetching carts to find item"
+        )
+        carts_response = await ctx.deps.http_client.get(
+            f"{settings.CART_SERVICE_URL}/",
+            headers=headers,
+            timeout=3.0,
+        )
+        carts_response.raise_for_status()
+        carts = carts_response.json()
+
+        if not carts or not carts[0].get("items"):
+            return {"error": "item_not_found", "message": "Товар не знайдено в кошику (кошик порожній)."}
+
+        cart = carts[0]
+        cart_id = cart["id"]
+        
+        # Find item matching product_id
+        target_item = None
+        for item in cart["items"]:
+            if item["product_id"] == product_id:
+                target_item = item
+                break
+
+        if not target_item:
+            return {"error": "item_not_found", "message": f"Товар #{product_id} не знайдено у вашому кошику."}
+
+        item_id = target_item["id"]
+        logger.bind(
+            tool="remove_item_from_cart", cart_id=cart_id, item_id=item_id, product_id=product_id
+        ).info("Removing item from cart")
+
+        remove_response = await ctx.deps.http_client.delete(
+            f"{settings.CART_SERVICE_URL}/{cart_id}/items/{item_id}",
+            headers=headers,
+            timeout=3.0,
+        )
+        remove_response.raise_for_status()
+        return {"status": "success", "message": f"Товар '{target_item['product_name']}' успішно видалено з кошика."}
+    except httpx.RequestError as e:
+        logger.bind(tool="remove_item_from_cart", error=str(e)).warning("cart_service unavailable")
+        return {"error": "cart_service_unavailable", "detail": str(e)}
+    except httpx.HTTPStatusError as e:
+        logger.bind(tool="remove_item_from_cart", status_code=e.response.status_code).warning(
+            "cart_service returned error"
+        )
+        return {"error": "cart_service_error", "status_code": e.response.status_code}
+
+
+async def compare_cart_stores(ctx: RunContext[AgentDeps]) -> dict:
+    """Compare the total price of the user's active shopping cart across all available supermarket chains."""
+    if not ctx.deps.user_id:
+        logger.bind(tool="compare_cart_stores").warning("Missing user_id in agent context")
+        return {"error": "User is not authenticated. Cannot compare cart."}
+
+    headers = {"X-User-Id": str(ctx.deps.user_id)}
+    try:
+        logger.bind(tool="compare_cart_stores").info("Fetching carts to compare")
+        carts_response = await ctx.deps.http_client.get(
+            f"{settings.CART_SERVICE_URL}/",
+            headers=headers,
+            timeout=3.0,
+        )
+        carts_response.raise_for_status()
+        carts = carts_response.json()
+
+        if not carts or not carts[0].get("items"):
+            return {"error": "cart_empty", "message": "Ваш кошик порожній. Додайте товари перед порівнянням."}
+
+        cart_id = carts[0]["id"]
+        logger.bind(tool="compare_cart_stores", cart_id=cart_id).info("Comparing cart across stores")
+        
+        compare_response = await ctx.deps.http_client.get(
+            f"{settings.CART_SERVICE_URL}/{cart_id}/compare",
+            headers=headers,
+            timeout=5.0,
+        )
+        compare_response.raise_for_status()
+        return {"status": "success", "comparison": compare_response.json(), "cart_id": str(cart_id)}
+    except httpx.RequestError as e:
+        logger.bind(tool="compare_cart_stores", error=str(e)).warning("cart_service unavailable")
+        return {"error": "cart_service_unavailable", "detail": str(e)}
+    except httpx.HTTPStatusError as e:
+        logger.bind(tool="compare_cart_stores", status_code=e.response.status_code).warning(
+            "cart_service returned error"
+        )
+        return {"error": "cart_service_error", "status_code": e.response.status_code}
+
+
+async def get_product_reviews(ctx: RunContext[AgentDeps], product_id: int) -> dict:
+    """Retrieve all user reviews and ratings for a specific product by its ID.
+
+    Args:
+        product_id: The unique integer ID of the product.
+    """
+    try:
+        logger.bind(tool="get_product_reviews", product_id=product_id).info(
+            "Fetching reviews from reviews_service"
+        )
+        response = await ctx.deps.http_client.get(
+            f"{settings.REVIEWS_SERVICE_URL}/product/{product_id}",
+            timeout=3.0,
+        )
+        response.raise_for_status()
+        return {"status": "success", "reviews": response.json()}
+    except httpx.RequestError as e:
+        logger.bind(tool="get_product_reviews", error=str(e)).warning("reviews_service unavailable")
+        return {"error": "reviews_service_unavailable", "detail": str(e)}
+    except httpx.HTTPStatusError as e:
+        logger.bind(tool="get_product_reviews", status_code=e.response.status_code).warning(
+            "reviews_service returned error"
+        )
+        return {"error": "reviews_service_error", "status_code": e.response.status_code}
+
+
+async def create_product_review(
+    ctx: RunContext[AgentDeps],
+    product_id: int,
+    rating: int,
+    text: str | None = None,
+) -> dict:
+    """Submit a rating and comment review for a specific product.
+
+    Args:
+        product_id: The unique integer ID of the product.
+        rating: The rating score from 1 to 5 stars.
+        text: Optional comment text explaining the rating.
+    """
+    if not ctx.deps.user_id:
+        logger.bind(tool="create_product_review").warning("Missing user_id in agent context")
+        return {"error": "User is not authenticated. Cannot leave review."}
+
+    headers = {"X-User-Id": str(ctx.deps.user_id)}
+    # gateway adds X-User-Name, we can pass it if it was forwarded to zephyros_agent,
+    # but reviews_service handles missing X-User-Name gracefully.
+
+    try:
+        logger.bind(
+            tool="create_product_review", product_id=product_id, rating=rating
+        ).info("Submitting new review to reviews_service")
+        
+        response = await ctx.deps.http_client.post(
+            f"{settings.REVIEWS_SERVICE_URL}/",
+            json={"product_id": product_id, "rating": rating, "text": text},
+            headers=headers,
+            timeout=3.0,
+        )
+        response.raise_for_status()
+        return {"status": "success", "review": response.json()}
+    except httpx.RequestError as e:
+        logger.bind(tool="create_product_review", error=str(e)).warning("reviews_service unavailable")
+        return {"error": "reviews_service_unavailable", "detail": str(e)}
+    except httpx.HTTPStatusError as e:
+        logger.bind(tool="create_product_review", status_code=e.response.status_code).warning(
+            "reviews_service returned error"
+        )
+        return {"error": "reviews_service_error", "status_code": e.response.status_code}
+
