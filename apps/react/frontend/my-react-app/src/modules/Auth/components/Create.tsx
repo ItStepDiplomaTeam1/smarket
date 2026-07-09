@@ -268,6 +268,7 @@ export function Create() {
                 {/* Right panel */}
                 <div className="flex-1 flex justify-center">
                     <div className="w-full max-w-[380px] px-[24px] py-[32px] sm:py-[40px]">
+                        <img src={logo} alt="Smarket Logo" className="w-[128px] mb-[24px] md:hidden dark:brightness-0 dark:invert transition-all" />
                         <h1 className="font-manrope text-[28px] sm:text-[30px] font-extrabold leading-[1.3] text-[#265447] dark:text-white mb-[6px] transition-colors">
                             Створіть акаунт
                         </h1>

@@ -1,21 +1,20 @@
 import checkIcon from '@/shared/assets/checkgreen.svg';
 import logo from '@/shared/assets/logo.svg';
-import basketImage from '@/shared/assets/logindefault.svg';
 
 export function ForgotPass() {
     return (
         <section className="flex flex-col w-full min-h-screen bg-[#F6FAF8] dark:bg-[#0B110F] font-inter transition-colors duration-300">
-            <div className="flex flex-1 justify-center items-center p-[40px]">
+            <div className="flex flex-1 justify-center items-center py-[24px] px-[16px] sm:py-[40px] sm:px-[40px]">
 
             {/* MAIN CARD */}
-            <div className="flex w-[1040px] h-[858.5px] bg-white dark:bg-[#111A17] rounded-[24px] border border-[rgba(38,84,71,0.08)] shadow-[0px_18px_48px_rgba(23,59,51,0.12)] overflow-hidden shrink-0 transition-colors duration-300">
+            <div className="flex w-full max-w-[1040px] h-auto md:h-[858.5px] bg-white dark:bg-[#111A17] rounded-[24px] border border-[rgba(38,84,71,0.08)] shadow-[0px_18px_48px_rgba(23,59,51,0.12)] overflow-hidden shrink-0 transition-colors duration-300">
 
                 {/* ЛІВА ПАНЕЛЬ */}
-                <div className="w-[467px] shrink-0 bg-gradient-to-b from-[#EAF7F2] to-[#F6FAF8] dark:from-[rgba(74,222,128,0.31)] dark:to-[rgba(17,26,23,0.47)] border-r border-[rgba(38,84,71,0.08)] p-[48px] text-[#173B33] dark:text-white flex flex-col transition-colors duration-300">
+                <div className="w-[467px] shrink-0 bg-gradient-to-b from-[#EAF7F2] to-[#F6FAF8] dark:from-[rgba(74,222,128,0.31)] dark:to-[rgba(17,26,23,0.47)] border-r border-[rgba(38,84,71,0.08)] p-[48px] text-[#173B33] dark:text-white hidden md:flex flex-col transition-colors duration-300">
                     <img src={logo} alt="Smarket Logo" className="w-[128px] mb-[32px] dark:brightness-0 dark:invert transition-all" />
 
                     <h2 className="font-manrope text-[32px] font-bold leading-[40px] mb-[16px]">
-                        Купуйте розумніше. <br /> Заощадзення <br /> більше.
+                        Купуйте розумніше. <br /> Заощадження <br /> більше.
                     </h2>
                     <p className="text-[14px] leading-[21px] text-[#6D8279] dark:text-[#A9B6B0] mb-[24px] transition-colors">
                         Створіть акаунт, щоб зберігати кошики, <br /> порівнювати ціни між магазинами та бачити, де <br /> вся покупка буде дешевшою.
@@ -48,8 +47,9 @@ export function ForgotPass() {
                 </div>
 
                 {/* ПРАВА ПАНЕЛЬ */}
-                <div className="w-[573px] flex justify-center items-center h-full">
-                    <div className="w-[380px] m-0 flex flex-col">
+                <div className="flex-1 flex justify-center items-center py-[32px] px-[24px] sm:py-[40px]">
+                    <div className="w-full max-w-[380px] m-0 flex flex-col">
+                        <img src={logo} alt="Smarket Logo" className="w-[128px] mb-[24px] md:hidden dark:brightness-0 dark:invert transition-all" />
                         <h1 className="font-manrope text-[30px] font-extrabold leading-[45px] text-[#265447] dark:text-white mb-[8px] text-left transition-colors">
                             Відновлення паролю
                         </h1>
