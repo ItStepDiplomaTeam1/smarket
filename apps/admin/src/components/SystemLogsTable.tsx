@@ -1,14 +1,39 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { CheckSquare, AlertTriangle, UserPlus, RefreshCw, ChevronRight } from 'lucide-react';
-import type { DashboardData } from '@/hooks/useDashboardData';
+import { apiClient } from '@/lib/apiClient';
 
-interface SystemLogsTableProps {
-  logs: DashboardData['systemLogs'];
+interface AuditLog {
+  id: number;
+  actor: string | null;
+  event_type: string;
+  severity: string;
+  message: string | null;
+  details: Record<string, any> | null;
+  created_at: string;
 }
 
-export const SystemLogsTable: React.FC<SystemLogsTableProps> = ({ logs }) => {
-  const getIcon = (status: string) => {
-    switch (status) {
+interface AuditLogResponse {
+  total: number;
+  page: number;
+  limit: number;
+  items: AuditLog[];
+}
+
+export const SystemLogsTable: React.FC = () => {
+  const { data, isLoading, isError } = useQuery<AuditLogResponse>({
+    queryKey: ['dashboard-audit-logs'],
+    queryFn: async () => {
+      const response = await apiClient.get<AuditLogResponse>('/admin/audit', {
+        params: { page: 1, limit: 5 }
+      });
+      return response.data;
+    }
+  });
+
+  const getIcon = (severity: string) => {
+    switch (severity) {
       case 'success':
         return <CheckSquare size={16} className="text-primary" />;
       case 'error':
@@ -19,6 +44,15 @@ export const SystemLogsTable: React.FC<SystemLogsTableProps> = ({ logs }) => {
         return <UserPlus size={16} className="text-accentPurple" />;
       default:
         return <CheckSquare size={16} className="text-textMuted" />;
+    }
+  };
+
+  const formatTime = (dateString: string) => {
+    try {
+      const d = new Date(dateString);
+      return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
+    } catch {
+      return dateString;
     }
   };
 
@@ -39,24 +73,46 @@ export const SystemLogsTable: React.FC<SystemLogsTableProps> = ({ logs }) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {logs.map((log) => (
-              <tr key={log.id} className="hover:bg-secondary/30 transition-colors">
-                <td className="px-6 py-3 text-center">
-                  <div className="flex justify-center">{getIcon(log.status)}</div>
+            {isLoading ? (
+              <tr>
+                <td colSpan={4} className="py-8 text-center text-textMuted text-sm">
+                  Завантаження...
                 </td>
-                <td className="px-2 py-3 text-sm text-textMain">{log.time}</td>
-                <td className="px-4 py-3 text-sm font-medium text-textMain">{log.event}</td>
-                <td className="px-4 py-3 text-sm text-textMuted">{log.details}</td>
               </tr>
-            ))}
+            ) : isError ? (
+              <tr>
+                <td colSpan={4} className="py-8 text-center text-textMuted text-sm">
+                  Помилка завантаження даних
+                </td>
+              </tr>
+            ) : data?.items?.length === 0 ? (
+              <tr>
+                <td colSpan={4} className="py-8 text-center text-textMuted text-sm">
+                  Подій не знайдено
+                </td>
+              </tr>
+            ) : (
+              data?.items?.map((log) => (
+                <tr key={log.id} className="hover:bg-secondary/30 transition-colors">
+                  <td className="px-6 py-3 text-center">
+                    <div className="flex justify-center">{getIcon(log.severity)}</div>
+                  </td>
+                  <td className="px-2 py-3 text-sm text-textMain">{formatTime(log.created_at)}</td>
+                  <td className="px-4 py-3 text-sm font-medium text-textMain">{log.event_type}</td>
+                  <td className="px-4 py-3 text-sm text-textMuted truncate max-w-[200px]" title={log.message || ''}>
+                    {log.message || (log.details ? JSON.stringify(log.details) : '-')}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
       
       <div className="px-6 py-3 border-t border-border mt-auto">
-        <a href="#" className="text-sm font-medium text-textMuted hover:text-primary transition-colors flex items-center">
+        <Link to="/logs" className="text-sm font-medium text-textMuted hover:text-primary transition-colors flex items-center">
           Переглянути всі події <ChevronRight size={16} className="ml-1" />
-        </a>
+        </Link>
       </div>
     </div>
   );
