@@ -17,10 +17,10 @@ const SearchIcon = () => (
 );
 
 const DISCOUNT_OPTIONS = [
-  { id: '0-10', name: 'до 10%', count: 120 },
-  { id: '10-30', name: 'від 10% до 30%', count: 85 },
-  { id: '30-50', name: 'від 30% до 50%', count: 43 },
-  { id: '50', name: 'більше 50%', count: 14 },
+  { id: '10', name: 'до 10%', count: 120 },
+  { id: '10-20', name: '10%-20%', count: 85 },
+  { id: '20-30', name: '20%-30%', count: 43 },
+  { id: '30+', name: '30%+', count: 14 },
 ];
 
 const GridIcon = () => (
@@ -196,6 +196,11 @@ const fetchProducts = async (filters: FetchFilters): Promise<ProductsResponse> =
     // 6. Пропозиції
     filters.offers.forEach(offer => {
         url.searchParams.append('offer_type', offer);
+    });
+    
+    // 7. Знижки
+    filters.discounts.forEach(discount => {
+        url.searchParams.append('discount_range', discount);
     });
     
     // 8. Сортування
@@ -462,24 +467,31 @@ export function MainContent() {
             </div>
           </div>
 
-          {/* 4. ПРОПОЗИЦІЇ */}
+          {/* 4. РОЗМІР ЗНИЖКИ */}
           <div className="mb-[24px]">
             <h4 className="font-manrope text-[12px] font-bold text-[#6D8279] tracking-[0.06em] uppercase mb-[12px]">
-              Пропозиції
+              Розмір знижки
             </h4>
             <div className="flex flex-col gap-[12px]">
-              {PROPOSAL_OPTIONS.map((item) => {
-                const isOfferActive = selectedOffers.includes(item.id);
+              {DISCOUNT_OPTIONS.map((item) => {
+                const isDiscountActive = selectedDiscounts.includes(item.id);
                 return (
                   <label 
                     key={item.id} 
-                    onClick={() => toggleOffer(item.id)}
+                    onClick={() => {
+                        setSelectedDiscounts(prev => 
+                          prev.includes(item.id) 
+                            ? prev.filter(id => id !== item.id)
+                            : [...prev, item.id]
+                        );
+                        setPage(1);
+                    }}
                     className="flex items-center gap-[10px] cursor-pointer group"
                   >
                     <div className={`w-[18px] h-[18px] rounded-[4px] flex items-center justify-center shrink-0 transition-colors ${
-                      isOfferActive ? 'bg-[#173B33] border-none' : 'border border-[#D1D5DB] bg-white group-hover:border-[#9CA3AF]'
+                      isDiscountActive ? 'bg-[#173B33] border-none' : 'border border-[#D1D5DB] bg-white group-hover:border-[#9CA3AF]'
                     }`}>
-                      {isOfferActive && <CheckIcon />}
+                      {isDiscountActive && <CheckIcon />}
                     </div>
                     <span className="flex-1 text-[13px] font-medium text-[#374151]">{item.name}</span>
                     <span className="text-[12px] text-[#9CA3AF]">{item.count}</span>

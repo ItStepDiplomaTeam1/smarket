@@ -61,6 +61,9 @@ pub struct ProductDocument {
     /// Used to filter "new" products (created in last 14 days).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created_at_ts: Option<i64>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub discount_percent: Option<i32>,
 }
 
 #[derive(Debug, Deserialize)]

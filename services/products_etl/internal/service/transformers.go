@@ -702,6 +702,7 @@ type SearchProductDocument struct {
 	// CreatedAtTs — Unix timestamp (seconds) of product.created_at.
 	// Used by search_service to filter "new" products (created in last 14 days).
 	CreatedAtTs    int64    `json:"created_at_ts"`
+	DiscountPercent *int    `json:"discount_percent,omitempty"`
 }
 
 type searchIndexRequest struct {
@@ -794,6 +795,14 @@ func indexProductsToSearch(pgPool *pgxpool.Pool, searchServiceURL string, storeI
 		doc.MainCategoryID = mainCatID
 		doc.OldPrice = oldPrice
 		doc.CreatedAtTs = createdAt.Unix()
+
+		if oldPrice != nil && *oldPrice > doc.Price {
+			dp := int((*oldPrice - doc.Price) / *oldPrice * 100)
+			if dp > 0 {
+				doc.DiscountPercent = &dp
+			}
+		}
+
 		docs = append(docs, doc)
 	}
 	if err := rows.Err(); err != nil {
@@ -963,6 +972,14 @@ func RunFullBackfill(pgPool *pgxpool.Pool, searchServiceURL string) (int, error)
 		doc.MainCategoryID = mainCatID
 		doc.OldPrice = oldPrice
 		doc.CreatedAtTs = createdAt.Unix()
+
+		if oldPrice != nil && *oldPrice > doc.Price {
+			dp := int((*oldPrice - doc.Price) / *oldPrice * 100)
+			if dp > 0 {
+				doc.DiscountPercent = &dp
+			}
+		}
+
 		docs = append(docs, doc)
 
 		if len(docs) >= batchSize {

@@ -185,6 +185,9 @@ pub struct SearchRequest {
     /// subcategory_slug: "molochni-produkty" etc. — OR logic across types.
     #[serde(default, deserialize_with = "deserialize_string_vec")]
     pub subcategory_slug: Vec<String>,
+    
+    #[serde(default, deserialize_with = "deserialize_string_vec")]
+    pub discount_range: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -324,6 +327,25 @@ pub async fn search_handler(
             filter_conditions.push(offer_parts[0].clone());
         } else if offer_parts.len() > 1 {
             filter_conditions.push(format!("({})", offer_parts.join(" OR ")));
+        }
+    }
+
+    // discount_range filter: "10" => <= 10, "10-20", "20-30", "30+" => >= 30
+    if !payload.discount_range.is_empty() {
+        let mut discount_parts: Vec<String> = Vec::new();
+        for dr in &payload.discount_range {
+            match dr.as_str() {
+                "10" => discount_parts.push("discount_percent <= 10".to_string()),
+                "10-20" => discount_parts.push("(discount_percent >= 10 AND discount_percent <= 20)".to_string()),
+                "20-30" => discount_parts.push("(discount_percent >= 20 AND discount_percent <= 30)".to_string()),
+                "30+" => discount_parts.push("discount_percent >= 30".to_string()),
+                _ => {}
+            }
+        }
+        if discount_parts.len() == 1 {
+            filter_conditions.push(discount_parts[0].clone());
+        } else if discount_parts.len() > 1 {
+            filter_conditions.push(format!("({})", discount_parts.join(" OR ")));
         }
     }
 
