@@ -460,13 +460,6 @@ pub async fn search_handler(
         search_builder.with_sort(&sort_refs);
     }
 
-    search_builder.with_facets(&[
-        "main_category_id",
-        "retail_chain",
-        "category_slug",
-        "discount_percent",
-    ]);
-
     match search_builder.execute::<ProductDocument>().await {
         Ok(results) => {
             let nb_hits = results.hits.len();
@@ -513,7 +506,6 @@ pub async fn search_handler(
                 "nb_hits": nb_hits,
                 "processing_time_ms": processing_time_ms,
                 "query": query_str,
-                "facets": results.facet_distribution,
             })))
         }
         Err(err) => {
