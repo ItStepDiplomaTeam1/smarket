@@ -5,6 +5,7 @@ import { GoogleOAuthProvider } from '@react-oauth/google'
 import '../index.css'
 import { AppRouter } from './routes/Router'
 import { Toaster } from 'react-hot-toast'
+import { ThemeProvider } from '@/shared/context/ThemeContext'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,12 +18,14 @@ const queryClient = new QueryClient({
 const googleClientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string) || 'missing-client-id'
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <GoogleOAuthProvider clientId={googleClientId}>
-      <QueryClientProvider client={queryClient}>
-        <AppRouter />
-        <Toaster position="top-center" toastOptions={{ duration: 4000 }} />
-      </QueryClientProvider>
-    </GoogleOAuthProvider>
-  </StrictMode>,
+  <ThemeProvider>
+    <StrictMode>
+      <GoogleOAuthProvider clientId={googleClientId}>
+        <QueryClientProvider client={queryClient}>
+          <AppRouter />
+          <Toaster position="top-center" toastOptions={{ duration: 4000 }} />
+        </QueryClientProvider>
+      </GoogleOAuthProvider>
+    </StrictMode>
+  </ThemeProvider>,
 )

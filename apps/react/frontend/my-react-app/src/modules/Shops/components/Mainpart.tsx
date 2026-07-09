@@ -1,304 +1,202 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 
-// Типізація відповіді від вашої API
-interface StoreApiData {
-  total_products: number;
-  promo_products: number;
-  max_savings: number;
-  store_name: string;
-  store_description: string;
-  store_logo_url: string;
-}
+// ================= ІКОНКИ =================
+const SearchIcon = () => (
+  <svg width="18" height="18" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M7.33333 12.6667C10.2789 12.6667 12.6667 10.2789 12.6667 7.33333C12.6667 4.38781 10.2789 2 7.33333 2C4.38781 2 2 4.38781 2 7.33333C2 10.2789 4.38781 12.6667 7.33333 12.6667Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M14 14L11.1 11.1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
 
-// Оновлена типізація елемента для рендерингу (адаптована під нові дані)
-interface StoreItem {
-  id: string;
-  name: string;
-  description: string;
-  productsCount: number;
-  promoCount: number;
-  economy: string;
-  logoUrl: string;
-  badge?: {
-    text: string;
-    type: 'dark' | 'yellow' | 'mint';
-  };
-}
-
-type FilterType = 'all' | 'promo' | 'popular';
+// Тимчасові мокові дані для візуалу як на скріншоті
+const MOCK_STORES = [
+  { id: 'atb', name: 'АТБ', desc: 'Супермаркет щоденних покупок', prod: 420, promo: 86, eco: 'до 24%', badge: { text: 'Популярний', type: 'dark' } },
+  { id: 'silpo', name: 'Сільпо', desc: 'Продукти, делікатеси та товари для дому', prod: 380, promo: 72, eco: 'до 22%', badge: { text: '6 акцій', type: 'yellow' } },
+  { id: 'novus', name: 'Novus', desc: 'Супермаркет для великих закупівель', prod: 340, promo: 58, eco: 'до 20%', badge: { text: 'Вигідно', type: 'light' } },
+  { id: 'metro', name: 'Metro', desc: 'Великі закупівлі та професійні товари', prod: 290, promo: 44, eco: 'до 30%' },
+  { id: 'ashan', name: 'Ашан', desc: 'Гіпермаркет продуктів і товарів для дому', prod: 310, promo: 51, eco: 'до 21%' },
+  { id: 'varus', name: 'Varus', desc: 'Продукти, напої та товари щоденного попиту', prod: 260, promo: 39, eco: 'до 18%' },
+  { id: 'eko', name: 'Еко Маркет', desc: 'Супермаркет для сімейних покупок', prod: 245, promo: 34, eco: 'до 17%' },
+  { id: 'fozzy', name: 'Fozzy', desc: 'Великий вибір продуктів і товарів для дому', prod: 225, promo: 31, eco: 'до 19%', badge: { text: 'Вибір тижня', type: 'yellow' } },
+  { id: 'fora', name: 'Фора', desc: 'Магазин біля дому для швидких покупок', prod: 190, promo: 28, eco: 'до 15%' },
+  { id: 'mega', name: 'МегаМаркет', desc: 'Продукти, кулінарія та побутові товари', prod: 210, promo: 26, eco: 'до 16%' },
+  { id: 'tavria', name: 'Таврія В', desc: 'Продукти, напої та акційні пропозиції', prod: 180, promo: 23, eco: 'до 14%' },
+  { id: 'kolo', name: 'Коло', desc: 'Магазин швидких щоденних покупок', prod: 155, promo: 19, eco: 'до 12%' },
+];
 
 export const Mainpart: React.FC = () => {
-  // --- СТАН КОМПОНЕНТА ---
-  const [activeCategoryTab, setActiveCategoryTab] = useState('popular');
-  const [stores, setStores] = useState<StoreItem[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
   const [searchQuery, setSearchQuery] = useState('');
-    const [activeFilter, setActiveFilter] = useState<FilterType>('all');
-  
-    const handleSearch = (e: React.FormEvent) => {
-      e.preventDefault();
-      // Логіка пошуку
-      console.log('Пошук:', searchQuery, 'Фільтр:', activeFilter);
-    };
+  const [activeFilter, setActiveFilter] = useState('all');
+  const [activeCategoryTab, setActiveCategoryTab] = useState('popular');
+  const [loading, setLoading] = useState(false); // Для імітації можна перемкнути
 
-  // Список ID магазинів, які потрібно завантажити (можна передавати через props або константу)
-  // Використовуємо реальні slug-и магазинів згідно бекенду
-  const storeIds = ['atb', 'silpo', 'novus', 'metro'];
-
-  // --- ЗАВАНТАЖЕННЯ ДАНИХ З API ---
-  useEffect(() => {
-    const fetchStoresData = async () => {
-      try {
-        setLoading(true);
-        
-        // Виконуємо запити паралельно для всіх ID
-        const fetchPromises = storeIds.map(async (id) => {
-          const response = await fetch(`/api/v1/stores/${id}/stats`);
-          if (!response.ok) {
-            throw new Error(`Не вдалося завантажити дані для магазину ID: ${id}`);
-          }
-          const data: StoreApiData = await response.json();
-          
-          // Мапимо дані з API у формат нашого компонента
-          return {
-            id: id,
-            name: data.store_name,
-            description: data.store_description,
-            productsCount: data.total_products,
-            promoCount: data.promo_products,
-            economy: `до ${data.max_savings}%`,
-            logoUrl: data.store_logo_url,
-            // Бейджі можна вираховувати динамічно або тимчасово хардкодити, якщо їх немає в API
-            badge: id === '1' ? { text: 'Популярний', type: 'dark' as const } : undefined
-          };
-        });
-
-        const loadedStores = await Promise.all(fetchPromises);
-        setStores(loadedStores);
-        setError(null);
-      } catch (err: any) {
-        setError(err.message || 'Сталася помилка при завантаженні даних');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStoresData();
-  }, []);
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+  };
 
   return (
-    <div>
-      <div className="w-full max-w-[1130px] mx-auto bg-white rounded-[16px] border border-[#EFF2F1] shadow-[0_4px_24px_rgba(0,0,0,0.02)] px-5 py-[18px] font-sans">
-        <form onSubmit={handleSearch} className="flex flex-col gap-[12px]">
-          
-          {/* Рядок пошуку: Інпут + Кнопка */}
-          <div className="flex items-center gap-3 w-full">
-            <div className="relative flex-1">
-              {/* Іконка лупи */}
-              <span className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                <svg
-                  className="w-[18px] h-[18px] text-[#70807E]"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
-              </span>
-              
-              <input
-                type="text"
-                placeholder="Пошук магазину..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-[46px] bg-[#F4F6F6] border border-[#EAECEB] rounded-[12px] pl-11 pr-4 text-[15px] text-[#0D3E36] placeholder-[#70807E] focus:outline-none focus:border-[#234A41] focus:bg-white transition-all duration-200"
-              />
-            </div>
+    <div className="w-full bg-[#F8FAF9] dark:bg-[#0B120F] transition-colors duration-300 pb-10">
+      <div className="w-full max-w-[1230px] mx-auto px-[20px] font-sans">
+        
+        {/* ================= БЛОК ПОШУКУ ================= */}
+        <div className="w-full bg-white dark:bg-[#15231D] rounded-[16px] border border-[#E5E7EB] dark:border-[#1F3227] p-[20px] mb-[40px] transition-colors">
+          <form onSubmit={handleSearch} className="flex flex-col gap-[16px]">
             
-            <button
-              type="submit"
-              className="h-[46px] px-7 bg-[#234A41] hover:bg-[#1A3831] text-white font-medium text-[15px] rounded-[12px] transition-colors duration-200 whitespace-nowrap"
-            >
-              Знайти
-            </button>
-          </div>
-
-          {/* Рядок табів (Фільтри) */}
-          <div className="flex flex-wrap items-center gap-[10px]">
-            <button
-              type="button"
-              onClick={() => setActiveFilter('all')}
-              className={`h-[34px] px-5 rounded-full text-[14px] font-medium tracking-tight transition-all duration-200 ${
-                activeFilter === 'all'
-                  ? 'bg-[#234A41] text-white'
-                  : 'bg-transparent border border-[#EAECEB] text-[#70807E] hover:border-[#70807E] hover:text-[#0D3E36]'
-              }`}
-            >
-              Усі магазини
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveFilter('promo')}
-              className={`h-[34px] px-5 rounded-full text-[14px] font-medium tracking-tight transition-all duration-200 ${
-                activeFilter === 'promo'
-                  ? 'bg-[#234A41] text-white'
-                  : 'bg-transparent border border-[#EAECEB] text-[#70807E] hover:border-[#70807E] hover:text-[#0D3E36]'
-              }`}
-            >
-              Магазини з акціями
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveFilter('popular')}
-              className={`h-[34px] px-5 rounded-full text-[14px] font-medium tracking-tight transition-all duration-200 ${
-                activeFilter === 'popular'
-                  ? 'bg-[#234A41] text-white'
-                  : 'bg-transparent border border-[#EAECEB] text-[#70807E] hover:border-[#70807E] hover:text-[#0D3E36]'
-              }`}
-            >
-              Популярні магазини
-            </button>
-          </div>
-
-        </form>
-      </div>
-      <div className="w-full max-w-[1130px] mx-auto font-sans px-4 md:px-0 py-6 flex flex-col gap-6">
-
-        {/* ================= БЛОК 3: ЗАГОЛОВОК СІТКИ ТА ТАБИ КАТЕГОРІЙ ================= */}
-        <div className="w-full pt-2">
-          <div className="mb-5">
-            <h2 className="text-[#0D3E36] text-[24px] font-bold tracking-tight mb-1">
-              Усі магазини
-            </h2>
-            <p className="text-[#70807E] text-[14px] font-normal">
-              Обирайте магазин, переглядайте актуальні акції та додавайте товари у кошик для порівняння.
-            </p>
-          </div>
-
-          {/* Таби сортування/категорій */}
-          <div className="flex flex-wrap items-center gap-2 mb-6">
-            {[
-              { id: 'popular', label: 'Популярні' },
-              { id: 'promo', label: 'Більше акцій' },
-              { id: 'products', label: 'Більше товарів' },
-              { id: 'economy', label: 'Найбільша економія' }
-            ].map((tab) => (
+            {/* Інпут та кнопка */}
+            <div className="flex flex-col sm:flex-row items-center gap-[12px] w-full">
+              <div className="relative flex-1 w-full">
+                <span className="absolute left-[16px] top-1/2 -translate-y-1/2 text-[#9CA3AF] dark:text-[#7A8D85] transition-colors">
+                  <SearchIcon />
+                </span>
+                <input
+                  type="text"
+                  placeholder="Пошук магазину..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full h-[48px] bg-[#F9FAFB] dark:bg-[#0D1612] border border-[#E5E7EB] dark:border-[#1F3227] rounded-[8px] pl-[44px] pr-[16px] text-[14px] text-[#111827] dark:text-white placeholder-[#9CA3AF] dark:placeholder-[#7A8D85] outline-none focus:border-[#265447] dark:focus:border-[#3CD27D] transition-colors"
+                />
+              </div>
               <button
-                key={tab.id}
-                onClick={() => setActiveCategoryTab(tab.id)}
-                className={`h-[32px] px-4 rounded-full text-[13px] font-medium tracking-tight transition-all duration-200 ${
-                  activeCategoryTab === tab.id
-                    ? 'bg-[#234A41] text-white'
-                    : 'bg-[#F4F6F6] text-[#70807E] hover:bg-[#EAECEB] hover:text-[#0D3E36]'
+                type="submit"
+                className="h-[48px] px-[32px] w-full sm:w-auto bg-[#265447] dark:bg-[#3CD27D] hover:bg-[#1A3E2F] dark:hover:bg-[#34B86D] text-white dark:text-[#0B120F] font-semibold text-[14px] rounded-[8px] transition-colors"
+              >
+                Знайти
+              </button>
+            </div>
+
+            {/* Фільтри (Таби під пошуком) */}
+            <div className="flex flex-wrap items-center gap-[10px]">
+              <button
+                type="button"
+                onClick={() => setActiveFilter('all')}
+                className={`px-[16px] py-[6px] rounded-[100px] text-[13px] font-medium transition-colors ${
+                  activeFilter === 'all'
+                    ? 'bg-[#265447] dark:bg-[#3CD27D] text-white dark:text-[#0B120F] border border-transparent'
+                    : 'bg-white dark:bg-transparent border border-[#E5E7EB] dark:border-[#2B4236] text-[#6D8279] dark:text-[#7A8D85] hover:border-[#D1D5DB] dark:hover:border-[#3CD27D]'
                 }`}
               >
-                {tab.label}
+                Усі магазини
               </button>
+              <button
+                type="button"
+                onClick={() => setActiveFilter('promo')}
+                className={`px-[16px] py-[6px] rounded-[100px] text-[13px] font-medium transition-colors ${
+                  activeFilter === 'promo'
+                    ? 'bg-[#265447] dark:bg-[#3CD27D] text-white dark:text-[#0B120F] border border-transparent'
+                    : 'bg-white dark:bg-transparent border border-[#E5E7EB] dark:border-[#2B4236] text-[#6D8279] dark:text-[#7A8D85] hover:border-[#D1D5DB] dark:hover:border-[#3CD27D]'
+                }`}
+              >
+                Магазини з акціями
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveFilter('popular')}
+                className={`px-[16px] py-[6px] rounded-[100px] text-[13px] font-medium transition-colors ${
+                  activeFilter === 'popular'
+                    ? 'bg-[#265447] dark:bg-[#3CD27D] text-white dark:text-[#0B120F] border border-transparent'
+                    : 'bg-white dark:bg-transparent border border-[#E5E7EB] dark:border-[#2B4236] text-[#6D8279] dark:text-[#7A8D85] hover:border-[#D1D5DB] dark:hover:border-[#3CD27D]'
+                }`}
+              >
+                Популярні магазини
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* ================= ЗАГОЛОВОК СІТКИ ТА ТАБИ ================= */}
+        <div className="mb-[24px]">
+          <h2 className="font-manrope text-[24px] font-bold text-[#111827] dark:text-white mb-[8px] transition-colors">
+            Усі магазини
+          </h2>
+          <p className="font-inter text-[14px] text-[#6D8279] dark:text-[#A4B3AF] transition-colors">
+            Обирайте магазин, переглядайте актуальні акції та додавайте товари у кошик для порівняння.
+          </p>
+        </div>
+
+        {/* Таби категорій */}
+        <div className="flex flex-wrap items-center gap-[10px] mb-[32px]">
+          {[
+            { id: 'popular', label: 'Популярні' },
+            { id: 'promo', label: 'Більше акцій' },
+            { id: 'products', label: 'Більше товарів' },
+            { id: 'economy', label: 'Найбільша економія' }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveCategoryTab(tab.id)}
+              className={`px-[16px] py-[8px] rounded-[100px] text-[13px] font-medium transition-colors ${
+                activeCategoryTab === tab.id
+                  ? 'bg-[#265447] dark:bg-[#3CD27D] text-white dark:text-[#0B120F]'
+                  : 'bg-[#F3F4F6] dark:bg-[#1A2E25] text-[#6D8279] dark:text-[#7A8D85] hover:bg-[#E5E7EB] dark:hover:bg-[#233F32]'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* ================= СІТКА КАРТОК ================= */}
+        {loading ? (
+          <div className="w-full text-center py-10 text-[#6D8279] dark:text-[#7A8D85]">Завантаження...</div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-[20px]">
+            {MOCK_STORES.map((store) => (
+              <div 
+                key={store.id} 
+                className="bg-white dark:bg-[#15231D] border border-[#E5E7EB] dark:border-transparent rounded-[16px] p-[20px] flex flex-col hover:shadow-sm dark:hover:shadow-none transition-all group"
+              >
+                {/* Логотип та Бейдж */}
+                <div className="flex justify-between items-start mb-[16px]">
+                  <div className="w-[52px] h-[52px] rounded-[12px] border border-[#E5E7EB] dark:border-[#2B4236] bg-white flex items-center justify-center p-[6px] overflow-hidden shrink-0">
+                    <span className="font-black text-[#111827] text-[14px] text-center leading-tight">
+                      {store.name}
+                    </span>
+                  </div>
+                  
+                  {store.badge && (
+                    <span className={`px-[8px] py-[4px] rounded-[6px] text-[10px] font-bold uppercase tracking-wider ${
+                      store.badge.type === 'dark' ? 'bg-[#265447] text-white' :
+                      store.badge.type === 'yellow' ? 'bg-[#FFC72C] text-[#111827]' :
+                      'bg-[#EAF7F2] dark:bg-[#1A3026] text-[#265447] dark:text-[#3CD27D]'
+                    }`}>
+                      {store.badge.text}
+                    </span>
+                  )}
+                </div>
+
+                {/* Текст */}
+                <h3 className="font-manrope text-[18px] font-bold text-[#111827] dark:text-white mb-[4px] leading-tight transition-colors">
+                  {store.name}
+                </h3>
+                <p className="text-[13px] text-[#6D8279] dark:text-[#7A8D85] mb-[20px] line-clamp-2 leading-[1.4] h-[36px] transition-colors">
+                  {store.desc}
+                </p>
+
+                {/* Статистика */}
+                <div className="flex flex-col mb-[24px]">
+                  <div className="flex justify-between items-center py-[8px] border-b border-[#F3F4F6] dark:border-[#1F3227] transition-colors">
+                    <span className="text-[13px] text-[#6D8279] dark:text-[#7A8D85]">Товарів</span>
+                    <span className="text-[13px] font-bold text-[#111827] dark:text-white">{store.prod}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-[8px] border-b border-[#F3F4F6] dark:border-[#1F3227] transition-colors">
+                    <span className="text-[13px] text-[#6D8279] dark:text-[#7A8D85]">Акцій</span>
+                    <span className="text-[13px] font-bold text-[#111827] dark:text-white">{store.promo}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-[8px]">
+                    <span className="text-[13px] text-[#6D8279] dark:text-[#7A8D85]">Економія</span>
+                    <span className="text-[13px] font-bold text-[#F59E0B] dark:text-[#FFB020]">{store.eco}</span>
+                  </div>
+                </div>
+
+                {/* Кнопка */}
+                <button className="w-full mt-auto bg-[#EAF7F2] dark:bg-[#1A3026] text-[#265447] dark:text-[#3CD27D] font-semibold text-[13px] py-[10px] rounded-[8px] hover:bg-[#D1E8DD] dark:hover:bg-[#233F32] transition-colors">
+                  Переглянути товари
+                </button>
+              </div>
             ))}
           </div>
+        )}
 
-          {/* Стан завантаження */}
-          {loading && (
-            <div className="w-full text-center py-10 text-[#70807E]">
-              Завантаження магазинів...
-            </div>
-          )}
-
-          {/* Стан помилки */}
-          {error && (
-            <div className="w-full text-center py-10 text-red-500 font-medium">
-              Помилка: {error}
-            </div>
-          )}
-
-          {/* ================= БЛОК 4: СІТКА КАРТОК (Grid 4x3) ================= */}
-          {!loading && !error && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-              {stores
-                // Фільтрація за активним фільтром
-                .filter((store) => {
-                  if (activeFilter === 'promo') return store.promoCount > 0;
-                  // Для 'popular' поки просто показуємо всі (можна додати логіку)
-                  return true;
-                })
-                .map((store) => (
-                <div 
-                  key={store.id} 
-                  className="bg-white rounded-[20px] border border-[#EFF2F1] shadow-[0_8px_24px_rgba(0,0,0,0.02)] p-5 flex flex-col justify-between min-h-[360px] transition-all duration-300 hover:shadow-[0_12px_32px_rgba(0,0,0,0.06)] hover:-translate-y-0.5"
-                >
-                  <div>
-                    {/* Логотип + верхній бейдж */}
-                    <div className="flex justify-between items-start mb-4 h-12">
-                      <div className="w-12 h-12 rounded-[10px] flex items-center justify-center border border-[#EAECEB] bg-white overflow-hidden p-1">
-                        {store.logoUrl ? (
-                          <img 
-                            src={store.logoUrl} 
-                            alt={`${store.name} logo`} 
-                            className="max-w-full max-h-full object-contain"
-                          />
-                        ) : (
-                          <span className="font-bold text-[14px] text-[#0D3E36]">
-                            {store.name.substring(0, 2).toUpperCase()}
-                          </span>
-                        )}
-                      </div>
-
-                      {store.badge && (
-                        <span className={`px-2.5 py-1 rounded-[6px] text-[11px] font-bold tracking-tight ${
-                          store.badge.type === 'dark' ? 'bg-[#234A41] text-white' :
-                          store.badge.type === 'yellow' ? 'bg-[#FFC72C] text-[#0D3E36]' :
-                          'bg-[#EAF5F2] text-[#234A41]'
-                        }`}>
-                          {store.badge.text}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Назва та опис магазину */}
-                    <h3 className="text-[#0D3E36] text-[20px] font-bold mb-1 tracking-tight leading-snug">
-                      {store.name}
-                    </h3>
-                    <p className="text-[#70807E] text-[13px] font-normal leading-relaxed mb-5 min-h-[38px] line-clamp-2">
-                      {store.description}
-                    </p>
-
-                    {/* Специфікація/Метрики */}
-                    <div className="flex flex-col text-[14px] mb-5">
-                      <div className="flex justify-between py-2 border-b border-[#F4F6F6]">
-                        <span className="text-[#70807E]">Товарів</span>
-                        <span className="text-[#0D3E36] font-semibold">{store.productsCount}</span>
-                      </div>
-                      <div className="flex justify-between py-2 border-b border-[#F4F6F6]">
-                        <span className="text-[#70807E]">Акцій</span>
-                        <span className="text-[#0D3E36] font-semibold">{store.promoCount}</span>
-                      </div>
-                      <div className="flex justify-between items-center py-2">
-                        <span className="text-[#70807E]">Економія</span>
-                        <span className="bg-[#FFF8E7] text-[#C28B00] px-2 py-0.5 rounded-[4px] text-[13px] font-bold">
-                          {store.economy}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Кнопка дії */}
-                  <button className="w-full h-[42px] bg-[#EAF2F1] hover:bg-[#DCEAE8] text-[#234A41] font-bold text-[14px] rounded-[10px] transition-colors duration-200">
-                    Переглянути товари
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );
