@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, type KeyboardEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   X,
   Send,
@@ -277,12 +278,33 @@ function ActionButtonView({
   block: Extract<UIBlock, { type: 'action_button' }>;
   onOptionClick: (text: string) => void;
 }) {
+  const navigate = useNavigate();
+  const close = useAiChatStore((s) => s.close);
+
+  const handleClick = () => {
+    if (block.action === 'add_to_cart') {
+      onOptionClick(`Так, додай до кошика`);
+    } else if (block.action === 'navigate') {
+      if (block.payload?.route) {
+        navigate(block.payload.route);
+      }
+    } else if (block.action === 'apply_filters') {
+      window.dispatchEvent(new CustomEvent('smarket:apply-filters', { detail: block.payload }));
+      close();
+    }
+  };
+
+  const getIcon = () => {
+    if (block.action === 'add_to_cart') return <ShoppingCart className="w-4 h-4 shrink-0" />;
+    return null;
+  };
+
   return (
       <button
-          onClick={() => onOptionClick(`Так, додай до кошика`)}
+          onClick={handleClick}
           className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#265447] hover:bg-[#1A3E2F] text-white text-[13px] font-semibold transition-colors duration-150 cursor-pointer border-none w-full justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447] focus-visible:ring-offset-2"
       >
-        <ShoppingCart className="w-4 h-4 shrink-0" />
+        {getIcon()}
         {block.label}
       </button>
   );
@@ -529,7 +551,7 @@ function EmptyState({ onSend }: { onSend: (text: string) => void }) {
         <div>
           <p className="text-[11px] text-[#6D8279] mb-2">Або спробуйте:</p>
           <div className="flex flex-wrap gap-1.5">
-            {['Молоко до 50 грн', 'Що у кошику?', 'Ціни на яйця'].map((q) => (
+            {['Молоко до 50 грн', 'Порівняти мій кошик', 'Очистити мій кошик', 'Написати відгук', 'Ціни на яйця'].map((q) => (
                 <button
                     key={q}
                     onClick={() => onSend(q)}

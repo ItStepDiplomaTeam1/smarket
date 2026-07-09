@@ -248,6 +248,33 @@ export function MainContent() {
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
+  // Listen to filter updates from Zephyros AI Agent
+  useEffect(() => {
+    const handleApplyFilters = (e: Event) => {
+      const detail = (e as CustomEvent).detail || {};
+      if (detail.query !== undefined) {
+        setSearchQuery(detail.query || '');
+        setDebouncedSearch(detail.query || '');
+      }
+      if (detail.retail_chain !== undefined) {
+        if (detail.retail_chain) {
+          setSelectedStores([detail.retail_chain.toLowerCase()]);
+        } else {
+          setSelectedStores([]);
+        }
+      }
+      if (detail.category_slug !== undefined) {
+        setSelectedCategory(detail.category_slug || 'products');
+      }
+      if (detail.price_max !== undefined) {
+        setMaxPrice(detail.price_max || 2000);
+      }
+      setPage(1);
+    };
+    window.addEventListener('smarket:apply-filters', handleApplyFilters);
+    return () => window.removeEventListener('smarket:apply-filters', handleApplyFilters);
+  }, []);
+
   const filterParams: FetchFilters = {
     page,
     category: selectedCategory,

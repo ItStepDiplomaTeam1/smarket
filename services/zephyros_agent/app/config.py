@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     SEARCH_SERVICE_URL: str = "http://search_service:8083/api/v1"
     PRODUCT_SERVICE_URL: str = "http://product_service:8000/api/v1"
     CART_SERVICE_URL: str = "http://cart_service:8002/cart"
+    REVIEWS_SERVICE_URL: str = "http://reviews_service:8004/reviews"
     REDIS_URL: str = "redis://redis:6379"
 
     PORT: int = 8005
