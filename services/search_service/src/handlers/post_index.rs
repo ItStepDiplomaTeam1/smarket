@@ -34,6 +34,11 @@ pub struct ProductDocument {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub category_name: Option<String>,
 
+    /// main_category_id — cross-store top-level category identifier (1–10).
+    /// Set by products_etl, used for category browsing without store-specific slugs.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub main_category_id: Option<i32>,
+
     pub store_id: String,
 
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -51,6 +56,11 @@ pub struct ProductDocument {
 
     #[serde(default)]
     pub is_hidden: bool,
+
+    /// created_at_ts — Unix timestamp (seconds) of product creation.
+    /// Used to filter "new" products (created in last 14 days).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub created_at_ts: Option<i64>,
 }
 
 #[derive(Debug, Deserialize)]

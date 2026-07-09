@@ -8,6 +8,7 @@ interface OAuthUser {
     id: string;
     email: string;
     role: string;
+    settings?: Record<string, any>;
 }
 
 interface OAuthResponse {
@@ -21,6 +22,7 @@ export interface MeResponse {
     email: string;
     username: string;
     role: string;
+    photo_url?: string;
 }
 
 export const useFetchMe = () => {
@@ -60,11 +62,12 @@ export const useGoogleOAuth = () => {
                 id: data.user.id,
                 email: data.user.email,
                 role: data.user.role,
+                photoUrl: data.user.settings?.photo_url,
             });
             try {
                 const { data: me } = await apiClient.get<MeResponse>('/api/v1/auth/me');
                 useAuthStore.setState((state) => ({
-                    user: state.user ? { ...state.user, name: me.username } : state.user,
+                    user: state.user ? { ...state.user, name: me.username, photoUrl: me.photo_url || state.user.photoUrl } : state.user,
                 }));
             } catch {
                 // fallback
@@ -73,3 +76,42 @@ export const useGoogleOAuth = () => {
         },
     });
 };
+
+import { type TelegramUser } from '@/modules/Auth/components/TelegramLoginButton';
+
+export const useTelegramOAuth = () => {
+    const setAuth = useAuthStore((state) => state.setAuth);
+    const navigate = useNavigate();
+
+    return useMutation<OAuthResponse, Error, TelegramUser>({
+        mutationFn: async (telegramData: TelegramUser) => {
+            try {
+                const response = await apiClient.post<OAuthResponse>('/api/v1/auth/telegram', telegramData);
+                return response.data;
+            } catch (error) {
+                if (axios.isAxiosError(error) && error.response?.data?.detail) {
+                    throw new Error(error.response.data.detail, { cause: error });
+                }
+                throw new Error('Помилка Telegram авторизації. Спробуйте ще раз.', { cause: error });
+            }
+        },
+        onSuccess: async (data) => {
+            setAuth(data.access_token, {
+                id: data.user.id,
+                email: data.user.email,
+                role: data.user.role,
+                photoUrl: data.user.settings?.photo_url,
+            });
+            try {
+                const { data: me } = await apiClient.get<MeResponse>('/api/v1/auth/me');
+                useAuthStore.setState((state) => ({
+                    user: state.user ? { ...state.user, name: me.username, photoUrl: me.photo_url || state.user.photoUrl } : state.user,
+                }));
+            } catch {
+                // fallback
+            }
+            navigate('/');
+        },
+    });
+};
+

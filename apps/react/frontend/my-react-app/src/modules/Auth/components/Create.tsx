@@ -8,10 +8,10 @@ import { Loader2, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
 import { useGoogleOAuth, type MeResponse } from '@/hooks/api/useAuthApi';
+import { TelegramLoginButton } from './TelegramLoginButton';
 
 import eyeIcon from '@/shared/assets/ButtonEye.svg';
 import btngoogle from '@/shared/assets/google.svg';
-import btnfacebook from '@/shared/assets/facebook.svg';
 import checkIcon from '@/shared/assets/checkgreen.svg';
 import logo from '@/shared/assets/logo.svg';
 import basketImage from '@/shared/assets/logindefault.svg';
@@ -39,15 +39,15 @@ const PasswordChecklist = ({ password }: { password: string }) => {
     if (!password) return null;
 
     return (
-        <div className="mt-[8px] flex flex-col gap-[4px] mb-[8px]">
+        <div className="mt-[6px] flex flex-col gap-[2px] mb-[6px]">
             {rules.map((rule, idx) => {
                 const isValid = rule.check();
                 return (
-                    <div key={idx} className={`flex items-center gap-[6px] text-[12px] font-medium transition-colors duration-300 ${isValid ? 'text-[#265447]' : 'text-gray-400'}`}>
+                    <div key={idx} className={`flex items-center gap-[6px] text-[11px] font-medium transition-colors duration-300 ${isValid ? 'text-[#265447]' : 'text-gray-400'}`}>
                         {isValid ? (
-                            <Check className="w-[14px] h-[14px] shrink-0" strokeWidth={3} />
+                            <Check className="w-[12px] h-[12px] shrink-0" strokeWidth={3} />
                         ) : (
-                            <div className="w-[14px] h-[14px] shrink-0 rounded-full border border-gray-300 flex items-center justify-center" />
+                            <div className="w-[12px] h-[12px] shrink-0 rounded-full border border-gray-300 flex items-center justify-center" />
                         )}
                         <span>{rule.label}</span>
                     </div>
@@ -222,12 +222,13 @@ export function Create() {
             : 'border-[rgba(38,84,71,0.16)] focus:border-[#265447]';
 
     return (
-        <section className="flex flex-col w-full min-h-screen bg-[#F6FAF8] font-inter">
-            <div className="flex flex-1 justify-center items-center p-[40px]">
+        <section className="flex flex-col w-full bg-[#F6FAF8] font-inter">
+            <div className="flex justify-center items-start py-[24px] px-[16px] sm:py-[40px] sm:px-[40px]">
 
-            <div className="flex w-[1040px] h-[858.5px] bg-white rounded-[24px] border border-[rgba(38,84,71,0.08)] shadow-[0px_18px_48px_rgba(23,59,51,0.12)] overflow-hidden shrink-0">
+            {/* Height follows form content (no fixed clip) so the register button stays in bounds */}
+            <div className="flex w-full max-w-[1040px] bg-white rounded-[24px] border border-[rgba(38,84,71,0.08)] shadow-[0px_18px_48px_rgba(23,59,51,0.12)] overflow-hidden">
                 {/* Left panel */}
-                <div className="w-[467px] shrink-0 bg-gradient-to-b from-[#EAF7F2] to-[#F6FAF8] border-r border-[rgba(38,84,71,0.08)] p-[48px] text-[#173B33]">
+                <div className="w-[467px] shrink-0 hidden md:flex flex-col bg-gradient-to-b from-[#EAF7F2] to-[#F6FAF8] border-r border-[rgba(38,84,71,0.08)] p-[48px] text-[#173B33]">
                     <img src={logo} alt="Smarket Logo" className="w-[128px] mb-[32px]" />
                     <h2 className="font-manrope text-[32px] font-bold leading-[40px] mb-[16px]">
                         Купуйте розумніше. <br /> Заощаджуйте <br /> більше.
@@ -249,16 +250,16 @@ export function Create() {
                             <span>Відстежуйте свою економію</span>
                         </li>
                     </ul>
-                    <img src={basketImage} alt="Ваш тижневий кошик" className="w-[360px] max-w-none h-auto -ml-[18px] block" />
+                    <img src={basketImage} alt="Ваш тижневий кошик" className="w-[360px] max-w-none h-auto -ml-[18px] block mt-auto" />
                 </div>
 
                 {/* Right panel */}
-                <div className="w-[573px] flex justify-center items-center">
-                    <div className="w-[380px]">
-                        <h1 className="font-manrope text-[30px] font-extrabold leading-[45px] text-[#265447] mb-[8px]">
+                <div className="flex-1 flex justify-center">
+                    <div className="w-full max-w-[380px] px-[24px] py-[32px] sm:py-[40px]">
+                        <h1 className="font-manrope text-[28px] sm:text-[30px] font-extrabold leading-[1.3] text-[#265447] mb-[6px]">
                             Створіть акаунт
                         </h1>
-                        <p className="text-[14px] leading-[21px] text-[#6D8279] mb-[24px]">
+                        <p className="text-[14px] leading-[21px] text-[#6D8279] mb-[16px]">
                             Почніть порівнювати ціни та збирати вигідні кошики вже сьогодні.
                         </p>
 
@@ -282,12 +283,11 @@ export function Create() {
                             )}
                             <span>{googleOAuthMutation.isPending ? 'Завантаження...' : 'Продовжити з Google'}</span>
                         </button>
-                        <button className="flex items-center justify-center gap-[8px] w-full h-[44px] bg-white border border-[rgba(38,84,71,0.16)] rounded-[10px] mb-[12px] cursor-pointer font-inter text-[13px] font-semibold text-[#111827] transition-all duration-200 hover:bg-[#F9FAFB] hover:shadow-sm">
-                            <img src={btnfacebook} alt="Facebook" className="w-[20px] h-[20px]" />
-                            <span>Продовжити з Facebook</span>
-                        </button>
+                        <TelegramLoginButton 
+                            botId={import.meta.env.VITE_TELEGRAM_BOT_ID || '8912413936'}
+                        />
 
-                        <div className="flex items-center text-[#6D8279] text-[13px] mt-[24px] mb-[24px] gap-[10px]">
+                        <div className="flex items-center text-[#6D8279] text-[13px] my-[16px] gap-[10px]">
                             <span className="flex-1 h-px bg-[rgba(38,84,71,0.08)]"></span>
                             <span className="shrink-0">або зареєструйтесь через email</span>
                             <span className="flex-1 h-px bg-[rgba(38,84,71,0.08)]"></span>
@@ -295,7 +295,7 @@ export function Create() {
 
                         <form className="flex flex-col" onSubmit={handleSubmit} noValidate>
                             {/* Name */}
-                            <label htmlFor="reg-name" className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Ім'я</label>
+                            <label htmlFor="reg-name" className="text-[13px] font-semibold text-[#265447] mb-[6px] block">Ім'я</label>
                             <input
                                 id="reg-name"
                                 type="text"
@@ -307,12 +307,12 @@ export function Create() {
                                 disabled={registerMutation.isPending}
                                 className={`w-full h-[44px] border rounded-[10px] px-[16px] bg-white font-inter text-[14px] text-[#111827] outline-none transition-colors duration-200 ${fieldBorder(nameError, touched.name)}`}
                             />
-                            <div className={`overflow-hidden transition-all duration-300 ${nameError ? 'max-h-[40px] opacity-100 mt-[4px] mb-[8px]' : 'max-h-0 opacity-0 mb-[16px]'}`}>
+                            <div className={`overflow-hidden transition-all duration-300 ${nameError ? 'max-h-[40px] opacity-100 mt-[4px] mb-[8px]' : 'max-h-0 opacity-0 mb-[12px]'}`}>
                                 <p className="text-[12px] text-red-500 font-medium">{nameError}</p>
                             </div>
 
                             {/* Email */}
-                            <label htmlFor="reg-email" className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Email</label>
+                            <label htmlFor="reg-email" className="text-[13px] font-semibold text-[#265447] mb-[6px] block">Email</label>
                             <input
                                 id="reg-email"
                                 type="email"
@@ -323,12 +323,12 @@ export function Create() {
                                 disabled={registerMutation.isPending}
                                 className={`w-full h-[44px] border rounded-[10px] px-[16px] bg-white font-inter text-[14px] text-[#111827] outline-none transition-colors duration-200 ${fieldBorder(emailError, touched.email)}`}
                             />
-                            <div className={`overflow-hidden transition-all duration-300 ${emailError ? 'max-h-[40px] opacity-100 mt-[4px] mb-[8px]' : 'max-h-0 opacity-0 mb-[16px]'}`}>
+                            <div className={`overflow-hidden transition-all duration-300 ${emailError ? 'max-h-[40px] opacity-100 mt-[4px] mb-[8px]' : 'max-h-0 opacity-0 mb-[12px]'}`}>
                                 <p className="text-[12px] text-red-500 font-medium">{emailError}</p>
                             </div>
 
                             {/* Password */}
-                            <label htmlFor="reg-password" className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Пароль</label>
+                            <label htmlFor="reg-password" className="text-[13px] font-semibold text-[#265447] mb-[6px] block">Пароль</label>
                             <div className="relative">
                                 <input
                                     id="reg-password"
@@ -352,12 +352,12 @@ export function Create() {
                             {/* Strength Checklist */}
                             <PasswordChecklist password={password} />
 
-                            <div className={`overflow-hidden transition-all duration-300 ${passwordError ? 'max-h-[40px] opacity-100 mt-[4px] mb-[8px]' : 'max-h-0 opacity-0 mb-[16px]'}`}>
+                            <div className={`overflow-hidden transition-all duration-300 ${passwordError ? 'max-h-[40px] opacity-100 mt-[4px] mb-[8px]' : 'max-h-0 opacity-0 mb-[12px]'}`}>
                                 <p className="text-[12px] text-red-500 font-medium">{passwordError}</p>
                             </div>
 
                             {/* Confirm password */}
-                            <label htmlFor="reg-confirm" className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Підтвердьте пароль</label>
+                            <label htmlFor="reg-confirm" className="text-[13px] font-semibold text-[#265447] mb-[6px] block">Підтвердьте пароль</label>
                             <div className="relative">
                                 <input
                                     id="reg-confirm"
@@ -380,12 +380,12 @@ export function Create() {
                                     <img src={eyeIcon} alt="toggle" className="w-[18px] h-[18px]" />
                                 </button>
                             </div>
-                            <div className={`overflow-hidden transition-all duration-300 ${confirmError ? 'max-h-[40px] opacity-100 mt-[4px] mb-[8px]' : 'max-h-0 opacity-0 mb-[16px]'}`}>
+                            <div className={`overflow-hidden transition-all duration-300 ${confirmError ? 'max-h-[40px] opacity-100 mt-[4px] mb-[8px]' : 'max-h-0 opacity-0 mb-[12px]'}`}>
                                 <p className="text-[12px] text-red-500 font-medium">{confirmError}</p>
                             </div>
 
                             {/* Agree */}
-                            <div className="flex items-start gap-[12px] mb-[24px]">
+                            <div className="flex items-start gap-[12px] mb-[16px]">
                                 <input
                                     type="checkbox"
                                     id="agree"
@@ -400,20 +400,20 @@ export function Create() {
                             </div>
 
                             {/* Server error */}
-                            <div className={`overflow-hidden transition-all duration-300 ${serverError ? 'max-h-[40px] opacity-100 mb-[16px]' : 'max-h-0 opacity-0'}`}>
+                            <div className={`overflow-hidden transition-all duration-300 ${serverError ? 'max-h-[40px] opacity-100 mb-[12px]' : 'max-h-0 opacity-0'}`}>
                                 <p className="text-red-500 text-[13px] font-medium">{serverError}</p>
                             </div>
 
                             <button
                                 type="submit"
                                 disabled={registerMutation.isPending}
-                                className="flex items-center justify-center gap-[8px] w-full h-[46px] mt-[8px] bg-[#265447] text-white rounded-[10px] border-none cursor-pointer font-inter text-[14px] font-bold transition-all duration-200 hover:bg-[#1A3E2F] hover:shadow-md disabled:opacity-50"
+                                className="flex items-center justify-center gap-[8px] w-full h-[46px] mt-[4px] bg-[#265447] text-white rounded-[10px] border-none cursor-pointer font-inter text-[14px] font-bold transition-all duration-200 hover:bg-[#1A3E2F] hover:shadow-md disabled:opacity-50 shrink-0"
                             >
                                 {registerMutation.isPending && <Loader2 className="w-[18px] h-[18px] animate-spin" />}
                                 <span>{registerMutation.isPending ? 'Завантаження...' : 'Зареєструватися'}</span>
                             </button>
 
-                            <p className="text-center text-[14px] mt-[24px] text-[#6B7280]">
+                            <p className="text-center text-[14px] mt-[16px] mb-[8px] text-[#6B7280]">
                                 Вже маєте акаунт? <Link to="/auth" viewTransition className="text-[#265447] font-semibold no-underline hover:underline">Увійти</Link>
                             </p>
                         </form>

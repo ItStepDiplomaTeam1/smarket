@@ -53,6 +53,7 @@ services:
       - "8001"
     environment:
       COOKIE_SECURE: "${COOKIE_SECURE:-false}"
+      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
     env_file:
       - ../services/auth_service/.env
     depends_on:
@@ -98,9 +99,9 @@ services:
       reviews_service:
         condition: service_healthy
       search_service:
-        condition: service_healthy
+        condition: service_started
       zephyros_agent:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
       <<: *healthcheck-defaults
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3).read()\""]
@@ -177,6 +178,8 @@ services:
       - app.main:app
     expose:
       - "8000"
+    environment:
+      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
     env_file:
       - ../services/product_service/.env
     depends_on:
@@ -237,6 +240,8 @@ services:
       - app.main:app
     expose:
       - "8004"
+    environment:
+      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
     env_file:
       - ../services/reviews_service/.env
     depends_on:
@@ -245,6 +250,44 @@ services:
     healthcheck:
       <<: *healthcheck-defaults
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8004/health', timeout=3).read()\""]
+      start_period: "${SMARKET_API_HEALTH_START_PERIOD:-30s}"
+
+  audit_migration_job:
+    <<: *job-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/audit_service:${IMAGE_TAG:-develop}
+    build:
+      context: ..
+      dockerfile: services/audit_service/Dockerfile
+    command:
+      - sh
+      - -c
+      - alembic upgrade head
+    environment:
+      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
+    env_file:
+      - ../services/audit_service/.env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  audit_service:
+    <<: *api-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/audit_service:${IMAGE_TAG:-develop}
+    build:
+      context: ..
+      dockerfile: services/audit_service/Dockerfile
+    expose:
+      - "8006"
+    environment:
+      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
+    env_file:
+      - ../services/audit_service/.env
+    depends_on:
+      audit_migration_job:
+        condition: service_completed_successfully
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8006/health', timeout=3).read()\""]
       start_period: "${SMARKET_API_HEALTH_START_PERIOD:-30s}"
 
   redis:
@@ -363,6 +406,10 @@ services:
       - ../services/products_etl/.env
     expose:
       - "8082"
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8082/health || exit 1"]
+      start_period: "${SMARKET_API_HEALTH_START_PERIOD:-30s}"
     depends_on:
       rabbitmq:
         condition: service_healthy

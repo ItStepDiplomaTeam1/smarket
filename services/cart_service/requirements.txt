@@ -7,3 +7,4 @@ pydantic-settings
 httpx
 orjson
 faststream[rabbit]
+loguru

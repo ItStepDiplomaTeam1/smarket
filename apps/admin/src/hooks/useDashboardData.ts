@@ -33,8 +33,24 @@ import { apiClient } from '@/lib/apiClient';
 const fetchDashboardData = async (): Promise<DashboardData> => {
   try {
     const response = await apiClient.get<DashboardData>('/admin/dashboard-summary');
-    if (!response.data?.metrics) return getMockDashboardData();
-    return response.data;
+    const mockData = getMockDashboardData();
+    
+    if (!response.data?.metrics) return mockData;
+    
+    return {
+      ...mockData,
+      ...response.data,
+      // Fallback to mock data for empty arrays to keep the dashboard populated
+      priceDynamics: response.data.priceDynamics?.length > 0 ? response.data.priceDynamics : mockData.priceDynamics,
+      systemLogs: response.data.systemLogs?.length > 0 ? response.data.systemLogs : mockData.systemLogs,
+      needsAttention: response.data.needsAttention?.length > 0 ? response.data.needsAttention : mockData.needsAttention,
+      popularCategories: response.data.popularCategories?.length > 0 ? response.data.popularCategories : mockData.popularCategories,
+      newUsers: response.data.newUsers?.length > 0 ? response.data.newUsers : mockData.newUsers,
+      searchQueries: response.data.searchQueries?.length > 0 ? response.data.searchQueries : mockData.searchQueries,
+      sourceStatus: response.data.sourceStatus?.length > 0 ? response.data.sourceStatus : mockData.sourceStatus,
+      systemStatus: response.data.systemStatus?.length > 0 ? response.data.systemStatus : mockData.systemStatus,
+      popularProducts: response.data.popularProducts?.length > 0 ? response.data.popularProducts : mockData.popularProducts,
+    };
   } catch {
     return getMockDashboardData();
   }

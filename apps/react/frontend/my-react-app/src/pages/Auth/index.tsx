@@ -1,10 +1,9 @@
 import btngoogle from '@/shared/assets/google.svg';
-import btnfacebook from '@/shared/assets/facebook.svg';
 import checkIcon from '@/shared/assets/checkgreen.svg';
 import logo from '@/shared/assets/logo.svg';
 import basketImage from '@/shared/assets/logindefault.svg';
 
-import { LoginForm } from '@/modules/Auth';
+import { LoginForm, TelegramLoginButton } from '@/modules/Auth';
 import { useGoogleLogin } from '@react-oauth/google';
 import { useGoogleOAuth } from '@/hooks/api/useAuthApi';
 
@@ -84,10 +83,9 @@ export default function AuthPage() {
                             <img src={btngoogle} alt="Google" className="w-[20px] h-[20px]" />
                             <span>{googleOAuthMutation.isPending ? 'Завантаження...' : 'Продовжити з Google'}</span>
                         </button>
-                        <button className="flex items-center justify-center gap-[8px] w-full h-[44px] bg-white border border-[rgba(38,84,71,0.16)] rounded-[10px] mb-[12px] cursor-pointer font-inter text-[13px] font-semibold text-[#265447] transition-colors duration-200 hover:bg-[#F9FAFB]">
-                            <img src={btnfacebook} alt="Facebook" className="w-[20px] h-[20px]" />
-                            <span>Продовжити з Facebook</span>
-                        </button>
+                        <TelegramLoginButton 
+                            botId={import.meta.env.VITE_TELEGRAM_BOT_ID || '8912413936'}
+                        />
 
                         {/* OR divider */}
                         <div className="flex items-center text-[#6D8279] text-[13px] mt-[24px] mb-[24px] gap-[10px]">

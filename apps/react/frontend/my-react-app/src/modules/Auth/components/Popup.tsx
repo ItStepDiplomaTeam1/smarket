@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useGoogleLogin } from '@react-oauth/google';
 import eyeIcon from '@/shared/assets/ButtonEye.svg';
 import btngoogle from '@/shared/assets/google.svg';
-import btnfacebook from '@/shared/assets/facebook.svg';
 import { useGoogleOAuth } from '@/hooks/api/useAuthApi';
+import { TelegramLoginButton } from './TelegramLoginButton';
 
 export function Popup() {
     const [showPassword, setShowPassword] = useState(false);
@@ -30,7 +30,7 @@ export function Popup() {
                         Почніть порівнювати ціни та збирати вигідні кошики вже сьогодні.
                     </p>
 
-                    {/* Social buttons */}
+                     {/* Social buttons */}
                     {googleOAuthMutation.isError && (
                         <p className="text-red-500 text-[12px] mb-[8px] text-center">
                             {googleOAuthMutation.error?.message}
@@ -47,10 +47,9 @@ export function Popup() {
                         <img src={btngoogle} alt="Google" className="w-[20px] h-[20px]" />
                         <span>{googleOAuthMutation.isPending ? 'Завантаження...' : 'Продовжити з Google'}</span>
                     </button>
-                    <button className="flex items-center justify-center gap-[8px] w-full h-[44px] bg-white border border-[rgba(38,84,71,0.16)] rounded-[10px] mb-[12px] cursor-pointer font-inter text-[13px] font-semibold text-[#265447] transition-colors duration-200 hover:bg-[#F9FAFB]">
-                        <img src={btnfacebook} alt="Facebook" className="w-[20px] h-[20px]" />
-                        <span>Продовжити з Facebook</span>
-                    </button>
+                    <TelegramLoginButton 
+                        botId={import.meta.env.VITE_TELEGRAM_BOT_ID || '8912413936'}
+                    />
 
                     {/* OR divider */}
                     <div className="flex items-center text-[#6D8279] text-[13px] my-[24px] gap-[10px]">

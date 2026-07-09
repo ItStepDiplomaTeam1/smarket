@@ -33,6 +33,7 @@ class Settings(BaseSettings):
     SEARCH_SERVICE_URL: str = "http://search_service:8083"
     AGENT_SERVICE_URL: str = "http://zephyros_agent:8005"
     EMAIL_WORKER_URL: str = "http://email_worker:8085"
+    AUDIT_SERVICE_URL: str = "http://audit_service:8006"
 
     @model_validator(mode="after")
     def clean_product_service_url(self) -> "Settings":

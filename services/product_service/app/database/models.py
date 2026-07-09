@@ -78,6 +78,12 @@ class Category(Base):
         "created_at", DateTime(timezone=True), nullable=False
     )
     is_hidden: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # main_category_id — integer (1–10) that groups store-specific slugs into universal
+    # top-level categories. Set by products_etl (category_mapping.go). Nullable for
+    # legacy rows that predate the mapping feature.
+    main_category_id: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True
+    )
 
     products: Mapped[list["Product"]] = relationship(
         "Product", back_populates="category"

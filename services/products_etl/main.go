@@ -139,6 +139,46 @@ func declareQueue(conn *amqp.Connection, name string) {
 	log.Printf("[main] Черга %q готова", name)
 }
 
+func PublishEvent(conn *amqp.Connection, eventType, message, severity string, details interface{}) {
+	ch, err := conn.Channel()
+	if err != nil {
+		log.Printf("[Events] Помилка відкриття каналу RabbitMQ: %v", err)
+		return
+	}
+	defer ch.Close()
+
+	err = ch.ExchangeDeclare("smarket_events", "topic", false, false, false, false, nil)
+	if err != nil {
+		log.Printf("[Events] Помилка оголошення exchange smarket_events: %v", err)
+		return
+	}
+
+	event := map[string]interface{}{
+		"event_id":    time.Now().UnixNano(),
+		"timestamp":   time.Now().UTC().Format(time.RFC3339) + "Z",
+		"actor":       "products_etl",
+		"event_type":  eventType,
+		"entity_type": "service",
+		"entity_id":   "products_etl",
+		"message":     message,
+		"details":     details,
+		"severity":    severity,
+	}
+
+	body, err := json.Marshal(event)
+	if err != nil {
+		return
+	}
+
+	err = ch.Publish("smarket_events", "service.lifecycle", false, false, amqp.Publishing{
+		ContentType: "application/json",
+		Body:        body,
+	})
+	if err != nil {
+		log.Printf("[Events] Помилка публікації події: %v", err)
+	}
+}
+
 func main() {
 	cfg := config.LoadConfig()
 
@@ -151,6 +191,8 @@ func main() {
 	defer infra.Close(context.Background())
 
 	log.Println("Усі підключення до БД та RabbitMQ успішно ініціалізовано!")
+
+	PublishEvent(infra.RabbitConn, "service_started", "Products ETL Service started", "info", map[string]interface{}{})
 
 	var server *http.Server
 	{
@@ -225,6 +267,7 @@ func main() {
 			syncCancel()
 
 			log.Println("[Scheduler] Перевірка застарілих даних магазинів...")
+			PublishEvent(infra.RabbitConn, "etl_started", "Розпочато цикл збору даних", "info", map[string]interface{}{})
 			rows, err := infra.PgPool.Query(context.Background(),
 				// last_parsed_at — індексована колонка, яку TransformLoadWorker оновлює
 				// після кожного успішного батчу. Це набагато швидше ніж GROUP BY на prices.
@@ -236,12 +279,14 @@ func main() {
 				 ORDER BY last_parsed_at ASC NULLS FIRST`)
 			if err != nil {
 				log.Printf("[Scheduler] Помилка запиту перевірки застарілих магазинів: %v", err)
+				PublishEvent(infra.RabbitConn, "etl_finished", fmt.Sprintf("Помилка планувальника: %v", err), "error", map[string]interface{}{})
 				return
 			}
 
 			ch, err := infra.RabbitConn.Channel()
 			if err != nil {
 				log.Printf("[Scheduler] Помилка створення каналу RabbitMQ: %v", err)
+				PublishEvent(infra.RabbitConn, "etl_finished", fmt.Sprintf("Помилка RabbitMQ: %v", err), "error", map[string]interface{}{})
 				rows.Close()
 				return
 			}
@@ -279,6 +324,7 @@ func main() {
 			ch.Close()
 			rows.Close()
 			log.Printf("[Scheduler] Перевірку застарілих даних завершено. Додано у чергу %d магазинів.", count)
+			PublishEvent(infra.RabbitConn, "etl_finished", fmt.Sprintf("Завершено цикл планування. Додано у чергу %d магазинів", count), "info", map[string]interface{}{"queued_stores": count})
 		}
 
 		// Запускаємо одразу при старті

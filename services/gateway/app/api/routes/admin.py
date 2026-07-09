@@ -79,6 +79,38 @@ async def _proxy_to_auth(
 
 # ── Admin Routes ──────────────────────────────────────────────────────────────
 
+@router.get("/audit", tags=["Admin", "Audit Logs"])
+async def get_audit_logs(request: Request):
+    """
+    Returns audit logs from audit_service.
+    Requires admin role.
+    """
+    payload = _verify_admin_token(request)
+    client: httpx.AsyncClient = request.app.state.http_client
+    
+    target_url = f"{settings.AUDIT_SERVICE_URL}/admin/audit"
+    headers = dict(request.headers)
+    headers.pop("host", None)
+    headers["X-User-Id"] = str(payload.get("sub", ""))
+    headers["X-User-Role"] = str(payload.get("role", ""))
+
+    try:
+        req = client.build_request(
+            method=request.method,
+            url=target_url,
+            headers=headers,
+            params=request.query_params,
+        )
+        response = await client.send(req, stream=True)
+        return StreamingResponse(
+            response.aiter_raw(),
+            status_code=response.status_code,
+            headers=dict(response.headers),
+        )
+    except httpx.ConnectError:
+        raise HTTPException(status_code=503, detail="Audit service unavailable")
+
+
 
 @router.get("/recent-users")
 async def get_recent_users(request: Request):
@@ -162,7 +194,36 @@ async def get_dashboard_summary(request: Request):
             pass
         return {"totalUsers": 0}
 
-    prod_stats, auth_stats = await asyncio.gather(fetch_product_stats(), fetch_auth_stats())
+    async def fetch_system_logs():
+        try:
+            resp = await client.get(
+                f"{settings.AUDIT_SERVICE_URL}/admin/audit",
+                params={"limit": 5},
+                timeout=5.0
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                items = data.get("items", [])
+                logs = []
+                status_map = {"info": "success", "warning": "warning", "error": "error"}
+                for item in items:
+                    logs.append({
+                        "id": str(item.get("id", "")),
+                        "time": item.get("created_at", ""),
+                        "event": item.get("event_type", "Unknown Event"),
+                        "details": item.get("details", "") or item.get("message", "") or item.get("actor", ""),
+                        "status": status_map.get(item.get("severity", "info"), "info")
+                    })
+                return logs
+        except Exception:
+            pass
+        return []
+
+    prod_stats, auth_stats, system_logs = await asyncio.gather(
+        fetch_product_stats(), 
+        fetch_auth_stats(),
+        fetch_system_logs()
+    )
 
     return JSONResponse(content={
         "metrics": {
@@ -172,7 +233,7 @@ async def get_dashboard_summary(request: Request):
             "pricesUpdatedToday": prod_stats.get("pricesUpdatedToday", 0),
         },
         "priceDynamics": [],
-        "systemLogs": [],
+        "systemLogs": system_logs,
         "needsAttention": [],
         "popularCategories": [],
         "newUsers": [],

@@ -28,6 +28,22 @@ class CategoryResponse(BaseModel):
     slug: str
     name: str
     is_hidden: bool = False
+    main_category_id: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SubcategoryResponse(BaseModel):
+    """Category row returned by the /categories/{main_category_id}/subcategories endpoint.
+
+    product_count is the number of visible (non-hidden) products in this subcategory.
+    """
+
+    id: int
+    slug: str
+    name: str
+    main_category_id: Optional[int] = None
+    product_count: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 

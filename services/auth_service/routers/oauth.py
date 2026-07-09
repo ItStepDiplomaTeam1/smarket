@@ -16,8 +16,14 @@ from services.auth_service.plugins.security.jwt_handler import (
     create_refresh_token,
 )
 from services.auth_service.plugins.security.secrets.load_secret import get_secret
+from services.auth_service.plugins.security.telegram_validator import verify_telegram_auth
 from services.auth_service.routers.auth import _mask_email
-from services.auth_service.shared.DTO import GoogleOAuthRequest, LoginResponse, UserResponse
+from services.auth_service.shared.DTO import (
+    GoogleOAuthRequest,
+    LoginResponse,
+    TelegramAuthSchema,
+    UserResponse,
+)
 
 router = APIRouter(
     prefix="/oauth",
@@ -25,11 +31,13 @@ router = APIRouter(
     default_response_class=ORJSONResponse,
 )
 
+
 def _get_cookie_secure() -> bool:
     val = os.getenv("COOKIE_SECURE")
     if val is not None:
         return val.lower() in ("true", "1", "yes")
     return os.getenv("DEBUG", "False").lower() not in ("true", "1", "yes")
+
 
 _REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60
 _COOKIE_SECURE = _get_cookie_secure()
@@ -124,12 +132,23 @@ async def oauth_google_login(
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
 
+    google_name = claims.get("name")
+    google_picture = claims.get("picture")
+
     if user is None:
+        settings_dict = {}
+        if google_name:
+            settings_dict["google_name"] = google_name
+        if google_picture:
+            settings_dict["google_picture"] = google_picture
+            settings_dict["photo_url"] = google_picture
+
         user = User(
             email=email,
             hashed_password="OAUTH_NO_PASSWORD",
             role="user",
             is_active=True,
+            settings=settings_dict,
             created_at=datetime.now(UTC),
             updated_at=datetime.now(UTC),
         )
@@ -145,6 +164,17 @@ async def oauth_google_login(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="User account is disabled",
             )
+        # Update user settings with any updated Google data
+        updated_settings = dict(user.settings or {})
+        if google_name:
+            updated_settings["google_name"] = google_name
+        if google_picture:
+            updated_settings["google_picture"] = google_picture
+            updated_settings["photo_url"] = google_picture
+        user.settings = updated_settings
+        user.updated_at = datetime.now(UTC)
+        await db.commit()
+        await db.refresh(user)
         logger.info(
             f"Google OAuth: існуючий користувач {_mask_email(email)} (ID: {user.id}) увійшов"
         )
@@ -169,5 +199,114 @@ async def oauth_google_login(
             id=str(user.id),
             email=user.email,
             role=user.role,
+            settings=user.settings or {},
+        ),
+    )
+
+
+@router.post("/telegram", response_model=LoginResponse, status_code=status.HTTP_200_OK)
+async def oauth_telegram_login(
+    response: Response,
+    body: TelegramAuthSchema,
+    db: AsyncSession = Depends(get_db),
+):
+    # Validate Telegram auth payload
+    payload_dict = body.model_dump()
+    if not verify_telegram_auth(payload_dict):
+        logger.warning(f"Telegram OAuth: signature verification failed for ID {body.id}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid Telegram signature or expired authentication data",
+        )
+
+    logger.info(f"Telegram OAuth: request from Telegram ID {body.id} ({body.username or ''})")
+
+    # Check if user exists by telegram_id
+    result = await db.execute(select(User).where(User.telegram_id == body.id))
+    user = result.scalar_one_or_none()
+
+    if user is None:
+        # User not found -> Register new user with placeholder email
+        email = f"tg_{body.id}@smarket.local"
+
+        # In case a user already exists with this generated email
+        email_check = await db.execute(select(User).where(User.email == email))
+        if email_check.scalar_one_or_none():
+            logger.error(f"Telegram OAuth: collision detected for generated email {email}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="User email collision detected during registration",
+            )
+
+        # Store Telegram metadata in settings JSONB
+        settings_dict = {
+            "telegram_first_name": body.first_name,
+            "telegram_last_name": body.last_name,
+            "telegram_username": body.username,
+            "photo_url": body.photo_url,
+        }
+
+        user = User(
+            email=email,
+            hashed_password="TELEGRAM_OAUTH_NO_PASSWORD",
+            role="user",
+            is_active=True,
+            telegram_id=body.id,
+            settings=settings_dict,
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
+        )
+        db.add(user)
+        await db.commit()
+        await db.refresh(user)
+        logger.success(
+            f"Telegram OAuth: new user registered via Telegram ID {body.id}, User ID: {user.id}"
+        )
+    else:
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="User account is disabled",
+            )
+        # Update user settings with any updated Telegram data
+        updated_settings = dict(user.settings or {})
+        updated_settings.update(
+            {
+                "telegram_first_name": body.first_name,
+                "telegram_last_name": body.last_name,
+                "telegram_username": body.username,
+                "photo_url": body.photo_url,
+            }
+        )
+        user.settings = updated_settings
+        user.updated_at = datetime.now(UTC)
+        await db.commit()
+        await db.refresh(user)
+        logger.info(
+            f"Telegram OAuth: existing user {user.email} (ID: {user.id}) logged in via Telegram"
+        )
+
+    # Issue JWT tokens
+    access_token = create_access_token(str(user.id), user.role, user.email)
+    refresh_token = create_refresh_token(str(user.id), user.role, user.email)
+
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        secure=_COOKIE_SECURE,
+        samesite="lax",
+        max_age=_REFRESH_TOKEN_MAX_AGE,
+        path="/",
+    )
+
+    return LoginResponse(
+        access_token=access_token,
+        token_type="bearer",
+        user=UserResponse(
+            id=str(user.id),
+            email=user.email,
+            role=user.role,
+            settings=user.settings or {},
         ),
     )
