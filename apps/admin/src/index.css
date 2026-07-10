@@ -5,7 +5,17 @@
 
 @layer base {
   body {
-    @apply bg-background text-textMain antialiased;
+    @apply bg-background text-textMuted font-sans font-normal antialiased;
+  }
+  
+  b, strong, h1, h2, h3, h4, h5, h6, .font-bold, .font-semibold, .font-extrabold, .font-black {
+    @apply font-manrope;
+    color: #173B33;
+    font-weight: 700;
+  }
+
+  .text-textMain {
+    color: #173B33 !important;
   }
 }
 

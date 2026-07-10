@@ -219,10 +219,49 @@ async def get_dashboard_summary(request: Request):
             pass
         return []
 
-    prod_stats, auth_stats, system_logs = await asyncio.gather(
+    MOCK_RATINGS = [
+        {"rating": 4.8, "reviews": 412},
+        {"rating": 4.6, "reviews": 287},
+        {"rating": 4.9, "reviews": 193},
+        {"rating": 4.3, "reviews": 156},
+        {"rating": 4.7, "reviews": 98},
+    ]
+
+    async def fetch_popular_products():
+        try:
+            resp = await client.get(
+                f"{settings.PRODUCT_SERVICE_URL}/api/v1/products/",
+                params={"limit": 5},
+                timeout=5.0,
+                follow_redirects=True
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                items = data.get("items", [])
+                popular_products = []
+                for i, item in enumerate(items):
+                    if i < len(MOCK_RATINGS):
+                        mock_rating = MOCK_RATINGS[i]
+                        cat = item.get("category")
+                        cat_name = cat.get("name", "—") if isinstance(cat, dict) else "—"
+                        popular_products.append({
+                            "id": str(item.get("id", "")),
+                            "name": item.get("title", ""),
+                            "category": cat_name,
+                            "image": item.get("image_url") or "",
+                            "rating": mock_rating["rating"],
+                            "reviews": mock_rating["reviews"],
+                        })
+                return popular_products
+        except Exception:
+            pass
+        return []
+
+    prod_stats, auth_stats, system_logs, popular_products = await asyncio.gather(
         fetch_product_stats(), 
         fetch_auth_stats(),
-        fetch_system_logs()
+        fetch_system_logs(),
+        fetch_popular_products()
     )
 
     return JSONResponse(content={
@@ -245,7 +284,7 @@ async def get_dashboard_summary(request: Request):
         },
         "sourceStatus": [],
         "systemStatus": [],
-        "popularProducts": []
+        "popularProducts": popular_products
     })
 
 

@@ -1,12 +1,11 @@
 import React from 'react';
-import type { LucideIcon } from 'lucide-react';
 import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MetricCardProps {
   title: string;
   value: string | number;
-  icon: LucideIcon;
+  icon: string;
   iconBgColor: string;
   trend?: {
     value: number;
@@ -19,7 +18,7 @@ interface MetricCardProps {
 export const MetricCard: React.FC<MetricCardProps> = ({
   title,
   value,
-  icon: Icon,
+  icon,
   iconBgColor,
   trend,
   className,
@@ -27,22 +26,23 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   return (
     <div
       className={cn(
-        'bg-surface rounded-2xl p-5 flex flex-col justify-between border border-border shadow-sm aspect-square max-h-[220px]',
+        'bg-surface rounded-2xl p-5 flex flex-col items-start border border-border shadow-sm aspect-square w-full max-w-[220px] mx-auto',
         className
       )}
     >
-      {/* Icon square */}
       <div
-        className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
+        className="w-[35%] aspect-square rounded-[22%] flex items-center justify-center shrink-0"
         style={{ backgroundColor: iconBgColor }}
       >
-        <Icon size={22} strokeWidth={2} className="text-white" />
+        <img src={icon} alt={title} className="w-[50%] h-[50%] object-contain" />
       </div>
 
       {/* Content */}
-      <div className="flex flex-col gap-1">
-        <p className="text-sm text-textMuted leading-tight">{title}</p>
-        <p className="text-[28px] font-bold text-textMain leading-none tracking-tight">
+      <div className="flex flex-col mt-4 w-full">
+        <p className="text-xs sm:text-sm text-textMuted leading-tight font-medium">
+          {title}
+        </p>
+        <p className="text-xl sm:text-2xl lg:text-[34px] font-bold text-textMain leading-none tracking-tight mt-1.5">
           {value}
         </p>
       </div>
@@ -51,14 +51,14 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       {trend && (
         <div
           className={cn(
-            'flex items-center gap-1 text-sm font-medium',
+            'flex items-center gap-1 text-xs sm:text-sm font-medium mt-3',
             trend.isPositive ? 'text-accentGreen' : 'text-accentRed'
           )}
         >
           {trend.isPositive ? (
-            <ArrowUpRight size={16} strokeWidth={2} />
+            <ArrowUpRight size={14} className="shrink-0" />
           ) : (
-            <ArrowDownRight size={16} strokeWidth={2} />
+            <ArrowDownRight size={14} className="shrink-0" />
           )}
           <span>
             {trend.value}% {trend.text}

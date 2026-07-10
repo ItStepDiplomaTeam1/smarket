@@ -1,30 +1,26 @@
 import React from 'react';
-import { Play, Square, RefreshCcw, Trash2 } from 'lucide-react';
+import startIcon from '@/assets/QuickActions/Start.svg';
+import stopIcon from '@/assets/QuickActions/Stop.svg';
 
 export const QuickActions: React.FC = () => {
   return (
     <div className="bg-surface border border-border rounded-2xl p-5 shadow-sm">
-      <h3 className="font-semibold text-lg mb-4 text-textMain">Швидкі дії</h3>
+      <h3 className="font-manrope text-lg font-bold !text-[#265447]">Швидкі дії</h3>
+      <div className="border-b border-border my-3" />
       
       <div className="grid grid-cols-2 gap-3">
-        <button className="flex flex-col items-center justify-center gap-2 p-3 rounded-xl border border-accentGreen/30 text-accentGreen hover:bg-accentGreen/5 transition-colors">
-          <Play size={20} fill="currentColor" />
-          <span className="text-xs font-semibold text-center leading-tight">Запустити<br/>всі парсери</span>
+        <button className="h-[54px] flex items-center gap-3 px-5 rounded-2xl border-2 border-[#008C5E] bg-[#EBF6F1]/70 hover:bg-[#EBF6F1]/90 transition-colors group">
+          <img src={startIcon} alt="Запустити" className="h-[28px] w-auto object-contain shrink-0" />
+          <span className="text-xs sm:text-sm font-bold text-left leading-tight !text-[#008C5E]">
+            Запустити<br/>всі парсери
+          </span>
         </button>
         
-        <button className="flex flex-col items-center justify-center gap-2 p-3 rounded-xl border border-accentYellow/50 text-accentYellow hover:bg-accentYellow/5 transition-colors">
-          <Square size={20} fill="currentColor" />
-          <span className="text-xs font-semibold text-center leading-tight">Зупинити<br/>всі парсери</span>
-        </button>
-        
-        <button className="flex flex-col items-center justify-center gap-2 p-3 rounded-xl border border-accentBlue/30 text-accentBlue hover:bg-accentBlue/5 transition-colors">
-          <RefreshCcw size={20} />
-          <span className="text-xs font-semibold text-center leading-tight">Оновити<br/>ціни</span>
-        </button>
-
-        <button className="flex flex-col items-center justify-center gap-2 p-3 rounded-xl border border-accentPurple/30 text-accentPurple hover:bg-accentPurple/5 transition-colors">
-          <Trash2 size={20} />
-          <span className="text-xs font-semibold text-center leading-tight">Очистити<br/>кеш</span>
+        <button className="h-[54px] flex items-center gap-3 px-5 rounded-2xl border-2 border-[#FDC80D] bg-[#FFFBEB]/70 hover:bg-[#FFFBEB]/90 transition-colors group">
+          <img src={stopIcon} alt="Зупинити" className="h-[28px] w-auto object-contain shrink-0" />
+          <span className="text-xs sm:text-sm font-bold text-left leading-tight !text-[#FDC80D]">
+            Зупинити<br/>всі парсери
+          </span>
         </button>
       </div>
     </div>
