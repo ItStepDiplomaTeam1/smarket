@@ -230,24 +230,21 @@ async def get_dashboard_summary(request: Request):
     async def fetch_popular_products():
         try:
             resp = await client.get(
-                f"{settings.PRODUCT_SERVICE_URL}/api/v1/products/",
+                f"{settings.SEARCH_SERVICE_URL}/api/v1/search",
                 params={"limit": 5},
-                timeout=5.0,
-                follow_redirects=True
+                timeout=5.0
             )
             if resp.status_code == 200:
                 data = resp.json()
-                items = data.get("items", [])
+                items = data.get("hits", [])
                 popular_products = []
                 for i, item in enumerate(items):
                     if i < len(MOCK_RATINGS):
                         mock_rating = MOCK_RATINGS[i]
-                        cat = item.get("category")
-                        cat_name = cat.get("name", "—") if isinstance(cat, dict) else "—"
                         popular_products.append({
                             "id": str(item.get("id", "")),
                             "name": item.get("title", ""),
-                            "category": cat_name,
+                            "category": item.get("category_name") or "—",
                             "image": item.get("image_url") or "",
                             "rating": mock_rating["rating"],
                             "reviews": mock_rating["reviews"],
