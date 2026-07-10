@@ -253,8 +253,10 @@ async def get_dashboard_summary(request: Request):
                             "reviews": mock_rating["reviews"],
                         })
                 return popular_products
-        except Exception:
-            pass
+        except Exception as e:
+            import traceback
+            print(f"[Gateway] Error fetching popular products: {e}", flush=True)
+            traceback.print_exc()
         return []
 
     prod_stats, auth_stats, system_logs, popular_products = await asyncio.gather(
