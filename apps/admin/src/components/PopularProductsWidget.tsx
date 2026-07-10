@@ -19,7 +19,14 @@ export const PopularProductsWidget: React.FC<PopularProductsWidgetProps> = ({ pr
           {products.map((product) => (
             <li key={product.id} className="p-4 flex gap-4 hover:bg-background/50 transition-colors">
               <div className="w-12 h-12 bg-white rounded border border-border flex items-center justify-center overflow-hidden shrink-0">
-                <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+                <img 
+                  src={product.image || 'https://images.silpo.ua/products/1600x1600/webp/2c5bd4d9-dcda-43c2-a7d0-120f2b3e8392.png'} 
+                  alt={product.name} 
+                  className="w-full h-full object-contain p-1" 
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://images.silpo.ua/products/1600x1600/webp/2c5bd4d9-dcda-43c2-a7d0-120f2b3e8392.png';
+                  }}
+                />
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-textMain truncate mb-0.5" title={product.name}>
