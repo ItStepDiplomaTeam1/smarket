@@ -9,7 +9,10 @@ import { PopularCategoriesWidget } from '@/components/PopularCategoriesWidget';
 import { NewUsersWidget } from '@/components/NewUsersWidget';
 import { PopularProductsWidget } from '@/components/PopularProductsWidget';
 
-import { Package, Store, Users, Tag } from 'lucide-react';
+import PackageIcon from '@/assets/MetricCardIcons/Package.svg';
+import StoreIcon from '@/assets/MetricCardIcons/Stores.svg';
+import UsersIcon from '@/assets/MetricCardIcons/Users.svg';
+import TagIcon from '@/assets/MetricCardIcons/Tag.svg';
 
 
 const Dashboard: React.FC = () => {
@@ -41,35 +44,35 @@ const Dashboard: React.FC = () => {
 
       {/* ─── Main Content Area (Left: 2 cols, Right: 1 col "Sidebar") ─── */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
-        
+
         {/* Left Column (Main Content) */}
         <div className="xl:col-span-2 flex flex-col gap-6">
-          
+
           {/* ─── Top section: 4 KPI Cards in a single row ─── */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
               title="Всього товарів"
               value={data.metrics.totalProducts.toLocaleString('uk-UA')}
-              icon={Package}
-              iconBgColor="#10B981"
+              icon={PackageIcon}
+              iconBgColor="#6FE3C2"
             />
             <MetricCard
               title="Магазинів"
               value={data.metrics.totalStores}
-              icon={Store}
-              iconBgColor="#F59E0B"
+              icon={StoreIcon}
+              iconBgColor="#FDC80D"
             />
             <MetricCard
               title="Користувачів"
               value={data.metrics.totalUsers.toLocaleString('uk-UA')}
-              icon={Users}
-              iconBgColor="#8B5CF6"
+              icon={UsersIcon}
+              iconBgColor="#9704C3"
             />
             <MetricCard
-              title="Цін оновлено сьогодні"
+              title="Цін оновлено"
               value={data.metrics.pricesUpdatedToday.toLocaleString('uk-UA')}
-              icon={Tag}
-              iconBgColor="#3B82F6"
+              icon={TagIcon}
+              iconBgColor="#1A65F2"
             />
           </div>
 
@@ -91,7 +94,7 @@ const Dashboard: React.FC = () => {
           <QuickActions />
           <PopularProductsWidget products={data.popularProducts} />
         </div>
-        
+
       </div>
     </div>
   );

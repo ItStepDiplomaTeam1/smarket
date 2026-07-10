@@ -57,59 +57,79 @@ export const SystemLogsTable: React.FC = () => {
   };
 
   return (
-    <div className="bg-surface border border-border rounded-2xl flex flex-col h-full overflow-hidden shadow-sm">
-      <div className="px-6 py-5 border-b border-border">
+    <div className="bg-surface border border-border rounded-2xl flex flex-col h-[404px] overflow-hidden shadow-sm">
+      <div className="px-6 py-5 border-b border-border shrink-0">
         <h3 className="font-semibold text-lg text-textMain">Останні системні події</h3>
       </div>
       
       <div className="overflow-x-auto flex-1">
-        <table className="w-full text-left border-collapse">
+        <table className="w-full text-left border-collapse table-fixed">
           <thead>
-            <tr className="text-textMuted text-sm border-b border-border">
-              <th className="px-6 py-3 font-medium w-10"></th>
+            <tr className="text-textMuted text-sm border-b border-border shrink-0">
+              <th className="px-6 py-3 font-medium w-16"></th>
               <th className="px-2 py-3 font-medium w-24">Час</th>
-              <th className="px-4 py-3 font-medium">Подія</th>
+              <th className="px-4 py-3 font-medium w-48">Подія</th>
               <th className="px-4 py-3 font-medium">Деталі</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {isLoading ? (
-              <tr>
-                <td colSpan={4} className="py-8 text-center text-textMuted text-sm">
-                  Завантаження...
-                </td>
-              </tr>
-            ) : isError ? (
-              <tr>
-                <td colSpan={4} className="py-8 text-center text-textMuted text-sm">
-                  Помилка завантаження даних
-                </td>
-              </tr>
-            ) : data?.items?.length === 0 ? (
-              <tr>
-                <td colSpan={4} className="py-8 text-center text-textMuted text-sm">
-                  Подій не знайдено
-                </td>
-              </tr>
-            ) : (
-              data?.items?.map((log) => (
-                <tr key={log.id} className="hover:bg-secondary/30 transition-colors">
-                  <td className="px-6 py-3 text-center">
-                    <div className="flex justify-center">{getIcon(log.severity)}</div>
-                  </td>
-                  <td className="px-2 py-3 text-sm text-textMain">{formatTime(log.created_at)}</td>
-                  <td className="px-4 py-3 text-sm font-medium text-textMain">{log.event_type}</td>
-                  <td className="px-4 py-3 text-sm text-textMuted truncate max-w-[200px]" title={log.message || ''}>
-                    {log.message || (log.details ? JSON.stringify(log.details) : '-')}
+              Array.from({ length: 5 }).map((_, i) => (
+                <tr key={`loading-${i}`} className="animate-pulse h-[49px]">
+                  <td colSpan={4} className="px-6 py-3">
+                    <div className="h-4 bg-border/40 rounded w-2/3 mx-auto" />
                   </td>
                 </tr>
               ))
-            )}
+            ) : isError ? (
+              <tr className="h-[245px]">
+                <td colSpan={4} className="text-center text-textMuted text-sm py-8">
+                  Помилка завантаження даних
+                </td>
+              </tr>
+            ) : (() => {
+              const logs = data?.items || [];
+              const paddedLogs = [...logs];
+              while (paddedLogs.length < 5) {
+                paddedLogs.push({
+                  id: -1 - paddedLogs.length,
+                  actor: null,
+                  event_type: '',
+                  severity: 'empty',
+                  message: '',
+                  details: null,
+                  created_at: ''
+                });
+              }
+              return paddedLogs.map((log) => {
+                if (log.id < 0) {
+                  return (
+                    <tr key={log.id} className="h-[49px]">
+                      <td colSpan={4} className="px-6 py-3 text-center text-textMuted text-xs select-none">
+                        &nbsp;
+                      </td>
+                    </tr>
+                  );
+                }
+                return (
+                  <tr key={log.id} className="hover:bg-secondary/30 transition-colors h-[49px]">
+                    <td className="px-6 py-3 text-center">
+                      <div className="flex justify-center">{getIcon(log.severity)}</div>
+                    </td>
+                    <td className="px-2 py-3 text-sm text-textMain">{formatTime(log.created_at)}</td>
+                    <td className="px-4 py-3 text-sm font-medium text-textMain truncate" title={log.event_type}>{log.event_type}</td>
+                    <td className="px-4 py-3 text-sm text-textMuted truncate" title={log.message || ''}>
+                      {log.message || (log.details ? JSON.stringify(log.details) : '-')}
+                    </td>
+                  </tr>
+                );
+              });
+            })()}
           </tbody>
         </table>
       </div>
       
-      <div className="px-6 py-3 border-t border-border mt-auto">
+      <div className="px-6 py-3 border-t border-border mt-auto shrink-0">
         <Link to="/logs" className="text-sm font-medium text-textMuted hover:text-primary transition-colors flex items-center">
           Переглянути всі події <ChevronRight size={16} className="ml-1" />
         </Link>

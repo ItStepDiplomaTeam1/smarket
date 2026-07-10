@@ -12,7 +12,7 @@ export default {
         primary: '#265447',    // Brand Dark Green
         primaryHover: '#1A3E2F',
         secondary: '#F6FAF8',  // Light green (active sidebar, hovers)
-        textMain: '#111827',   // Dark grey text
+        textMain: '#173B33',   // Dark green text for main content/headings
         textMuted: '#6D8279',  // Gray green muted text
         accentGreen: '#10B981', // For success icons
         accentRed: '#EF4444',   // For error icons
