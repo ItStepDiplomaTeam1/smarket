@@ -1,11 +1,34 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { DashboardData } from '@/hooks/useDashboardData';
-import { Star } from 'lucide-react';
+import { Star, Image as ImageIcon } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 interface PopularProductsWidgetProps {
   products: DashboardData['popularProducts'];
 }
+
+const ProductImage: React.FC<{ src: string; alt: string }> = ({ src, alt }) => {
+  const [error, setError] = useState(!src);
+
+  if (error) {
+    return (
+      <div className="w-12 h-12 bg-secondary rounded border border-border flex items-center justify-center shrink-0">
+        <ImageIcon className="text-textMuted w-5 h-5" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-12 h-12 bg-white rounded border border-border flex items-center justify-center overflow-hidden shrink-0">
+      <img 
+        src={src} 
+        alt={alt} 
+        className="w-full h-full object-contain p-1" 
+        onError={() => setError(true)}
+      />
+    </div>
+  );
+};
 
 export const PopularProductsWidget: React.FC<PopularProductsWidgetProps> = ({ products }) => {
   return (
@@ -18,16 +41,7 @@ export const PopularProductsWidget: React.FC<PopularProductsWidgetProps> = ({ pr
         <ul className="divide-y divide-border">
           {products.map((product) => (
             <li key={product.id} className="p-4 flex gap-4 hover:bg-background/50 transition-colors">
-              <div className="w-12 h-12 bg-white rounded border border-border flex items-center justify-center overflow-hidden shrink-0">
-                <img 
-                  src={product.image || 'https://images.silpo.ua/products/1600x1600/webp/2c5bd4d9-dcda-43c2-a7d0-120f2b3e8392.png'} 
-                  alt={product.name} 
-                  className="w-full h-full object-contain p-1" 
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'https://images.silpo.ua/products/1600x1600/webp/2c5bd4d9-dcda-43c2-a7d0-120f2b3e8392.png';
-                  }}
-                />
-              </div>
+              <ProductImage src={product.image} alt={product.name} />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-textMain truncate mb-0.5" title={product.name}>
                   {product.name}
