@@ -29,7 +29,7 @@ export const PriceDynamicsChart: React.FC<PriceDynamicsChartProps> = ({ data }) 
       <div className="flex items-center justify-between mb-6">
         <div>
           <h3 className="font-semibold text-lg text-textMain">Динаміка оновлення цін</h3>
-          <p className="text-xs text-textMuted mt-0.5">Кількість цінових пропозицій оновлених по місяцях</p>
+          <p className="text-xs text-textMuted mt-0.5">Кількість цінових пропозицій оновлених за останні 7 днів</p>
         </div>
       </div>
 

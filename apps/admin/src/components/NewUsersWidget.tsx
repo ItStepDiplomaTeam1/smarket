@@ -44,7 +44,7 @@ export const NewUsersWidget: React.FC = () => {
   // Prevents firing a 403 request when the user is not an admin.
   if (!isAdmin) {
     return (
-      <div className="bg-surface border border-border rounded-2xl flex flex-col shadow-sm">
+      <div className="bg-surface border border-border rounded-2xl flex flex-col shadow-sm h-full">
         <div className="p-5 pb-3">
           <h3 className="font-semibold text-lg text-textMain">Нові користувачі</h3>
         </div>
@@ -134,7 +134,7 @@ export const NewUsersWidget: React.FC = () => {
   };
 
   return (
-    <div className="bg-surface border border-border rounded-2xl flex flex-col shadow-sm">
+    <div className="bg-surface border border-border rounded-2xl flex flex-col shadow-sm h-full">
       {/* Header */}
       <div className="p-5 pb-3 flex items-center justify-between">
         <h3 className="font-semibold text-lg text-textMain">Нові користувачі</h3>

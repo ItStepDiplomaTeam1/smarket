@@ -270,7 +270,7 @@ async def get_dashboard_summary(request: Request):
             "totalUsers": auth_stats.get("totalUsers", 0),
             "pricesUpdatedToday": prod_stats.get("pricesUpdatedToday", 0),
         },
-        "priceDynamics": [],
+        "priceDynamics": prod_stats.get("priceDynamics", []),
         "systemLogs": system_logs,
         "needsAttention": [],
         "popularCategories": [],

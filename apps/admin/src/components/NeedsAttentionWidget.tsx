@@ -9,7 +9,7 @@ interface NeedsAttentionWidgetProps {
 
 export const NeedsAttentionWidget: React.FC<NeedsAttentionWidgetProps> = ({ items }) => {
   return (
-    <div className="bg-surface border border-border rounded-2xl flex flex-col shadow-sm">
+    <div className="bg-surface border border-border rounded-2xl flex flex-col shadow-sm h-full">
       <div className="p-5 pb-3">
         <h3 className="font-semibold text-lg text-textMain">Потребує уваги</h3>
       </div>

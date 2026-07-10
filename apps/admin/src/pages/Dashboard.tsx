@@ -4,6 +4,7 @@ import { MetricCard } from '@/components/MetricCard';
 import { SystemLogsTable } from '@/components/SystemLogsTable';
 import { QuickActions } from '@/components/QuickActions';
 import { SystemStatusWidget } from '@/components/SystemStatusWidget';
+import { PriceDynamicsChart } from '@/components/PriceDynamicsChart';
 
 import { NeedsAttentionWidget } from '@/components/NeedsAttentionWidget';
 import { PopularCategoriesWidget } from '@/components/PopularCategoriesWidget';
@@ -77,7 +78,8 @@ const Dashboard: React.FC = () => {
             />
           </div>
 
-
+          {/* Price Dynamics Chart */}
+          <PriceDynamicsChart data={data.priceDynamics} />
 
           {/* System logs */}
           <SystemLogsTable />
@@ -92,8 +94,8 @@ const Dashboard: React.FC = () => {
 
         {/* Right Column ("Sidebar" of widgets) */}
         <div className="flex flex-col gap-6">
-          <SystemStatusWidget />
           <QuickActions />
+          <SystemStatusWidget />
           <PopularProductsWidget products={data.popularProducts} />
         </div>
 
