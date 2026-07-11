@@ -14,7 +14,7 @@ export const Layout: React.FC = () => {
       <Header onToggleSidebar={() => setIsSidebarOpen((v) => !v)} />
 
       {/* Bottom Area (Sidebar + Main content) */}
-      <div className="flex-1 flex overflow-hidden p-4 lg:p-8 gap-4 lg:gap-8 relative">
+      <div className="flex-1 flex overflow-hidden p-4 lg:py-8 lg:px-[10%] gap-4 lg:gap-8 relative">
         {/* Sidebar */}
         <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 

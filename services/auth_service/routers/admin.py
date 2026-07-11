@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Header, status
@@ -46,6 +46,12 @@ def _require_admin_from_header(x_user_role: str | None) -> None:
 def _format_user(user: User) -> AdminUserItem:
     name = user.email.split("@")[0] if "@" in user.email else user.email
     status_str = "Активний" if user.is_active else "Неактивний"
+    
+    if user.is_active and user.created_at:
+        now = datetime.now(UTC)
+        if now - user.created_at < timedelta(days=7):
+            status_str = "Новий"
+
     created_iso = user.created_at.isoformat() if user.created_at else datetime.now(UTC).isoformat()
     return AdminUserItem(
         id=str(user.id),

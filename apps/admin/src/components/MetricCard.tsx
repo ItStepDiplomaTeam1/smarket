@@ -42,7 +42,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         <p className="text-xs sm:text-sm text-textMuted leading-tight font-medium">
           {title}
         </p>
-        <p className="text-xl sm:text-2xl lg:text-[34px] font-bold text-textMain leading-none tracking-tight mt-1.5">
+        <p className="text-xl sm:text-2xl font-bold text-textMain leading-none tracking-tight mt-1.5">
           {value}
         </p>
       </div>

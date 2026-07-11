@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 
 export interface MeiliSearchProduct {
@@ -74,6 +74,7 @@ export function useProducts(params: FetchProductsParams) {
     queryKey: ['productsSearch', params],
     queryFn: () => fetchProducts(params),
     staleTime: 30_000,
+    placeholderData: keepPreviousData,
   });
 }
 
