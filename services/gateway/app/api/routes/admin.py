@@ -432,6 +432,49 @@ async def get_etl_health(request: Request):
             status_code=504,
         )
 
+
+@router.post("/etl/control")
+async def control_etl(request: Request):
+    """
+    Проксює запит /admin/etl/control до ETL-воркера (products_etl).
+    Керує станом ETL-планувальника (старт/стоп).
+    Вимагає роль адміністратора та API-ключ ETL.
+    """
+    payload = _verify_admin_token(request)
+    client: httpx.AsyncClient = request.app.state.http_client
+
+    # Read request body
+    body = await request.body()
+
+    # Forward headers, including X-Admin-Key if provided
+    headers = dict(request.headers)
+    headers.pop("host", None)
+    headers["X-User-Id"] = str(payload.get("sub", ""))
+    headers["X-User-Role"] = str(payload.get("role", ""))
+
+    try:
+        req = client.build_request(
+            method="POST",
+            url=f"{settings.ETL_SERVICE_URL}/admin/etl/control",
+            headers=headers,
+            content=body,
+        )
+        response = await client.send(req)
+        return JSONResponse(
+            content=response.json(),
+            status_code=response.status_code,
+        )
+    except httpx.ConnectError:
+        return JSONResponse(
+            content={"status": "unavailable", "error": "ETL service unreachable"},
+            status_code=503,
+        )
+    except httpx.TimeoutException:
+        return JSONResponse(
+            content={"status": "timeout", "error": "ETL service timed out"},
+            status_code=504,
+        )
+
 @router.post("/users/{user_id}/block")
 async def block_user(user_id: str, request: Request):
     payload = _verify_admin_token(request)
