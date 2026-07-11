@@ -1,21 +1,23 @@
-import { Suspense, lazy } from 'react';
+import { Suspense } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { MainLayout } from '../layouts/MainLayout';
+import { lazyWithRetry } from '@/shared/utils/lazyWithRetry';
+import { RootErrorBoundary } from '@/shared/components/ErrorBoundary/RootErrorBoundary';
 
-const HomePage = lazy(() => import('@/pages/Home/ui/Home'));
-const AuthPage = lazy(() => import('@/pages/Auth'));
-const RegisterPage = lazy(() => import('@/pages/Register/ui/RegisterPage'));
-const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPassword/ui/ForgotPasswordPage'));
-const LoginPage = lazy(() => import('@/pages/Login/ui/LoginPage'));
-const ProductDetailPage = lazy(() => import('@/pages/ProductDetail/ui/ProductDetail'));
-const ProfilePage = lazy(() => import('@/pages/Profile/ui/ProfilePage'));
-const CatalogPage = lazy(() => import('@/pages/Catalog/ui/Catalog'));
-const ShopsPage = lazy(() => import('@/pages/Shops/ui/ShopPage'));
-const CartPage = lazy(() => import('@/pages/Cart/ui/CartPage.tsx').then(m => ({ default: m.CartPage })));
+const HomePage = lazyWithRetry(() => import('@/pages/Home/ui/Home'));
+const AuthPage = lazyWithRetry(() => import('@/pages/Auth'));
+const RegisterPage = lazyWithRetry(() => import('@/pages/Register/ui/RegisterPage'));
+const ForgotPasswordPage = lazyWithRetry(() => import('@/pages/ForgotPassword/ui/ForgotPasswordPage'));
+const LoginPage = lazyWithRetry(() => import('@/pages/Login/ui/LoginPage'));
+const ProductDetailPage = lazyWithRetry(() => import('@/pages/ProductDetail/ui/ProductDetail'));
+const ProfilePage = lazyWithRetry(() => import('@/pages/Profile/ui/ProfilePage'));
+const CatalogPage = lazyWithRetry(() => import('@/pages/Catalog/ui/Catalog'));
+const ShopsPage = lazyWithRetry(() => import('@/pages/Shops/ui/ShopPage'));
+const CartPage = lazyWithRetry(() => import('@/pages/Cart/ui/CartPage.tsx').then(m => ({ default: m.CartPage })));
 
-const ConfidentialPolicyPage = lazy(() => import('@/pages/ConfidentionalPolicy/ui/ConfidentialPolicyPage'));
-const PrivacyPage = lazy(() => import('@/pages/Privacy/ui/PrivacyPage'));
-const UsingConditionsPage = lazy(() => import('@/pages/UsingConditions/ui/UsingConditionsPage'));
+const ConfidentialPolicyPage = lazyWithRetry(() => import('@/pages/ConfidentionalPolicy/ui/ConfidentialPolicyPage'));
+const PrivacyPage = lazyWithRetry(() => import('@/pages/Privacy/ui/PrivacyPage'));
+const UsingConditionsPage = lazyWithRetry(() => import('@/pages/UsingConditions/ui/UsingConditionsPage'));
 
 const fallback = <div>Завантаження...</div>;
 
@@ -23,6 +25,7 @@ const router = createBrowserRouter([
   {
     path: '/',
     element: <MainLayout />,
+    errorElement: <RootErrorBoundary />,
     children: [
       {
         path: '/',

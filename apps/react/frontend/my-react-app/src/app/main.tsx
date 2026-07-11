@@ -17,6 +17,12 @@ const queryClient = new QueryClient({
 
 const googleClientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string) || 'missing-client-id'
 
+try {
+  sessionStorage.removeItem('smarket-chunk-reload-retry');
+} catch (e) {
+  console.warn('Failed to access sessionStorage:', e);
+}
+
 createRoot(document.getElementById('root')!).render(
   <ThemeProvider>
     <StrictMode>
