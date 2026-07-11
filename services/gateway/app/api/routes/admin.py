@@ -275,31 +275,17 @@ async def get_dashboard_summary(request: Request):
         "needsAttention": [
             {
                 "id": "1",
-                "source": "Metro",
-                "message": "помилка API",
-                "time": "14:12",
-                "type": "error"
-            },
-            {
-                "id": "2",
-                "source": "Novus",
-                "message": "синхронізація триває 18 хв",
-                "time": "14:20",
-                "type": "sync"
-            },
-            {
-                "id": "3",
                 "source": f"{prod_stats.get('productsWithoutCategory', 0)} товарів",
                 "message": "без категорії",
                 "time": "системна аномалія",
                 "type": "warning"
             },
             {
-                "id": "4",
-                "source": "12 товарів",
+                "id": "2",
+                "source": "0 товарів",
                 "message": "без цін",
-                "time": "потребує оновлення",
-                "type": "warning"
+                "time": "усі ціни актуальні",
+                "type": "success"
             }
         ],
         "popularCategories": [],
