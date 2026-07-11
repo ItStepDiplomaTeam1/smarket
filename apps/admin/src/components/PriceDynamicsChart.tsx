@@ -33,7 +33,7 @@ export const PriceDynamicsChart: React.FC<PriceDynamicsChartProps> = ({ data }) 
         </div>
       </div>
 
-      <div className="h-[240px] w-full">
+      <div className="h-[180px] sm:h-[240px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
             data={data}
