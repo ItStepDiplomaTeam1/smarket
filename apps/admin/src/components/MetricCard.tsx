@@ -31,10 +31,10 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       )}
     >
       <div
-        className="w-[35%] aspect-square rounded-[22%] flex items-center justify-center shrink-0"
+        className="w-10 h-10 sm:w-12 sm:h-12 rounded-[22%] flex items-center justify-center shrink-0"
         style={{ backgroundColor: iconBgColor }}
       >
-        <img src={icon} alt={title} className="w-[50%] h-[50%] object-contain" />
+        <img src={icon} alt={title} className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />
       </div>
 
       {/* Content */}
