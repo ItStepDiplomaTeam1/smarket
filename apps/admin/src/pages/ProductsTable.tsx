@@ -12,10 +12,10 @@ import { useProducts, useToggleProductVisibility } from '@/hooks/useProducts';
 import { MetricCard } from '@/components/MetricCard';
 
 import PackageIcon from '@/assets/MetricCardIcons/Package.svg';
-import NeedsReviewIcon from '@/assets/MetricCardIcons/NeedsReview.svg';
-import ChecklistIcon from '@/assets/MetricCardIcons/Checklist.svg';
-import NoPriceIcon from '@/assets/MetricCardIcons/NoPrice.svg';
-import HiddenIcon from '@/assets/MetricCardIcons/Hidden.svg';
+import SearchIcon from '@/assets/MetricCardIcons/Search.svg';
+import RowsIcon from '@/assets/MetricCardIcons/Rows.svg';
+import TagIcon from '@/assets/MetricCardIcons/Tag.svg';
+import BinIcon from '@/assets/MetricCardIcons/Bin.svg';
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -386,26 +386,26 @@ const ProductsTable: React.FC = () => {
         <MetricCard
           title="Потребують перевірки"
           value={15}
-          icon={NeedsReviewIcon}
+          icon={SearchIcon}
           iconBgColor="#FD690D"
         />
         <MetricCard
           title="Без категорії"
           value={12}
-          icon={ChecklistIcon}
+          icon={RowsIcon}
           iconBgColor="#FDC80D"
         />
         <MetricCard
           title="Без ціни"
           value={8}
-          icon={NoPriceIcon}
-          iconBgColor="#FDC80D"
+          icon={TagIcon}
+          iconBgColor="#1A65F2"
         />
         <MetricCard
           title="Неактивні"
           value={5}
-          icon={HiddenIcon}
-          iconBgColor="#FDC80D"
+          icon={BinIcon}
+          iconBgColor="#C30404"
         />
       </div>
 
