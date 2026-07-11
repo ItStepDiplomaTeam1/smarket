@@ -29,7 +29,10 @@ export const NeedsAttentionWidget: React.FC<NeedsAttentionWidgetProps> = ({ item
                 </p>
                 {item.time && (
                   <p className="text-xs text-textMuted mt-0.5">
-                    {item.type === 'error' ? 'Остання помилка:' : 'Запущено:'} <span className={item.type === 'error' ? 'text-accentRed font-medium' : 'text-textMain'}>{item.time}</span>
+                    {item.type === 'error' && <span className="text-accentRed mr-1">Остання помилка:</span>}
+                    <span className={item.type === 'error' ? 'text-accentRed font-medium' : 'text-textMain'}>
+                      {item.time}
+                    </span>
                   </p>
                 )}
               </div>
