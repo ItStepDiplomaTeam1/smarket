@@ -147,7 +147,7 @@ func PublishEvent(conn *amqp.Connection, eventType, message, severity string, de
 	}
 	defer ch.Close()
 
-	err = ch.ExchangeDeclare("smarket_events", "topic", false, false, false, false, nil)
+	err = ch.ExchangeDeclare("smarket_events", "topic", true, false, false, false, nil)
 	if err != nil {
 		log.Printf("[Events] Помилка оголошення exchange smarket_events: %v", err)
 		return

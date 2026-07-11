@@ -113,6 +113,7 @@ async def internal_health_check() -> dict:
         "PostgreSQL": pg,
         "Redis": redis,
         "Meilisearch": meili,
+        "RabbitMQ": rmq,
     }
 
 
