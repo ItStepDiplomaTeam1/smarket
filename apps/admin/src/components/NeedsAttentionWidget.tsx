@@ -1,7 +1,12 @@
 import React from 'react';
 import type { DashboardData } from '@/hooks/useDashboardData';
-import { AlertTriangle, RefreshCw, Info, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+
+import ErrorIcon from '@/assets/Logs/Error.svg';
+import WarningIcon from '@/assets/Logs/Warning.svg';
+import SuccessIcon from '@/assets/Logs/Success.svg';
+import StartIcon from '@/assets/Logs/Start.svg';
 
 interface NeedsAttentionWidgetProps {
   items: DashboardData['needsAttention'];
@@ -18,10 +23,11 @@ export const NeedsAttentionWidget: React.FC<NeedsAttentionWidgetProps> = ({ item
         <ul className="space-y-3">
           {items.map((item) => (
             <li key={item.id} className="flex gap-3 text-sm">
-              <div className="mt-0.5">
-                {item.type === 'error' && <AlertTriangle size={16} className="text-accentRed" />}
-                {item.type === 'sync' && <RefreshCw size={16} className="text-accentYellow" />}
-                {item.type === 'warning' && <Info size={16} className="text-accentYellow" />}
+              <div className="mt-0.5 shrink-0">
+                {item.type === 'error' && <img src={ErrorIcon} alt="error" className="w-4 h-4 object-contain" />}
+                {item.type === 'sync' && <img src={StartIcon} alt="sync" className="w-4 h-4 object-contain animate-spin" />}
+                {item.type === 'warning' && <img src={WarningIcon} alt="warning" className="w-4 h-4 object-contain" />}
+                {item.type === 'success' && <img src={SuccessIcon} alt="success" className="w-4 h-4 object-contain" />}
               </div>
               <div>
                 <p className="text-textMain font-medium leading-tight">

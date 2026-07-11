@@ -1,8 +1,14 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { CheckSquare, AlertTriangle, UserPlus, RefreshCw, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+
+import SuccessIcon from '@/assets/Logs/Success.svg';
+import ErrorIcon from '@/assets/Logs/Error.svg';
+import WarningIcon from '@/assets/Logs/Warning.svg';
+import NewUserIcon from '@/assets/Logs/NewUser.svg';
+import StartIcon from '@/assets/Logs/Start.svg';
 
 interface AuditLog {
   id: number;
@@ -35,15 +41,15 @@ export const SystemLogsTable: React.FC = () => {
   const getIcon = (severity: string) => {
     switch (severity) {
       case 'success':
-        return <CheckSquare size={16} className="text-primary" />;
+        return <img src={SuccessIcon} alt="success" className="w-4 h-4 object-contain" />;
       case 'error':
-        return <AlertTriangle size={16} className="text-accentRed" />;
+        return <img src={ErrorIcon} alt="error" className="w-4 h-4 object-contain" />;
       case 'warning':
-        return <RefreshCw size={16} className="text-accentYellow" />;
+        return <img src={WarningIcon} alt="warning" className="w-4 h-4 object-contain" />;
       case 'info':
-        return <UserPlus size={16} className="text-accentPurple" />;
+        return <img src={NewUserIcon} alt="info" className="w-4 h-4 object-contain" />;
       default:
-        return <CheckSquare size={16} className="text-textMuted" />;
+        return <img src={StartIcon} alt="log" className="w-4 h-4 object-contain" />;
     }
   };
 

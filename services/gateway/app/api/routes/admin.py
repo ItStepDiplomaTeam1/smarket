@@ -286,6 +286,13 @@ async def get_dashboard_summary(request: Request):
                 "message": "без цін",
                 "time": "усі ціни актуальні",
                 "type": "success"
+            },
+            {
+                "id": "3",
+                "source": f"{prod_stats.get('hiddenProducts', 0)} товарів",
+                "message": "приховані",
+                "time": "приховано від покупців" if prod_stats.get('hiddenProducts', 0) > 0 else "усі товари видимі",
+                "type": "warning" if prod_stats.get('hiddenProducts', 0) > 0 else "success"
             }
         ],
         "popularCategories": [],
