@@ -158,7 +158,7 @@ jobs:
 
           if python_service_changed "product_service"; then
             add_python_service "product_service"
-            add_docker_service "product_service" "services/product_service/DockerFile" "."
+            add_docker_service "product_service" "services/product_service/Dockerfile" "."
           fi
 
           if python_service_changed "reviews_service"; then
@@ -179,7 +179,7 @@ jobs:
           if [[ "$root_docker" == "true" ]]; then
             add_docker_service "auth_service" "services/auth_service/Dockerfile" "."
             add_docker_service "cart_service" "services/cart_service/DockerFile" "."
-            add_docker_service "product_service" "services/product_service/DockerFile" "."
+            add_docker_service "product_service" "services/product_service/Dockerfile" "."
             add_docker_service "reviews_service" "services/reviews_service/Dockerfile" "."
             add_docker_service "audit_service" "services/audit_service/Dockerfile" "."
             add_docker_service "zephyros_agent" "services/zephyros_agent/Dockerfile" "."
