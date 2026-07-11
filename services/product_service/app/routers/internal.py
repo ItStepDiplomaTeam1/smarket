@@ -150,7 +150,7 @@ async def internal_dashboard_stats(db: AsyncSession = Depends(get_db)) -> dict:
                     "name": d_date.strftime("%d.%m"),
                     "value": row.count
                 })
-        # Отримання кількості товарів без категорії
+        # Отримання кількості товарів без категорії (аномалії)
         products_without_category = await db.scalar(
             select(func.count(Product.id)).where(Product.canonical_category_id.is_(None))
         )
