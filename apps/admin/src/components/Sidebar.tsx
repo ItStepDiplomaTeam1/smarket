@@ -61,10 +61,11 @@ interface NavItemProps {
   iconFilled: string | React.ComponentType;
 }
 
-const NavItem: React.FC<NavItemProps> = ({ name, path, iconOutline, iconFilled }) => (
+const NavItem: React.FC<NavItemProps & { onClick?: () => void }> = ({ name, path, iconOutline, iconFilled, onClick }) => (
   <NavLink
     to={path}
     end={path === '/'}
+    onClick={onClick}
     className={({ isActive }) =>
       cn(
         'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-150 select-none',
@@ -96,20 +97,29 @@ const NavItem: React.FC<NavItemProps> = ({ name, path, iconOutline, iconFilled }
   </NavLink>
 );
 
-export const Sidebar: React.FC = () => {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const { logout } = useAuthStore();
 
   return (
-    <aside className="w-[210px] shrink-0 bg-surface rounded-xl shadow-sm border border-border flex flex-col overflow-hidden">
-      {/* Logo */}
-      <div className="px-5 py-4 shrink-0">
-        <img src={logo} alt="Smarket" className="h-7 w-auto" />
-      </div>
+    <aside
+      className={cn(
+        "w-[210px] shrink-0 bg-surface rounded-xl shadow-sm border border-border flex flex-col overflow-hidden pt-4 transition-all duration-200",
+        "hidden lg:flex",
+        isOpen
+          ? "fixed inset-y-4 left-4 flex z-50 shadow-2xl animate-in slide-in-from-left duration-200"
+          : "hidden"
+      )}
+    >
 
       {/* Main Nav */}
       <nav className="flex-1 overflow-y-auto px-3 pb-2 flex flex-col gap-0.5">
         {mainNavItems.map((item) => (
-          <NavItem key={item.path} {...item} />
+          <NavItem key={item.path} {...item} onClick={onClose} />
         ))}
       </nav>
 
@@ -119,7 +129,7 @@ export const Sidebar: React.FC = () => {
       {/* Bottom section */}
       <div className="px-3 pt-1 pb-3 flex flex-col gap-0.5">
         {bottomNavItems.map((item) => (
-          <NavItem key={item.path} {...item} />
+          <NavItem key={item.path} {...item} onClick={onClose} />
         ))}
 
         {/* Divider before logout */}

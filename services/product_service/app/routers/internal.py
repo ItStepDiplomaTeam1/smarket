@@ -134,12 +134,12 @@ async def internal_dashboard_stats(db: AsyncSession = Depends(get_db)) -> dict:
         seven_days_ago = today - timedelta(days=7)
         stmt = (
             select(
-                func.date_trunc('day', Price.recorded_at).label('day'),
+                func.date_trunc(text("'day'"), Price.recorded_at).label('day'),
                 func.count(Price.id).label('count')
             )
             .where(Price.recorded_at >= seven_days_ago)
-            .group_by(func.date_trunc('day', Price.recorded_at))
-            .order_by(func.date_trunc('day', Price.recorded_at).asc())
+            .group_by(func.date_trunc(text("'day'"), Price.recorded_at))
+            .order_by(func.date_trunc(text("'day'"), Price.recorded_at).asc())
         )
         result = await db.execute(stmt)
         price_dynamics = []

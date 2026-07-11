@@ -7,7 +7,6 @@ import { SystemStatusWidget } from '@/components/SystemStatusWidget';
 import { PriceDynamicsChart } from '@/components/PriceDynamicsChart';
 
 import { NeedsAttentionWidget } from '@/components/NeedsAttentionWidget';
-import { PopularCategoriesWidget } from '@/components/PopularCategoriesWidget';
 import { NewUsersWidget } from '@/components/NewUsersWidget';
 import { PopularProductsWidget } from '@/components/PopularProductsWidget';
 
@@ -51,7 +50,7 @@ const Dashboard: React.FC = () => {
         <div className="xl:col-span-2 flex flex-col gap-6">
 
           {/* ─── Top section: 4 KPI Cards in a single row ─── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
               title="Всього товарів"
               value={data.metrics.totalProducts.toLocaleString('uk-UA')}
@@ -84,11 +83,10 @@ const Dashboard: React.FC = () => {
           {/* System logs */}
           <SystemLogsTable />
 
-          {/* 4-col bottom widgets */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {/* Bottom widgets row (50/50 split) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <NeedsAttentionWidget items={data.needsAttention} />
             <NewUsersWidget />
-            <PopularCategoriesWidget categories={data.popularCategories} />
           </div>
         </div>
 

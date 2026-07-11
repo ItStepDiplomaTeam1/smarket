@@ -26,7 +26,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   return (
     <div
       className={cn(
-        'bg-surface rounded-2xl p-5 flex flex-col items-start border border-border shadow-sm aspect-square w-full max-w-[220px] mx-auto',
+        'bg-surface rounded-2xl p-4 sm:p-5 flex flex-col items-start border border-border shadow-sm w-full',
         className
       )}
     >

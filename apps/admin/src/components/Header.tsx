@@ -3,8 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { Bell, ChevronDown, LogOut, User } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { apiClient } from '@/lib/apiClient';
+import logo from '@/assets/Logo-Smarket.svg';
+import sidebarIcon from '@/assets/SidebarIcons/Sidebar.svg';
 
-export const Header: React.FC = () => {
+interface HeaderProps {
+  onToggleSidebar?: () => void;
+}
+
+export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -37,8 +43,11 @@ export const Header: React.FC = () => {
   const initials = displayName.slice(0, 2).toUpperCase();
 
   return (
-    <header className="h-[68px] flex items-center justify-end px-6 bg-surface border border-border rounded-xl shadow-sm z-10 sticky top-0 shrink-0">
-
+    <header className="h-[68px] w-full flex items-center justify-between px-6 bg-surface border-b border-border z-10 sticky top-0 shrink-0">
+      {/* Left side: Logo */}
+      <div className="flex items-center gap-3">
+        <img src={logo} alt="Smarket" className="h-7 w-auto shrink-0" />
+      </div>
 
       {/* Right side */}
       <div className="flex items-center gap-3">
@@ -96,6 +105,15 @@ export const Header: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Toggle Sidebar Button */}
+        <button
+          onClick={onToggleSidebar}
+          className="p-2 -mr-1 rounded-lg hover:bg-secondary text-[#265447] transition-colors lg:hidden shrink-0"
+          title="Меню"
+        >
+          <img src={sidebarIcon} alt="Меню" className="w-[18px] h-[18px] object-contain shrink-0" />
+        </button>
       </div>
     </header>
   );

@@ -63,7 +63,7 @@ export const SystemLogsTable: React.FC = () => {
       </div>
       
       <div className="overflow-x-auto flex-1">
-        <table className="w-full text-left border-collapse table-fixed">
+        <table className="w-full min-w-[600px] text-left border-collapse table-fixed">
           <thead>
             <tr className="text-textMuted text-sm border-b border-border shrink-0">
               <th className="px-6 py-3 font-medium w-16"></th>
