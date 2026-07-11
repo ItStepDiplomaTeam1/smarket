@@ -1,19 +1,21 @@
 import React, { useState } from 'react';
 import { 
   Search, 
-  ShoppingBag, 
-  Menu, 
-  Tag, 
   ChevronLeft, 
   ChevronRight,
   ChevronDown,
-  AlertCircle,
   Eye,
   EyeOff,
-  XCircle,
   MoreVertical,
 } from 'lucide-react';
 import { useProducts, useToggleProductVisibility } from '@/hooks/useProducts';
+import { MetricCard } from '@/components/MetricCard';
+
+import PackageIcon from '@/assets/MetricCardIcons/Package.svg';
+import SearchIcon from '@/assets/MetricCardIcons/Search.svg';
+import RowsIcon from '@/assets/MetricCardIcons/Rows.svg';
+import TagIcon from '@/assets/MetricCardIcons/Tag.svg';
+import BinIcon from '@/assets/MetricCardIcons/Bin.svg';
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -46,30 +48,7 @@ const STATUSES = [
 
 // ── Helper Components ─────────────────────────────────────────────────────
 
-const MetricCard: React.FC<{
-  title: string;
-  value: number;
-  icon: React.ElementType;
-  iconBg: string;
-  iconColor: string;
-  trendText: string;
-  trendPositive?: boolean;
-}> = ({ title, value, icon: Icon, iconBg, iconColor, trendText, trendPositive = false }) => (
-  <div className="bg-surface border border-border rounded-xl p-5 flex flex-col justify-between shadow-sm">
-    <div className="flex justify-between items-start mb-4">
-      <div className={`p-2.5 rounded-lg ${iconBg}`}>
-        <Icon className={iconColor} size={20} />
-      </div>
-    </div>
-    <div>
-      <h3 className="text-sm font-medium text-textMuted mb-1">{title}</h3>
-      <div className="text-2xl font-bold text-textMain">{value}</div>
-      <p className={`text-xs mt-1.5 flex items-center font-medium ${trendPositive ? 'text-green-500' : 'text-red-500'}`}>
-        <span className="mr-1">{trendPositive ? '↑' : '↓'}</span> {trendText}
-      </p>
-    </div>
-  </div>
-);
+
 
 const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
   if (status === 'Активний') {
@@ -398,50 +377,35 @@ const ProductsTable: React.FC = () => {
 
       {/* ── Top Metrics Grid ── */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <MetricCard 
-          title="Всього товарів" 
-          value={isLoading ? 0 : totalHits} 
-          icon={ShoppingBag} 
-          iconBg="bg-[#e6f4ea]" 
-          iconColor="text-[#1e8e3e]"
-          trendText="5.2% від учора"
-          trendPositive={true}
+        <MetricCard
+          title="Всього товарів"
+          value={isLoading ? 0 : totalHits.toLocaleString('uk-UA')}
+          icon={PackageIcon}
+          iconBgColor="#6FE3C2"
         />
-        <MetricCard 
-          title="Потребують перевірки" 
-          value={15} 
-          icon={Search} 
-          iconBg="bg-[#feefe6]" 
-          iconColor="text-[#e05a10]"
-          trendText="7.5% від учора"
-          trendPositive={true}
+        <MetricCard
+          title="Потребують перевірки"
+          value={15}
+          icon={SearchIcon}
+          iconBgColor="#FD690D"
         />
-        <MetricCard 
-          title="Без категорії" 
-          value={12} 
-          icon={Menu} 
-          iconBg="bg-[#fef7e0]" 
-          iconColor="text-[#b08b00]"
-          trendText="1.2% від учора"
-          trendPositive={false}
+        <MetricCard
+          title="Без категорії"
+          value={12}
+          icon={RowsIcon}
+          iconBgColor="#FDC80D"
         />
-        <MetricCard 
-          title="Без ціни" 
-          value={8} 
-          icon={Tag} 
-          iconBg="bg-[#e8f0fe]" 
-          iconColor="text-[#1a73e8]"
-          trendText="2.3% від учора"
-          trendPositive={false}
+        <MetricCard
+          title="Без ціни"
+          value={8}
+          icon={TagIcon}
+          iconBgColor="#1A65F2"
         />
-        <MetricCard 
-          title="Неактивні" 
-          value={5} 
-          icon={XCircle} 
-          iconBg="bg-[#fce8e6]" 
-          iconColor="text-[#d93025]"
-          trendText="1.4% від учора"
-          trendPositive={false}
+        <MetricCard
+          title="Неактивні"
+          value={5}
+          icon={BinIcon}
+          iconBgColor="#C30404"
         />
       </div>
 
