@@ -150,12 +150,17 @@ async def internal_dashboard_stats(db: AsyncSession = Depends(get_db)) -> dict:
                     "name": d_date.strftime("%d.%m"),
                     "value": row.count
                 })
+        # Отримання кількості товарів без категорії
+        products_without_category = await db.scalar(
+            select(func.count(Product.id)).where(Product.canonical_category_id.is_(None))
+        )
         
         return {
             "totalProducts": total_products or 0,
             "totalStores": total_stores or 0,
             "pricesUpdatedToday": prices_updated_today or 0,
-            "priceDynamics": price_dynamics
+            "priceDynamics": price_dynamics,
+            "productsWithoutCategory": products_without_category or 0
         }
     except Exception as exc:
         logger.error(f"[dashboard-stats] failed: {exc}")
@@ -163,5 +168,6 @@ async def internal_dashboard_stats(db: AsyncSession = Depends(get_db)) -> dict:
             "totalProducts": 0,
             "totalStores": 0,
             "pricesUpdatedToday": 0,
-            "priceDynamics": []
+            "priceDynamics": [],
+            "productsWithoutCategory": 0
         }
