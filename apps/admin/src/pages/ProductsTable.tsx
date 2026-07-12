@@ -7,6 +7,7 @@ import {
   Eye,
   EyeOff,
   MoreVertical,
+  AlertCircle
 } from 'lucide-react';
 import { useProducts, useToggleProductVisibility } from '@/hooks/useProducts';
 import { MetricCard } from '@/components/MetricCard';

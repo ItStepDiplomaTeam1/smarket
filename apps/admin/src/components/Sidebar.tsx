@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 // Using custom SVG icons from SidebarIcons folder
 import { cn } from '@/lib/utils';
-import logo from '@/assets/HeaderIcons/Logo-Smarket.svg';
+
 
 import homeActive from '@/assets/SidebarIcons/Home - active.svg';
 import homeInactive from '@/assets/SidebarIcons/Home - inactive.svg';

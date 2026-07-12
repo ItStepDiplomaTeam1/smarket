@@ -14,7 +14,7 @@ export interface DashboardData {
   };
   priceDynamics: Array<{ name: string; value: number }>;
   systemLogs: Array<{ id: string; time: string; event: string; details: string; status: 'success' | 'warning' | 'error' | 'info' }>;
-  needsAttention: Array<{ id: string; source: string; message: string; time: string; type: 'error' | 'sync' | 'warning' }>;
+  needsAttention: Array<{ id: string; source: string; message: string; time: string; type: 'error' | 'sync' | 'warning' | 'success' }>;
   popularCategories: Array<{ id: string; name: string; count: number; icon: string }>;
   newUsers: Array<{ id: string; name: string; email: string; initials: string }>;
   searchQueries: Array<{ id: string; query: string; count: number; position: number }>;

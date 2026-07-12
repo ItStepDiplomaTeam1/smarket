@@ -8,6 +8,14 @@ import WarningIcon from '@/assets/LogIcons/Warning.svg';
 import SuccessIcon from '@/assets/LogIcons/Success.svg';
 import StartIcon from '@/assets/LogIcons/Start.svg';
 
+export interface NeedsAttentionItem {
+  id: string;
+  source: string;
+  message?: string;
+  time?: string;
+  type: 'error' | 'warning' | 'sync' | 'success';
+}
+
 interface NeedsAttentionWidgetProps {
   items: DashboardData['needsAttention'];
 }
