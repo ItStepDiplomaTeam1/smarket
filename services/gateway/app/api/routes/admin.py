@@ -109,6 +109,10 @@ async def get_audit_logs(request: Request):
         )
     except httpx.ConnectError:
         raise HTTPException(status_code=503, detail="Audit service unavailable")
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Audit service timeout")
+    except httpx.RequestError as exc:
+        raise HTTPException(status_code=502, detail=f"Bad Gateway: {exc}")
 
 
 
@@ -372,10 +376,11 @@ async def get_system_status(request: Request):
     search_task = _probe_search_service(client, f"{settings.SEARCH_SERVICE_URL}/api/v1/health")
     etl_task = _probe_etl_service(client, f"{settings.ETL_SERVICE_URL}/health")
     email_task = _probe_http_service(client, f"{settings.EMAIL_WORKER_URL}/health")
+    audit_task = _probe_http_service(client, f"{settings.AUDIT_SERVICE_URL}/health")
 
     (db_res, auth_res, product_res, cart_res, reviews_res, 
-     search_res, (etl_res, mongo_res), email_res) = await asyncio.gather(
-        db_task, auth_task, product_task, cart_task, reviews_task, search_task, etl_task, email_task
+     search_res, (etl_res, mongo_res), email_res, audit_res) = await asyncio.gather(
+        db_task, auth_task, product_task, cart_task, reviews_task, search_task, etl_task, email_task, audit_task
     )
 
     # Compile result dict
@@ -396,6 +401,7 @@ async def get_system_status(request: Request):
         "Search Service": search_res,
         "ETL Service": etl_res,
         "Email Worker": email_res,
+        "Audit Service": audit_res,
     }
 
     return JSONResponse(content=service_statuses)

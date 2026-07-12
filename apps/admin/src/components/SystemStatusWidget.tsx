@@ -12,6 +12,7 @@ const SERVICE_LABELS: Record<string, string> = {
   'Search Service':   'Пошуковий сервіс (Rust)',
   'ETL Service':      'Служба імпорту (Go ETL)',
   'Email Worker':     'Служба розсилок (FastStream)',
+  'Audit Service':    'Служба аудиту (FastAPI)',
 };
 
 // Ordered list of microservices only
@@ -24,6 +25,7 @@ const SERVICE_ORDER = [
   'Search Service',
   'ETL Service',
   'Email Worker',
+  'Audit Service',
 ];
 
 // ── Sub-components ────────────────────────────────────────────────────────────
