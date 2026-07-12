@@ -245,7 +245,7 @@ func PublishEvent(conn *amqp.Connection, eventType, message, severity string, de
 
 	event := map[string]interface{}{
 		"event_id":    time.Now().UnixNano(),
-		"timestamp":   time.Now().UTC().Format(time.RFC3339) + "Z",
+		"timestamp":   time.Now().UTC().Format(time.RFC3339),
 		"actor":       "products_etl",
 		"event_type":  eventType,
 		"entity_type": "service",
