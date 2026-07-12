@@ -12,6 +12,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from services.auth_service.database.models import User
 from services.auth_service.database.session import get_db
 from services.auth_service.plugins.checking.user import get_authenticated_user
+from services.auth_service.plugins.security.auth_cache import (
+    cache_auth_user,
+    invalidate_cached_auth_user,
+)
 from services.auth_service.plugins.security.hash.password import hash_password, verify_password
 from services.auth_service.plugins.security.jwt_handler import (
     JWTExpiredError,
@@ -169,6 +173,7 @@ async def register(
         db.add(inner_user)
         await db.commit()
         await db.refresh(inner_user)
+        await cache_auth_user(inner_user)
 
         access_token = create_access_token(str(inner_user.id), inner_user.role, inner_user.email)
         refresh_token = create_refresh_token(str(inner_user.id), inner_user.role, inner_user.email)
@@ -405,6 +410,7 @@ async def change_password(
 
     current_user.hashed_password = hash_password(body.new_password)
     await db.commit()
+    await invalidate_cached_auth_user(current_user.email)
     return {"message": "Пароль успішно змінено"}
 
 

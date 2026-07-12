@@ -1,4 +1,3 @@
-import os
 from datetime import UTC, datetime
 
 import httpx
@@ -17,7 +16,7 @@ from services.auth_service.plugins.security.jwt_handler import (
 )
 from services.auth_service.plugins.security.secrets.load_secret import get_secret
 from services.auth_service.plugins.security.telegram_validator import verify_telegram_auth
-from services.auth_service.routers.auth import _mask_email, _build_cookie_params
+from services.auth_service.routers.auth import _build_cookie_params, _mask_email
 from services.auth_service.shared.DTO import (
     GoogleOAuthRequest,
     LoginResponse,

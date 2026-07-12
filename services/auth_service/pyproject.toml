@@ -53,3 +53,9 @@ exclude = ["\\.venv", "tests"]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 addopts = "--tb=short -q"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]
