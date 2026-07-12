@@ -5,6 +5,30 @@
 @theme {
   --font-inter: 'Inter', sans-serif;
   --font-manrope: 'Manrope', sans-serif;
+
+  --color-admin-bg: var(--admin-bg);
+  --color-admin-surface: var(--admin-surface);
+  --color-sidebar-text: var(--sidebar-text);
+  --color-admin-text-bold: var(--admin-text-bold);
+  --color-admin-text-regular: var(--admin-text-regular);
+}
+
+@variant dark (&:where(.dark, .dark *));
+
+:root {
+  --admin-bg: #F3F4F6;
+  --admin-surface: #FFFFFF;
+  --admin-text-bold: #265447;
+  --admin-text-regular: #6D8279;
+  --sidebar-text: #6D8279;
+}
+
+.dark {
+  --admin-bg: #111A17;
+  --admin-surface: #1C2723;
+  --admin-text-bold: #FFFFFF;
+  --admin-text-regular: #9CA3AF;
+  --sidebar-text: #4ADE80;
 }
 
 @variant dark (&:where(.dark, .dark *));

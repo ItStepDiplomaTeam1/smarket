@@ -66,7 +66,7 @@ export const PopularProductsWidget: React.FC<PopularProductsWidgetProps> = ({ pr
       <div className="p-4 border-t border-border mt-auto">
         <Link 
           to="/products"
-          className="w-full block text-center py-2 bg-background border border-border rounded-lg text-sm font-medium text-textMain hover:bg-secondary hover:text-primary transition-colors"
+          className="w-full block text-center py-2 bg-background border border-border rounded-lg text-sm font-medium text-textMain hover:bg-secondary hover:text-primary transition-colors btn-outline-theme"
         >
           Переглянути всі
         </Link>

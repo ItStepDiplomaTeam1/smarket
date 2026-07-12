@@ -3,10 +3,10 @@ import type { DashboardData } from '@/hooks/useDashboardData';
 import { ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
-import ErrorIcon from '@/assets/Logs/Error.svg';
-import WarningIcon from '@/assets/Logs/Warning.svg';
-import SuccessIcon from '@/assets/Logs/Success.svg';
-import StartIcon from '@/assets/Logs/Start.svg';
+import ErrorIcon from '@/assets/LogIcons/Error.svg';
+import WarningIcon from '@/assets/LogIcons/Warning.svg';
+import SuccessIcon from '@/assets/LogIcons/Success.svg';
+import StartIcon from '@/assets/LogIcons/Start.svg';
 
 interface NeedsAttentionWidgetProps {
   items: DashboardData['needsAttention'];

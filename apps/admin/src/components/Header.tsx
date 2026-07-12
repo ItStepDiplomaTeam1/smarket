@@ -2,9 +2,11 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, ChevronDown, LogOut, User } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useUiStore } from '@/store/useUiStore';
 import { apiClient } from '@/lib/apiClient';
-import logo from '@/assets/Logo-Smarket.svg';
+import logo from '@/assets/HeaderIcons/Logo-Smarket.svg';
 import sidebarIcon from '@/assets/SidebarIcons/Sidebar.svg';
+import { ThemeToggle } from './ThemeToggle';
 
 interface HeaderProps {
   onToggleSidebar?: () => void;
@@ -12,6 +14,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const { user, logout } = useAuthStore();
+  const { isDarkMode, setTheme } = useUiStore();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -51,6 +54,8 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
 
       {/* Right side */}
       <div className="flex items-center gap-3">
+        <ThemeToggle isDark={isDarkMode} onChange={setTheme} />
+
         {/* Bell */}
         <button className="relative p-2 rounded-full hover:bg-secondary text-textMuted hover:text-primary transition-colors">
           <Bell size={20} />

@@ -45,7 +45,7 @@ export const PriceDynamicsChart: React.FC<PriceDynamicsChartProps> = ({ data }) 
                 <stop offset="95%" stopColor="#10B981" stopOpacity={0}/>
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--color-chart-grid)" strokeWidth={2} />
             <XAxis 
               dataKey="name" 
               axisLine={false}
@@ -60,15 +60,15 @@ export const PriceDynamicsChart: React.FC<PriceDynamicsChartProps> = ({ data }) 
             />
             <Tooltip 
               contentStyle={{ 
-                backgroundColor: '#ffffff', 
-                border: '1px solid #E5E7EB',
+                backgroundColor: 'var(--color-surface)', 
+                border: '1px solid var(--color-border)',
                 borderRadius: '8px',
                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                 fontFamily: 'inherit',
                 fontSize: '12px'
               }}
               formatter={(value: any) => [Number(value).toLocaleString('uk-UA'), 'Оновлено цін']}
-              labelStyle={{ fontWeight: 600, color: '#374151', marginBottom: '4px' }}
+              labelStyle={{ fontWeight: 600, color: 'var(--color-text-main)', marginBottom: '4px' }}
             />
             <Area 
               type="monotone" 

@@ -4,11 +4,11 @@ import { useQuery } from '@tanstack/react-query';
 import { ChevronRight } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 
-import SuccessIcon from '@/assets/Logs/Success.svg';
-import ErrorIcon from '@/assets/Logs/Error.svg';
-import WarningIcon from '@/assets/Logs/Warning.svg';
-import NewUserIcon from '@/assets/Logs/NewUser.svg';
-import StartIcon from '@/assets/Logs/Start.svg';
+import SuccessIcon from '@/assets/LogIcons/Success.svg';
+import ErrorIcon from '@/assets/LogIcons/Error.svg';
+import WarningIcon from '@/assets/LogIcons/Warning.svg';
+import NewUserIcon from '@/assets/LogIcons/NewUser.svg';
+import StartIcon from '@/assets/LogIcons/Start.svg';
 
 interface AuditLog {
   id: number;

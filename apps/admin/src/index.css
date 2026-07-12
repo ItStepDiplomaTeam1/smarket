@@ -3,24 +3,117 @@
 @tailwind components;
 @tailwind utilities;
 
+/* === CSS Variables === */
+:root {
+  --color-bg: #F8F9FA;
+  --color-surface: #FFFFFF;
+  --color-sidebar-text: #265447;
+  --color-text-main: #173B33;
+  --color-text-muted: #6D8279;
+  --color-chart-grid: #E5E7EB;
+  --color-border: #E5E7EB;
+}
+
+html.dark {
+  --color-bg: #111A17;
+  --color-surface: #1C2723;
+  --color-sidebar-text: #4ADE80;
+  --color-text-main: #FFFFFF;
+  --color-text-muted: #94A3B8;
+  --color-chart-grid: rgba(74, 222, 128, 0.15);
+  --color-border: rgba(38, 84, 71, 0.08);
+}
+
+/* === Base Styles === */
 @layer base {
   body {
-    @apply bg-background text-textMuted font-sans font-normal antialiased;
+    background-color: var(--color-bg);
+    @apply text-textMuted font-sans font-normal antialiased;
   }
-  
-  b, strong, h1, h2, h3, h4, h5, h6, .font-bold, .font-semibold, .font-extrabold, .font-black {
+
+  b, strong, h1, h2, h3, h4, h5, h6 {
     @apply font-manrope;
-    color: #173B33;
+    color: var(--color-text-main);
     font-weight: 700;
   }
 
-  .text-textMain {
-    color: #173B33 !important;
+  /* Global theme transitions for backgrounds, borders and text colors */
+  body,
+  .bg-background,
+  .bg-surface,
+  .border,
+  .border-b,
+  .border-t,
+  .border-l,
+  .border-r,
+  .text-sidebarText,
+  .text-textMain,
+  .text-textMuted {
+    transition-property: background-color, border-color, color, fill, stroke;
+    transition-duration: 200ms;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 
+/* === Force dark mode on panels and borders === */
+html.dark .bg-surface {
+  background-color: #1C2723 !important;
+}
+
+html.dark body,
+html.dark .bg-background {
+  background-color: #111A17 !important;
+}
+
+html.dark .border-border {
+  border-color: rgba(38, 84, 71, 0.08) !important;
+}
+
+/* === Force outline button style in dark mode === */
+html.dark .btn-outline-theme {
+  background-color: transparent !important;
+  border-color: var(--color-sidebar-text) !important;
+  color: var(--color-sidebar-text) !important;
+}
+
+html.dark .btn-outline-theme:hover {
+  background-color: color-mix(in srgb, var(--color-sidebar-text) 10%, transparent) !important;
+}
+
+/* === Force dynamic text colors, bypass Tailwind config cache === */
+.text-textMain {
+  color: var(--color-text-main) !important;
+}
+
+.text-textMuted {
+  color: var(--color-text-muted) !important;
+}
+
+/* === Sidebar nav text — reads CSS variable directly, bypasses Tailwind === */
+.sidebar-nav-item {
+  color: var(--color-sidebar-text) !important;
+}
+
+.sidebar-active-border {
+  border-color: color-mix(in srgb, var(--color-sidebar-text) 30%, transparent) !important;
+}
+
+/* === Sidebar icon color via CSS filter ===
+   Light: convert to #265447 (dark green)
+   Dark:  convert to #4ADE80 (lime green)
+   brightness(0) = makes icon black first, then recolor
+*/
+.sidebar-icon {
+  filter: brightness(0) saturate(100%) invert(22%) sepia(40%) saturate(690%) hue-rotate(119deg) brightness(94%) contrast(95%);
+  transition: filter 200ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html.dark .sidebar-icon {
+  filter: brightness(0) saturate(100%) invert(78%) sepia(40%) saturate(823%) hue-rotate(88deg) brightness(101%) contrast(95%);
+}
+
+/* === Scrollbar === */
 @layer components {
-  /* Scrollbar customization */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
