@@ -35,8 +35,10 @@ async def send_email(to_email: str, subject: str, html_content: str, text_conten
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
-    msg["From"] = SMTP_USER
+    msg["From"] = f"Smarket <{SMTP_USER}>"
     msg["To"] = to_email
+    msg["Auto-Submitted"] = "auto-generated"
+    msg["X-Auto-Response-Suppress"] = "All"
 
     part1 = MIMEText(text_content, "plain", "utf-8")
     part2 = MIMEText(html_content, "html", "utf-8")
@@ -63,7 +65,7 @@ async def send_email(to_email: str, subject: str, html_content: str, text_conten
 
 async def send_otp_email(to_email: str, otp_code: str) -> None:
     """Read OTP template, perform replacement, and send verification email."""
-    subject = "Smarket: Your Verification Code"
+    subject = "Smarket: Код підтвердження"
     template_path = Path(__file__).parent.parent.parent / "templates" / "misc" / "email-letter.html"
 
     if not EMAIL_ENABLED:
@@ -76,10 +78,16 @@ async def send_otp_email(to_email: str, otp_code: str) -> None:
             html_content = f.read()
     except FileNotFoundError:
         logger.warning(f"Email template not found at {template_path}. Falling back to default layout.")
-        html_content = f"<h1>Code: {otp_code}</h1>"
+        html_content = f"<h1>Код: {otp_code}</h1>"
 
     html_body = html_content.replace("{{ code }}", str(otp_code))
-    text_body = f"Your verification code: {otp_code}"
+    text_body = (
+        f"Вітаємо!\n\n"
+        f"Ваш одноразовий код підтвердження (OTP) для Smarket: {otp_code}\n\n"
+        f"Цей код є дійсним протягом короткого часу. Не повідомляйте його стороннім особам.\n\n"
+        f"---\n"
+        f"Це автоматичне повідомлення від Smarket. Будь ласка, не відповідайте на нього."
+    )
 
     await send_email(to_email, subject, html_body, text_body)
 

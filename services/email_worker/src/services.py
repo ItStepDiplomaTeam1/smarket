@@ -30,9 +30,12 @@ def _send_email(email_to: str, token: str, action: str):
     else:
         raise ValueError(f"Невідома дія: {action}")
 
-    # 2. Завантажуємо шаблон і рендеримо його з нашим токеном
+    # 2. Завантажуємо шаблон і рендеримо його з токеном та URL фронтенду
     template = jinja_env.get_template(template_name)
-    html_content = template.render(token=token)
+    html_content = template.render(
+        token=token,
+        frontend_url=settings.frontend_url.rstrip("/")
+    )
 
     # 3. Формуємо параметри для Resend
     # Важливо: Для тестового акаунту Resend дозволяє відправляти листи

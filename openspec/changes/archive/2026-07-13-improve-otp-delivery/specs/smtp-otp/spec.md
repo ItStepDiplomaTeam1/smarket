@@ -1,19 +1,4 @@
-# smtp-otp Specification
-
-## Purpose
-TBD - created by archiving change smtp-otp-integration. Update Purpose after archive.
-## Requirements
-### Requirement: Generate Secure OTP
-The system SHALL generate a secure one-time password (OTP) containing only digits of a configurable length.
-The system SHALL use a cryptographically secure random number generator (specifically the `secrets` module) to ensure the unpredictability of the generated codes.
-
-#### Scenario: Secure generation of a 4-digit OTP
-- **WHEN** requested to generate an OTP with a default length of 4
-- **THEN** the system returns a cryptographically secure 4-digit string containing only numeric characters (0-9)
-
-#### Scenario: Secure generation of a 6-digit OTP
-- **WHEN** requested to generate an OTP with a custom length of 6
-- **THEN** the system returns a cryptographically secure 6-digit string containing only numeric characters (0-9)
+## MODIFIED Requirements
 
 ### Requirement: Asynchronous Email Dispatch
 The system MUST asynchronously transmit emails using `aiosmtplib` to a specified recipient.
@@ -39,12 +24,3 @@ The email dispatch SHALL include a detailed plain-text version containing identi
 #### Scenario: Send verification OTP email in Ukrainian with plain text alternative
 - **WHEN** requested to send an OTP email to a user
 - **THEN** the system reads the localized Ukrainian HTML template, replaces `{{ code }}` with the OTP, constructs a rich plain-text backup, and calls the asynchronous email dispatcher to send it
-
-### Requirement: Receipt Email Transmission
-The system SHALL send a transaction receipt email containing payment references, amounts, and currency symbols.
-The system SHALL support placeholders `{{ amount }}`, `{{ reference }}`, `{{ date }}`, `{{ card_mask }}`, `{{ payment_id }}`, and `{{ currency_symbol }}` in the template.
-
-#### Scenario: Send payment receipt email
-- **WHEN** a payment receipt email request is processed with reference, amount, and card details
-- **THEN** the system reads the template, performs variable substitution, and dispatches the email
-
