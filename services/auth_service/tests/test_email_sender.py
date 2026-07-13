@@ -57,7 +57,7 @@ async def test_send_otp_email_calls_dispatcher(monkeypatch: pytest.MonkeyPatch) 
     args, kwargs = mock_send_email.call_args
     # Check recipient, subject, and text body contain the code
     assert args[0] == "recipient@example.com"
-    assert args[1] == "Smarket: Your Verification Code"
+    assert args[1] == "Smarket: Код підтвердження"
     assert "123456" in args[2]  # HTML content
     assert "123456" in args[3]  # Text content
 

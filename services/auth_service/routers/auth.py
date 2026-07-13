@@ -583,7 +583,7 @@ async def forgot_password(
             redis_client = _get_redis_client()
             await redis_client.setex(f"pwd_reset:{token}", 900, body.email)
             
-            frontend_url = os.getenv("FRONTEND_URL") or "http://localhost:5173"
+            frontend_url = (os.getenv("FRONTEND_URL") or "http://localhost:5173").rstrip("/")
             reset_link = f"{frontend_url}/reset-password?token={token}&email={body.email}"
             
             await send_password_reset_email(body.email, reset_link)
