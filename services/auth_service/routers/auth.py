@@ -1,4 +1,5 @@
 import os
+import secrets
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -15,6 +16,7 @@ from services.auth_service.plugins.checking.user import get_authenticated_user
 from services.auth_service.plugins.security.auth_cache import (
     cache_auth_user,
     invalidate_cached_auth_user,
+    _get_redis_client,
 )
 from services.auth_service.plugins.security.hash.password import hash_password, verify_password
 from services.auth_service.plugins.security.jwt_handler import (
@@ -29,6 +31,8 @@ from services.auth_service.plugins.security.token_blacklist import (
     blacklist_token,
     is_token_blacklisted,
 )
+from services.auth_service.plugins.security.otp import generate_secure_otp, save_otp, verify_otp
+from services.auth_service.plugins.security.email_sender import send_otp_email, send_password_reset_email
 from services.auth_service.shared.DTO import (
     ChangePasswordRequest,
     LoginResponse,
@@ -37,6 +41,10 @@ from services.auth_service.shared.DTO import (
     TokenResponse,
     UpdateSettingsRequest,
     UserResponse,
+    RegisterPendingResponse,
+    VerifyOTPRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
 )
 
 router = APIRouter(default_response_class=ORJSONResponse)
@@ -150,7 +158,7 @@ def _is_invalid_token(token: str) -> bool:
         return True
 
 
-@router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=RegisterPendingResponse, status_code=status.HTTP_201_CREATED)
 @auth_limiter.limit("3/minute")
 @auth_limiter.limit("10/hour")
 async def register(
@@ -161,41 +169,61 @@ async def register(
 ):
     logger.info(f"Запит на реєстрацію нового користувача з email: {_mask_email(body.email)}")
     try:
-        inner_user = User(
-            email=body.email,
-            hashed_password=hash_password(body.password),
-            role="user",
-            is_active=True,
-            created_at=datetime.now(UTC),
-            updated_at=datetime.now(UTC),
-        )
+        # Check if email is already registered
+        result = await db.execute(select(User).where(User.email == body.email))
+        existing_user = result.scalar_one_or_none()
 
-        db.add(inner_user)
+        if existing_user:
+            if existing_user.is_active:
+                logger.warning(f"Помилка реєстрації: email {_mask_email(body.email)} вже існує та активний")
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Email already registered",
+                )
+            else:
+                logger.info(f"Оновлення пароля та повторний запит OTP для неактивного користувача з email: {_mask_email(body.email)}")
+                existing_user.hashed_password = hash_password(body.password)
+                existing_user.updated_at = datetime.now(UTC)
+                if body.name:
+                    updated_settings = dict(existing_user.settings or {})
+                    updated_settings["name"] = body.name
+                    existing_user.settings = updated_settings
+                inner_user = existing_user
+        else:
+            settings_dict = {}
+            if body.name:
+                settings_dict["name"] = body.name
+            inner_user = User(
+                email=body.email,
+                hashed_password=hash_password(body.password),
+                role="user",
+                is_active=False,
+                settings=settings_dict,
+                created_at=datetime.now(UTC),
+                updated_at=datetime.now(UTC),
+            )
+            db.add(inner_user)
+
         await db.commit()
         await db.refresh(inner_user)
-        await cache_auth_user(inner_user)
 
-        access_token = create_access_token(str(inner_user.id), inner_user.role, inner_user.email)
-        refresh_token = create_refresh_token(str(inner_user.id), inner_user.role, inner_user.email)
-
-        response.set_cookie(**_build_cookie_params(value=refresh_token))
+        otp_code = generate_secure_otp(length=6)
+        await save_otp(body.email, otp_code)
+        await send_otp_email(body.email, otp_code)
 
         logger.success(
-            f"Користувача {_mask_email(body.email)} успішно зареєстровано з ID: {inner_user.id}"
+            f"Користувача {_mask_email(body.email)} успішно зареєстровано (в стані pending) з ID: {inner_user.id}"
         )
-        return RegisterResponse(
-            access_token=access_token,
-            token_type="bearer",
-            user=UserResponse(
-                id=str(inner_user.id),
-                email=inner_user.email,
-                role=inner_user.role,
-            ),
+        return RegisterPendingResponse(
+            message="Verification email sent. Please verify your OTP to complete registration.",
+            email=body.email,
         )
 
+    except HTTPException:
+        raise
     except IntegrityError as err:
         await db.rollback()
-        logger.warning(f"Помилка реєстрації: email {_mask_email(body.email)} вже існує в системі")
+        logger.warning(f"Помилка реєстрації (унікальність): email {_mask_email(body.email)} вже існує в системі")
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email already registered",
@@ -203,6 +231,71 @@ async def register(
     except Exception as err:
         await db.rollback()
         logger.exception("Критична помилка під час реєстрації користувача")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
+        ) from err
+
+
+@router.post("/register/verify", response_model=RegisterResponse, status_code=status.HTTP_200_OK)
+async def register_verify(
+    request: Request,
+    response: Response,
+    body: VerifyOTPRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    logger.info(f"Запит на верифікацію OTP для email: {_mask_email(body.email)}")
+    try:
+        otp_valid = await verify_otp(body.email, body.code)
+        if not otp_valid:
+            logger.warning(f"Невалідний або прострочений OTP для email: {_mask_email(body.email)}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired verification code",
+            )
+
+        # Retrieve pending user
+        result = await db.execute(select(User).where(User.email == body.email))
+        user = result.scalar_one_or_none()
+
+        if not user:
+            logger.warning(f"Користувача з email {_mask_email(body.email)} не знайдено під час верифікації")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User not found",
+            )
+
+        user.is_active = True
+        user.updated_at = datetime.now(UTC)
+        await db.commit()
+        await db.refresh(user)
+
+        # Cache authenticated user
+        await cache_auth_user(user)
+
+        # Issue JWT tokens
+        access_token = create_access_token(str(user.id), user.role, user.email)
+        refresh_token = create_refresh_token(str(user.id), user.role, user.email)
+
+        # Set refresh token cookie
+        response.set_cookie(**_build_cookie_params(value=refresh_token))
+
+        logger.success(f"Користувач {_mask_email(body.email)} успішно верифікований та активований")
+        return RegisterResponse(
+            access_token=access_token,
+            token_type="bearer",
+            user=UserResponse(
+                id=str(user.id),
+                email=user.email,
+                role=user.role,
+            ),
+        )
+
+    except HTTPException:
+        raise
+    except Exception as err:
+        await db.rollback()
+        logger.exception("Критична помилка під час верифікації OTP")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Internal server error",
@@ -378,6 +471,8 @@ async def get_me(current_user: User = Depends(_get_current_user)):
         username = settings_dict.get("telegram_first_name")
     elif settings_dict.get("google_name"):
         username = settings_dict.get("google_name")
+    elif settings_dict.get("name"):
+        username = settings_dict.get("name")
 
     if not username:
         username = (
@@ -470,3 +565,89 @@ async def get_user_by_id(user_id: str, db: AsyncSession = Depends(get_db)):
         )
     username = user.email.split("@")[0] if "@" in user.email else user.email
     return {"id": str(user.id), "email": user.email, "username": username, "role": user.role}
+
+
+@router.post("/forgot-password", status_code=status.HTTP_200_OK)
+async def forgot_password(
+    body: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    logger.info(f"Запит на відновлення пароля для email: {_mask_email(body.email)}")
+    
+    result = await db.execute(select(User).where(User.email == body.email))
+    user = result.scalar_one_or_none()
+    
+    if user and user.is_active:
+        token = secrets.token_urlsafe(32)
+        try:
+            redis_client = _get_redis_client()
+            await redis_client.setex(f"pwd_reset:{token}", 900, body.email)
+            
+            frontend_url = os.getenv("FRONTEND_URL") or "http://localhost:5173"
+            reset_link = f"{frontend_url}/reset-password?token={token}&email={body.email}"
+            
+            await send_password_reset_email(body.email, reset_link)
+            logger.success(f"Надіслано лист для відновлення пароля для {_mask_email(body.email)}")
+        except Exception as e:
+            logger.error(f"Помилка при створенні токена відновлення пароля для {body.email}: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Internal server error",
+            )
+            
+    return {"message": "Якщо email зареєстрований в системі, лист із інструкціями для відновлення пароля надіслано."}
+
+
+@router.post("/reset-password", status_code=status.HTTP_200_OK)
+async def reset_password(
+    body: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    logger.info(f"Запит на скидання пароля за токеном для email: {_mask_email(body.email)}")
+    
+    try:
+        redis_client = _get_redis_client()
+        stored_email_bytes = await redis_client.get(f"pwd_reset:{body.token}")
+        if not stored_email_bytes:
+            logger.warning(f"Спроба скидання пароля з невалідним або простроченим токеном для {_mask_email(body.email)}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Недійсний або прострочений токен відновлення пароля",
+            )
+            
+        stored_email = stored_email_bytes.decode("utf-8")
+        if stored_email.strip().lower() != body.email.strip().lower():
+            logger.warning(f"Невідповідність email для токена відновлення: {stored_email} != {body.email}")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Недійсний або прострочений токен відновлення пароля",
+            )
+            
+        result = await db.execute(select(User).where(User.email == body.email))
+        user = result.scalar_one_or_none()
+        
+        if not user or not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Користувача не знайдено або він неактивний",
+            )
+            
+        user.hashed_password = hash_password(body.new_password)
+        user.updated_at = datetime.now(UTC)
+        await db.commit()
+        
+        await redis_client.delete(f"pwd_reset:{body.token}")
+        await invalidate_cached_auth_user(body.email)
+        
+        logger.success(f"Пароль користувача {_mask_email(body.email)} успішно оновлено")
+        return {"message": "Пароль успішно оновлено"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        logger.exception("Критична помилка під час скидання пароля")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal server error",
+        ) from e

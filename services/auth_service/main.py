@@ -57,7 +57,7 @@ async def lifespan(app: FastAPI):
                 "actor": "system",
                 "event_type": "service.lifecycle",
                 "entity_type": "service",
-                "entity_id": "auth_service",
+                 "entity_id": "auth_service",
                 "message": "Auth Service started",
                 "details": {},
                 "severity": "info"
