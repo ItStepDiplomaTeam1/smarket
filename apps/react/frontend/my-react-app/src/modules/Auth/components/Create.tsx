@@ -7,8 +7,9 @@ import { apiClient } from '@/shared/api/apiClient';
 import { Loader2, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
-import { useGoogleOAuth, type MeResponse } from '@/hooks/api/useAuthApi';
+import { useGoogleOAuth, useRegisterVerify, type MeResponse } from '@/hooks/api/useAuthApi';
 import { TelegramLoginButton } from './TelegramLoginButton';
+import { OtpModal } from './OtpModal';
 
 import eyeIcon from '@/shared/assets/ButtonEye.svg';
 import btngoogle from '@/shared/assets/google.svg';
@@ -22,9 +23,9 @@ interface User {
     email: string;
 }
 
-interface RegisterResponse {
-    access_token: string;
-    user: User;
+interface RegisterPendingResponse {
+    message: string;
+    email: string;
 }
 
 const PasswordChecklist = ({ password }: { password: string }) => {
@@ -151,10 +152,12 @@ export function Create() {
         setTouched((prev) => ({ ...prev, [field]: true }));
     }, []);
 
-    const registerMutation = useMutation<RegisterResponse, Error>({
+    const [showOtpModal, setShowOtpModal] = useState(false);
+
+    const registerMutation = useMutation<RegisterPendingResponse, Error>({
         mutationFn: async () => {
             try {
-                const response = await apiClient.post<RegisterResponse>('/api/v1/auth/register', {
+                const response = await apiClient.post<RegisterPendingResponse>('/api/v1/auth/register', {
                     name,
                     email,
                     password,
@@ -177,22 +180,30 @@ export function Create() {
             }
         },
         onSuccess: async (data) => {
-            setAuth(data.access_token, data.user);
-            try {
-                const { data: me } = await apiClient.get<MeResponse>('/api/v1/auth/me');
-                useAuthStore.setState((state) => ({
-                    user: state.user ? { ...state.user, name: me.username } : state.user,
-                }));
-            } catch {
-                // fallback — ім'я залишиться undefined
-            }
-            toast.success(`Вітаємо, ${name}! Ви успішно зареєструвались.`);
-            navigate('/');
+            toast.success('Код підтвердження надіслано на вашу пошту.');
+            setShowOtpModal(true);
         },
         onError: (error) => {
             setServerError(error.message);
         },
     });
+
+    const verifyMutation = useRegisterVerify();
+
+    const handleVerify = (code: string) => {
+        verifyMutation.mutate(
+            { email, code },
+            {
+                onSuccess: () => {
+                    toast.success(`Вітаємо, ${name}! Ви успішно зареєструвались.`);
+                },
+            }
+        );
+    };
+
+    const handleResend = () => {
+        registerMutation.mutate();
+    };
 
     const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -434,6 +445,19 @@ export function Create() {
                 </div>
             </div>
         </div>
+        <OtpModal
+            isOpen={showOtpModal}
+            email={email}
+            onClose={() => {
+                setShowOtpModal(false);
+                verifyMutation.reset();
+            }}
+            onVerify={handleVerify}
+            isVerifying={verifyMutation.isPending}
+            onResend={handleResend}
+            isResending={registerMutation.isPending}
+            error={verifyMutation.error?.message || null}
+        />
         </section>
     );
 }

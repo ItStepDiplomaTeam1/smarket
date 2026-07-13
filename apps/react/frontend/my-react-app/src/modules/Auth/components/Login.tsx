@@ -30,8 +30,15 @@ export const LoginForm = () => {
                 const response = await apiClient.post<LoginResponse>('/api/v1/auth/login', { email, password });
                 return response.data;
             } catch (error) {
-                if (axios.isAxiosError(error) && error.response?.data?.message) {
-                    throw new Error(error.response.data.message, { cause: error });
+                if (axios.isAxiosError(error)) {
+                    const detail = error.response?.data?.detail;
+                    if (typeof detail === 'string') {
+                        throw new Error(detail, { cause: error });
+                    } else if (Array.isArray(detail) && detail.length > 0 && detail[0].msg) {
+                        throw new Error(detail[0].msg, { cause: error });
+                    } else if (error.response?.data?.message) {
+                        throw new Error(error.response.data.message, { cause: error });
+                    }
                 }
                 throw new Error('Помилка авторизації. Спробуйте ще раз.', { cause: error });
             }

@@ -9,6 +9,7 @@ const HomePage = lazyWithRetry(() => import('@/pages/Home/ui/Home.tsx'));
 const AuthPage = lazyWithRetry(() => import('@/pages/Auth'));
 const Registerform = lazyWithRetry(() => import('@/pages/Register/ui/RegisterPage.tsx')); 
 const ForgotPassword = lazyWithRetry(() => import('@/pages/ForgotPassword/ui/ForgotPasswordPage.tsx')); 
+const ResetPassword = lazyWithRetry(() => import('@/pages/ResetPassword/ui/ResetPasswordPage.tsx'));
 const LoginPage = lazyWithRetry(() => import('@/pages/Login/ui/LoginPage.tsx'));
 const ProductDetail = lazyWithRetry(() => import('@/pages/ProductDetail/ui/ProductDetail.tsx'));
 const Profile = lazyWithRetry(() => import('@/pages/Profile/ui/ProfilePage.tsx'));
@@ -56,6 +57,14 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageSkeleton />}>
             <ForgotPassword />
+          </Suspense>
+        ),
+      },
+      {
+        path: '/reset-password',
+        element: (
+          <Suspense fallback={<PageSkeleton />}>
+            <ResetPassword />
           </Suspense>
         ),
       },
