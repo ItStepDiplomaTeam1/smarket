@@ -17,11 +17,28 @@ const queryClient = new QueryClient({
 
 const googleClientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string) || 'missing-client-id'
 
+window.addEventListener('error', (e) => {
+  const message = e?.message;
+  if (!message) return;
+
+  const isChunkError =
+    /failed to fetch/i.test(message) ||
+    /dynamically imported module/i.test(message) ||
+    /importing a module script failed/i.test(message);
+
+  if (isChunkError) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('_r', String(Date.now()));
+    window.location.replace(url.toString());
+  }
+}, true);
+
 try {
   sessionStorage.removeItem('smarket-chunk-reload-retry');
 } catch (e) {
   console.warn('Failed to access sessionStorage:', e);
 }
+
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
