@@ -554,14 +554,6 @@ const ProductsTable: React.FC = () => {
           >
             Пошук
           </button>
-          <button 
-            onClick={() => {
-              alert('Додавання товару поки в розробці');
-            }}
-            className="flex-1 md:flex-none h-[38px] px-5 py-2 bg-[#1a4731] hover:bg-[#1a4731]/90 text-white dark:bg-[#4ADE80] dark:hover:bg-[#4ADE80]/90 dark:text-[#173B33] rounded-lg text-xs md:text-sm font-semibold transition-colors"
-          >
-            Додати товар
-          </button>
         </div>
       </div>
 
