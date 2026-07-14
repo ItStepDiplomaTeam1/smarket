@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 # Trigger CI rebuild 2
+import httpx
 from fastapi.responses import ORJSONResponse
 from sqlalchemy import select, func, and_, update, or_
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,6 +25,7 @@ from app.shared.schemas import (
     ProductWithStoresResponse,
     CategoryResponse,
     SubcategoryResponse,
+    GlobalCategoryResponse,
     PaginatedProductsResponse,
     ProductResponse,
     ProductVisibilityUpdate,
@@ -31,6 +33,20 @@ from app.shared.schemas import (
 )
 
 from app.database.session import get_db
+from app.config import settings
+
+GLOBAL_CATEGORIES = {
+    1: "Продукти харчування",
+    2: "Напої",
+    3: "Алкоголь",
+    4: "Для дітей",
+    5: "Зоотовари",
+    6: "Краса та здоров'я",
+    7: "Дім та побут",
+    8: "Одяг та взуття",
+    9: "Дача, сад, город",
+    10: "Канцелярія та книги",
+}
 
 router = APIRouter(tags=["Products"], default_response_class=ORJSONResponse)
 
@@ -475,6 +491,128 @@ async def update_category_visibility(
     return category
 
 
+async def update_search_index_visibility(product_ids: list[int], is_hidden: bool):
+    """Надсилає PATCH запит до search_service для часткового оновлення is_hidden"""
+    if not product_ids:
+        return
+        
+    documents = [{"id": pid, "is_hidden": is_hidden} for pid in product_ids]
+    
+    # Розбиваємо на чанки по 1000 документів, щоб не перевантажувати мережу
+    chunk_size = 1000
+    
+    async with httpx.AsyncClient() as client:
+        for i in range(0, len(documents), chunk_size):
+            chunk = documents[i:i + chunk_size]
+            try:
+                await client.patch(
+                    f"{settings.SEARCH_SERVICE_URL}/api/v1/index",
+                    json={"documents": chunk},
+                    timeout=10.0
+                )
+            except Exception as e:
+                print(f"[ProductService] Error updating search index: {e}")
+
+@router.get(
+    "/categories/global",
+    response_model=list[GlobalCategoryResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Глобальні категорії",
+)
+async def get_global_categories(
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Повертає 10 глобальних категорій зі статусом is_hidden.
+    Якщо хоча б одна підкатегорія видима, глобальна категорія вважається видимою.
+    Якщо всі підкатегорії приховані (або їх немає), вона прихована.
+    """
+    stmt = (
+        select(
+            Category.main_category_id,
+            func.bool_and(Category.is_hidden).label("all_hidden")
+        )
+        .where(Category.main_category_id.isnot(None))
+        .group_by(Category.main_category_id)
+    )
+    result = await db.execute(stmt)
+    
+    status_map = {row.main_category_id: row.all_hidden for row in result.all()}
+    
+    response = []
+    for cid, name in GLOBAL_CATEGORIES.items():
+        is_hidden = status_map.get(cid, True)
+        response.append(GlobalCategoryResponse(
+            id=cid,
+            name=name,
+            is_hidden=is_hidden
+        ))
+        
+    return response
+
+@router.patch(
+    "/categories/global/{main_category_id}/visibility",
+    response_model=GlobalCategoryResponse,
+)
+async def update_global_category_visibility(
+    main_category_id: int,
+    body: CategoryVisibilityUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Приховує або показує ВСІ підкатегорії цієї глобальної категорії,
+    а також ВСІ товари в цих підкатегоріях.
+    Синхронізує статус товарів із Meilisearch.
+    """
+    if main_category_id not in GLOBAL_CATEGORIES:
+        raise HTTPException(status_code=404, detail="Глобальну категорію не знайдено")
+        
+    # 1. Знаходимо всі ID категорій
+    cat_stmt = select(Category.id).where(Category.main_category_id == main_category_id)
+    cat_result = await db.execute(cat_stmt)
+    category_ids = cat_result.scalars().all()
+    
+    if not category_ids:
+        return GlobalCategoryResponse(
+            id=main_category_id,
+            name=GLOBAL_CATEGORIES[main_category_id],
+            is_hidden=body.is_hidden
+        )
+        
+    # 2. Знаходимо всі товари в цих категоріях (щоб оновити Meilisearch)
+    prod_stmt = select(Product.id).where(Product.canonical_category_id.in_(category_ids))
+    prod_result = await db.execute(prod_stmt)
+    product_ids = prod_result.scalars().all()
+    
+    # 3. Оновлюємо статус в категоріях (PostgreSQL)
+    await db.execute(
+        update(Category)
+        .where(Category.id.in_(category_ids))
+        .values(is_hidden=body.is_hidden)
+    )
+    
+    # 4. Оновлюємо статус в товарах (PostgreSQL)
+    if product_ids:
+        await db.execute(
+            update(Product)
+            .where(Product.id.in_(product_ids))
+            .values(is_hidden=body.is_hidden)
+        )
+        
+    await db.commit()
+    
+    # 5. Оновлюємо Meilisearch (fire-and-forget, але await для надійності)
+    if product_ids:
+        import asyncio
+        asyncio.create_task(update_search_index_visibility(list(product_ids), body.is_hidden))
+        
+    return GlobalCategoryResponse(
+        id=main_category_id,
+        name=GLOBAL_CATEGORIES[main_category_id],
+        is_hidden=body.is_hidden
+    )
+
+
 @router.patch(
     "/{product_id}/visibility",
     response_model=ProductResponse,
@@ -497,6 +635,11 @@ async def update_product_visibility(
     product.is_hidden = body.is_hidden
     await db.commit()
     await db.refresh(product)
+    
+    # Синхронізація з Meilisearch
+    import asyncio
+    asyncio.create_task(update_search_index_visibility([product_id], body.is_hidden))
+    
     return product
 
 

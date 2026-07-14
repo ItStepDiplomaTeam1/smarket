@@ -1,31 +1,23 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 
-export interface Category {
+export interface GlobalCategory {
   id: number;
-  slug: string;
   name: string;
-  // Наступні поля ми очікуємо з бекенду в майбутньому, 
-  // тому робимо їх опціональними.
-  is_hidden?: boolean;
-  main_category_id?: number;
-  created_at?: string;
-  updated_at?: string;
+  is_hidden: boolean;
 }
 
-const fetchCategories = async (): Promise<Category[]> => {
-  const { data } = await apiClient.get<Category[]>('/products/categories', {
-    params: { include_hidden: true }
-  });
+const fetchCategories = async (): Promise<GlobalCategory[]> => {
+  const { data } = await apiClient.get<GlobalCategory[]>('/products/categories/global');
   return data;
 };
 
 /**
- * Custom TanStack Query hook to fetch categories.
+ * Custom TanStack Query hook to fetch global categories.
  */
 export function useCategories() {
-  return useQuery<Category[], Error>({
-    queryKey: ['categories'],
+  return useQuery<GlobalCategory[], Error>({
+    queryKey: ['global_categories'],
     queryFn: fetchCategories,
     staleTime: 60_000, // 1 хвилина кешу
   });
@@ -36,14 +28,14 @@ export const useToggleCategoryVisibility = () => {
 
   return useMutation({
     mutationFn: async ({ categoryId, isHidden }: { categoryId: number; isHidden: boolean }) => {
-      await apiClient.patch(`/products/categories/${categoryId}/visibility`, { is_hidden: isHidden });
+      await apiClient.patch(`/products/categories/global/${categoryId}/visibility`, { is_hidden: isHidden });
       return { categoryId, isHidden };
     },
     onMutate: async ({ categoryId, isHidden }) => {
-      await queryClient.cancelQueries({ queryKey: ['categories'] });
-      const previousCategories = queryClient.getQueryData<Category[]>(['categories']);
+      await queryClient.cancelQueries({ queryKey: ['global_categories'] });
+      const previousCategories = queryClient.getQueryData<GlobalCategory[]>(['global_categories']);
 
-      queryClient.setQueryData<Category[]>(['categories'], (old) => {
+      queryClient.setQueryData<GlobalCategory[]>(['global_categories'], (old) => {
         if (!old) return old;
         return old.map(c => c.id === categoryId ? { ...c, is_hidden: isHidden } : c);
       });
@@ -52,7 +44,7 @@ export const useToggleCategoryVisibility = () => {
     },
     onError: (_err, _variables, context) => {
       if (context?.previousCategories) {
-        queryClient.setQueryData(['categories'], context.previousCategories);
+        queryClient.setQueryData(['global_categories'], context.previousCategories);
       }
     }
   });

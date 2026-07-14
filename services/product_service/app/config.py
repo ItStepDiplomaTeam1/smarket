@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     # Якщо не задано явно — дериватується з DATABASE_URL автоматично.
     NOTIFY_DATABASE_URL: str = ""
 
+    SEARCH_SERVICE_URL: str = "http://search_service:8083"
+
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     def get_notify_dsn(self) -> str:
