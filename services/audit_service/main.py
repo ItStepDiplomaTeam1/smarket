@@ -17,13 +17,17 @@ smarket_events = RabbitExchange("smarket_events", type="topic")
 audit_queue = RabbitQueue("audit_queue", routing_key="#")
 
 
+broker_startup_error = None
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    global broker_startup_error
     # Намагаємося підключитися до RabbitMQ
     try:
         await broker.start()
         print("[OK] FastStream broker started successfully.")
     except Exception as e:
+        broker_startup_error = str(e)
         print(f"[ERROR] Failed to start FastStream broker: {e}")
         print("Running without active RabbitMQ connection (consumers disabled).")
     
@@ -106,4 +110,9 @@ async def get_audit_logs(
 
 @app.get("/health", tags=["Health"])
 async def health_check():
-    return {"status": "ok", "service": "audit_service"}
+    return {
+        "status": "ok" if broker_startup_error is None else "error",
+        "service": "audit_service",
+        "broker_connected": broker_startup_error is None,
+        "broker_error": broker_startup_error
+    }
