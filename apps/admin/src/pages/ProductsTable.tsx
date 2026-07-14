@@ -460,7 +460,7 @@ const ProductsTable: React.FC = () => {
       </div>
 
       {/* ── Toolbar ── */}
-      <div className="bg-surface border border-border p-4 rounded-xl shadow-sm space-y-4">
+      <div className="bg-surface border border-border p-4 rounded-xl shadow-sm">
         <div className="grid grid-cols-2 md:flex md:flex-wrap items-center gap-3 w-full">
           {/* Search Form */}
           <form onSubmit={handleSearchSubmit} className="col-span-2 md:col-span-1 w-full md:w-auto">
@@ -541,19 +541,20 @@ const ProductsTable: React.FC = () => {
               </select>
             </div>
           </div>
-        </div>
 
-        {/* Buttons Row */}
-        <div className="flex items-center gap-3 w-full md:justify-end">
-          <button 
-            onClick={() => {
-              setActiveSearch(searchQuery);
-              setPage(1);
-            }}
-            className="flex-1 md:flex-none h-[38px] px-5 py-2 border border-primary/40 text-primary dark:text-[#4ADE80] dark:border-[#4ADE80]/40 rounded-lg text-xs md:text-sm font-semibold hover:bg-secondary transition-colors"
-          >
-            Пошук
-          </button>
+          {/* Search Button */}
+          <div className="col-span-1 w-full md:w-auto flex flex-col justify-end">
+            <label className="block text-[11px] md:text-xs font-semibold text-transparent mb-1.5 select-none">&nbsp;</label>
+            <button 
+              onClick={() => {
+                setActiveSearch(searchQuery);
+                setPage(1);
+              }}
+              className="w-full md:w-auto h-[38px] px-5 py-2 border border-primary/40 text-primary dark:text-[#4ADE80] dark:border-[#4ADE80]/40 rounded-lg text-xs md:text-sm font-semibold hover:bg-secondary transition-colors"
+            >
+              Пошук
+            </button>
+          </div>
         </div>
       </div>
 
