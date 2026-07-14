@@ -1,10 +1,11 @@
 import React from 'react';
 import { useCartStore } from '../store/useCartStore';
-import { useFetchCartDetails } from '../../../hooks/api/useCartApi';
+import { useFetchCartDetails, useFetchCartComparison } from '../../../hooks/api/useCartApi';
 
 export const CartSummary: React.FC = () => {
   const { activeCartId } = useCartStore();
-  const { data: activeCart, isLoading } = useFetchCartDetails(activeCartId);
+  const { data: activeCart, isLoading: isLoadingCart } = useFetchCartDetails(activeCartId);
+  const { data: comparisonData, isLoading: isLoadingComparison } = useFetchCartComparison(activeCartId);
 
   const handleShare = async () => {
     if (!activeCartId) return;
@@ -21,7 +22,7 @@ export const CartSummary: React.FC = () => {
     }
   };
 
-  if (isLoading) {
+  if (isLoadingCart || isLoadingComparison) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-6 flex items-center justify-center h-[300px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#305C50]"></div>
@@ -30,6 +31,10 @@ export const CartSummary: React.FC = () => {
   }
 
   if (!activeCart) return null;
+
+  const bestStore = comparisonData && comparisonData.length > 0 ? comparisonData[0].storeName : activeCart.bestStore;
+  const bestPrice = comparisonData && comparisonData.length > 0 ? comparisonData[0].totalPrice : activeCart.bestPrice;
+  const comparison = comparisonData || activeCart.summary.comparison;
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-6 flex flex-col gap-6">
@@ -43,11 +48,11 @@ export const CartSummary: React.FC = () => {
         </div>
         <div className="flex justify-between">
           <span className="text-gray-500">Орієнтовна сума</span>
-          <span className="font-medium">{Number(activeCart.bestPrice).toFixed(2)} ₴</span>
+          <span className="font-medium">{Number(bestPrice).toFixed(2)} ₴</span>
         </div>
         <div className="flex flex-wrap justify-between items-center gap-2">
           <span className="text-gray-500 whitespace-nowrap">Найвигідніший магазин</span>
-          <span className="font-medium text-gray-900 text-right ml-auto">{activeCart.bestStore}</span>
+          <span className="font-medium text-gray-900 text-right ml-auto">{bestStore}</span>
         </div>
         <div className="flex justify-between items-center pt-2 border-t border-gray-100">
           <span className="font-medium text-gray-900">Можлива економія</span>
@@ -61,7 +66,7 @@ export const CartSummary: React.FC = () => {
       <div>
         <h3 className="font-medium text-gray-900 mb-3 text-sm">Порівняння магазинів</h3>
         <div className="flex flex-col gap-2">
-          {activeCart.summary.comparison.map((store) => (
+          {comparison.map((store: any) => (
             <div key={store.storeName} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0 gap-4">
               <span className="text-[#6D8279] font-['Inter'] flex-1 truncate" title={store.storeName}>{store.storeName}</span>
               <span className="font-semibold text-[#173B33] font-['Inter'] whitespace-nowrap shrink-0">{Number(store.totalPrice).toFixed(2)} ₴</span>
@@ -73,8 +78,8 @@ export const CartSummary: React.FC = () => {
       <div className="flex flex-wrap justify-between items-end py-4 mb-6 border-t border-gray-100 gap-4">
         <span className="font-bold font-['Inter'] text-[#173B33] text-lg whitespace-nowrap">Найкраща ціна:</span>
         <div className="text-right ml-auto">
-          <div className="font-bold font-['Inter'] text-[#265447] text-2xl">{Number(activeCart.bestPrice).toFixed(2)} ₴</div>
-          <div className="text-sm text-[#6D8279] font-['Inter'] mt-1">В {activeCart.bestStore}</div>
+          <div className="font-bold font-['Inter'] text-[#265447] text-2xl">{Number(bestPrice).toFixed(2)} ₴</div>
+          <div className="text-sm text-[#6D8279] font-['Inter'] mt-1">В {bestStore}</div>
         </div>
       </div>
       
