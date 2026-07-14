@@ -7,7 +7,7 @@ import datetime
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
-from faststream.rabbit import RabbitBroker
+from faststream.rabbit import RabbitBroker, RabbitExchange
 
 from app.config import settings
 from app.database.session import _get_engine
@@ -23,6 +23,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 broker = RabbitBroker(settings.RABBITMQ_URL)
+smarket_events_exchange = RabbitExchange("smarket_events", type="topic")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -46,7 +47,7 @@ async def lifespan(app: FastAPI):
                 "details": {},
                 "severity": "info"
             },
-            exchange="smarket_events",
+            exchange=smarket_events_exchange,
             routing_key="service.lifecycle"
         )
     except Exception as e:
@@ -82,7 +83,7 @@ async def lifespan(app: FastAPI):
                 "details": {},
                 "severity": "warning"
             },
-            exchange="smarket_events",
+            exchange=smarket_events_exchange,
             routing_key="service.lifecycle"
         )
         await broker.close()

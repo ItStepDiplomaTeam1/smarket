@@ -31,10 +31,24 @@ export const SystemLogsTable: React.FC = () => {
   const { data, isLoading, isError } = useQuery<AuditLogResponse>({
     queryKey: ['dashboard-audit-logs'],
     queryFn: async () => {
-      const response = await apiClient.get<AuditLogResponse>('/admin/audit', {
-        params: { page: 1, limit: 5 }
-      });
-      return response.data;
+      console.log('[DEBUG Frontend] Fetching audit logs from /admin/audit...');
+      try {
+        const response = await apiClient.get<AuditLogResponse>('/admin/audit', {
+          params: { page: 1, limit: 5 }
+        });
+        console.log('[DEBUG Frontend] Successfully fetched audit logs:', response.data);
+        return response.data;
+      } catch (error: any) {
+        console.error('[DEBUG Frontend] Error fetching audit logs:', {
+          message: error.message,
+          response: error.response ? {
+            status: error.response.status,
+            data: error.response.data,
+            headers: error.response.headers
+          } : 'No response'
+        });
+        throw error;
+      }
     }
   });
 

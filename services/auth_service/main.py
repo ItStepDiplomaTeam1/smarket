@@ -7,7 +7,7 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
-from faststream.rabbit import RabbitBroker
+from faststream.rabbit import RabbitBroker, RabbitExchange
 from granian import Granian
 from granian.constants import Interfaces
 from loguru import logger
@@ -32,6 +32,7 @@ setup_logger()
 
 rmq_url = os.getenv("RABBITMQ_URL") or "amqp://localhost:5672/"
 broker = RabbitBroker(rmq_url)
+smarket_events_exchange = RabbitExchange("smarket_events", type="topic")
 
 def _coerce_int(value: Any, default: int) -> int:
     try:
@@ -62,7 +63,7 @@ async def lifespan(app: FastAPI):
                 "details": {},
                 "severity": "info"
             },
-            exchange="smarket_events",
+            exchange=smarket_events_exchange,
             routing_key="service.lifecycle"
         )
     except Exception as e:
@@ -83,7 +84,7 @@ async def lifespan(app: FastAPI):
                 "details": {},
                 "severity": "warning"
             },
-            exchange="smarket_events",
+            exchange=smarket_events_exchange,
             routing_key="service.lifecycle"
         )
         await broker.close()
