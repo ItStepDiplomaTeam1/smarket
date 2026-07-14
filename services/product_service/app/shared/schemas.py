@@ -170,3 +170,7 @@ class ProductVisibilityUpdate(BaseModel):
 
 class CategoryVisibilityUpdate(BaseModel):
     is_hidden: bool
+
+
+class ProductBatchRequest(BaseModel):
+    product_ids: list[int]

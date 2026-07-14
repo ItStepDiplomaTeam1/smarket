@@ -30,6 +30,7 @@ from app.shared.schemas import (
     ProductResponse,
     ProductVisibilityUpdate,
     CategoryVisibilityUpdate,
+    ProductBatchRequest,
 )
 
 from app.database.session import get_db
@@ -641,6 +642,174 @@ async def update_product_visibility(
     asyncio.create_task(update_search_index_visibility([product_id], body.is_hidden))
     
     return product
+
+
+@router.post(
+    "/batch/details",
+    response_model=list[ProductDetail],
+    status_code=status.HTTP_200_OK,
+    summary="Деталі декількох товарів",
+)
+async def get_products_batch_details(
+    request: ProductBatchRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    if not request.product_ids:
+        return []
+
+    # 1. Завантажуємо товари
+    products_result = await db.scalars(
+        select(Product)
+        .options(selectinload(Product.category))
+        .where(Product.id.in_(request.product_ids))
+    )
+    products = list(products_result.all())
+    
+    if not products:
+        return []
+        
+    found_product_ids = [p.id for p in products]
+
+    # 2. Останні ціни для кожного магазину
+    latest_price_subq = (
+        select(
+            Price.product_id,
+            Price.store_id,
+            func.max(Price.recorded_at).label("max_recorded_at"),
+        )
+        .where(Price.product_id.in_(found_product_ids))
+        .group_by(Price.product_id, Price.store_id)
+        .subquery()
+    )
+
+    prices_stmt = (
+        select(Price)
+        .options(selectinload(Price.store))
+        .join(
+            latest_price_subq,
+            and_(
+                Price.product_id == latest_price_subq.c.product_id,
+                Price.store_id == latest_price_subq.c.store_id,
+                Price.recorded_at == latest_price_subq.c.max_recorded_at,
+            ),
+        )
+        .where(Price.product_id.in_(found_product_ids))
+        .order_by(Price.product_id, Price.price)
+    )
+
+    prices_result = await db.scalars(prices_stmt)
+    prices = list(prices_result.all())
+
+    # 3. Групуємо ціни по товарах
+    from collections import defaultdict
+    prices_by_product = defaultdict(list)
+    for p in prices:
+        prices_by_product[p.product_id].append(p)
+
+    results = []
+    for product in products:
+        results.append(ProductDetail(
+            id=product.id,
+            ean=product.ean,
+            store_product_id=product.store_product_id,
+            title=product.title,
+            brand=product.brand,
+            unit=product.unit,
+            weight=product.weight,
+            image_url=product.image_url,
+            canonical_category_id=product.canonical_category_id,
+            category=product.category,
+            created_at=product.created_at,
+            prices=prices_by_product[product.id],
+        ))
+    return results
+
+
+@router.post(
+    "/batch/offers",
+    response_model=list[ProductOffersResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Пропозиції для декількох товарів",
+)
+async def get_products_batch_offers(
+    request: ProductBatchRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    if not request.product_ids:
+        return []
+
+    products_result = await db.scalars(
+        select(Product)
+        .options(selectinload(Product.category))
+        .where(Product.id.in_(request.product_ids))
+    )
+    products = list(products_result.all())
+    
+    if not products:
+        return []
+
+    found_product_ids = [p.id for p in products]
+
+    latest_price_subq = (
+        select(
+            Price.product_id,
+            Price.store_id,
+            func.max(Price.recorded_at).label("max_recorded_at"),
+        )
+        .where(Price.product_id.in_(found_product_ids))
+        .group_by(Price.product_id, Price.store_id)
+        .subquery()
+    )
+
+    prices_stmt = (
+        select(Price)
+        .options(selectinload(Price.store))
+        .join(
+            latest_price_subq,
+            and_(
+                Price.product_id == latest_price_subq.c.product_id,
+                Price.store_id == latest_price_subq.c.store_id,
+                Price.recorded_at == latest_price_subq.c.max_recorded_at,
+            ),
+        )
+        .where(Price.product_id.in_(found_product_ids))
+    )
+
+    prices_result = await db.scalars(prices_stmt)
+    prices = list(prices_result.all())
+
+    from collections import defaultdict
+    offers_by_product = defaultdict(list)
+    for price in prices:
+        offers_by_product[price.product_id].append(
+            ProductOfferResponse(
+                store=price.store,
+                price=price.price,
+                old_price=price.old_price,
+                in_stock=price.in_stock,
+                recorded_at=price.recorded_at,
+            )
+        )
+
+    results = []
+    for product in products:
+        results.append(ProductOffersResponse(
+            id=product.id,
+            ean=product.ean,
+            store_product_id=product.store_product_id,
+            title=product.title,
+            brand=product.brand,
+            unit=product.unit,
+            weight=product.weight,
+            image_url=product.image_url,
+            canonical_category_id=product.canonical_category_id,
+            category=product.category,
+            created_at=product.created_at,
+            is_hidden=product.is_hidden,
+            offers=offers_by_product[product.id],
+        ))
+
+    return results
 
 
 @router.get(

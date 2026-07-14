@@ -1,6 +1,7 @@
 import uuid
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+import httpx
 
 
 from app.database.session import get_db
@@ -12,7 +13,16 @@ from app.shared.schemas import (
     CartItemUpdate,
 )
 from app import crud
-from app.external_api import fetch_product_details, fetch_product_offers
+from app.external_api import (
+    fetch_product_details, 
+    fetch_product_offers,
+    fetch_products_batch_details,
+    fetch_products_batch_offers,
+)
+
+
+def get_http_client(request: Request) -> httpx.AsyncClient:
+    return request.app.state.http_client
 
 
 def get_user_id(x_user_id: uuid.UUID = Header(..., alias="X-User-Id")) -> uuid.UUID:
@@ -24,26 +34,26 @@ router = APIRouter(prefix="/cart", tags=["Cart"])
 
 @router.get("/", response_model=list[CartResponse])
 async def get_all_carts(
-    user_id: uuid.UUID = Depends(get_user_id), db: AsyncSession = Depends(get_db)
+    user_id: uuid.UUID = Depends(get_user_id), 
+    db: AsyncSession = Depends(get_db),
+    http_client: httpx.AsyncClient = Depends(get_http_client),
 ):
     """Отримати список усіх кошиків користувача"""
     carts = await crud.get_user_carts(db, user_id)
-    import asyncio
     
     # Gather all items across all carts
     all_items = []
     for cart in carts:
         all_items.extend(cart.items)
         
-    # Fetch details for all items in parallel
-    product_details_list = await asyncio.gather(
-        *(fetch_product_details(item.product_id) for item in all_items)
-    )
+    # Fetch details for all items in batch
+    product_ids = list(set(item.product_id for item in all_items))
+    product_details_list = await fetch_products_batch_details(http_client, product_ids)
     
     # Map from product_id to product_data
     product_data_map = {
-        item.product_id: details 
-        for item, details in zip(all_items, product_details_list)
+        details.get("id"): details 
+        for details in product_details_list
     }
 
     responses = []
@@ -113,6 +123,7 @@ async def get_cart(
     cart_id: uuid.UUID,
     user_id: uuid.UUID = Depends(get_user_id),
     db: AsyncSession = Depends(get_db),
+    http_client: httpx.AsyncClient = Depends(get_http_client),
 ):
     """Отримати конкретний кошик з товарами і цінами"""
     cart = await crud.get_cart(db, user_id, cart_id)
@@ -127,16 +138,19 @@ async def get_cart(
         "items": [],
         "total_price": 0.0,
     }
-
-    import asyncio
     
-    # Fetch details for all items in parallel
-    product_details_list = await asyncio.gather(
-        *(fetch_product_details(item.product_id) for item in cart.items)
-    )
+    # Fetch details for all items in batch
+    product_ids = list(set(item.product_id for item in cart.items))
+    product_details_list = await fetch_products_batch_details(http_client, product_ids)
+
+    product_data_map = {
+        details.get("id"): details 
+        for details in product_details_list
+    }
 
     total_price = 0.0
-    for item, product_data in zip(cart.items, product_details_list):
+    for item in cart.items:
+        product_data = product_data_map.get(item.product_id, {})
         name = product_data.get("title", "Невідомий товар")
         
         prices = product_data.get("prices", [])
@@ -186,12 +200,13 @@ async def add_item_to_cart(
     item_in: CartItemCreate,
     user_id: uuid.UUID = Depends(get_user_id),
     db: AsyncSession = Depends(get_db),
+    http_client: httpx.AsyncClient = Depends(get_http_client),
 ):
     """Додати товар в конкретний кошик"""
     cart = await crud.add_item(db, user_id, cart_id, item_in)
     if not cart:
         raise HTTPException(status_code=404, detail="Кошик не знайдено")
-    return await get_cart(cart_id, user_id, db)
+    return await get_cart(cart_id, user_id, db, http_client)
 
 
 @router.delete("/{cart_id}/items/{item_id}")
@@ -215,12 +230,13 @@ async def update_item_quantity(
     item_in: CartItemUpdate,
     user_id: uuid.UUID = Depends(get_user_id),
     db: AsyncSession = Depends(get_db),
+    http_client: httpx.AsyncClient = Depends(get_http_client),
 ):
     """Оновити кількість товару в кошику"""
     cart = await crud.update_item_quantity(db, user_id, cart_id, item_id, item_in.quantity)
     if not cart:
         raise HTTPException(status_code=404, detail="Кошик або товар не знайдено")
-    return await get_cart(cart_id, user_id, db)
+    return await get_cart(cart_id, user_id, db, http_client)
 
 
 @router.delete("/{cart_id}/items")
@@ -241,21 +257,25 @@ async def compare_cart_prices(
     cart_id: uuid.UUID,
     user_id: uuid.UUID = Depends(get_user_id),
     db: AsyncSession = Depends(get_db),
+    http_client: httpx.AsyncClient = Depends(get_http_client),
 ):
     cart = await crud.get_cart(db, user_id, cart_id)
     if not cart or not cart.items:
         return []
-
-    import asyncio
     
-    # Fetch offers for all items in parallel
-    offers_data_list = await asyncio.gather(
-        *(fetch_product_offers(item.product_id) for item in cart.items)
-    )
+    # Fetch offers for all items in batch
+    product_ids = list(set(item.product_id for item in cart.items))
+    offers_data_list = await fetch_products_batch_offers(http_client, product_ids)
+
+    offers_data_map = {
+        offer_data.get("id"): offer_data
+        for offer_data in offers_data_list
+    }
 
     stores_comparison = {}
     total_items_in_cart = len(cart.items)
-    for item, offers_data in zip(cart.items, offers_data_list):
+    for item in cart.items:
+        offers_data = offers_data_map.get(item.product_id, {})
         offers = offers_data.get("offers", [])
         for offer in offers:
             store = offer.get("store")
@@ -294,12 +314,13 @@ async def duplicate_cart_endpoint(
     cart_id: uuid.UUID,
     user_id: uuid.UUID = Depends(get_user_id),
     db: AsyncSession = Depends(get_db),
+    http_client: httpx.AsyncClient = Depends(get_http_client),
 ):
     """Дублювати кошик"""
     new_cart = await crud.duplicate_cart(db, user_id, cart_id)
     if not new_cart:
         raise HTTPException(status_code=404, detail="Кошик не знайдено")
-    return await get_cart(new_cart.id, user_id, db)
+    return await get_cart(new_cart.id, user_id, db, http_client)
 
 
 from app.database.models import Cart
@@ -308,7 +329,11 @@ from sqlalchemy.orm import selectinload
 from app.shared.schemas import ShareEmailRequest, ImportCartResponse
 
 @router.get("/shared/{cart_id}", response_model=CartResponse)
-async def get_shared_cart(cart_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def get_shared_cart(
+    cart_id: uuid.UUID, 
+    db: AsyncSession = Depends(get_db),
+    http_client: httpx.AsyncClient = Depends(get_http_client),
+):
     """Отримати кошик за посиланням (без перевірки user_id)"""
     stmt = select(Cart).where(Cart.id == cart_id).options(selectinload(Cart.items))
     result = await db.execute(stmt)
@@ -316,17 +341,20 @@ async def get_shared_cart(cart_id: uuid.UUID, db: AsyncSession = Depends(get_db)
 
     if not cart:
         raise HTTPException(status_code=404, detail="Cart not found")
-
-    import asyncio
     
-    # Fetch details for all items in parallel
-    product_details_list = await asyncio.gather(
-        *(fetch_product_details(item.product_id) for item in cart.items)
-    )
+    # Fetch details for all items in batch
+    product_ids = list(set(item.product_id for item in cart.items))
+    product_details_list = await fetch_products_batch_details(http_client, product_ids)
+
+    product_data_map = {
+        details.get("id"): details 
+        for details in product_details_list
+    }
 
     total_price = 0.0
     items_response = []
-    for item, product_data in zip(cart.items, product_details_list):
+    for item in cart.items:
+        product_data = product_data_map.get(item.product_id, {})
         prices = product_data.get("prices", [])
         valid_prices = [p.get("price", 0.0) for p in prices if p.get("in_stock", False)]
         if valid_prices:
