@@ -115,6 +115,24 @@ async def get_audit_logs(request: Request):
         raise HTTPException(status_code=502, detail=f"Bad Gateway: {exc}")
 
 
+@router.get("/audit-health", tags=["Admin", "Audit Logs"])
+async def get_audit_health(request: Request):
+    """
+    Returns detailed health info of audit_service.
+    """
+    _verify_admin_token(request)
+    client: httpx.AsyncClient = request.app.state.http_client
+    target_url = f"{settings.AUDIT_SERVICE_URL}/health"
+    headers = dict(request.headers)
+    headers.pop("host", None)
+    try:
+        response = await client.get(target_url, headers=headers)
+        return JSONResponse(status_code=response.status_code, content=response.json())
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+
 
 @router.get("/recent-users")
 async def get_recent_users(request: Request):
