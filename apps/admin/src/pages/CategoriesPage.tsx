@@ -122,8 +122,8 @@ const CategoriesPage: React.FC = () => {
               disabled={isToggling}
               className={`p-1.5 rounded-md transition-colors ${
                 category.is_hidden
-                  ? 'text-textMuted hover:text-textMain hover:bg-secondary'
-                  : 'text-textMuted hover:text-[#c5221f] hover:bg-[#c5221f]/10'
+                  ? 'text-textMuted hover:text-textMain hover:bg-secondary dark:text-[#4ADE80] dark:hover:bg-[#4ADE80]/10'
+                  : 'text-textMuted hover:text-[#c5221f] hover:bg-[#c5221f]/10 dark:text-[#4ADE80] dark:hover:bg-[#4ADE80]/10'
               } disabled:opacity-50`}
               title={category.is_hidden ? 'Показати' : 'Приховати'}
             >
@@ -205,10 +205,10 @@ const CategoriesPage: React.FC = () => {
                       }
                     }}
                     disabled={isToggling}
-                    className={`p-2 rounded-xl border border-border/80 transition-colors ${
+                    className={`p-2 rounded-xl border border-border/80 dark:border-[#4ADE80]/30 transition-colors ${
                       category.is_hidden
-                        ? 'text-textMuted hover:text-textMain hover:bg-secondary bg-surface'
-                        : 'text-textMuted hover:text-[#c5221f] hover:bg-[#c5221f]/10 bg-surface'
+                        ? 'text-textMuted hover:text-textMain hover:bg-secondary bg-surface dark:text-[#4ADE80] dark:hover:bg-[#4ADE80]/10'
+                        : 'text-textMuted hover:text-[#c5221f] hover:bg-[#c5221f]/10 bg-surface dark:text-[#4ADE80] dark:hover:bg-[#4ADE80]/10'
                     } disabled:opacity-50`}
                   >
                     {category.is_hidden ? <Eye size={16} /> : <EyeOff size={16} />}
