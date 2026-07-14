@@ -2,6 +2,28 @@ import React, { useState } from 'react';
 import { Search, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useCategories, useToggleCategoryVisibility } from '@/hooks/useCategories';
 
+import alcoholsIcon from '@/assets/CategoryIcons/Alcohols.svg';
+import childrenIcon from '@/assets/CategoryIcons/Children.svg';
+import drinksIcon from '@/assets/CategoryIcons/Drinks.svg';
+import groceriesIcon from '@/assets/CategoryIcons/Groceries.svg';
+import householdIcon from '@/assets/CategoryIcons/Household.svg';
+import personalCareIcon from '@/assets/CategoryIcons/PersonalCare.svg';
+import petsIcon from '@/assets/CategoryIcons/Pets.svg';
+import productsIcon from '@/assets/CategoryIcons/Products.svg';
+
+const CATEGORY_ICONS: Record<number, string> = {
+  1: groceriesIcon,    // Продукти харчування
+  2: drinksIcon,       // Напої
+  3: alcoholsIcon,     // Алкоголь
+  4: childrenIcon,     // Для дітей
+  5: petsIcon,         // Зоотовари
+  6: personalCareIcon, // Краса та здоров'я
+  7: householdIcon,    // Дім та побут
+  8: productsIcon,     // Одяг та взуття
+  9: productsIcon,     // Дача, сад, город
+  10: productsIcon,    // Канцелярія та книги
+};
+
 // ── Status Badge ──────────────────────────────────────────────────────────────
 
 const StatusBadge: React.FC<{ isHidden?: boolean }> = ({ isHidden }) => {
@@ -24,7 +46,10 @@ const StatusBadge: React.FC<{ isHidden?: boolean }> = ({ isHidden }) => {
 const CategoryRowSkeleton: React.FC = () => (
   <tr className="animate-pulse border-b border-border/50 last:border-0">
     <td className="py-4 pl-6 pr-3">
-      <div className="h-4 w-48 rounded bg-secondary" />
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-lg bg-secondary" />
+        <div className="h-4 w-40 rounded bg-secondary" />
+      </div>
     </td>
     <td className="py-4 px-3"><div className="h-5 w-16 rounded bg-secondary" /></td>
     <td className="py-4 px-3 text-center"><div className="h-5 w-8 rounded bg-secondary inline-block" /></td>
@@ -86,7 +111,12 @@ const CategoriesPage: React.FC = () => {
         className="hover:bg-secondary/40 transition-colors group border-b border-border/50 last:border-0"
       >
         <td className="py-4 pl-6 pr-3">
-          <span className="text-sm font-semibold text-textMain">{category.name}</span>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-secondary/40 flex items-center justify-center p-1.5 shrink-0">
+              <img src={CATEGORY_ICONS[category.id] || productsIcon} alt="" className="w-full h-full object-contain" />
+            </div>
+            <span className="text-sm font-semibold text-textMain">{category.name}</span>
+          </div>
         </td>
         <td className="py-4 px-3">
           <StatusBadge isHidden={category.is_hidden} />
