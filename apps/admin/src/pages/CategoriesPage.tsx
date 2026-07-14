@@ -98,16 +98,11 @@ const CategoriesPage: React.FC = () => {
       >
         <td className="py-4 pl-6 pr-3">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#e6f4ea] dark:bg-[#173B33] flex items-center justify-center shrink-0">
-              <div 
-                className="w-5 h-5 bg-[#1e8e3e] dark:bg-[#4ade80]"
-                style={{
-                  maskImage: `url(${CATEGORY_ICONS[category.id] || productsIcon})`,
-                  WebkitMaskImage: `url(${CATEGORY_ICONS[category.id] || productsIcon})`,
-                  maskSize: 'contain',
-                  maskRepeat: 'no-repeat',
-                  maskPosition: 'center'
-                }}
+            <div className="w-8 h-8 rounded-full bg-[#e6f4ea] dark:bg-[#173B33] flex items-center justify-center shrink-0 p-1.5">
+              <img 
+                src={CATEGORY_ICONS[category.id] || productsIcon} 
+                alt="" 
+                className="w-full h-full object-contain dark:[filter:brightness(0)_invert(72%)_sepia(35%)_saturate(836%)_hue-rotate(81deg)_brightness(108%)_contrast(92%)]" 
               />
             </div>
             <span className="text-sm font-semibold text-textMain dark:text-[#FFFFFF]">{category.name}</span>
@@ -187,16 +182,11 @@ const CategoriesPage: React.FC = () => {
                 className="flex items-center justify-between p-4 bg-surface border border-border/60 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:shadow-none hover:shadow-md transition-shadow duration-200"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#e6f4ea] dark:bg-[#173B33] flex items-center justify-center shrink-0">
-                    <div 
-                      className="w-6 h-6 bg-[#1e8e3e] dark:bg-[#4ade80]"
-                      style={{
-                        maskImage: `url(${CATEGORY_ICONS[category.id] || productsIcon})`,
-                        WebkitMaskImage: `url(${CATEGORY_ICONS[category.id] || productsIcon})`,
-                        maskSize: 'contain',
-                        maskRepeat: 'no-repeat',
-                        maskPosition: 'center'
-                      }}
+                  <div className="w-10 h-10 rounded-full bg-[#e6f4ea] dark:bg-[#173B33] flex items-center justify-center shrink-0 p-2">
+                    <img 
+                      src={CATEGORY_ICONS[category.id] || productsIcon} 
+                      alt="" 
+                      className="w-full h-full object-contain dark:[filter:brightness(0)_invert(72%)_sepia(35%)_saturate(836%)_hue-rotate(81deg)_brightness(108%)_contrast(92%)]" 
                     />
                   </div>
                   <div className="flex flex-col gap-1">
