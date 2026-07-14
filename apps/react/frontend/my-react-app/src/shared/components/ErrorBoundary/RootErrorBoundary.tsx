@@ -14,11 +14,24 @@ export function RootErrorBoundary() {
   );
 
   const handleReload = () => {
-    sessionStorage.removeItem('smarket-chunk-reload-retry');
-    window.location.reload();
+    try {
+      sessionStorage.removeItem('smarket-chunk-reload-timestamp');
+      sessionStorage.removeItem('smarket-chunk-reload-retry');
+    } catch (e) {
+      console.warn('Failed to access sessionStorage:', e);
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.set('_r', String(Date.now()));
+    window.location.replace(url.toString());
   };
 
   const handleGoHome = () => {
+    try {
+      sessionStorage.removeItem('smarket-chunk-reload-timestamp');
+      sessionStorage.removeItem('smarket-chunk-reload-retry');
+    } catch (e) {
+      console.warn('Failed to access sessionStorage:', e);
+    }
     window.location.href = '/';
   };
 

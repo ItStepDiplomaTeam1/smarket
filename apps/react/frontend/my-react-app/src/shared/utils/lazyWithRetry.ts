@@ -9,19 +9,29 @@ export function lazyWithRetry<T extends ComponentType<any>>(
 ) {
   return lazy(() =>
     factory().catch((error) => {
+      const errorMessage = error?.message || error?.statusText || String(error);
       const isChunkLoadFailed =
-        error.message &&
-        (/failed to fetch/i.test(error.message) ||
-          /dynamically imported module/i.test(error.message) ||
-          /importing a module script failed/i.test(error.message));
+        errorMessage &&
+        (/failed to fetch/i.test(errorMessage) ||
+          /dynamically imported module/i.test(errorMessage) ||
+          /importing a module script failed/i.test(errorMessage));
 
       if (isChunkLoadFailed) {
-        const RELOAD_KEY = 'smarket-chunk-reload-retry';
-        const hasReloaded = sessionStorage.getItem(RELOAD_KEY);
+        const RELOAD_KEY = 'smarket-chunk-reload-timestamp';
+        const lastReload = sessionStorage.getItem(RELOAD_KEY);
+        const isRecentReload = lastReload && (Date.now() - Number(lastReload) < 15000);
 
-        if (!hasReloaded) {
-          sessionStorage.setItem(RELOAD_KEY, 'true');
-          window.location.reload();
+        if (!isRecentReload) {
+          try {
+            sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
+          } catch (e) {
+            console.warn('Failed to set sessionStorage:', e);
+          }
+
+          const url = new URL(window.location.href);
+          url.searchParams.set('_r', String(Date.now()));
+          window.location.replace(url.toString());
+
           // Return a pending promise so the app stays in the fallback loading state while refreshing
           return new Promise<{ default: T }>(() => {});
         }

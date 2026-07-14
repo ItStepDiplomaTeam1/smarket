@@ -27,9 +27,20 @@ window.addEventListener('error', (e) => {
     /importing a module script failed/i.test(message);
 
   if (isChunkError) {
-    const url = new URL(window.location.href);
-    url.searchParams.set('_r', String(Date.now()));
-    window.location.replace(url.toString());
+    const RELOAD_KEY = 'smarket-chunk-reload-timestamp';
+    const lastReload = sessionStorage.getItem(RELOAD_KEY);
+    const isRecentReload = lastReload && (Date.now() - Number(lastReload) < 15000);
+
+    if (!isRecentReload) {
+      try {
+        sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
+      } catch (err) {
+        console.warn('Failed to set sessionStorage:', err);
+      }
+      const url = new URL(window.location.href);
+      url.searchParams.set('_r', String(Date.now()));
+      window.location.replace(url.toString());
+    }
   }
 }, true);
 
@@ -37,6 +48,17 @@ try {
   sessionStorage.removeItem('smarket-chunk-reload-retry');
 } catch (e) {
   console.warn('Failed to access sessionStorage:', e);
+}
+
+try {
+  // Clean up cache-buster parameter from URL if present
+  const url = new URL(window.location.href);
+  if (url.searchParams.has('_r')) {
+    url.searchParams.delete('_r');
+    window.history.replaceState({}, '', url.pathname + url.search);
+  }
+} catch (e) {
+  console.warn('Failed to clean up URL:', e);
 }
 
 
