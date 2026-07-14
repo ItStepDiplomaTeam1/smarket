@@ -132,15 +132,88 @@ const CategoriesPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-12">
-      {/* Header */}
-      <div>
-        <h1 className="font-manrope text-[26px] font-bold text-textMain leading-tight">Глобальні Категорії</h1>
-        <p className="text-sm text-textMuted mt-0.5">Управління видимістями 10 верхньорівневих категорій</p>
+    <div className="space-y-4 animate-in fade-in duration-500 pb-12 px-4 md:px-0">
+      {/* Breadcrumbs */}
+      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-textMuted uppercase tracking-wider">
+        <span>Головна</span>
+        <span className="text-textMuted/60 font-normal">/</span>
+        <span className="text-textMain">Категорії</span>
       </div>
 
-      {/* Table */}
-      <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
+      {/* Header */}
+      <div>
+        <h1 className="font-manrope text-[24px] md:text-[28px] font-bold text-textMain leading-tight">Категорії</h1>
+      </div>
+
+      {/* Mobile View: list of cards (visible on small screens) */}
+      <div className="space-y-3 md:hidden">
+        {isLoading ? (
+          Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="animate-pulse flex items-center justify-between p-4 bg-surface border border-border/50 rounded-2xl h-[72px]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-secondary" />
+                <div className="space-y-1.5">
+                  <div className="h-4 w-32 rounded bg-secondary" />
+                  <div className="h-3 w-16 rounded bg-secondary" />
+                </div>
+              </div>
+              <div className="w-8 h-8 rounded-lg bg-secondary" />
+            </div>
+          ))
+        ) : isError ? (
+          <div className="p-8 text-center bg-surface border border-border rounded-2xl">
+            <AlertCircle size={24} className="text-[#c5221f] mx-auto mb-2 opacity-85" />
+            <p className="text-sm text-textMuted font-medium">Не вдалося завантажити категорії</p>
+          </div>
+        ) : categories.length === 0 ? (
+          <div className="p-8 text-center bg-surface border border-border rounded-2xl text-sm text-textMuted">
+            Категорій не знайдено
+          </div>
+        ) : (
+          categories.map((category) => {
+            const isActive = !category.is_hidden;
+            return (
+              <div
+                key={category.id}
+                className="flex items-center justify-between p-4 bg-surface border border-border/60 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:shadow-none hover:shadow-md transition-shadow duration-200"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-[#e6f4ea] dark:bg-emerald-950/40 flex items-center justify-center p-2 shrink-0">
+                    <img src={CATEGORY_ICONS[category.id] || productsIcon} alt="" className="w-full h-full object-contain" />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm font-bold text-textMain leading-tight">{category.name}</span>
+                    <div>
+                      <StatusBadge isHidden={category.is_hidden} />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <button
+                    onClick={() => {
+                      if (confirm(`Ви впевнені, що хочете ${category.is_hidden ? 'показати' : 'приховати'} глобальну категорію "${category.name}"?\n\nЦе змінить статус ВСІХ вкладених підкатегорій та товарів.`)) {
+                        toggleVisibility({ categoryId: category.id, isHidden: !category.is_hidden });
+                      }
+                    }}
+                    disabled={isToggling}
+                    className={`p-2 rounded-xl border border-border/80 transition-colors ${
+                      category.is_hidden
+                        ? 'text-textMuted hover:text-textMain hover:bg-secondary bg-surface'
+                        : 'text-textMuted hover:text-[#c5221f] hover:bg-[#c5221f]/10 bg-surface'
+                    } disabled:opacity-50`}
+                  >
+                    {category.is_hidden ? <Eye size={16} /> : <EyeOff size={16} />}
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Desktop View: Table (hidden on mobile, visible on md and up) */}
+      <div className="hidden md:block bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[500px]">
             <thead>
