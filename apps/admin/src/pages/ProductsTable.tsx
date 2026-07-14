@@ -21,15 +21,17 @@ import BinIcon from '@/assets/MetricCardIcons/Bin.svg';
 // ── Constants ─────────────────────────────────────────────────────────────
 
 const CATEGORIES = [
-  { slug: '', label: 'Всі категорії' },
-  { slug: 'molochni-produkty', label: 'Молочні продукти' },
-  { slug: 'myaso-ta-ptytsya', label: "М'ясо та птиця" },
-  { slug: 'hlib-ta-vypichka', label: 'Хліб та випічка' },
-  { slug: 'vegetables', label: 'Овочі та фрукти' },
-  { slug: 'fish', label: 'Риба та морепродукти' },
-  { slug: 'grains', label: 'Крупи та бобові' },
-  { slug: 'frozen', label: 'Заморожені продукти' },
-  { slug: 'cans', label: 'Консерви' },
+  { id: '', label: 'Всі глобальні категорії' },
+  { id: '1', label: 'Продукти харчування' },
+  { id: '2', label: 'Напої' },
+  { id: '3', label: 'Солодощі та снеки' },
+  { id: '4', label: 'Алкоголь та тютюн' },
+  { id: '5', label: 'Товари для дому та побуту' },
+  { id: '6', label: 'Краса та догляд' },
+  { id: '7', label: 'Зоотовари' },
+  { id: '8', label: 'Дитячі товари' },
+  { id: '9', label: 'Хобі та відпочинок' },
+  { id: '10', label: 'Акції та промо' },
 ];
 
 const RETAILERS = [
@@ -166,7 +168,7 @@ const ProductsTable: React.FC = () => {
     q: activeSearch,
     page,
     limit,
-    categorySlug: selectedCategory || undefined,
+    mainCategoryId: selectedCategory || undefined,
     retailChain: selectedRetailer || undefined,
     inStock: selectedStatus === 'active' ? true : selectedStatus === 'inactive' ? false : undefined,
   });
@@ -441,10 +443,10 @@ const ProductsTable: React.FC = () => {
                   setSelectedCategory(e.target.value);
                   setPage(1);
                 }}
-                className="w-full sm:w-[150px] pl-3 pr-8 py-2 bg-surface border border-border rounded-lg text-sm text-textMain appearance-none focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                className="w-full sm:w-[180px] pl-3 pr-8 py-2 bg-surface border border-border rounded-lg text-sm text-textMain appearance-none focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
               >
                 {CATEGORIES.map((cat) => (
-                  <option key={cat.slug} value={cat.slug}>
+                  <option key={cat.id} value={cat.id}>
                     {cat.label}
                   </option>
                 ))}

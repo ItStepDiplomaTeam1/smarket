@@ -8,12 +8,15 @@ export interface Category {
   // Наступні поля ми очікуємо з бекенду в майбутньому, 
   // тому робимо їх опціональними.
   is_hidden?: boolean;
+  main_category_id?: number;
   created_at?: string;
   updated_at?: string;
 }
 
 const fetchCategories = async (): Promise<Category[]> => {
-  const { data } = await apiClient.get<Category[]>('/products/categories');
+  const { data } = await apiClient.get<Category[]>('/products/categories', {
+    params: { include_hidden: true }
+  });
   return data;
 };
 

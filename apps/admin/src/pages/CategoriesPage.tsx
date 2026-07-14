@@ -9,6 +9,21 @@ import {
 } from 'lucide-react';
 import { useCategories, useToggleCategoryVisibility } from '@/hooks/useCategories';
 
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const GLOBAL_CATEGORIES: Record<number, string> = {
+  1: 'Продукти харчування',
+  2: 'Напої',
+  3: 'Солодощі та снеки',
+  4: 'Алкоголь та тютюн',
+  5: 'Товари для дому та побуту',
+  6: 'Краса та догляд',
+  7: 'Зоотовари',
+  8: 'Дитячі товари',
+  9: 'Хобі та відпочинок',
+  10: 'Акції та промо',
+};
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const formatDate = (dateString?: string) => {
@@ -59,6 +74,7 @@ const CategoryRowSkeleton: React.FC = () => (
       <div className="h-4 w-32 rounded bg-secondary" />
     </td>
     <td className="py-4 px-3"><div className="h-5 w-16 rounded bg-secondary" /></td>
+    <td className="py-4 px-3"><div className="h-4 w-28 rounded bg-secondary" /></td>
     <td className="py-4 px-3"><div className="h-4 w-28 rounded bg-secondary" /></td>
     <td className="py-4 pl-3 pr-6 text-right"><div className="h-5 w-12 rounded bg-secondary inline-block" /></td>
     <td className="py-4 px-3"><div className="h-4 w-28 rounded bg-secondary" /></td>
@@ -139,6 +155,7 @@ const CategoriesPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeSearch, setActiveSearch] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
+  const [selectedGlobalCategory, setSelectedGlobalCategory] = useState('');
   const [page, setPage] = useState(1);
 
   const { data: categories = [], isLoading, isError } = useCategories();
@@ -152,7 +169,10 @@ const CategoriesPage: React.FC = () => {
       !selectedStatus ||
       (selectedStatus === 'active' && !isHidden) ||
       (selectedStatus === 'hidden' && isHidden);
-    return matchesSearch && matchesStatus;
+    const matchesGlobalCategory =
+      !selectedGlobalCategory ||
+      c.main_category_id === Number(selectedGlobalCategory);
+    return matchesSearch && matchesStatus && matchesGlobalCategory;
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / LIMIT));
@@ -207,6 +227,12 @@ const CategoriesPage: React.FC = () => {
         {/* Статус */}
         <td className="py-4 px-3">
           <StatusBadge isHidden={category.is_hidden} />
+        </td>
+        {/* Глобальна категорія */}
+        <td className="py-4 px-3">
+          <span className="text-sm text-textMuted">
+            {category.main_category_id ? GLOBAL_CATEGORIES[category.main_category_id] || 'Інше' : 'Інше'}
+          </span>
         </td>
         {/* Оновлення */}
         <td className="py-4 px-3 text-sm text-textMuted whitespace-nowrap">
@@ -273,6 +299,22 @@ const CategoriesPage: React.FC = () => {
             </select>
           </div>
 
+          {/* Global Category filter */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 w-full sm:w-auto">
+            <span className="text-sm text-textMuted font-medium">Глобальна категорія</span>
+            <select
+              value={selectedGlobalCategory}
+              onChange={(e) => { setSelectedGlobalCategory(e.target.value); setPage(1); }}
+              className="h-[38px] px-3 bg-surface border border-border rounded-lg text-sm text-textMain focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary appearance-none cursor-pointer pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B7280%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_0.5rem_center] bg-[length:1.2em_1.2em] min-w-[180px] w-full sm:w-auto"
+            >
+              <option value="">Всі глобальні категорії</option>
+              {Object.entries(GLOBAL_CATEGORIES).map(([id, name]) => (
+                <option key={id} value={id}>{name}</option>
+              ))}
+            </select>
+          </div>
+
+
           <button
             type="button"
             onClick={handleSearch}
@@ -294,6 +336,9 @@ const CategoriesPage: React.FC = () => {
                 </th>
                 <th className="py-3 px-3 text-xs font-semibold text-textMuted uppercase tracking-wider">
                   Статус
+                </th>
+                <th className="py-3 px-3 text-xs font-semibold text-textMuted uppercase tracking-wider">
+                  Глобальна категорія
                 </th>
                 <th className="py-3 px-3 text-xs font-semibold text-textMuted uppercase tracking-wider">
                   Оновлення

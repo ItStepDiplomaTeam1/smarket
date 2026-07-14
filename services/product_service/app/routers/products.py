@@ -384,9 +384,13 @@ async def get_products_by_store(
     summary="Отримати список категорій",
 )
 async def get_categories(
+    include_hidden: bool = Query(False, description="Показувати приховані категорії"),
     db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(Category).where(Category.is_hidden == False).order_by(Category.name)
+    stmt = select(Category)
+    if not include_hidden:
+        stmt = stmt.where(Category.is_hidden == False)
+    stmt = stmt.order_by(Category.name)
     result = await db.execute(stmt)
     return list(result.scalars().all())
 
