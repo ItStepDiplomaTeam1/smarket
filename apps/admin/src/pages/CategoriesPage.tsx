@@ -29,13 +29,13 @@ const CATEGORY_ICONS: Record<number, string> = {
 const StatusBadge: React.FC<{ isHidden?: boolean }> = ({ isHidden }) => {
   if (isHidden) {
     return (
-      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold bg-[#f3f4f6] text-[#4b5563]">
+      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold bg-[#f3f4f6] text-[#4b5563] dark:bg-[#757877] dark:text-[#ffffff]">
         Прихована
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold bg-[#e6f4ea] text-[#1e8e3e]">
+    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold bg-[#e6f4ea] text-[#1e8e3e] dark:bg-[#6FE3C2] dark:text-[#173b33]">
       Активна
     </span>
   );
@@ -98,10 +98,19 @@ const CategoriesPage: React.FC = () => {
       >
         <td className="py-4 pl-6 pr-3">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#e6f4ea] dark:bg-emerald-950/40 flex items-center justify-center p-1.5 shrink-0">
-              <img src={CATEGORY_ICONS[category.id] || productsIcon} alt="" className="w-full h-full object-contain" />
+            <div className="w-8 h-8 rounded-full bg-[#e6f4ea] dark:bg-[#173B33] flex items-center justify-center shrink-0">
+              <div 
+                className="w-5 h-5 bg-[#1e8e3e] dark:bg-[#4ade80]"
+                style={{
+                  maskImage: `url(${CATEGORY_ICONS[category.id] || productsIcon})`,
+                  WebkitMaskImage: `url(${CATEGORY_ICONS[category.id] || productsIcon})`,
+                  maskSize: 'contain',
+                  maskRepeat: 'no-repeat',
+                  maskPosition: 'center'
+                }}
+              />
             </div>
-            <span className="text-sm font-semibold text-textMain">{category.name}</span>
+            <span className="text-sm font-semibold text-textMain dark:text-[#FFFFFF]">{category.name}</span>
           </div>
         </td>
         <td className="py-4 px-3">
@@ -178,11 +187,20 @@ const CategoriesPage: React.FC = () => {
                 className="flex items-center justify-between p-4 bg-surface border border-border/60 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:shadow-none hover:shadow-md transition-shadow duration-200"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[#e6f4ea] dark:bg-emerald-950/40 flex items-center justify-center p-2 shrink-0">
-                    <img src={CATEGORY_ICONS[category.id] || productsIcon} alt="" className="w-full h-full object-contain" />
+                  <div className="w-10 h-10 rounded-full bg-[#e6f4ea] dark:bg-[#173B33] flex items-center justify-center shrink-0">
+                    <div 
+                      className="w-6 h-6 bg-[#1e8e3e] dark:bg-[#4ade80]"
+                      style={{
+                        maskImage: `url(${CATEGORY_ICONS[category.id] || productsIcon})`,
+                        WebkitMaskImage: `url(${CATEGORY_ICONS[category.id] || productsIcon})`,
+                        maskSize: 'contain',
+                        maskRepeat: 'no-repeat',
+                        maskPosition: 'center'
+                      }}
+                    />
                   </div>
                   <div className="flex flex-col gap-1">
-                    <span className="text-sm font-bold text-textMain leading-tight">{category.name}</span>
+                    <span className="text-sm font-bold text-textMain dark:text-[#FFFFFF] leading-tight">{category.name}</span>
                     <div>
                       <StatusBadge isHidden={category.is_hidden} />
                     </div>
@@ -218,13 +236,13 @@ const CategoriesPage: React.FC = () => {
           <table className="w-full text-left border-collapse min-w-[500px]">
             <thead>
               <tr className="border-b border-border bg-secondary/30">
-                <th className="py-3 pl-6 pr-3 text-xs font-semibold text-textMuted uppercase tracking-wider">
+                <th className="py-3 pl-6 pr-3 text-xs font-semibold text-textMuted dark:text-[#FFFFFF] uppercase tracking-wider">
                   Назва категорії
                 </th>
-                <th className="py-3 px-3 text-xs font-semibold text-textMuted uppercase tracking-wider">
+                <th className="py-3 px-3 text-xs font-semibold text-textMuted dark:text-[#FFFFFF] uppercase tracking-wider">
                   Статус
                 </th>
-                <th className="py-3 px-3 text-center text-xs font-semibold text-textMuted uppercase tracking-wider w-24">
+                <th className="py-3 px-3 text-center text-xs font-semibold text-textMuted dark:text-[#FFFFFF] uppercase tracking-wider w-24">
                   Дії
                 </th>
               </tr>
