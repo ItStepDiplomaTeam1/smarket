@@ -4,14 +4,14 @@ from contextlib import asynccontextmanager
 import uuid
 import datetime
 
-from faststream.rabbit import RabbitBroker, RabbitExchange
+from faststream.rabbit import RabbitBroker, RabbitExchange, ExchangeType
 
 from app.config import settings
 from app.routers.reviews import router as reviews_router
 from app.routers import internal
 
 broker = RabbitBroker(settings.RABBITMQ_URL)
-smarket_events_exchange = RabbitExchange("smarket_events", type="topic")
+smarket_events_exchange = RabbitExchange("smarket_events", type=ExchangeType.TOPIC)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

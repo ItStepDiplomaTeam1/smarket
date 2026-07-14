@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from typing import Optional
 from fastapi import FastAPI, Depends, Query
 from fastapi.responses import ORJSONResponse
-from faststream.rabbit import RabbitBroker, RabbitExchange, RabbitQueue
+from faststream.rabbit import RabbitBroker, RabbitExchange, RabbitQueue, ExchangeType
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 
@@ -13,7 +13,7 @@ from models import AuditLog
 
 broker = RabbitBroker(settings.RABBITMQ_URL)
 
-smarket_events = RabbitExchange("smarket_events", type="topic")
+smarket_events = RabbitExchange("smarket_events", type=ExchangeType.TOPIC)
 audit_queue = RabbitQueue("audit_queue", routing_key="#")
 
 

@@ -4,7 +4,7 @@ from fastapi.responses import ORJSONResponse
 
 from app.routers import cart, internal
 from app.config import settings
-from faststream.rabbit import RabbitBroker, RabbitExchange
+from faststream.rabbit import RabbitBroker, RabbitExchange, ExchangeType
 from contextlib import asynccontextmanager
 
 import uuid
@@ -12,7 +12,7 @@ import datetime
 import httpx
 
 broker = RabbitBroker(settings.RABBITMQ_URL)
-smarket_events_exchange = RabbitExchange("smarket_events", type="topic")
+smarket_events_exchange = RabbitExchange("smarket_events", type=ExchangeType.TOPIC)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

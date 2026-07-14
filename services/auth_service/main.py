@@ -7,7 +7,7 @@ from typing import Any
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
-from faststream.rabbit import RabbitBroker, RabbitExchange
+from faststream.rabbit import RabbitBroker, RabbitExchange, ExchangeType
 from granian import Granian
 from granian.constants import Interfaces
 from loguru import logger
@@ -32,7 +32,7 @@ setup_logger()
 
 rmq_url = os.getenv("RABBITMQ_URL") or "amqp://localhost:5672/"
 broker = RabbitBroker(rmq_url)
-smarket_events_exchange = RabbitExchange("smarket_events", type="topic")
+smarket_events_exchange = RabbitExchange("smarket_events", type=ExchangeType.TOPIC)
 
 def _coerce_int(value: Any, default: int) -> int:
     try:
