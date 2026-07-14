@@ -1,4 +1,13 @@
+import { useNavigate } from 'react-router-dom';
 import product1 from '@/shared/assets/div.product-visual.svg';
+
+const PRODUCT_MAP: Record<string, string> = {
+  'Молоко 2,5%': 'Молоко',
+  'Кава мелена': 'Кава',
+  'Підгузки': 'Підгузки',
+  'Соняшникова олія': 'Олія',
+  'Пральний порошок': 'Порошок',
+};
 
 const DARK_ICONS = [
   <svg key="1" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3CD27D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 7h-3a2 2 0 0 1-2-2V2"/><path d="M9 18a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h7l4 4v10a2 2 0 0 1-2 2z"/><path d="M3 15h6"/><path d="M3 18h6"/><path d="M3 21h6"/></svg>,
@@ -9,6 +18,13 @@ const DARK_ICONS = [
 ];
 
 export function ProductsSec() {
+  const navigate = useNavigate();
+
+  const handleCompare = (name: string) => {
+    const query = PRODUCT_MAP[name] || name;
+    navigate(`/catalog?q=${encodeURIComponent(query)}`);
+  };
+
   return (
     <section className="w-full py-[60px] sm:py-[96px] bg-white dark:bg-[#0B120F] transition-colors duration-300">
       <div className="w-full max-w-[1228px] mx-auto px-[20px] flex flex-col gap-[32px] sm:gap-[48px]">
@@ -19,7 +35,7 @@ export function ProductsSec() {
             Популярні товари для порівняння
           </h2>
           <p className="font-inter text-[15px] sm:text-[16px] text-[#6D8279] dark:text-[#A4B3AF] leading-[1.5] m-0 transition-colors">
-            Швидко перевіряйте ціни на товари, які найчастіше додають у кошик.
+            Швидко перевіряйте ціни на товары, які найчастіше додають у кошик.
           </p>
         </div>
 
@@ -57,7 +73,10 @@ export function ProductsSec() {
                 {discount}
               </p>
 
-              <button className="w-full p-[10px] rounded-[100px] border border-[#E5E7EB] dark:border-[#2B4236] bg-transparent font-inter text-[14px] font-semibold text-[#265447] dark:text-[#3CD27D] cursor-pointer mt-auto transition-all duration-200 hover:border-[#265447] dark:hover:border-transparent hover:text-[#265447] dark:hover:text-[#0B120F] hover:bg-[#F6FAF8] dark:hover:bg-[#3CD27D]">
+              <button 
+                onClick={() => handleCompare(name)}
+                className="w-full p-[10px] rounded-[100px] border border-[#E5E7EB] dark:border-[#2B4236] bg-transparent font-inter text-[14px] font-semibold text-[#265447] dark:text-[#3CD27D] cursor-pointer mt-auto transition-all duration-200 hover:border-[#265447] dark:hover:border-transparent hover:text-[#265447] dark:hover:text-[#0B120F] hover:bg-[#F6FAF8] dark:hover:bg-[#3CD27D]"
+              >
                 Порівняти
               </button>
             </div>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate} from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 
 // ================= SVG ІКОНКИ ДЛЯ МАКЕТУ =================
@@ -219,20 +219,37 @@ const fetchProducts = async (filters: FetchFilters): Promise<ProductsResponse> =
 
 export function MainContent() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const urlQ = searchParams.get('q') || searchParams.get('search') || '';
+  const urlCategory = searchParams.get('category') || 'products';
+  const urlOfferType = searchParams.get('offer_type');
 
   const [page, setPage] = useState(1);
-  
   const [maxPrice, setMaxPrice] = useState<number>(2000); 
-  const [selectedCategory, setSelectedCategory] = useState<string>('products'); 
+  const [selectedCategory, setSelectedCategory] = useState<string>(urlCategory); 
   const [selectedStores, setSelectedStores] = useState<string[]>([]);
   const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>([]); 
-  const [selectedOffers, setSelectedOffers] = useState<string[]>([]);
+  const [selectedOffers, setSelectedOffers] = useState<string[]>(urlOfferType ? [urlOfferType] : []);
   const [selectedDiscounts, setSelectedDiscounts] = useState<string[]>([]);
   
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [debouncedSearch, setDebouncedSearch] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>(urlQ);
+  const [debouncedSearch, setDebouncedSearch] = useState<string>(urlQ);
   const [sortBy, setSortBy] = useState<string>('best_price');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+  // Sync URL search params to states
+  useEffect(() => {
+    const q = searchParams.get('q') || searchParams.get('search') || '';
+    const cat = searchParams.get('category') || 'products';
+    const offer = searchParams.get('offer_type');
+
+    setSearchQuery(q);
+    setDebouncedSearch(q);
+    setSelectedCategory(cat);
+    setSelectedOffers(offer ? [offer] : []);
+    setPage(1);
+  }, [searchParams]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
