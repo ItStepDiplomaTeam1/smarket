@@ -57,22 +57,8 @@ const CategoryRowSkeleton: React.FC = () => (
 );
 
 const CategoriesPage: React.FC = () => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('');
-
   const { data: categories = [], isLoading, isError } = useCategories();
   const { mutate: toggleVisibility, isPending: isToggling } = useToggleCategoryVisibility();
-
-  // Локальна фільтрація
-  const filtered = categories.filter((c) => {
-    const matchesSearch = !searchQuery || c.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const isHidden = c.is_hidden ?? false;
-    const matchesStatus =
-      !selectedStatus ||
-      (selectedStatus === 'active' && !isHidden) ||
-      (selectedStatus === 'hidden' && isHidden);
-    return matchesSearch && matchesStatus;
-  });
 
   const renderBody = () => {
     if (isLoading) {
@@ -95,7 +81,7 @@ const CategoriesPage: React.FC = () => {
       );
     }
 
-    if (filtered.length === 0) {
+    if (categories.length === 0) {
       return (
         <tr>
           <td colSpan={3} className="py-12 text-center text-sm text-textMuted font-medium">
@@ -105,7 +91,7 @@ const CategoriesPage: React.FC = () => {
       );
     }
 
-    return filtered.map((category) => (
+    return categories.map((category) => (
       <tr
         key={category.id}
         className="hover:bg-secondary/40 transition-colors group border-b border-border/50 last:border-0"
@@ -150,41 +136,7 @@ const CategoriesPage: React.FC = () => {
       {/* Header */}
       <div>
         <h1 className="font-manrope text-[26px] font-bold text-textMain leading-tight">Глобальні Категорії</h1>
-        <p className="text-sm text-textMuted mt-0.5">Управління видимостями 10 верхньорівневих категорій</p>
-      </div>
-
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row items-end sm:items-center justify-between gap-3">
-        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3 w-full sm:w-auto">
-          {/* Search */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 w-full sm:w-auto">
-            <span className="text-sm text-textMuted font-medium">Пошук</span>
-            <div className="relative w-full sm:w-[220px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-textMuted" size={14} />
-              <input
-                type="text"
-                placeholder="Пошук..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-[38px] pl-8 pr-3 bg-surface border border-border rounded-lg text-sm text-textMain focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-textMuted"
-              />
-            </div>
-          </div>
-
-          {/* Status filter */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1 w-full sm:w-auto">
-            <span className="text-sm text-textMuted font-medium">Статус</span>
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="h-[38px] px-3 bg-surface border border-border rounded-lg text-sm text-textMain focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary appearance-none cursor-pointer pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B7280%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_0.5rem_center] bg-[length:1.2em_1.2em] min-w-[140px] w-full sm:w-auto"
-            >
-              <option value="">Всі статуси</option>
-              <option value="active">Активна</option>
-              <option value="hidden">Прихована</option>
-            </select>
-          </div>
-        </div>
+        <p className="text-sm text-textMuted mt-0.5">Управління видимістями 10 верхньорівневих категорій</p>
       </div>
 
       {/* Table */}
