@@ -222,12 +222,12 @@ function TabsBlockView({ block }: { block: Extract<UIBlock, { type: 'tabs' }> })
   const [active, setActive] = useState(0);
   return (
       <div>
-        <div className="flex gap-1 border-b border-[rgba(38,84,71,0.10)] dark:border-b-[rgba(38,84,71,0.2)] mb-3 transition-colors">
+        <div className="flex gap-1 border-b border-[rgba(38,84,71,0.10)] dark:border-b-[rgba(38,84,71,0.2)] mb-3 transition-colors overflow-x-auto whitespace-nowrap">
           {block.items.map((tab, i) => (
               <button
                   key={i}
                   onClick={() => setActive(i)}
-                  className={`px-3 py-1.5 text-[12px] font-semibold transition-colors duration-150 cursor-pointer border-none bg-transparent border-b-2 -mb-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447] dark:focus-visible:ring-[#3DAE8B] focus-visible:ring-offset-1 rounded-t ${
+                  className={`shrink-0 px-3 py-1.5 text-[12px] font-semibold transition-colors duration-150 cursor-pointer border-none bg-transparent border-b-2 -mb-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447] dark:focus-visible:ring-[#3DAE8B] focus-visible:ring-offset-1 rounded-t ${
                       active === i ? 'text-[#173B33] dark:text-white border-b-[#265447] dark:border-b-[#3DAE8B]' : 'text-[#6D8279] dark:text-[#A9B6B0] border-b-transparent hover:text-[#265447] dark:hover:text-[#3DAE8B]'
                   }`}
               >
@@ -614,7 +614,7 @@ function IconButton({
           title={title}
           aria-label={title}
           disabled={disabled}
-          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors duration-150 cursor-pointer border-none disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447] dark:focus-visible:ring-[#3DAE8B] focus-visible:ring-offset-1 ${
+          className={`w-10 h-10 md:w-8 md:h-8 rounded-lg flex items-center justify-center transition-colors duration-150 cursor-pointer border-none disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447] dark:focus-visible:ring-[#3DAE8B] focus-visible:ring-offset-1 ${
               active ? 'bg-[#265447] dark:bg-[#3DAE8B] text-white dark:text-[#111A17]' : 'bg-transparent text-[#6D8279] dark:text-[#A9B6B0] hover:bg-[#F6FAF8] dark:hover:bg-[#1D2A25] hover:text-[#173B33] dark:hover:text-[#3DAE8B]'
           }`}
       >
@@ -691,7 +691,7 @@ function ResizeHandle({
 }
 
 // ─── Chat window ──────────────────────────────────────────────────────────────
-function ChatWindow() {
+function ChatWindow({ isMobile }: { isMobile: boolean }) {
   const close = useAiChatStore((s) => s.close);
   const messages = useAiChatStore((s) => s.messages);
   const addMessage = useAiChatStore((s) => s.addMessage);
@@ -850,10 +850,14 @@ function ChatWindow() {
 
   return (
       <div
-          className="relative flex flex-col bg-white dark:bg-[#111A17] rounded-[20px] shadow-[0_20px_50px_rgba(23,59,51,0.16)] dark:shadow-none border border-[rgba(38,84,71,0.08)] dark:border-[rgba(38,84,71,0.2)] border-l-[3px] border-l-[#265447] dark:border-l-[#3DAE8B] overflow-hidden transition-all duration-300"
-          style={{ width: size.width, height: size.height }}
+          className={`relative flex flex-col bg-white dark:bg-[#111A17] overflow-hidden transition-all duration-300 ${
+              isMobile
+                  ? 'w-full h-full rounded-none border-l-0'
+                  : 'rounded-[20px] shadow-[0_20px_50px_rgba(23,59,51,0.16)] dark:shadow-none border border-[rgba(38,84,71,0.08)] dark:border-[rgba(38,84,71,0.2)] border-l-[3px] border-l-[#265447] dark:border-l-[#3DAE8B]'
+          }`}
+          style={isMobile ? undefined : { width: size.width, height: size.height }}
       >
-        <ResizeHandle size={size} onChange={setSize} />
+        {!isMobile && <ResizeHandle size={size} onChange={setSize} />}
 
         {/* ── Header ── */}
         <div className="flex items-center gap-2.5 pl-4 pr-2.5 py-3 bg-white dark:bg-[#111A17] border-b border-[rgba(38,84,71,0.08)] dark:border-b-[rgba(38,84,71,0.2)] shrink-0 transition-colors duration-300">
@@ -864,13 +868,13 @@ function ChatWindow() {
           </div>
 
           <IconButton onClick={() => setShowSettings((v) => !v)} title="Налаштування" active={showSettings}>
-            <Settings className="w-3.5 h-3.5" />
+            <Settings className="w-4 h-4 md:w-3.5 md:h-3.5" />
           </IconButton>
           <IconButton onClick={clearMessages} title="Очистити історію" disabled={messages.length === 0}>
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="w-4 h-4 md:w-3.5 md:h-3.5" />
           </IconButton>
           <IconButton onClick={close} title="Закрити (Esc)">
-            <X className="w-3.5 h-3.5" />
+            <X className="w-4 h-4 md:w-3.5 md:h-3.5" />
           </IconButton>
         </div>
 
@@ -896,7 +900,7 @@ function ChatWindow() {
                       const val = e.target.value;
                       setProvider(val === 'auto' ? null : val as 'gemini' | 'groq' | 'cerebras' | 'openrouter');
                     }}
-                    className="w-full text-[13px] border border-[rgba(38,84,71,0.15)] dark:border-[rgba(38,84,71,0.2)] rounded-lg px-2.5 py-1.5 bg-white dark:bg-[#1D2A25] text-[#173B33] dark:text-[#EAF7F2] focus:border-[#265447] dark:focus:border-[#3DAE8B] focus:outline-none transition-colors duration-300"
+                    className="w-full text-[14px] md:text-[13px] border border-[rgba(38,84,71,0.15)] dark:border-[rgba(38,84,71,0.2)] rounded-lg px-3 py-2.5 md:px-2.5 md:py-1.5 bg-white dark:bg-[#1D2A25] text-[#173B33] dark:text-[#EAF7F2] focus:border-[#265447] dark:focus:border-[#3DAE8B] focus:outline-none transition-colors duration-300"
                 >
                   <option value="cerebras">Cerebras (за замовчуванням)</option>
                   <option value="auto">Автовибір</option>
@@ -916,7 +920,7 @@ function ChatWindow() {
                       const val = e.target.value;
                       setModelName(val === 'default' ? null : val);
                     }}
-                    className="w-full text-[13px] border border-[rgba(38,84,71,0.15)] dark:border-[rgba(38,84,71,0.2)] rounded-lg px-2.5 py-1.5 bg-white dark:bg-[#1D2A25] text-[#173B33] dark:text-[#EAF7F2] disabled:bg-[#FAFAFA] dark:disabled:bg-[#1D2A25]/50 disabled:text-[#A0AEC0] dark:disabled:text-[#6D8279] focus:border-[#265447] dark:focus:border-[#3DAE8B] focus:outline-none transition-colors duration-300"
+                    className="w-full text-[14px] md:text-[13px] border border-[rgba(38,84,71,0.15)] dark:border-[rgba(38,84,71,0.2)] rounded-lg px-3 py-2.5 md:px-2.5 md:py-1.5 bg-white dark:bg-[#1D2A25] text-[#173B33] dark:text-[#EAF7F2] disabled:bg-[#FAFAFA] dark:disabled:bg-[#1D2A25]/50 disabled:text-[#A0AEC0] dark:disabled:text-[#6D8279] focus:border-[#265447] dark:focus:border-[#3DAE8B] focus:outline-none transition-colors duration-300"
                 >
                   <option value="default">За замовчуванням</option>
                   {provider && PROVIDER_MODELS[provider].map((m) => (
@@ -991,7 +995,7 @@ function ChatWindow() {
         )}
 
         {/* ── Input ── */}
-        <div className="px-4 pt-3 pb-2.5 border-t border-[rgba(38,84,71,0.08)] dark:border-t-[rgba(38,84,71,0.2)] shrink-0 bg-white dark:bg-[#111A17] transition-colors duration-300">
+        <div className="px-4 pt-3 pb-6 md:pb-2.5 border-t border-[rgba(38,84,71,0.08)] dark:border-t-[rgba(38,84,71,0.2)] shrink-0 bg-white dark:bg-[#111A17] transition-colors duration-300">
           <div className="flex items-end gap-2 bg-[#F6FAF8] dark:bg-[#1D2A25] rounded-xl border border-[rgba(38,84,71,0.12)] dark:border-[rgba(38,84,71,0.2)] px-3 py-2.5 focus-within:border-[#265447] dark:focus-within:border-[#3DAE8B] transition-colors duration-150">
           <textarea
               ref={inputRef}
@@ -1001,16 +1005,16 @@ function ChatWindow() {
               placeholder="Запитайте про ціни, товари, кошик..."
               rows={1}
               disabled={isPending}
-              className="flex-1 bg-transparent border-none outline-none resize-none text-[13px] text-[#173B33] dark:text-[#EAF7F2] placeholder-[#A0AEC0] dark:placeholder-[#6D8279] max-h-24 leading-relaxed disabled:opacity-50 font-inter transition-colors"
+              className="flex-1 bg-transparent border-none outline-none resize-none text-[14px] md:text-[13px] text-[#173B33] dark:text-[#EAF7F2] placeholder-[#A0AEC0] dark:placeholder-[#6D8279] max-h-24 leading-relaxed disabled:opacity-50 font-inter transition-colors"
               style={{ overflow: 'hidden' }}
           />
             <button
                 onClick={() => handleSend()}
                 disabled={!input.trim() || isPending}
                 aria-label="Надіслати"
-                className="w-8 h-8 rounded-lg bg-[#265447] dark:bg-[#3DAE8B] hover:bg-[#1A3E2F] dark:hover:bg-[#2C9E7C] disabled:bg-[rgba(38,84,71,0.15)] dark:disabled:bg-[#1D2A25]/40 flex items-center justify-center shrink-0 transition-colors duration-150 cursor-pointer border-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447] dark:focus-visible:ring-[#3DAE8B] focus-visible:ring-offset-1"
+                className="w-10 h-10 md:w-8 md:h-8 rounded-lg bg-[#265447] dark:bg-[#3DAE8B] hover:bg-[#1A3E2F] dark:hover:bg-[#2C9E7C] disabled:bg-[rgba(38,84,71,0.15)] dark:disabled:bg-[#1D2A25]/40 flex items-center justify-center shrink-0 transition-colors duration-150 cursor-pointer border-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447] dark:focus-visible:ring-[#3DAE8B] focus-visible:ring-offset-1"
             >
-              <Send className="w-3.5 h-3.5 text-white dark:text-[#111A17]" />
+              <Send className="w-4 h-4 md:w-3.5 md:h-3.5 text-white dark:text-[#111A17]" />
             </button>
           </div>
           <p className="text-[10px] text-[#A9B6B0] dark:text-[#6D8279] mt-1.5 px-0.5 transition-colors">{modelCaption}</p>
@@ -1024,6 +1028,15 @@ export function AiChatWidget() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isOpen = useAiChatStore((s) => s.isOpen);
   const toggle = useAiChatStore((s) => s.toggle);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 767px)');
+    setIsMobile(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, []);
 
   // Ctrl/Cmd+J opens or closes the assistant from anywhere in the app.
   useEffect(() => {
@@ -1041,23 +1054,26 @@ export function AiChatWidget() {
   if (!isAuthenticated) return null;
 
   return (
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+      <div className={isOpen && isMobile ? "fixed inset-0 z-50" : "fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3"}>
         {isOpen && (
-            <div style={{ animation: 'chatIn 0.22s cubic-bezier(0.16,1,0.3,1) both' }}>
-              <ChatWindow />
+            <div 
+              style={isMobile ? undefined : { animation: 'chatIn 0.22s cubic-bezier(0.16,1,0.3,1) both' }} 
+              className={isMobile ? "w-full h-full" : undefined}
+            >
+              <ChatWindow isMobile={isMobile} />
             </div>
         )}
 
         {!isOpen && (
             <button
                 onClick={toggle}
-                aria-label={`Відкрити Zephyros (${SHORTCUT_HINT})`}
-                title={`Zephyros (${SHORTCUT_HINT})`}
-                className="flex items-center gap-2.5 pl-3 pr-4 py-2.5 rounded-2xl bg-[#265447] dark:bg-[#3DAE8B] hover:bg-[#1A3E2F] dark:hover:bg-[#2C9E7C] shadow-[0_8px_24px_rgba(38,84,71,0.30)] dark:shadow-none hover:shadow-[0_10px_28px_rgba(38,84,71,0.38)] transition-all duration-150 cursor-pointer border-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447] dark:focus-visible:ring-[#3DAE8B] focus-visible:ring-offset-2"
+                aria-label="Відкрити Zephyros"
+                title="Zephyros"
+                className="flex items-center justify-center md:justify-start gap-2.5 w-12 h-12 md:w-auto md:h-auto md:pl-3 md:pr-4 md:py-2.5 rounded-full md:rounded-2xl bg-[#265447] dark:bg-[#3DAE8B] hover:bg-[#1A3E2F] dark:hover:bg-[#2C9E7C] shadow-[0_8px_24px_rgba(38,84,71,0.30)] dark:shadow-none hover:shadow-[0_10px_28px_rgba(38,84,71,0.38)] transition-all duration-150 cursor-pointer border-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447] dark:focus-visible:ring-[#3DAE8B] focus-visible:ring-offset-2"
             >
               <ZephyrosMark size={22} />
-              <span className="text-white dark:text-[#111A17] text-[13px] font-semibold font-manrope whitespace-nowrap transition-colors">Zephyros</span>
-              <span className="text-[10px] text-white/55 dark:text-[#111A17]/75 border border-white/25 dark:border-[#111A17]/30 rounded px-1 py-[1px] leading-none transition-colors">{SHORTCUT_HINT}</span>
+              <span className="hidden md:inline text-white dark:text-[#111A17] text-[13px] font-semibold font-manrope whitespace-nowrap transition-colors">Zephyros</span>
+              <span className="hidden md:inline text-[10px] text-white/55 dark:text-[#111A17]/75 border border-white/25 dark:border-[#111A17]/30 rounded px-1 py-[1px] leading-none transition-colors">{SHORTCUT_HINT}</span>
             </button>
         )}
       </div>
