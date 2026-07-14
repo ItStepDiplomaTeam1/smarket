@@ -35,7 +35,7 @@ const StatusBadge: React.FC<{ isHidden?: boolean }> = ({ isHidden }) => {
     );
   }
   return (
-    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold bg-[#e6f4ea] text-[#1e8e3e] dark:bg-[#6FE3C2] dark:text-[#173b33]">
+    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold bg-[#e6f4ea] text-[#1e8e3e] dark:bg-[#6FE3C2] dark:text-[#06513C]">
       Активна
     </span>
   );
