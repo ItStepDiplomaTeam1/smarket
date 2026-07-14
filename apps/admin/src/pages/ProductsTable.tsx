@@ -392,14 +392,12 @@ const ProductsTable: React.FC = () => {
             value={isLoading ? 0 : totalHits.toLocaleString('uk-UA')}
             icon={PackageIcon}
             iconBgColor="#6FE3C2"
-            trend={{ value: 5.2, isPositive: true, text: 'від учора' }}
           />
           <MetricCard
             title="Потребують перевірки"
             value={15}
             icon={SearchIcon}
             iconBgColor="#FD690D"
-            trend={{ value: 7.1, isPositive: true, text: 'від учора' }}
           />
         </div>
         <div className="grid grid-cols-3 gap-3">
@@ -408,7 +406,6 @@ const ProductsTable: React.FC = () => {
             value={8}
             icon={TagIcon}
             iconBgColor="#1A65F2"
-            trend={{ value: 2.3, isPositive: false, text: 'від учора' }}
             className="p-3"
           />
           <MetricCard
@@ -416,7 +413,6 @@ const ProductsTable: React.FC = () => {
             value={5}
             icon={BinIcon}
             iconBgColor="#C30404"
-            trend={{ value: 1.4, isPositive: false, text: 'від учора' }}
             className="p-3"
           />
           <MetricCard
@@ -424,7 +420,6 @@ const ProductsTable: React.FC = () => {
             value={12}
             icon={RowsIcon}
             iconBgColor="#FDC80D"
-            trend={{ value: 1.2, isPositive: false, text: 'від учора' }}
             className="p-3"
           />
         </div>
@@ -437,35 +432,30 @@ const ProductsTable: React.FC = () => {
           value={isLoading ? 0 : totalHits.toLocaleString('uk-UA')}
           icon={PackageIcon}
           iconBgColor="#6FE3C2"
-          trend={{ value: 5.2, isPositive: true, text: 'від учора' }}
         />
         <MetricCard
           title="Потребують перевірки"
           value={15}
           icon={SearchIcon}
           iconBgColor="#FD690D"
-          trend={{ value: 7.1, isPositive: true, text: 'від учора' }}
         />
         <MetricCard
           title="Без категорії"
           value={12}
           icon={RowsIcon}
           iconBgColor="#FDC80D"
-          trend={{ value: 1.2, isPositive: false, text: 'від учора' }}
         />
         <MetricCard
           title="Без ціни"
           value={8}
           icon={TagIcon}
           iconBgColor="#1A65F2"
-          trend={{ value: 2.3, isPositive: false, text: 'від учора' }}
         />
         <MetricCard
           title="Неактивні"
           value={5}
           icon={BinIcon}
           iconBgColor="#C30404"
-          trend={{ value: 1.4, isPositive: false, text: 'від учора' }}
         />
       </div>
 
