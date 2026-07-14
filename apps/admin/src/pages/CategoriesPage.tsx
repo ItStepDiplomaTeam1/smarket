@@ -47,7 +47,7 @@ const CategoryRowSkeleton: React.FC = () => (
   <tr className="animate-pulse border-b border-border/50 last:border-0">
     <td className="py-4 pl-6 pr-3">
       <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-lg bg-secondary" />
+        <div className="w-8 h-8 rounded-full bg-secondary" />
         <div className="h-4 w-40 rounded bg-secondary" />
       </div>
     </td>
@@ -112,7 +112,7 @@ const CategoriesPage: React.FC = () => {
       >
         <td className="py-4 pl-6 pr-3">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-secondary/40 flex items-center justify-center p-1.5 shrink-0">
+            <div className="w-8 h-8 rounded-full bg-[#e6f4ea] dark:bg-emerald-950/40 flex items-center justify-center p-1.5 shrink-0">
               <img src={CATEGORY_ICONS[category.id] || productsIcon} alt="" className="w-full h-full object-contain" />
             </div>
             <span className="text-sm font-semibold text-textMain">{category.name}</span>
