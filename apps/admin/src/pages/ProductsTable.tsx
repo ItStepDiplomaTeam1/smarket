@@ -371,71 +371,127 @@ const ProductsTable: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-12">
-      {/* ── Page Header ── */}
-      <div>
-        <h1 className="font-manrope text-[26px] font-bold text-textMain leading-tight">Товари</h1>
-        <p className="text-sm text-textMuted mt-0.5">Головна / Товари</p>
+    <div className="space-y-5 animate-in fade-in duration-500 pb-12 px-4 md:px-0">
+      {/* Breadcrumbs */}
+      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-textMuted uppercase tracking-wider">
+        <span>Головна</span>
+        <span className="text-textMuted/60 font-normal">/</span>
+        <span className="text-textMain">Товари</span>
       </div>
 
-      {/* ── Top Metrics Grid ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* Page Header */}
+      <div>
+        <h1 className="font-manrope text-[24px] md:text-[28px] font-bold text-textMain leading-tight">Товари</h1>
+      </div>
+
+      {/* ── Top Metrics Grid: Mobile view (visible on small screens) ── */}
+      <div className="space-y-3 md:hidden">
+        <div className="grid grid-cols-2 gap-3">
+          <MetricCard
+            title="Всього товарів"
+            value={isLoading ? 0 : totalHits.toLocaleString('uk-UA')}
+            icon={PackageIcon}
+            iconBgColor="#6FE3C2"
+            trend={{ value: 5.2, isPositive: true, text: 'від учора' }}
+          />
+          <MetricCard
+            title="Потребують перевірки"
+            value={15}
+            icon={SearchIcon}
+            iconBgColor="#FD690D"
+            trend={{ value: 7.1, isPositive: true, text: 'від учора' }}
+          />
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <MetricCard
+            title="Без ціни"
+            value={8}
+            icon={TagIcon}
+            iconBgColor="#1A65F2"
+            trend={{ value: 2.3, isPositive: false, text: 'від учора' }}
+            className="p-3"
+          />
+          <MetricCard
+            title="Неактивні"
+            value={5}
+            icon={BinIcon}
+            iconBgColor="#C30404"
+            trend={{ value: 1.4, isPositive: false, text: 'від учора' }}
+            className="p-3"
+          />
+          <MetricCard
+            title="Без категорії"
+            value={12}
+            icon={RowsIcon}
+            iconBgColor="#FDC80D"
+            trend={{ value: 1.2, isPositive: false, text: 'від учора' }}
+            className="p-3"
+          />
+        </div>
+      </div>
+
+      {/* ── Top Metrics Grid: Desktop view (visible on md and up) ── */}
+      <div className="hidden md:grid md:grid-cols-5 gap-4">
         <MetricCard
           title="Всього товарів"
           value={isLoading ? 0 : totalHits.toLocaleString('uk-UA')}
           icon={PackageIcon}
           iconBgColor="#6FE3C2"
+          trend={{ value: 5.2, isPositive: true, text: 'від учора' }}
         />
         <MetricCard
           title="Потребують перевірки"
           value={15}
           icon={SearchIcon}
           iconBgColor="#FD690D"
+          trend={{ value: 7.1, isPositive: true, text: 'від учора' }}
         />
         <MetricCard
           title="Без категорії"
           value={12}
           icon={RowsIcon}
           iconBgColor="#FDC80D"
+          trend={{ value: 1.2, isPositive: false, text: 'від учора' }}
         />
         <MetricCard
           title="Без ціни"
           value={8}
           icon={TagIcon}
           iconBgColor="#1A65F2"
+          trend={{ value: 2.3, isPositive: false, text: 'від учора' }}
         />
         <MetricCard
           title="Неактивні"
           value={5}
           icon={BinIcon}
           iconBgColor="#C30404"
+          trend={{ value: 1.4, isPositive: false, text: 'від учора' }}
         />
       </div>
 
       {/* ── Toolbar ── */}
-      <div className="flex flex-col lg:flex-row items-end lg:items-center justify-between gap-4 bg-surface border border-border p-4 rounded-xl shadow-sm">
-        
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full lg:w-auto">
+      <div className="bg-surface border border-border p-4 rounded-xl shadow-sm space-y-4">
+        <div className="grid grid-cols-2 md:flex md:flex-wrap items-center gap-3 w-full">
           {/* Search Form */}
-          <form onSubmit={handleSearchSubmit} className="w-full sm:w-auto">
-            <label className="block text-xs font-semibold text-textMain mb-1.5 ml-1">Пошук товару</label>
+          <form onSubmit={handleSearchSubmit} className="col-span-2 md:col-span-1 w-full md:w-auto">
+            <label className="block text-[11px] md:text-xs font-semibold text-textMain mb-1.5 ml-1">Пошук товару</label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <Search size={15} className="text-textMuted" />
+              <div className="absolute inset-y-0 left-0 pl-2.5 md:pl-3 flex items-center pointer-events-none">
+                <Search size={14} className="text-textMuted" />
               </div>
               <input 
                 type="text" 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Назва, артикул, штрихкод..." 
-                className="w-full sm:w-[220px] pl-9 pr-4 py-2 bg-surface border border-border rounded-lg text-sm text-textMain focus:outline-none focus:ring-1 focus:ring-primary transition-all placeholder:text-textMuted"
+                placeholder="Назва, артикул..." 
+                className="w-full md:w-[220px] pl-8 md:pl-9 pr-3 md:pr-4 py-2 bg-surface border border-border rounded-lg text-xs md:text-sm text-textMain focus:outline-none focus:ring-1 focus:ring-primary transition-all placeholder:text-textMuted"
               />
             </div>
           </form>
 
           {/* Select Category */}
-          <div className="w-full sm:w-auto">
-            <label className="block text-xs font-semibold text-textMain mb-1.5 ml-1">Категорія</label>
+          <div className="col-span-1 w-full md:w-auto">
+            <label className="block text-[11px] md:text-xs font-semibold text-textMain mb-1.5 ml-1">Категорія</label>
             <div className="relative">
               <select 
                 value={selectedCategory}
@@ -443,7 +499,7 @@ const ProductsTable: React.FC = () => {
                   setSelectedCategory(e.target.value);
                   setPage(1);
                 }}
-                className="w-full sm:w-[180px] pl-3 pr-8 py-2 bg-surface border border-border rounded-lg text-sm text-textMain appearance-none focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                className="w-full md:w-[180px] pl-3 pr-8 py-2 bg-surface border border-border rounded-lg text-xs md:text-sm text-textMain appearance-none focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B7280%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_0.5rem_center] bg-[length:1.1em_1.1em]"
               >
                 {CATEGORIES.map((cat) => (
                   <option key={cat.id} value={cat.id}>
@@ -451,39 +507,12 @@ const ProductsTable: React.FC = () => {
                   </option>
                 ))}
               </select>
-              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                <ChevronDown size={14} className="text-textMuted" />
-              </div>
-            </div>
-          </div>
-
-          {/* Select Retailer */}
-          <div className="w-full sm:w-auto">
-            <label className="block text-xs font-semibold text-textMain mb-1.5 ml-1">Магазин</label>
-            <div className="relative">
-              <select 
-                value={selectedRetailer}
-                onChange={(e) => {
-                  setSelectedRetailer(e.target.value);
-                  setPage(1);
-                }}
-                className="w-full sm:w-[150px] pl-3 pr-8 py-2 bg-surface border border-border rounded-lg text-sm text-textMain appearance-none focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
-              >
-                {RETAILERS.map((ret) => (
-                  <option key={ret.name} value={ret.name}>
-                    {ret.label}
-                  </option>
-                ))}
-              </select>
-              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                <ChevronDown size={14} className="text-textMuted" />
-              </div>
             </div>
           </div>
 
           {/* Select Status */}
-          <div className="w-full sm:w-auto">
-            <label className="block text-xs font-semibold text-textMain mb-1.5 ml-1">Статус</label>
+          <div className="col-span-1 w-full md:w-auto">
+            <label className="block text-[11px] md:text-xs font-semibold text-textMain mb-1.5 ml-1">Статус</label>
             <div className="relative">
               <select 
                 value={selectedStatus}
@@ -491,7 +520,7 @@ const ProductsTable: React.FC = () => {
                   setSelectedStatus(e.target.value);
                   setPage(1);
                 }}
-                className="w-full sm:w-[150px] pl-3 pr-8 py-2 bg-surface border border-border rounded-lg text-sm text-textMain appearance-none focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                className="w-full md:w-[150px] pl-3 pr-8 py-2 bg-surface border border-border rounded-lg text-xs md:text-sm text-textMain appearance-none focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B7280%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_0.5rem_center] bg-[length:1.1em_1.1em]"
               >
                 {STATUSES.map((stat) => (
                   <option key={stat.value} value={stat.value}>
@@ -499,28 +528,197 @@ const ProductsTable: React.FC = () => {
                   </option>
                 ))}
               </select>
-              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                <ChevronDown size={14} className="text-textMuted" />
-              </div>
             </div>
           </div>
 
-          <div className="w-full sm:w-auto self-end mt-4 sm:mt-0">
-             <button 
-              onClick={() => {
-                setActiveSearch(searchQuery);
-                setPage(1);
-              }}
-              className="h-[38px] px-5 py-2 border border-border rounded-lg text-sm font-medium text-textMain hover:bg-secondary transition-colors w-full sm:w-auto"
-            >
-              Пошук
-            </button>
+          {/* Select Retailer */}
+          <div className="col-span-1 w-full md:w-auto">
+            <label className="block text-[11px] md:text-xs font-semibold text-textMain mb-1.5 ml-1">Магазин</label>
+            <div className="relative">
+              <select 
+                value={selectedRetailer}
+                onChange={(e) => {
+                  setSelectedRetailer(e.target.value);
+                  setPage(1);
+                }}
+                className="w-full md:w-[150px] pl-3 pr-8 py-2 bg-surface border border-border rounded-lg text-xs md:text-sm text-textMain appearance-none focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer pr-8 bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B7280%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_0.5rem_center] bg-[length:1.1em_1.1em]"
+              >
+                {RETAILERS.map((ret) => (
+                  <option key={ret.name} value={ret.name}>
+                    {ret.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
+        </div>
+
+        {/* Buttons Row */}
+        <div className="flex items-center gap-3 w-full md:justify-end">
+          <button 
+            onClick={() => {
+              setActiveSearch(searchQuery);
+              setPage(1);
+            }}
+            className="flex-1 md:flex-none h-[38px] px-5 py-2 border border-primary/40 text-primary dark:text-[#4ADE80] dark:border-[#4ADE80]/40 rounded-lg text-xs md:text-sm font-semibold hover:bg-secondary transition-colors"
+          >
+            Пошук
+          </button>
+          <button 
+            onClick={() => {
+              alert('Додавання товару поки в розробці');
+            }}
+            className="flex-1 md:flex-none h-[38px] px-5 py-2 bg-[#1a4731] hover:bg-[#1a4731]/90 text-white dark:bg-[#4ADE80] dark:hover:bg-[#4ADE80]/90 dark:text-[#173B33] rounded-lg text-xs md:text-sm font-semibold transition-colors"
+          >
+            Додати товар
+          </button>
         </div>
       </div>
 
-      {/* ── Data Table ── */}
-      <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
+      {/* ── Mobile View: list of product cards (visible on small screens) ── */}
+      <div className="space-y-3 md:hidden">
+        {isLoading ? (
+          Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="animate-pulse p-4 bg-surface border border-border/50 rounded-2xl space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-4 h-4 bg-secondary rounded" />
+                <div className="w-12 h-12 bg-secondary rounded-lg shrink-0" />
+                <div className="space-y-1.5 flex-1">
+                  <div className="h-4 w-full rounded bg-secondary" />
+                  <div className="h-3 w-16 rounded bg-secondary" />
+                </div>
+              </div>
+              <div className="h-px bg-border/40" />
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1"><div className="h-2 w-10 bg-secondary rounded" /><div className="h-3 w-16 bg-secondary rounded" /></div>
+                <div className="space-y-1"><div className="h-2 w-10 bg-secondary rounded" /><div className="h-3 w-12 bg-secondary rounded" /></div>
+                <div className="space-y-1"><div className="h-2 w-10 bg-secondary rounded" /><div className="h-3 w-14 bg-secondary rounded" /></div>
+              </div>
+            </div>
+          ))
+        ) : isError ? (
+          <div className="p-8 text-center bg-surface border border-border rounded-2xl">
+            <AlertCircle size={24} className="text-accentRed mx-auto mb-2 opacity-85" />
+            <p className="text-sm text-textMuted font-medium">Не вдалося завантажити товари</p>
+          </div>
+        ) : products.length === 0 ? (
+          <div className="p-8 text-center bg-surface border border-border rounded-2xl text-sm text-textMuted">
+            Товарів не знайдено за вказаними фільтрами
+          </div>
+        ) : (
+          products.map((product) => {
+            const idStr = String(product.id);
+            const title = product.title;
+            const weightStr = product.weight ? `${product.weight} ${product.unit || ''}`.trim() : '—';
+            const imageUrl = product.image_url || 'https://images.silpo.ua/products/1600x1600/webp/2c5bd4d9-dcda-43c2-a7d0-120f2b3e8392.png';
+            const categoryName = product.category_name || '';
+
+            const firstOffer = product.offers?.[0];
+            const price = firstOffer?.price;
+            const inStock = firstOffer?.in_stock ?? false;
+
+            let statusStr = 'Неактивний';
+            if (inStock && price && price > 0) {
+              statusStr = 'Активний';
+            } else if (!price || price <= 0) {
+              statusStr = 'Потребують перевірки';
+            }
+
+            let issueStr: string | null = null;
+            if (!price || price <= 0) {
+              issueStr = 'Без ціни';
+            } else if (!product.category_name) {
+              issueStr = 'Без категорії';
+            }
+
+            return (
+              <div
+                key={idStr}
+                className="bg-surface border border-border/60 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] dark:shadow-none p-4 space-y-4"
+              >
+                {/* Header Row: Checkbox, Image, Title, Actions */}
+                <div className="flex items-start justify-between gap-2.5">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <input 
+                      type="checkbox" 
+                      className="w-4 h-4 rounded border-border text-[#1a4731] focus:ring-[#1a4731] shrink-0"
+                      checked={selectedIds.has(idStr)}
+                      onChange={() => toggleSelect(idStr)}
+                    />
+                    <div className="w-12 h-12 rounded-lg border border-border overflow-hidden bg-white shrink-0 flex items-center justify-center p-1">
+                      <img 
+                        src={imageUrl} 
+                        alt={title} 
+                        className="w-10 h-10 object-contain" 
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = 'https://images.silpo.ua/products/1600x1600/webp/2c5bd4d9-dcda-43c2-a7d0-120f2b3e8392.png';
+                        }}
+                      />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[13px] font-bold text-textMain dark:text-[#FFFFFF] leading-snug break-words line-clamp-2" title={title}>
+                        {title}
+                      </span>
+                      <span className="text-[10px] text-textMuted mt-0.5">{weightStr}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button className="p-1.5 text-textMuted hover:text-textMain hover:bg-secondary dark:hover:bg-secondary/40 rounded-md transition-colors">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <ProductActionsMenu product={product} toggleVisibility={toggleVisibility} isToggling={isTogglingVisibility} />
+                  </div>
+                </div>
+
+                <div className="h-px bg-border/40" />
+
+                {/* Details Row: Category, Store, Price */}
+                <div className="grid grid-cols-3 gap-2 text-center text-xs font-semibold text-textMuted">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] font-normal text-textMuted/60 uppercase tracking-wider">Категорія</span>
+                    <span className="text-textMain dark:text-[#FFFFFF] truncate">{categoryName || '—'}</span>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] font-normal text-textMuted/60 uppercase tracking-wider">Магазин</span>
+                    <span className="text-textMain dark:text-[#FFFFFF] truncate">{firstOffer?.store?.name || '—'}</span>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] font-normal text-textMuted/60 uppercase tracking-wider">Ціна</span>
+                    <span className="text-textMain dark:text-[#FFFFFF]">{price && price > 0 ? `${price.toFixed(2)} грн` : '—'}</span>
+                  </div>
+                </div>
+
+                <div className="h-px bg-border/40" />
+
+                {/* Badges & Time Row */}
+                <div className="flex items-center justify-between gap-2 flex-wrap">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <StatusBadge status={statusStr} />
+                    {issueStr && <IssueBadge issue={issueStr} />}
+                    <div 
+                      className={`flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.5 rounded-md ${
+                        product.is_hidden
+                          ? 'text-red-600 bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/30'
+                          : 'text-green-600 bg-green-50 dark:bg-green-950/20 border border-green-100 dark:border-green-900/30'
+                      }`}
+                    >
+                      {product.is_hidden ? <EyeOff size={10} /> : <Eye size={10} />}
+                      {product.is_hidden ? 'Приховано' : 'Видимий'}
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-textMuted font-medium">Нещодавно</span>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* ── Desktop View: Data Table (hidden on mobile) ── */}
+      <div className="hidden md:block bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[900px]">
             <thead>
