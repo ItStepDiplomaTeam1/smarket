@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import { apiClient } from '@/lib/apiClient';
 import { Lock, Mail, AlertCircle } from 'lucide-react';
-import logo from '@/assets/Logo-Smarket.svg';
+import logo from '@/assets/HeaderIcons/Logo-Smarket.svg';
 
 interface LoginPayload {
   access_token: string;

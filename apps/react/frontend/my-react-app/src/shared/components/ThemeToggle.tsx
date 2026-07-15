@@ -1,9 +1,13 @@
 // src/shared/components/ThemeToggle.tsx
-import { useTheme } from '../context/ThemeContext';
+import { useThemeStore } from '../store/useThemeStore';
 
 export function ThemeToggle() {
-    const { theme, toggleTheme } = useTheme();
+    const { theme, setTheme } = useThemeStore();
     const isDark = theme === 'dark';
+
+    const toggleTheme = () => {
+        setTheme(isDark ? 'light' : 'dark');
+    };
 
     return (
         <button

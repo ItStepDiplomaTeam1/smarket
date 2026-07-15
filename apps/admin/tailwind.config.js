@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: 'class',
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -7,13 +8,14 @@ export default {
   theme: {
     extend: {
       colors: {
-        background: '#F8F9FA', // Light grey background
-        surface: '#FFFFFF',    // White cards
+        background: 'var(--color-bg)', // Light grey background
+        surface: 'var(--color-surface)',    // White cards
+        sidebarText: 'var(--color-sidebar-text)',
         primary: '#265447',    // Brand Dark Green
         primaryHover: '#1A3E2F',
         secondary: '#F6FAF8',  // Light green (active sidebar, hovers)
-        textMain: '#111827',   // Dark grey text
-        textMuted: '#6D8279',  // Gray green muted text
+        textMain: 'var(--color-text-main)',   // Dynamic main text color
+        textMuted: 'var(--color-text-muted)',  // Dynamic muted text color
         accentGreen: '#10B981', // For success icons
         accentRed: '#EF4444',   // For error icons
         accentYellow: '#F59E0B',

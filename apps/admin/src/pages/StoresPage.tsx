@@ -4,40 +4,17 @@ import {
   Edit, 
   MoreVertical,
   AlertCircle,
-  ShoppingBag,
   Store as StoreIcon,
-  CheckCircle2,
-  XCircle,
-  AlertTriangle
 } from 'lucide-react';
 import { useStores } from '@/hooks/useStores';
+import { MetricCard } from '@/components/MetricCard';
+
+import PackageIcon from '@/assets/MetricCardIcons/Package.svg';
+import SearchIcon from '@/assets/MetricCardIcons/Search.svg';
+import RowsIcon from '@/assets/MetricCardIcons/Rows.svg';
+import NeedsReviewIcon from '@/assets/MetricCardIcons/NeedsReview.svg';
 
 // ── Helper Components ─────────────────────────────────────────────────────
-
-const MetricCard: React.FC<{
-  title: string;
-  value: number;
-  icon: React.ElementType;
-  iconBg: string;
-  iconColor: string;
-  trendText: string;
-  trendPositive?: boolean;
-}> = ({ title, value, icon: Icon, iconBg, iconColor, trendText, trendPositive = false }) => (
-  <div className="bg-surface border border-border rounded-xl p-5 flex flex-col justify-between shadow-sm">
-    <div className="flex justify-between items-start mb-4">
-      <div className={`p-2.5 rounded-lg ${iconBg}`}>
-        <Icon className={iconColor} size={20} />
-      </div>
-    </div>
-    <div>
-      <h3 className="text-sm font-medium text-textMuted mb-1">{title}</h3>
-      <div className="text-2xl font-bold text-textMain">{value}</div>
-      <p className={`text-xs mt-1.5 flex items-center font-medium ${trendPositive ? 'text-green-500' : 'text-red-500'}`}>
-        <span className="mr-1">{trendPositive ? '↑' : '↓'}</span> {trendText}
-      </p>
-    </div>
-  </div>
-);
 
 const StatusBadge: React.FC<{ isActive: boolean }> = ({ isActive }) => {
   if (isActive) {
@@ -234,11 +211,31 @@ const StoresPage: React.FC = () => {
       </div>
 
       {/* Top Metrics Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <MetricCard title="Всього магазинів" value={stores.length} icon={ShoppingBag} iconBg="bg-[#e6f4ea]" iconColor="text-[#1e8e3e]" trendText="+2 від учора" trendPositive={true} />
-        <MetricCard title="Активних магазинів" value={totalActive} icon={CheckCircle2} iconBg="bg-[#fff7e6]" iconColor="text-[#fa8c16]" trendText="+1 від учора" trendPositive={true} />
-        <MetricCard title="Неактивних магазинів" value={totalInactive} icon={XCircle} iconBg="bg-[#fef7e0]" iconColor="text-[#b08b00]" trendText="-1 від учора" trendPositive={false} />
-        <MetricCard title="З помилками" value={0} icon={AlertTriangle} iconBg="bg-[#e8f0fe]" iconColor="text-[#1a73e8]" trendText="-2 від учора" trendPositive={false} />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard 
+          title="Всього магазинів" 
+          value={stores.length.toLocaleString('uk-UA')} 
+          icon={PackageIcon} 
+          iconBgColor="#6FE3C2" 
+        />
+        <MetricCard 
+          title="Активних магазинів" 
+          value={totalActive.toLocaleString('uk-UA')} 
+          icon={SearchIcon} 
+          iconBgColor="#FD690D" 
+        />
+        <MetricCard 
+          title="Неактивних магазинів" 
+          value={totalInactive.toLocaleString('uk-UA')} 
+          icon={RowsIcon} 
+          iconBgColor="#FDC80D" 
+        />
+        <MetricCard 
+          title="З помилками" 
+          value={0} 
+          icon={NeedsReviewIcon} 
+          iconBgColor="#C30404" 
+        />
       </div>
 
       {/* Toolbar: Filters & Actions */}

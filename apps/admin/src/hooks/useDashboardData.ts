@@ -14,7 +14,7 @@ export interface DashboardData {
   };
   priceDynamics: Array<{ name: string; value: number }>;
   systemLogs: Array<{ id: string; time: string; event: string; details: string; status: 'success' | 'warning' | 'error' | 'info' }>;
-  needsAttention: Array<{ id: string; source: string; message: string; time: string; type: 'error' | 'sync' | 'warning' }>;
+  needsAttention: Array<{ id: string; source: string; message: string; time: string; type: 'error' | 'sync' | 'warning' | 'success' }>;
   popularCategories: Array<{ id: string; name: string; count: number; icon: string }>;
   newUsers: Array<{ id: string; name: string; email: string; initials: string }>;
   searchQueries: Array<{ id: string; query: string; count: number; position: number }>;
@@ -78,18 +78,13 @@ function getMockDashboardData(): DashboardData {
       pricesUpdatedTrend: 9.1,
     },
     priceDynamics: [
-      { name: 'Черв.', value: 200000 },
-      { name: 'Лип.', value: 250000 },
-      { name: 'Серп.', value: 300000 },
-      { name: 'Вер.', value: 280000 },
-      { name: 'Жовт.', value: 450000 },
-      { name: 'Лист.', value: 300000 },
-      { name: 'Груд.', value: 200000 },
-      { name: 'Січ.', value: 500000 },
-      { name: 'Лют.', value: 500000 },
-      { name: 'Бер.', value: 350000 },
-      { name: 'Квіт.', value: 450000 },
-      { name: 'Трав.', value: 400000 },
+      { name: '04.07', value: 120000 },
+      { name: '05.07', value: 150000 },
+      { name: '06.07', value: 180000 },
+      { name: '07.07', value: 160000 },
+      { name: '08.07', value: 200000 },
+      { name: '09.07', value: 220000 },
+      { name: '10.07', value: 208655 },
     ],
     systemLogs: [
       { id: '1', time: '14:35:12', event: 'Успішне оновлення парсера АТБ', details: 'Оновлено 4 521 товарів', status: 'success' },

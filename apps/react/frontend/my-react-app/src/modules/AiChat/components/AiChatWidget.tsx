@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, type KeyboardEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   X,
   Send,
@@ -91,10 +92,10 @@ function ZephyrosMark({ size = 28 }: { size?: number }) {
 // ─── Badge block ──────────────────────────────────────────────────────────────
 function BadgeBlockView({ block }: { block: Extract<UIBlock, { type: 'badge' }> }) {
   const styles: Record<string, string> = {
-    savings: 'bg-[#FFF8E1] text-[#856404] border-[#FFC72C]',
-    best_price: 'bg-[#F0FDF4] text-[#15803D] border-[#86EFAC]',
-    warning: `bg-[${C.clayBg}] text-[${C.clay}] border-[${C.clayBorder}]`,
-    info: `bg-[${C.tint}] text-[${C.forest}] border-[rgba(38,84,71,0.2)]`,
+    savings: 'bg-[#FFF8E1] dark:bg-[#FFC72C]/10 text-[#856404] dark:text-[#FFC72C] border-[#FFC72C] dark:border-[#FFC72C]/30',
+    best_price: 'bg-[#F0FDF4] dark:bg-[#3DAE8B]/10 text-[#15803D] dark:text-[#3DAE8B] border-[#86EFAC] dark:border-[#3DAE8B]/30',
+    warning: `bg-[${C.clayBg}] dark:bg-[#C2410C]/10 text-[${C.clay}] dark:text-[#F97316] border-[${C.clayBorder}] dark:border-[#C2410C]/30`,
+    info: `bg-[${C.tint}] dark:bg-[#1D2A25] text-[${C.forest}] dark:text-[#3DAE8B] border-[rgba(38,84,71,0.2)] dark:border-[rgba(38,84,71,0.4)]`,
   };
   const icons: Record<string, React.ReactNode> = {
     savings: <TrendingDown className="w-3 h-3 shrink-0" />,
@@ -132,17 +133,17 @@ function TableBlockView({ block }: { block: Extract<UIBlock, { type: 'table' }> 
   };
 
   return (
-      <div className="w-full overflow-x-auto rounded-xl border border-[rgba(38,84,71,0.10)]">
+      <div className="w-full overflow-x-auto rounded-xl border border-[rgba(38,84,71,0.10)] dark:border-[rgba(38,84,71,0.2)]">
         {block.title && (
-            <div className="px-3 py-2 bg-[#F6FAF8] border-b border-[rgba(38,84,71,0.08)] text-[11px] font-semibold text-[#265447] uppercase tracking-wide font-manrope">
+            <div className="px-3 py-2 bg-[#F6FAF8] dark:bg-[#1D2A25] border-b border-[rgba(38,84,71,0.08)] dark:border-b-[rgba(38,84,71,0.2)] text-[11px] font-semibold text-[#265447] dark:text-[#3DAE8B] uppercase tracking-wide font-manrope transition-colors">
               {block.title}
             </div>
         )}
         <table className="w-full">
           <thead>
-          <tr className="bg-[#F6FAF8]">
+          <tr className="bg-[#F6FAF8] dark:bg-[#1D2A25]">
             {block.columns.map((col, i) => (
-                <th key={i} className="px-3 py-2 text-left text-[10px] font-semibold text-[#6D8279] uppercase tracking-wide border-b border-[rgba(38,84,71,0.08)]">
+                <th key={i} className="px-3 py-2 text-left text-[10px] font-semibold text-[#6D8279] dark:text-[#A9B6B0] uppercase tracking-wide border-b border-[rgba(38,84,71,0.08)] dark:border-b-[rgba(38,84,71,0.2)] transition-colors">
                   {col}
                 </th>
             ))}
@@ -155,35 +156,35 @@ function TableBlockView({ block }: { block: Extract<UIBlock, { type: 'table' }> 
             return (
                 <tr
                     key={ri}
-                    className={`border-b border-[rgba(38,84,71,0.05)] last:border-0 transition-colors ${isHighlight ? 'bg-[#F0FDF4]' : 'hover:bg-[#FAFAFA]'}`}
+                    className={`border-b border-[rgba(38,84,71,0.05)] dark:border-b-[rgba(38,84,71,0.2)] last:border-0 transition-colors ${isHighlight ? 'bg-[#F0FDF4] dark:bg-[#265447]/30' : 'hover:bg-[#FAFAFA] dark:hover:bg-[#1D2A25]'}`}
                 >
                   {row.map((cell, ci) => {
                     const isPriceCell = ci === priceColIdx && priceColIdx >= 0;
                     return (
                         <td key={ci} className="px-3 py-2.5 align-top">
                           {typeof cell === 'boolean' ? (
-                              <span className={`font-medium text-[13px] ${cell ? 'text-[#15803D]' : 'text-[#B45309]'}`}>
+                              <span className={`font-medium text-[13px] ${cell ? 'text-[#15803D] dark:text-[#3DAE8B]' : 'text-[#B45309] dark:text-[#F97316]'}`}>
                           {cell ? '✓' : '—'}
                         </span>
                           ) : isPriceCell ? (
                               <div className="flex flex-col gap-1">
                                 <div className="flex items-center gap-1.5">
-                                  {isHighlight && <Trophy className="w-3 h-3 text-[#15803D] shrink-0" />}
-                                  <span className={`font-bold ${isHighlight ? 'text-[16px] text-[#15803D]' : 'text-[14px] text-[#173B33]'}`}>
+                                  {isHighlight && <Trophy className="w-3 h-3 text-[#15803D] dark:text-[#3DAE8B] shrink-0" />}
+                                  <span className={`font-bold ${isHighlight ? 'text-[16px] text-[#15803D] dark:text-[#3DAE8B]' : 'text-[14px] text-[#173B33] dark:text-white'}`}>
                               {cell}
                             </span>
                                 </div>
                                 {prices.length > 1 && (
-                                    <div className="h-1 w-full rounded-full bg-[#E2E8F0] overflow-hidden">
+                                    <div className="h-1 w-full rounded-full bg-[#E2E8F0] dark:bg-[#1D2A25] overflow-hidden">
                                       <div
-                                          className={`h-full rounded-full transition-all duration-500 ${isHighlight ? 'bg-[#15803D]' : 'bg-[#94A3B8]'}`}
+                                          className={`h-full rounded-full transition-all duration-500 ${isHighlight ? 'bg-[#15803D] dark:bg-[#3DAE8B]' : 'bg-[#94A3B8] dark:bg-[#6D8279]'}`}
                                           style={{ width: `${Math.max(8, 100 - barWidth)}%` }}
                                       />
                                     </div>
                                 )}
                               </div>
                           ) : (
-                              <span className="text-[13px] text-[#173B33]">{cell}</span>
+                              <span className="text-[13px] text-[#173B33] dark:text-white">{cell}</span>
                           )}
                         </td>
                     );
@@ -200,17 +201,17 @@ function TableBlockView({ block }: { block: Extract<UIBlock, { type: 'table' }> 
 // ─── Product card ─────────────────────────────────────────────────────────────
 function ProductCardView({ block }: { block: Extract<UIBlock, { type: 'product_card' }> }) {
   return (
-      <div className="flex items-center gap-3 p-3 rounded-xl border border-[rgba(38,84,71,0.1)] bg-white">
-        <div className="w-10 h-10 rounded-lg bg-[#F6FAF8] border border-[rgba(38,84,71,0.1)] flex items-center justify-center shrink-0">
-          <Package className="w-5 h-5 text-[#265447]" />
+      <div className="flex items-center gap-3 p-3 rounded-xl border border-[rgba(38,84,71,0.1)] dark:border-[rgba(38,84,71,0.2)] bg-white dark:bg-[#1D2A25] transition-colors">
+        <div className="w-10 h-10 rounded-lg bg-[#F6FAF8] dark:bg-[#111A17] border border-[rgba(38,84,71,0.1)] dark:border-[rgba(38,84,71,0.2)] flex items-center justify-center shrink-0 transition-colors">
+          <Package className="w-5 h-5 text-[#265447] dark:text-[#3DAE8B]" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-semibold text-[#173B33] leading-tight truncate">{block.name}</p>
-          <p className="text-[11px] text-[#6D8279] mt-0.5">{block.store}</p>
+          <p className="text-[13px] font-semibold text-[#173B33] dark:text-white leading-tight truncate">{block.name}</p>
+          <p className="text-[11px] text-[#6D8279] dark:text-[#A9B6B0] mt-0.5">{block.store}</p>
         </div>
         <div className="text-right shrink-0">
-          <p className="text-[17px] font-bold text-[#265447] leading-tight font-manrope">{block.price}</p>
-          {block.savings && <p className="text-[10px] text-[#15803D] font-medium">{block.savings}</p>}
+          <p className="text-[17px] font-bold text-[#265447] dark:text-[#3DAE8B] leading-tight font-manrope">{block.price}</p>
+          {block.savings && <p className="text-[10px] text-[#15803D] dark:text-[#3DAE8B] font-medium">{block.savings}</p>}
         </div>
       </div>
   );
@@ -221,13 +222,13 @@ function TabsBlockView({ block }: { block: Extract<UIBlock, { type: 'tabs' }> })
   const [active, setActive] = useState(0);
   return (
       <div>
-        <div className="flex gap-1 border-b border-[rgba(38,84,71,0.10)] mb-3">
+        <div className="flex gap-1 border-b border-[rgba(38,84,71,0.10)] dark:border-b-[rgba(38,84,71,0.2)] mb-3 transition-colors overflow-x-auto whitespace-nowrap">
           {block.items.map((tab, i) => (
               <button
                   key={i}
                   onClick={() => setActive(i)}
-                  className={`px-3 py-1.5 text-[12px] font-semibold transition-colors duration-150 cursor-pointer border-none bg-transparent border-b-2 -mb-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447] focus-visible:ring-offset-1 rounded-t ${
-                      active === i ? 'text-[#173B33] border-b-[#265447]' : 'text-[#6D8279] border-b-transparent hover:text-[#265447]'
+                  className={`shrink-0 px-3 py-1.5 text-[12px] font-semibold transition-colors duration-150 cursor-pointer border-none bg-transparent border-b-2 -mb-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447] dark:focus-visible:ring-[#3DAE8B] focus-visible:ring-offset-1 rounded-t ${
+                      active === i ? 'text-[#173B33] dark:text-white border-b-[#265447] dark:border-b-[#3DAE8B]' : 'text-[#6D8279] dark:text-[#A9B6B0] border-b-transparent hover:text-[#265447] dark:hover:text-[#3DAE8B]'
                   }`}
               >
                 {tab.label}
@@ -253,13 +254,13 @@ function ClarificationBlockView({
 }) {
   return (
       <div className="flex flex-col gap-2.5">
-        <p className="text-[13px] font-semibold text-[#173B33] leading-snug">{block.question}</p>
+        <p className="text-[13px] font-semibold text-[#173B33] dark:text-white leading-snug transition-colors">{block.question}</p>
         <div className="flex flex-wrap gap-1.5">
           {block.options.map((opt, i) => (
               <button
                   key={i}
                   onClick={() => onOptionClick(opt)}
-                  className="px-3 py-1.5 rounded-full border border-[rgba(38,84,71,0.2)] bg-white text-[12px] text-[#265447] font-medium hover:bg-[#265447] hover:text-white hover:border-[#265447] transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447] focus-visible:ring-offset-1"
+                  className="px-3 py-1.5 rounded-full border border-[rgba(38,84,71,0.2)] dark:border-[rgba(38,84,71,0.3)] bg-white dark:bg-[#1D2A25] text-[12px] text-[#265447] dark:text-[#3DAE8B] font-medium hover:bg-[#265447] dark:hover:bg-[#3DAE8B] hover:text-white dark:hover:text-[#111A17] hover:border-[#265447] dark:hover:border-[#3DAE8B] transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447] dark:focus-visible:ring-[#3DAE8B] focus-visible:ring-offset-1"
               >
                 {opt}
               </button>
@@ -277,12 +278,33 @@ function ActionButtonView({
   block: Extract<UIBlock, { type: 'action_button' }>;
   onOptionClick: (text: string) => void;
 }) {
+  const navigate = useNavigate();
+  const close = useAiChatStore((s) => s.close);
+
+  const handleClick = () => {
+    if (block.action === 'add_to_cart') {
+      onOptionClick(`Так, додай до кошика`);
+    } else if (block.action === 'navigate') {
+      if (block.payload?.route) {
+        navigate(block.payload.route);
+      }
+    } else if (block.action === 'apply_filters') {
+      window.dispatchEvent(new CustomEvent('smarket:apply-filters', { detail: block.payload }));
+      close();
+    }
+  };
+
+  const getIcon = () => {
+    if (block.action === 'add_to_cart') return <ShoppingCart className="w-4 h-4 shrink-0" />;
+    return null;
+  };
+
   return (
       <button
-          onClick={() => onOptionClick(`Так, додай до кошика`)}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#265447] hover:bg-[#1A3E2F] text-white text-[13px] font-semibold transition-colors duration-150 cursor-pointer border-none w-full justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447] focus-visible:ring-offset-2"
+          onClick={handleClick}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#265447] dark:bg-[#3DAE8B] hover:bg-[#1A3E2F] dark:hover:bg-[#2C9E7C] text-white dark:text-[#111A17] text-[13px] font-semibold transition-colors duration-150 cursor-pointer border-none w-full justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447] dark:focus-visible:ring-[#3DAE8B] focus-visible:ring-offset-2"
       >
-        <ShoppingCart className="w-4 h-4 shrink-0" />
+        {getIcon()}
         {block.label}
       </button>
   );
@@ -297,16 +319,16 @@ function FallbackBlockView({
   onRetry?: () => void;
 }) {
   return (
-      <div className="flex flex-col gap-2 py-3 px-3.5 rounded-xl bg-[#FFF7ED] border border-[#FED7AA]">
+      <div className="flex flex-col gap-2 py-3 px-3.5 rounded-xl bg-[#FFF7ED] dark:bg-[#C2410C]/10 border border-[#FED7AA] dark:border-[#C2410C]/30 transition-colors">
         <div className="flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 text-[#C2410C] shrink-0" />
-          <p className="text-[13px] font-semibold text-[#173B33]">{block.message}</p>
+          <AlertCircle className="w-4 h-4 text-[#C2410C] dark:text-[#F97316] shrink-0" />
+          <p className="text-[13px] font-semibold text-[#173B33] dark:text-white transition-colors">{block.message}</p>
         </div>
-        {block.suggestion && <p className="text-[12px] text-[#6D8279] leading-relaxed">{block.suggestion}</p>}
+        {block.suggestion && <p className="text-[12px] text-[#6D8279] dark:text-[#A9B6B0] leading-relaxed transition-colors">{block.suggestion}</p>}
         {onRetry && (
             <button
                 onClick={onRetry}
-                className="mt-1 px-3 py-1.5 rounded-lg bg-[#C2410C] hover:bg-[#9A3412] text-white text-[11px] font-semibold transition-colors duration-150 cursor-pointer border-none self-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C2410C] focus-visible:ring-offset-1"
+                className="mt-1 px-3 py-1.5 rounded-lg bg-[#C2410C] dark:bg-[#F97316] hover:bg-[#9A3412] dark:hover:bg-[#EA580C] text-white text-[11px] font-semibold transition-colors duration-150 cursor-pointer border-none self-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#C2410C] dark:focus-visible:ring-[#F97316] focus-visible:ring-offset-1"
             >
               Спробувати ще раз
             </button>
@@ -335,7 +357,7 @@ function BlockRenderer({
   const inner = (() => {
     switch (block.type) {
       case 'text':
-        return <p className="text-[13px] text-[#173B33] leading-relaxed">{block.content}</p>;
+        return <p className="text-[13px] text-[#173B33] dark:text-[#EAF7F2] leading-relaxed transition-colors">{block.content}</p>;
       case 'table':
         return <TableBlockView block={block} />;
       case 'product_card':
@@ -351,7 +373,7 @@ function BlockRenderer({
       case 'fallback':
         return <FallbackBlockView block={block} onRetry={onRetry} />;
       case 'divider':
-        return <hr className="border-[rgba(38,84,71,0.08)] my-0.5" />;
+        return <hr className="border-[rgba(38,84,71,0.08)] dark:border-[rgba(38,84,71,0.2)] my-0.5 transition-colors" />;
       default:
         return null;
     }
@@ -379,9 +401,9 @@ function CopyButton({ getText }: { getText: () => string }) {
           }}
           title="Копіювати відповідь"
           aria-label="Копіювати відповідь"
-          className="w-6 h-6 rounded-md flex items-center justify-center text-[#A9B6B0] hover:bg-[#F0F4F1] hover:text-[#265447] transition-colors duration-150 cursor-pointer border-none opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447]"
+          className="w-6 h-6 rounded-md flex items-center justify-center text-[#A9B6B0] hover:bg-[#F0F4F1] dark:hover:bg-[#1D2A25] hover:text-[#265447] dark:hover:text-[#3DAE8B] transition-colors duration-150 cursor-pointer border-none opacity-0 group-hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447]"
       >
-        {copied ? <Check className="w-3.5 h-3.5 text-[#15803D]" /> : <Copy className="w-3.5 h-3.5" />}
+        {copied ? <Check className="w-3.5 h-3.5 text-[#15803D] dark:text-[#3DAE8B]" /> : <Copy className="w-3.5 h-3.5" />}
       </button>
   );
 }
@@ -399,7 +421,7 @@ function AssistantMessage({
   const response = msg.content as ZephyrosResponse;
   return (
       <div className="group flex py-1">
-        <div className="w-0.5 shrink-0 rounded-full bg-[rgba(38,84,71,0.12)] mr-3" aria-hidden />
+        <div className="w-0.5 shrink-0 rounded-full bg-[rgba(38,84,71,0.12)] dark:bg-[rgba(38,84,71,0.25)] mr-3" aria-hidden />
         <div className="flex flex-col gap-2.5 min-w-0 flex-1">
           <div className="flex justify-end h-0 -translate-y-1">
             <CopyButton getText={() => serializeBlocksToText(response.blocks ?? [])} />
@@ -420,7 +442,7 @@ function UserMessage({ msg }: { msg: ChatMessage }) {
             className="max-w-[78%] text-right"
             style={{ animation: 'blockSlideIn 0.25s cubic-bezier(0.16,1,0.3,1) both' }}
         >
-          <p className="text-[13px] text-[#3F4E49] leading-relaxed border-r-2 border-[rgba(38,84,71,0.35)] pr-3">
+          <p className="text-[13px] text-[#3F4E49] dark:text-[#EAF7F2] leading-relaxed border-r-2 border-[rgba(38,84,71,0.35)] dark:border-[#3DAE8B] pr-3 transition-colors">
             {msg.content as string}
           </p>
         </div>
@@ -432,20 +454,20 @@ function UserMessage({ msg }: { msg: ChatMessage }) {
 function TypingIndicator({ status }: { status: string }) {
   return (
       <div className="flex py-1">
-        <div className="w-0.5 shrink-0 rounded-full bg-[rgba(38,84,71,0.12)] mr-3" aria-hidden />
+        <div className="w-0.5 shrink-0 rounded-full bg-[rgba(38,84,71,0.12)] dark:bg-[rgba(38,84,71,0.25)] mr-3" aria-hidden />
         <div className="flex flex-col gap-2.5 min-w-0 flex-1">
           <div className="flex flex-col gap-1.5">
-            <div className="h-2.5 rounded-full bg-[rgba(38,84,71,0.09)] w-[85%]" />
-            <div className="h-2.5 rounded-full bg-[rgba(38,84,71,0.06)] w-[60%]" />
+            <div className="h-2.5 rounded-full bg-[rgba(38,84,71,0.09)] dark:bg-[#1D2A25] w-[85%] transition-colors" />
+            <div className="h-2.5 rounded-full bg-[rgba(38,84,71,0.06)] dark:bg-[#1D2A25]/60 w-[60%] transition-colors" />
           </div>
           <div className="flex flex-col gap-1.5">
-            <div className="h-[2px] w-full rounded-full bg-[rgba(38,84,71,0.10)] overflow-hidden">
+            <div className="h-[2px] w-full rounded-full bg-[rgba(38,84,71,0.10)] dark:bg-[#1D2A25] overflow-hidden transition-colors">
               <div
-                  className="h-full w-1/3 rounded-full bg-[#265447]"
+                  className="h-full w-1/3 rounded-full bg-[#265447] dark:bg-[#3DAE8B]"
                   style={{ animation: 'sweep 1.1s ease-in-out infinite' }}
               />
             </div>
-            <span key={status} className="text-[11px] text-[#6D8279]" style={{ animation: 'statusFade 0.25s ease both' }}>
+            <span key={status} className="text-[11px] text-[#6D8279] dark:text-[#A9B6B0] transition-colors" style={{ animation: 'statusFade 0.25s ease both' }}>
             {status}
           </span>
           </div>
@@ -459,26 +481,26 @@ function EmptyState({ onSend }: { onSend: (text: string) => void }) {
   return (
       <div className="flex flex-col gap-4 mt-2 px-1">
         <div>
-          <p className="text-[12px] font-bold text-[#173B33] mb-0.5 font-manrope">Що можна запитати</p>
-          <p className="text-[11px] text-[#6D8279] leading-relaxed">
+          <p className="text-[12px] font-bold text-[#173B33] dark:text-white mb-0.5 font-manrope transition-colors">Що можна запитати</p>
+          <p className="text-[11px] text-[#6D8279] dark:text-[#A9B6B0] leading-relaxed transition-colors">
             Пошук товарів, порівняння цін між магазинами, дії з кошиком.
           </p>
         </div>
 
         <div
-            className="rounded-xl border border-[rgba(38,84,71,0.10)] overflow-hidden cursor-pointer hover:border-[rgba(38,84,71,0.25)] transition-colors duration-150"
+            className="rounded-xl border border-[rgba(38,84,71,0.10)] dark:border-[rgba(38,84,71,0.2)] overflow-hidden cursor-pointer hover:border-[rgba(38,84,71,0.25)] dark:hover:border-[#3DAE8B] transition-colors duration-150"
             onClick={() => onSend('Порівняй ціни на молоко')}
             role="button"
             tabIndex={0}
             onKeyDown={(e) => e.key === 'Enter' && onSend('Порівняй ціни на молоко')}
         >
-          <div className="px-3 py-2 bg-[#F6FAF8] border-b border-[rgba(38,84,71,0.08)]">
-            <p className="text-[10px] font-semibold text-[#6D8279] uppercase tracking-wide">Порівняння цін</p>
+          <div className="px-3 py-2 bg-[#F6FAF8] dark:bg-[#1D2A25] border-b border-[rgba(38,84,71,0.08)] dark:border-b-[rgba(38,84,71,0.2)] transition-colors">
+            <p className="text-[10px] font-semibold text-[#6D8279] dark:text-[#A9B6B0] uppercase tracking-wide transition-colors">Порівняння цін</p>
           </div>
           <div className="p-2.5">
             <table className="w-full text-[11px]">
               <thead>
-              <tr className="text-[#6D8279]">
+              <tr className="text-[#6D8279] dark:text-[#A9B6B0] transition-colors">
                 <th className="text-left py-1 px-1.5 font-medium">Магазин</th>
                 <th className="text-left py-1 px-1.5 font-medium">Ціна</th>
                 <th className="text-left py-1 px-1.5 font-medium">Наявність</th>
@@ -486,54 +508,54 @@ function EmptyState({ onSend }: { onSend: (text: string) => void }) {
               </thead>
               <tbody>
               {([['Novus', '38.90 ₴', '✓', true], ['Auchan', '42.50 ₴', '✓', false], ['Metro', '45.00 ₴', '✓', false]] as const).map(([store, price, avail, best], i) => (
-                  <tr key={i} className={best ? 'bg-[#F0FDF4]' : ''}>
-                    <td className="py-1 px-1.5 text-[#173B33]">{store}</td>
+                  <tr key={i} className={best ? 'bg-[#F0FDF4] dark:bg-[#265447]/30' : ''}>
+                    <td className="py-1 px-1.5 text-[#173B33] dark:text-white transition-colors">{store}</td>
                     <td className="py-1 px-1.5">
-                      <span className={`font-bold ${best ? 'text-[#15803D]' : 'text-[#173B33]'}`}>{price}</span>
+                      <span className={`font-bold ${best ? 'text-[#15803D] dark:text-[#3DAE8B]' : 'text-[#173B33] dark:text-white'} transition-colors`}>{price}</span>
                     </td>
-                    <td className="py-1 px-1.5 text-[#15803D]">{avail}</td>
+                    <td className="py-1 px-1.5 text-[#15803D] dark:text-[#3DAE8B] transition-colors">{avail}</td>
                   </tr>
               ))}
               </tbody>
             </table>
-            <p className="text-[10px] text-[#6D8279] mt-1.5 px-1">«Порівняй ціни на молоко» →</p>
+            <p className="text-[10px] text-[#6D8279] dark:text-[#A9B6B0] mt-1.5 px-1 transition-colors">«Порівняй ціни на молоко» →</p>
           </div>
         </div>
 
         <div
-            className="rounded-xl border border-[rgba(38,84,71,0.10)] overflow-hidden cursor-pointer hover:border-[rgba(38,84,71,0.25)] transition-colors duration-150"
+            className="rounded-xl border border-[rgba(38,84,71,0.10)] dark:border-[rgba(38,84,71,0.2)] overflow-hidden cursor-pointer hover:border-[rgba(38,84,71,0.25)] dark:hover:border-[#3DAE8B] transition-colors duration-150"
             onClick={() => onSend('Знайди найдешевший хліб')}
             role="button"
             tabIndex={0}
             onKeyDown={(e) => e.key === 'Enter' && onSend('Знайди найдешевший хліб')}
         >
-          <div className="px-3 py-2 bg-[#F6FAF8] border-b border-[rgba(38,84,71,0.08)]">
-            <p className="text-[10px] font-semibold text-[#6D8279] uppercase tracking-wide">Найкраща ціна</p>
+          <div className="px-3 py-2 bg-[#F6FAF8] dark:bg-[#1D2A25] border-b border-[rgba(38,84,71,0.08)] dark:border-b-[rgba(38,84,71,0.2)] transition-colors">
+            <p className="text-[10px] font-semibold text-[#6D8279] dark:text-[#A9B6B0] uppercase tracking-wide transition-colors">Найкраща ціна</p>
           </div>
           <div className="p-2.5 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[#F6FAF8] border border-[rgba(38,84,71,0.1)] flex items-center justify-center shrink-0">
-              <Package className="w-4 h-4 text-[#265447]" />
+            <div className="w-9 h-9 rounded-lg bg-[#F6FAF8] dark:bg-[#111A17] border border-[rgba(38,84,71,0.1)] dark:border-[rgba(38,84,71,0.2)] flex items-center justify-center shrink-0 transition-colors">
+              <Package className="w-4 h-4 text-[#265447] dark:text-[#3DAE8B]" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[12px] font-semibold text-[#173B33]">Хліб «Сільський»</p>
-              <p className="text-[10px] text-[#6D8279]">ATB · найдешевше</p>
+              <p className="text-[12px] font-semibold text-[#173B33] dark:text-white leading-tight transition-colors">Хліб «Сільський»</p>
+              <p className="text-[10px] text-[#6D8279] dark:text-[#A9B6B0] transition-colors">ATB · найдешевше</p>
             </div>
             <div className="text-right shrink-0">
-              <p className="text-[15px] font-bold text-[#265447] font-manrope">22.90 ₴</p>
-              <p className="text-[10px] text-[#15803D]">−4.10 ₴</p>
+              <p className="text-[15px] font-bold text-[#265447] dark:text-[#3DAE8B] font-manrope transition-colors">22.90 ₴</p>
+              <p className="text-[10px] text-[#15803D] dark:text-[#3DAE8B] transition-colors">−4.10 ₴</p>
             </div>
           </div>
-          <p className="text-[10px] text-[#6D8279] pb-2 px-3">«Знайди найдешевший хліб» →</p>
+          <p className="text-[10px] text-[#6D8279] dark:text-[#A9B6B0] pb-2 px-3 transition-colors">«Знайди найдешевший хліб» →</p>
         </div>
 
         <div>
-          <p className="text-[11px] text-[#6D8279] mb-2">Або спробуйте:</p>
+          <p className="text-[11px] text-[#6D8279] dark:text-[#A9B6B0] mb-2 transition-colors">Або спробуйте:</p>
           <div className="flex flex-wrap gap-1.5">
-            {['Молоко до 50 грн', 'Що у кошику?', 'Ціни на яйця'].map((q) => (
+            {['Молоко до 50 грн', 'Порівняти мій кошик', 'Очистити мій кошик', 'Написати відгук', 'Ціни на яйця'].map((q) => (
                 <button
                     key={q}
                     onClick={() => onSend(q)}
-                    className="px-3 py-1.5 rounded-full border border-[rgba(38,84,71,0.15)] bg-[#F6FAF8] text-[11px] text-[#265447] font-medium hover:bg-[#265447] hover:text-white transition-colors duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447] focus-visible:ring-offset-1"
+                    className="px-3 py-1.5 rounded-full border border-[rgba(38,84,71,0.15)] dark:border-[rgba(38,84,71,0.25)] bg-[#F6FAF8] dark:bg-[#1D2A25] text-[11px] text-[#265447] dark:text-[#3DAE8B] font-medium hover:bg-[#265447] dark:hover:bg-[#3DAE8B] hover:text-white dark:hover:text-[#111A17] transition-all duration-150 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447] dark:focus-visible:ring-[#3DAE8B] focus-visible:ring-offset-1"
                 >
                   {q}
                 </button>
@@ -541,7 +563,7 @@ function EmptyState({ onSend }: { onSend: (text: string) => void }) {
           </div>
         </div>
 
-        <p className="text-[10px] text-[#A9B6B0] mt-1">
+        <p className="text-[10px] text-[#A9B6B0] dark:text-[#6D8279] mt-1 transition-colors">
           Стрілка ↑ у порожньому полі — редагувати останнє повідомлення. {SHORTCUT_HINT} — відкрити чат з будь-якого місця.
         </p>
       </div>
@@ -592,8 +614,8 @@ function IconButton({
           title={title}
           aria-label={title}
           disabled={disabled}
-          className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors duration-150 cursor-pointer border-none disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447] focus-visible:ring-offset-1 ${
-              active ? 'bg-[#265447] text-white' : 'bg-transparent text-[#6D8279] hover:bg-[#F6FAF8] hover:text-[#173B33]'
+          className={`w-10 h-10 md:w-8 md:h-8 rounded-lg flex items-center justify-center transition-colors duration-150 cursor-pointer border-none disabled:opacity-30 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447] dark:focus-visible:ring-[#3DAE8B] focus-visible:ring-offset-1 ${
+              active ? 'bg-[#265447] dark:bg-[#3DAE8B] text-white dark:text-[#111A17]' : 'bg-transparent text-[#6D8279] dark:text-[#A9B6B0] hover:bg-[#F6FAF8] dark:hover:bg-[#1D2A25] hover:text-[#173B33] dark:hover:text-[#3DAE8B]'
           }`}
       >
         {children}
@@ -669,7 +691,7 @@ function ResizeHandle({
 }
 
 // ─── Chat window ──────────────────────────────────────────────────────────────
-function ChatWindow() {
+function ChatWindow({ isMobile }: { isMobile: boolean }) {
   const close = useAiChatStore((s) => s.close);
   const messages = useAiChatStore((s) => s.messages);
   const addMessage = useAiChatStore((s) => s.addMessage);
@@ -828,45 +850,49 @@ function ChatWindow() {
 
   return (
       <div
-          className="relative flex flex-col bg-white rounded-[20px] shadow-[0_20px_50px_rgba(23,59,51,0.16)] border border-[rgba(38,84,71,0.08)] border-l-[3px] border-l-[#265447] overflow-hidden"
-          style={{ width: size.width, height: size.height }}
+          className={`relative flex flex-col bg-white dark:bg-[#111A17] overflow-hidden transition-all duration-300 ${
+              isMobile
+                  ? 'w-full h-full rounded-none border-l-0'
+                  : 'rounded-[20px] shadow-[0_20px_50px_rgba(23,59,51,0.16)] dark:shadow-none border border-[rgba(38,84,71,0.08)] dark:border-[rgba(38,84,71,0.2)] border-l-[3px] border-l-[#265447] dark:border-l-[#3DAE8B]'
+          }`}
+          style={isMobile ? undefined : { width: size.width, height: size.height }}
       >
-        <ResizeHandle size={size} onChange={setSize} />
+        {!isMobile && <ResizeHandle size={size} onChange={setSize} />}
 
         {/* ── Header ── */}
-        <div className="flex items-center gap-2.5 pl-4 pr-2.5 py-3 bg-white border-b border-[rgba(38,84,71,0.08)] shrink-0">
+        <div className="flex items-center gap-2.5 pl-4 pr-2.5 py-3 bg-white dark:bg-[#111A17] border-b border-[rgba(38,84,71,0.08)] dark:border-b-[rgba(38,84,71,0.2)] shrink-0 transition-colors duration-300">
           <ZephyrosMark size={28} />
           <div className="flex-1 min-w-0">
-            <p className="text-[14px] font-extrabold text-[#173B33] leading-none font-manrope tracking-tight">Zephyros</p>
-            <p className="text-[10.5px] text-[#6D8279] mt-1">12 394 товари в каталозі</p>
+            <p className="text-[14px] font-extrabold text-[#173B33] dark:text-white leading-none font-manrope tracking-tight transition-colors duration-300">Zephyros</p>
+            <p className="text-[10.5px] text-[#6D8279] dark:text-[#A9B6B0] mt-1 transition-colors duration-300">12 394 товари в каталозі</p>
           </div>
 
           <IconButton onClick={() => setShowSettings((v) => !v)} title="Налаштування" active={showSettings}>
-            <Settings className="w-3.5 h-3.5" />
+            <Settings className="w-4 h-4 md:w-3.5 md:h-3.5" />
           </IconButton>
           <IconButton onClick={clearMessages} title="Очистити історію" disabled={messages.length === 0}>
-            <Trash2 className="w-3.5 h-3.5" />
+            <Trash2 className="w-4 h-4 md:w-3.5 md:h-3.5" />
           </IconButton>
           <IconButton onClick={close} title="Закрити (Esc)">
-            <X className="w-3.5 h-3.5" />
+            <X className="w-4 h-4 md:w-3.5 md:h-3.5" />
           </IconButton>
         </div>
 
         {/* ── Settings panel ── */}
         {showSettings && (
-            <div className="absolute inset-0 top-[57px] bg-white z-20 flex flex-col p-4 gap-4 overflow-y-auto" style={{ animation: 'statusFade 0.2s ease both' }}>
-              <div className="flex items-center justify-between pb-2 border-b border-[rgba(38,84,71,0.08)]">
-                <h3 className="text-[13px] font-bold text-[#173B33] font-manrope">Налаштування</h3>
+            <div className="absolute inset-0 top-[57px] bg-white dark:bg-[#111A17] z-20 flex flex-col p-4 gap-4 overflow-y-auto transition-colors duration-300" style={{ animation: 'statusFade 0.2s ease both' }}>
+              <div className="flex items-center justify-between pb-2 border-b border-[rgba(38,84,71,0.08)] dark:border-b-[rgba(38,84,71,0.2)] transition-colors">
+                <h3 className="text-[13px] font-bold text-[#173B33] dark:text-white font-manrope transition-colors">Налаштування</h3>
                 <button
                     onClick={() => setShowSettings(false)}
-                    className="text-[11px] font-semibold text-[#265447] hover:underline cursor-pointer border-none bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447] rounded"
+                    className="text-[11px] font-semibold text-[#265447] dark:text-[#3DAE8B] hover:underline cursor-pointer border-none bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447] dark:focus-visible:ring-[#3DAE8B] rounded transition-colors"
                 >
                   Готово
                 </button>
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="ai-provider-select" className="text-[11px] font-semibold text-[#6D8279] uppercase tracking-wide">Провайдер</label>
+                <label htmlFor="ai-provider-select" className="text-[11px] font-semibold text-[#6D8279] dark:text-[#A9B6B0] uppercase tracking-wide transition-colors">Провайдер</label>
                 <select
                     id="ai-provider-select"
                     value={provider || 'auto'}
@@ -874,7 +900,7 @@ function ChatWindow() {
                       const val = e.target.value;
                       setProvider(val === 'auto' ? null : val as 'gemini' | 'groq' | 'cerebras' | 'openrouter');
                     }}
-                    className="w-full text-[13px] border border-[rgba(38,84,71,0.15)] rounded-lg px-2.5 py-1.5 bg-white text-[#173B33] focus:border-[#265447] focus:outline-none"
+                    className="w-full text-[14px] md:text-[13px] border border-[rgba(38,84,71,0.15)] dark:border-[rgba(38,84,71,0.2)] rounded-lg px-3 py-2.5 md:px-2.5 md:py-1.5 bg-white dark:bg-[#1D2A25] text-[#173B33] dark:text-[#EAF7F2] focus:border-[#265447] dark:focus:border-[#3DAE8B] focus:outline-none transition-colors duration-300"
                 >
                   <option value="cerebras">Cerebras (за замовчуванням)</option>
                   <option value="auto">Автовибір</option>
@@ -885,7 +911,7 @@ function ChatWindow() {
               </div>
 
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="ai-model-select" className="text-[11px] font-semibold text-[#6D8279] uppercase tracking-wide">Модель</label>
+                <label htmlFor="ai-model-select" className="text-[11px] font-semibold text-[#6D8279] dark:text-[#A9B6B0] uppercase tracking-wide transition-colors">Модель</label>
                 <select
                     id="ai-model-select"
                     disabled={!provider}
@@ -894,7 +920,7 @@ function ChatWindow() {
                       const val = e.target.value;
                       setModelName(val === 'default' ? null : val);
                     }}
-                    className="w-full text-[13px] border border-[rgba(38,84,71,0.15)] rounded-lg px-2.5 py-1.5 bg-white text-[#173B33] disabled:bg-[#FAFAFA] disabled:text-[#A0AEC0] focus:border-[#265447] focus:outline-none"
+                    className="w-full text-[14px] md:text-[13px] border border-[rgba(38,84,71,0.15)] dark:border-[rgba(38,84,71,0.2)] rounded-lg px-3 py-2.5 md:px-2.5 md:py-1.5 bg-white dark:bg-[#1D2A25] text-[#173B33] dark:text-[#EAF7F2] disabled:bg-[#FAFAFA] dark:disabled:bg-[#1D2A25]/50 disabled:text-[#A0AEC0] dark:disabled:text-[#6D8279] focus:border-[#265447] dark:focus:border-[#3DAE8B] focus:outline-none transition-colors duration-300"
                 >
                   <option value="default">За замовчуванням</option>
                   {provider && PROVIDER_MODELS[provider].map((m) => (
@@ -902,26 +928,26 @@ function ChatWindow() {
                   ))}
                 </select>
                 {!provider && (
-                    <p className="text-[10px] text-[#6D8279]">Оберіть провайдера, щоб задати конкретну модель.</p>
+                    <p className="text-[10px] text-[#6D8279] dark:text-[#A9B6B0] transition-colors">Оберіть провайдера, щоб задати конкретну модель.</p>
                 )}
               </div>
 
-              <dl className="mt-auto pt-3 border-t border-[rgba(38,84,71,0.08)] flex flex-col gap-2 text-[11px] leading-relaxed">
+              <dl className="mt-auto pt-3 border-t border-[rgba(38,84,71,0.08)] dark:border-t-[rgba(38,84,71,0.2)] flex flex-col gap-2 text-[11px] leading-relaxed transition-colors">
                 <div className="flex gap-2">
-                  <dt className="font-semibold text-[#173B33] w-[76px] shrink-0">Cerebras</dt>
-                  <dd className="text-[#6D8279]">найшвидші відповіді, використовується за замовчуванням.</dd>
+                  <dt className="font-semibold text-[#173B33] dark:text-white w-[76px] shrink-0 transition-colors">Cerebras</dt>
+                  <dd className="text-[#6D8279] dark:text-[#A9B6B0] transition-colors">найшвидші відповіді, використовується за замовчуванням.</dd>
                 </div>
                 <div className="flex gap-2">
-                  <dt className="font-semibold text-[#173B33] w-[76px] shrink-0">OpenRouter</dt>
-                  <dd className="text-[#6D8279]">доступ до кількох безкоштовних моделей одразу.</dd>
+                  <dt className="font-semibold text-[#173B33] dark:text-white w-[76px] shrink-0 transition-colors">OpenRouter</dt>
+                  <dd className="text-[#6D8279] dark:text-[#A9B6B0] transition-colors">доступ до кількох безкоштовних моделей одразу.</dd>
                 </div>
                 <div className="flex gap-2">
-                  <dt className="font-semibold text-[#173B33] w-[76px] shrink-0">Gemini</dt>
-                  <dd className="text-[#6D8279]">великий контекст — підходить для довгих списків товарів.</dd>
+                  <dt className="font-semibold text-[#173B33] dark:text-white w-[76px] shrink-0 transition-colors">Gemini</dt>
+                  <dd className="text-[#6D8279] dark:text-[#A9B6B0] transition-colors">великий контекст — підходить для довгих списків товарів.</dd>
                 </div>
                 <div className="flex gap-2">
-                  <dt className="font-semibold text-[#173B33] w-[76px] shrink-0">Groq</dt>
-                  <dd className="text-[#6D8279]">мінімальна затримка для коротких запитів.</dd>
+                  <dt className="font-semibold text-[#173B33] dark:text-white w-[76px] shrink-0 transition-colors">Groq</dt>
+                  <dd className="text-[#6D8279] dark:text-[#A9B6B0] transition-colors">мінімальна затримка для коротких запитів.</dd>
                 </div>
               </dl>
             </div>
@@ -932,7 +958,7 @@ function ChatWindow() {
             ref={scrollRef}
             onScroll={handleScroll}
             aria-live="polite"
-            className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-5 scroll-smooth bg-[#FBFCFA]"
+            className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-5 scroll-smooth bg-[#FBFCFA] dark:bg-[#0B110F] transition-colors duration-300"
         >
           {messages.length === 0 && <EmptyState onSend={handleSend} />}
 
@@ -960,7 +986,7 @@ function ChatWindow() {
         {!isAtBottom && (
             <button
                 onClick={scrollToBottom}
-                className="absolute right-4 bottom-[88px] w-8 h-8 rounded-full bg-white border border-[rgba(38,84,71,0.15)] shadow-[0_4px_12px_rgba(23,59,51,0.15)] flex items-center justify-center text-[#265447] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447]"
+                className="absolute right-4 bottom-[88px] w-8 h-8 rounded-full bg-white dark:bg-[#1D2A25] border border-[rgba(38,84,71,0.15)] dark:border-[rgba(38,84,71,0.2)] shadow-[0_4px_12px_rgba(23,59,51,0.15)] dark:shadow-none flex items-center justify-center text-[#265447] dark:text-[#3DAE8B] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447] dark:focus-visible:ring-[#3DAE8B] transition-all"
                 title="До останнього повідомлення"
                 aria-label="Прокрутити донизу"
             >
@@ -969,8 +995,8 @@ function ChatWindow() {
         )}
 
         {/* ── Input ── */}
-        <div className="px-4 pt-3 pb-2.5 border-t border-[rgba(38,84,71,0.08)] shrink-0 bg-white">
-          <div className="flex items-end gap-2 bg-[#F6FAF8] rounded-xl border border-[rgba(38,84,71,0.12)] px-3 py-2.5 focus-within:border-[#265447] transition-colors duration-150">
+        <div className="px-4 pt-3 pb-6 md:pb-2.5 border-t border-[rgba(38,84,71,0.08)] dark:border-t-[rgba(38,84,71,0.2)] shrink-0 bg-white dark:bg-[#111A17] transition-colors duration-300">
+          <div className="flex items-end gap-2 bg-[#F6FAF8] dark:bg-[#1D2A25] rounded-xl border border-[rgba(38,84,71,0.12)] dark:border-[rgba(38,84,71,0.2)] px-3 py-2.5 focus-within:border-[#265447] dark:focus-within:border-[#3DAE8B] transition-colors duration-150">
           <textarea
               ref={inputRef}
               value={input}
@@ -979,19 +1005,19 @@ function ChatWindow() {
               placeholder="Запитайте про ціни, товари, кошик..."
               rows={1}
               disabled={isPending}
-              className="flex-1 bg-transparent border-none outline-none resize-none text-[13px] text-[#173B33] placeholder-[#A0AEC0] max-h-24 leading-relaxed disabled:opacity-50 font-inter"
+              className="flex-1 bg-transparent border-none outline-none resize-none text-[14px] md:text-[13px] text-[#173B33] dark:text-[#EAF7F2] placeholder-[#A0AEC0] dark:placeholder-[#6D8279] max-h-24 leading-relaxed disabled:opacity-50 font-inter transition-colors"
               style={{ overflow: 'hidden' }}
           />
             <button
                 onClick={() => handleSend()}
                 disabled={!input.trim() || isPending}
                 aria-label="Надіслати"
-                className="w-8 h-8 rounded-lg bg-[#265447] hover:bg-[#1A3E2F] disabled:bg-[rgba(38,84,71,0.15)] flex items-center justify-center shrink-0 transition-colors duration-150 cursor-pointer border-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447] focus-visible:ring-offset-1"
+                className="w-10 h-10 md:w-8 md:h-8 rounded-lg bg-[#265447] dark:bg-[#3DAE8B] hover:bg-[#1A3E2F] dark:hover:bg-[#2C9E7C] disabled:bg-[rgba(38,84,71,0.15)] dark:disabled:bg-[#1D2A25]/40 flex items-center justify-center shrink-0 transition-colors duration-150 cursor-pointer border-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447] dark:focus-visible:ring-[#3DAE8B] focus-visible:ring-offset-1"
             >
-              <Send className="w-3.5 h-3.5 text-white" />
+              <Send className="w-4 h-4 md:w-3.5 md:h-3.5 text-white dark:text-[#111A17]" />
             </button>
           </div>
-          <p className="text-[10px] text-[#A9B6B0] mt-1.5 px-0.5">{modelCaption}</p>
+          <p className="text-[10px] text-[#A9B6B0] dark:text-[#6D8279] mt-1.5 px-0.5 transition-colors">{modelCaption}</p>
         </div>
       </div>
   );
@@ -1002,6 +1028,15 @@ export function AiChatWidget() {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const isOpen = useAiChatStore((s) => s.isOpen);
   const toggle = useAiChatStore((s) => s.toggle);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 767px)');
+    setIsMobile(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, []);
 
   // Ctrl/Cmd+J opens or closes the assistant from anywhere in the app.
   useEffect(() => {
@@ -1019,23 +1054,26 @@ export function AiChatWidget() {
   if (!isAuthenticated) return null;
 
   return (
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
+      <div className={isOpen && isMobile ? "fixed inset-0 z-50" : "fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3"}>
         {isOpen && (
-            <div style={{ animation: 'chatIn 0.22s cubic-bezier(0.16,1,0.3,1) both' }}>
-              <ChatWindow />
+            <div 
+              style={isMobile ? undefined : { animation: 'chatIn 0.22s cubic-bezier(0.16,1,0.3,1) both' }} 
+              className={isMobile ? "w-full h-full" : undefined}
+            >
+              <ChatWindow isMobile={isMobile} />
             </div>
         )}
 
         {!isOpen && (
             <button
                 onClick={toggle}
-                aria-label={`Відкрити Zephyros (${SHORTCUT_HINT})`}
-                title={`Zephyros (${SHORTCUT_HINT})`}
-                className="flex items-center gap-2.5 pl-3 pr-4 py-2.5 rounded-2xl bg-[#265447] hover:bg-[#1A3E2F] shadow-[0_8px_24px_rgba(38,84,71,0.30)] hover:shadow-[0_10px_28px_rgba(38,84,71,0.38)] transition-colors duration-150 cursor-pointer border-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447] focus-visible:ring-offset-2"
+                aria-label="Відкрити Zephyros"
+                title="Zephyros"
+                className="flex items-center justify-center md:justify-start gap-2.5 w-12 h-12 md:w-auto md:h-auto md:pl-3 md:pr-4 md:py-2.5 rounded-full md:rounded-2xl bg-[#265447] dark:bg-[#3DAE8B] hover:bg-[#1A3E2F] dark:hover:bg-[#2C9E7C] shadow-[0_8px_24px_rgba(38,84,71,0.30)] dark:shadow-none hover:shadow-[0_10px_28px_rgba(38,84,71,0.38)] transition-all duration-150 cursor-pointer border-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#265447] dark:focus-visible:ring-[#3DAE8B] focus-visible:ring-offset-2"
             >
               <ZephyrosMark size={22} />
-              <span className="text-white text-[13px] font-semibold font-manrope whitespace-nowrap">Zephyros</span>
-              <span className="text-[10px] text-white/55 border border-white/25 rounded px-1 py-[1px] leading-none">{SHORTCUT_HINT}</span>
+              <span className="hidden md:inline text-white dark:text-[#111A17] text-[13px] font-semibold font-manrope whitespace-nowrap transition-colors">Zephyros</span>
+              <span className="hidden md:inline text-[10px] text-white/55 dark:text-[#111A17]/75 border border-white/25 dark:border-[#111A17]/30 rounded px-1 py-[1px] leading-none transition-colors">{SHORTCUT_HINT}</span>
             </button>
         )}
       </div>

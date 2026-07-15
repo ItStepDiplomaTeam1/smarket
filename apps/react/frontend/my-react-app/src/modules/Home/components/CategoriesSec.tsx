@@ -1,4 +1,14 @@
+import { useNavigate } from 'react-router-dom';
 import product1 from '@/shared/assets/div.product-visual.svg';
+
+const CATEGORY_MAP: Record<string, string> = {
+  'Продукти': 'products',
+  'Напої': 'drinks',
+  'Дитячі товари': 'baby',
+  'Побутова хімія': 'chemistry',
+  'Краса та догляд': 'beauty',
+  'Товари для дому': 'home',
+};
 
 const CATEGORY_ICONS = [
   <svg key="1" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3CD27D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M12 18h.01"/></svg>,
@@ -10,6 +20,17 @@ const CATEGORY_ICONS = [
 ];
 
 export function CategoriesSec() {
+  const navigate = useNavigate();
+
+  const handleCategoryClick = (name: string) => {
+    const slug = CATEGORY_MAP[name] || 'products';
+    if (slug === 'products') {
+      navigate('/catalog');
+    } else {
+      navigate(`/catalog?category=${slug}`);
+    }
+  };
+
   return (
     <section className="w-full py-[60px] sm:py-[80px] bg-[#F6FAF8] dark:bg-[#0B120F] transition-colors duration-300">
       <div className="w-full max-w-[1228px] mx-auto px-[20px] flex flex-col gap-[36px] sm:gap-[48px]">
@@ -32,32 +53,40 @@ export function CategoriesSec() {
             'Побутова хімія',
             'Краса та догляд',
             'Товари для дому',
-          ].map((name, idx) => (
-            <div
-              key={name}
-              className="bg-white dark:bg-[#15231D] border border-transparent dark:border-[#1F3227] rounded-[16px] px-[12px] py-[20px] sm:px-[16px] sm:py-[24px] flex flex-col items-center text-center transition-all duration-300 hover:shadow-[0_10px_25px_rgba(0,0,0,0.05)] dark:hover:shadow-none hover:-translate-y-1 cursor-pointer group"
-            >
-              <img 
-                src={product1} 
-                alt={name} 
-                className="w-[54px] h-[54px] sm:w-[64px] sm:h-[64px] mb-[16px] block dark:hidden" 
-              />
-              <div className="hidden dark:flex w-[54px] h-[54px] sm:w-[64px] sm:h-[64px] rounded-full bg-[#1A2E25] items-center justify-center mb-[16px]">
-                {CATEGORY_ICONS[idx]}
-              </div>
-
-              <h3 className="font-inter text-[14px] sm:text-[15px] font-bold text-[#173B33] dark:text-white m-0 mb-[8px] transition-colors">
-                {name}
-              </h3>
-
-              <a
-                href="#"
-                className="font-inter text-[12px] sm:text-[13px] font-semibold text-[#265447] dark:text-[#3CD27D] no-underline transition-colors duration-200 hover:text-[#1A453A] dark:hover:text-white"
+          ].map((name, idx) => {
+            return (
+              <div
+                key={name}
+                onClick={() => handleCategoryClick(name)}
+                className="bg-white dark:bg-[#15231D] border border-transparent dark:border-[#1F3227] rounded-[16px] px-[12px] py-[20px] sm:px-[16px] sm:py-[24px] flex flex-col items-center text-center transition-all duration-300 hover:shadow-[0_10px_25px_rgba(0,0,0,0.05)] dark:hover:shadow-none hover:-translate-y-1 cursor-pointer group"
               >
-                Акції <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
-              </a>
-            </div>
-          ))}
+                <img 
+                  src={product1} 
+                  alt={name} 
+                  className="w-[54px] h-[54px] sm:w-[64px] sm:h-[64px] mb-[16px] block dark:hidden" 
+                />
+                <div className="hidden dark:flex w-[54px] h-[54px] sm:w-[64px] sm:h-[64px] rounded-full bg-[#1A2E25] items-center justify-center mb-[16px]">
+                  {CATEGORY_ICONS[idx]}
+                </div>
+
+                <h3 className="font-inter text-[14px] sm:text-[15px] font-bold text-[#173B33] dark:text-white m-0 mb-[8px] transition-colors">
+                  {name}
+                </h3>
+
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleCategoryClick(name);
+                  }}
+                  className="font-inter text-[12px] sm:text-[13px] font-semibold text-[#265447] dark:text-[#3CD27D] no-underline transition-colors duration-200 hover:text-[#1A453A] dark:hover:text-white"
+                >
+                  Акції <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
+                </a>
+              </div>
+            );
+          })}
         </div>
 
       </div>

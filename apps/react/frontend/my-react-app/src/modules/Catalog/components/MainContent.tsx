@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate} from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useFavoritesStore } from '@/shared/context/favoritesStore';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
@@ -252,18 +252,30 @@ export function MainContent() {
   const { isFavorite, add: addFavorite, remove: removeFavorite } = useFavoritesStore();
 
   const [page, setPage] = useState(1);
-  
   const [maxPrice, setMaxPrice] = useState<number>(2000); 
-  const [selectedCategory, setSelectedCategory] = useState<string>('products'); 
+  const [selectedCategory, setSelectedCategory] = useState<string>(urlCategory); 
   const [selectedStores, setSelectedStores] = useState<string[]>([]);
   const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>([]); 
-  const [selectedOffers, setSelectedOffers] = useState<string[]>([]);
+  const [selectedOffers, setSelectedOffers] = useState<string[]>(urlOfferType ? [urlOfferType] : []);
   const [selectedDiscounts, setSelectedDiscounts] = useState<string[]>([]);
   
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [debouncedSearch, setDebouncedSearch] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>(urlQ);
+  const [debouncedSearch, setDebouncedSearch] = useState<string>(urlQ);
   const [sortBy, setSortBy] = useState<string>('best_price');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+  // Sync URL search params to states
+  useEffect(() => {
+    const q = searchParams.get('q') || searchParams.get('search') || '';
+    const cat = searchParams.get('category') || 'products';
+    const offer = searchParams.get('offer_type');
+
+    setSearchQuery(q);
+    setDebouncedSearch(q);
+    setSelectedCategory(cat);
+    setSelectedOffers(offer ? [offer] : []);
+    setPage(1);
+  }, [searchParams]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -271,6 +283,33 @@ export function MainContent() {
     }, 500);
     return () => clearTimeout(handler);
   }, [searchQuery]);
+
+  // Listen to filter updates from Zephyros AI Agent
+  useEffect(() => {
+    const handleApplyFilters = (e: Event) => {
+      const detail = (e as CustomEvent).detail || {};
+      if (detail.query !== undefined) {
+        setSearchQuery(detail.query || '');
+        setDebouncedSearch(detail.query || '');
+      }
+      if (detail.retail_chain !== undefined) {
+        if (detail.retail_chain) {
+          setSelectedStores([detail.retail_chain.toLowerCase()]);
+        } else {
+          setSelectedStores([]);
+        }
+      }
+      if (detail.category_slug !== undefined) {
+        setSelectedCategory(detail.category_slug || 'products');
+      }
+      if (detail.price_max !== undefined) {
+        setMaxPrice(detail.price_max || 2000);
+      }
+      setPage(1);
+    };
+    window.addEventListener('smarket:apply-filters', handleApplyFilters);
+    return () => window.removeEventListener('smarket:apply-filters', handleApplyFilters);
+  }, []);
 
   const filterParams: FetchFilters = {
     page,

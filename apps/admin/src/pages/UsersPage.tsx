@@ -2,15 +2,18 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   Search,
   MoreVertical,
-  Users,
   UserCheck,
-  UserPlus,
   AlertCircle,
   ChevronLeft,
   ChevronRight,
   Trash2,
 } from 'lucide-react';
 import { useUsers, useBlockUser, useUnblockUser, type AdminUser } from '@/hooks/useUsers';
+import { MetricCard } from '@/components/MetricCard';
+
+import UserIcon from '@/assets/MetricCardIcons/User.svg';
+import SearchIcon from '@/assets/MetricCardIcons/Search.svg';
+import PlaneIcon from '@/assets/MetricCardIcons/Plane.svg';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -152,28 +155,7 @@ const ActionsMenu: React.FC<{ user: AdminUser }> = ({ user }) => {
   );
 };
 
-// ── Stat Card ─────────────────────────────────────────────────────────────────
 
-interface StatCardProps {
-  icon: React.ReactNode;
-  iconBg: string;
-  label: string;
-  value: string | number;
-  sub: string;
-}
-
-const StatCard: React.FC<StatCardProps> = ({ icon, iconBg, label, value, sub }) => (
-  <div className="bg-surface border border-border rounded-xl p-5 flex items-start gap-4 shadow-sm">
-    <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${iconBg}`}>
-      {icon}
-    </div>
-    <div>
-      <p className="text-xs text-textMuted font-medium mb-1">{label}</p>
-      <p className="text-2xl font-bold text-textMain leading-tight">{value.toLocaleString('uk-UA')}</p>
-      <p className="text-xs text-textMuted mt-1">{sub}</p>
-    </div>
-  </div>
-);
 
 // ── Pagination ────────────────────────────────────────────────────────────────
 
@@ -374,27 +356,24 @@ const UsersPage: React.FC = () => {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <StatCard
-          icon={<Users size={20} className="text-white" />}
-          iconBg="bg-[#26a69a]"
-          label="Усього користувачів"
-          value={totalUsers}
-          sub="Всі зареєстровані користувачі"
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        <MetricCard
+          title="Всього користувачів"
+          value={totalUsers.toLocaleString('uk-UA')}
+          icon={UserIcon}
+          iconBgColor="#6FE3C2"
         />
-        <StatCard
-          icon={<UserCheck size={20} className="text-white" />}
-          iconBg="bg-[#ef6c00]"
-          label="Активні"
-          value={activeCount}
-          sub={`${totalUsers ? Math.round((activeCount / totalUsers) * 100) : 0}% від усіх користувачів`}
+        <MetricCard
+          title="Активні"
+          value={activeCount.toLocaleString('uk-UA')}
+          icon={SearchIcon}
+          iconBgColor="#008C5E"
         />
-        <StatCard
-          icon={<UserPlus size={20} className="text-white" />}
-          iconBg="bg-[#1565c0]"
-          label="Нові за 7 днів"
-          value={newCount}
-          sub="За останній тиждень"
+        <MetricCard
+          title="Нові за 7 днів"
+          value={newCount.toLocaleString('uk-UA')}
+          icon={PlaneIcon}
+          iconBgColor="#1A65F2"
         />
       </div>
 
