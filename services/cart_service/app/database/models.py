@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import String, BigInteger, ForeignKey
+from sqlalchemy import String, BigInteger, Float, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.types import TIMESTAMP
@@ -48,3 +48,21 @@ class CartItem(Base):
     )
 
     cart: Mapped["Cart"] = relationship("Cart", back_populates="items")
+
+
+class Favorite(Base):
+    __tablename__ = "favorites"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), index=True, nullable=False
+    )
+    product_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    product_title: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    product_image_url: Mapped[str | None] = mapped_column(String(1000), nullable=True)
+    product_price: Mapped[float | None] = mapped_column(Float, nullable=True)
+    added_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False, server_default=func.now()
+    )

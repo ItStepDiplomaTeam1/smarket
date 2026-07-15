@@ -30,10 +30,8 @@ export function Hero() {
         <div className="max-w-full lg:max-w-[600px] flex flex-col gap-[12px]">
           <nav className="font-inter text-[11px] md:text-[12px] text-[#7A8A82] dark:text-[#81998F] mb-[4px] flex items-center flex-wrap gap-1">
             <a href="/" className="hover:text-[#111111] dark:hover:text-white transition-colors">Головна</a>
-            <span>/</span>
+            <span>&gt;</span>
             <a href="/catalog" className="hover:text-[#111111] dark:hover:text-white transition-colors">Каталог</a>
-            <span>/</span>
-            <span className="font-semibold text-[#111111] dark:text-white">Продукти</span>
           </nav>
           <h1 className="font-manrope text-[28px] md:text-[36px] font-bold text-[#0B2F1D] dark:text-white leading-tight m-0">
             Продукти харчування

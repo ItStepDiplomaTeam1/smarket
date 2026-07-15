@@ -16,12 +16,12 @@ export function Footer() {
 
           <div className="flex flex-col sm:flex-row gap-6 sm:gap-[60px] md:gap-[80px] w-full md:w-auto">
             <div className="flex flex-col gap-3">
-              <a href="#" className="font-inter text-[13px] md:text-[14px] font-medium text-[#173B33] dark:text-[#EAEAEA] no-underline hover:opacity-80 transition-opacity">Акції</a>
-              <a href="#" className="font-inter text-[13px] md:text-[14px] font-medium text-[#173B33] dark:text-[#EAEAEA] no-underline hover:opacity-80 transition-opacity">Магазини</a>
+              <a href="/" className="font-inter text-[13px] md:text-[14px] font-medium text-[#173B33] dark:text-[#EAEAEA] no-underline hover:opacity-80 transition-opacity">Головна</a>
+              <a href="/shops" className="font-inter text-[13px] md:text-[14px] font-medium text-[#173B33] dark:text-[#EAEAEA] no-underline hover:opacity-80 transition-opacity">Магазини</a>
             </div>
 
             <div className="flex flex-col gap-3">
-              <a href="#" className="font-inter text-[13px] md:text-[14px] font-medium text-[#173B33] dark:text-[#EAEAEA] no-underline hover:opacity-80 transition-opacity">Категорії</a>
+              <a href="/catalog" className="font-inter text-[13px] md:text-[14px] font-medium text-[#173B33] dark:text-[#EAEAEA] no-underline hover:opacity-80 transition-opacity">Каталог</a>
               <a href="#" className="font-inter text-[13px] md:text-[14px] font-medium text-[#173B33] dark:text-[#EAEAEA] no-underline hover:opacity-80 transition-opacity">Як це працює</a>
             </div>
 

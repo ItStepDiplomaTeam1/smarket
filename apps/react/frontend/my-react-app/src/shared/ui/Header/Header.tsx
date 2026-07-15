@@ -5,14 +5,25 @@ import fix_logo from '@/shared/assets/Logo-Smarket.svg';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { apiClient } from '@/shared/api/apiClient';
 import { ThemeToggle } from '@/shared/components/ThemeToggle';
+import { useFavoritesStore } from '@/shared/context/favoritesStore';
 
-// Виправлено розміри та товщину ліній, щоб ідеально метчились з іншими іконками
-const HeartIcon = () => (
-  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+// ================= ICONS =================
+const HeartIcon = ({ filled = false }: { filled?: boolean }) => (
+  <svg className="w-6 h-6" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
   </svg>
 );
 
+const TrashIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="3 6 5 6 21 6"></polyline>
+    <path d="M19 6l-1 14H6L5 6"></path>
+    <path d="M10 11v6M14 11v6"></path>
+    <path d="M9 6V4h6v2"></path>
+  </svg>
+);
+
+// ================= HELPERS =================
 function getInitials(name?: string, email?: string): string {
     if (name?.trim()) {
         const parts = name.trim().split(' ');
@@ -45,6 +56,7 @@ const navLinkClass = ({ isActive }: { isActive: boolean }) =>
             : 'text-[#173B33] dark:text-[#A4B3AF] hover:text-[#265447] dark:hover:text-white'
     }`;
 
+// ================= COMPONENT =================
 export function Header() {
     const navigate = useNavigate();
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -53,12 +65,29 @@ export function Header() {
 
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const dropdownRef = useRef<HTMLDivElement>(null);
+    const [favoritesOpen, setFavoritesOpen] = useState(false);
 
+    const dropdownRef = useRef<HTMLDivElement>(null);
+    const favoritesRef = useRef<HTMLDivElement>(null);
+
+    // Favorites store
+    const { items: favorites, isLoaded, load: loadFavorites, remove: removeFavorite } = useFavoritesStore();
+
+    // Load favorites when user is authenticated
+    useEffect(() => {
+        if (isAuthenticated && !isLoaded) {
+            loadFavorites();
+        }
+    }, [isAuthenticated, isLoaded, loadFavorites]);
+
+    // Close dropdowns on outside click
     useEffect(() => {
         const handler = (e: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
                 setDropdownOpen(false);
+            }
+            if (favoritesRef.current && !favoritesRef.current.contains(e.target as Node)) {
+                setFavoritesOpen(false);
             }
         };
         document.addEventListener('mousedown', handler);
@@ -75,8 +104,11 @@ export function Header() {
             await apiClient.post('/api/v1/auth/logout');
         } catch {}
         logout();
+        useFavoritesStore.getState().reset();
         navigate('/');
     };
+
+    const displayedFavorites = favorites.slice(0, 10);
 
     return (
         <header className="w-full bg-white dark:bg-[#0D1513] border-b border-[#E5E7EB] dark:border-[#1A2E28] h-18 sticky top-0 z-50 transition-colors duration-200 relative">
@@ -96,11 +128,12 @@ export function Header() {
                 <div className="flex items-center gap-4 md:gap-6 z-10">
                     <ThemeToggle />
 
-                    {/* 1. ЛУПА: dark:brightness-0 dark:invert робить її ідеально білою незалежно від початкового кольору */}
+                    {/* ЛУПА */}
                     <button className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0 w-6 h-6 group">
                         <img src={lupa} alt="Search" className="w-6 h-6 block dark:brightness-0 dark:invert transition-transform group-hover:scale-110" />
                     </button>
 
+                    {/* ПРОФІЛЬ */}
                     {isAuthenticated && user ? (
                         <div className="relative" ref={dropdownRef}>
                             <button
@@ -137,7 +170,6 @@ export function Header() {
                             </div>
                         </div>
                     ) : (
-                        // 2. ПРОФІЛЬ: Додано dark:text-white
                         <Link to="/auth" className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0 w-4 h-4 text-[#173B33] dark:text-white hover:text-[#265447] dark:hover:text-[#3CD27D] transition-colors">
                             <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
@@ -146,10 +178,102 @@ export function Header() {
                         </Link>
                     )}
 
-                    {/* 3. СЕРДЕЧКО: Додано dark:text-white */}
-                    <button onClick={() => navigate('')} className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0 w-4 h-4 relative text-[#173B33] dark:text-white hover:text-[#265447] dark:hover:text-[#3CD27D] transition-colors">
-                        <HeartIcon />
-                    </button>
+                    {/* ================= СЕРДЕЧКО / FAVORITES DROPDOWN ================= */}
+                    <div className="relative" ref={favoritesRef}>
+                        <button
+                            id="favorites-toggle-btn"
+                            onClick={() => {
+                                if (!isAuthenticated) { navigate('/auth'); return; }
+                                setFavoritesOpen((v) => !v);
+                            }}
+                            className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0 relative text-[#173B33] dark:text-white hover:text-[#E11D48] dark:hover:text-[#F43F5E] transition-colors"
+                        >
+                            <HeartIcon filled={favorites.length > 0} />
+                            {favorites.length > 0 && (
+                                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] bg-[#E11D48] text-white text-[9px] font-bold rounded-full flex items-center justify-center px-[3px] leading-none">
+                                    {favorites.length > 9 ? '9+' : favorites.length}
+                                </span>
+                            )}
+                        </button>
+
+                        {/* Favorites Dropdown */}
+                        <div className={`absolute right-0 mt-3 w-[320px] bg-white dark:bg-[#14221E] rounded-2xl border border-[rgba(38,84,71,0.10)] dark:border-[rgba(255,255,255,0.08)] shadow-[0_8px_32px_rgba(23,59,51,0.18)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden transition-all duration-200 origin-top-right ${favoritesOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'}`}>
+                            
+                            {/* Header */}
+                            <div className="px-4 py-3 border-b border-[rgba(38,84,71,0.08)] dark:border-[rgba(255,255,255,0.08)] flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[#E11D48]"><HeartIcon filled /></span>
+                                    <span className="text-[14px] font-bold text-[#111827] dark:text-white">Улюблені</span>
+                                    {favorites.length > 0 && (
+                                        <span className="text-[11px] font-semibold text-[#6D8279] dark:text-[#7A8D85]">({favorites.length})</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Content */}
+                            {displayedFavorites.length === 0 ? (
+                                <div className="py-8 px-4 text-center">
+                                    <div className="text-[#D1D5DB] dark:text-[#2B4236] mb-3">
+                                        <svg className="w-10 h-10 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                                        </svg>
+                                    </div>
+                                    <p className="text-[13px] text-[#9CA3AF] dark:text-[#7A8D85] m-0">Список улюблених порожній</p>
+                                    <p className="text-[12px] text-[#C0CCC7] dark:text-[#4A5D54] m-0 mt-1">Натисніть ♡ на товарі, щоб зберегти</p>
+                                </div>
+                            ) : (
+                                <ul className="py-1 max-h-[360px] overflow-y-auto">
+                                    {displayedFavorites.map((item) => (
+                                        <li key={item.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-[#F6FAF8] dark:hover:bg-[#1A2E25] transition-colors group">
+                                            {/* Thumbnail */}
+                                            <div
+                                                className="w-10 h-10 rounded-[8px] bg-[#F3F4F6] dark:bg-[#1A2E25] flex items-center justify-center shrink-0 overflow-hidden cursor-pointer"
+                                                onClick={() => { setFavoritesOpen(false); navigate(`/product/${item.product_id}`); }}
+                                            >
+                                                {item.product_image_url ? (
+                                                    <img src={item.product_image_url} alt={item.product_title ?? ''} className="w-full h-full object-contain p-1 mix-blend-multiply dark:mix-blend-normal" />
+                                                ) : (
+                                                    <svg className="w-5 h-5 text-[#9CA3AF]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                                                )}
+                                            </div>
+
+                                            {/* Info */}
+                                            <div
+                                                className="flex-1 min-w-0 cursor-pointer"
+                                                onClick={() => { setFavoritesOpen(false); navigate(`/product/${item.product_id}`); }}
+                                            >
+                                                <p className="text-[13px] font-medium text-[#111827] dark:text-white m-0 line-clamp-1 leading-snug">
+                                                    {item.product_title ?? `Товар #${item.product_id}`}
+                                                </p>
+                                                {item.product_price !== null && (
+                                                    <p className="text-[12px] font-bold text-[#265447] dark:text-[#3CD27D] m-0 mt-0.5">
+                                                        від {item.product_price} ₴
+                                                    </p>
+                                                )}
+                                            </div>
+
+                                            {/* Remove button */}
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); removeFavorite(item.product_id); }}
+                                                className="opacity-0 group-hover:opacity-100 p-1.5 rounded-[6px] hover:bg-red-50 dark:hover:bg-red-950/30 text-[#9CA3AF] hover:text-[#E11D48] transition-all cursor-pointer bg-transparent border-none shrink-0"
+                                                title="Видалити з улюблених"
+                                            >
+                                                <TrashIcon />
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+
+                            {favorites.length > 10 && (
+                                <div className="px-4 py-2 border-t border-[rgba(38,84,71,0.08)] dark:border-[rgba(255,255,255,0.08)] text-center">
+                                    <span className="text-[12px] text-[#9CA3AF] dark:text-[#7A8D85]">
+                                        Показано 10 з {favorites.length} товарів
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
 
                     {/* Бургер меню для мобільних */}
                     <button className="md:hidden flex items-center justify-center bg-transparent border-none cursor-pointer text-[#173B33] dark:text-white" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>

@@ -1,5 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import product1 from '@/shared/assets/div.product-visual.svg';
+import { useNavigate } from 'react-router-dom';
+import { useFavoritesStore } from '@/shared/context/favoritesStore';
+import { useAuthStore } from '@/modules/Auth/store/authStore';
 
 const PRODUCT_MAP: Record<string, string> = {
   'Молоко 2,5%': 'Молоко',
@@ -19,11 +22,8 @@ const DARK_ICONS = [
 
 export function ProductsSec() {
   const navigate = useNavigate();
-
-  const handleCompare = (name: string) => {
-    const query = PRODUCT_MAP[name] || name;
-    navigate(`/catalog?q=${encodeURIComponent(query)}`);
-  };
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+  const { isFavorite, add: addFavorite, remove: removeFavorite } = useFavoritesStore();
 
   return (
     <section className="w-full py-[60px] sm:py-[96px] bg-white dark:bg-[#0B120F] transition-colors duration-300">
@@ -50,8 +50,37 @@ export function ProductsSec() {
           ].map(({ name, info, discount }, index) => (
             <div
               key={name}
-              className="bg-white dark:bg-[#15231D] border border-[#F3F4F6] dark:border-transparent rounded-[16px] px-[20px] py-[24px] flex flex-col items-center text-center transition-all duration-300 hover:shadow-[0_10px_25px_rgba(0,0,0,0.05)] dark:hover:shadow-none hover:-translate-y-1"
+              className="bg-white dark:bg-[#15231D] border border-[#F3F4F6] dark:border-transparent rounded-[16px] px-[20px] py-[24px] flex flex-col items-center text-center transition-all duration-300 hover:shadow-[0_10px_25px_rgba(0,0,0,0.05)] dark:hover:shadow-none hover:-translate-y-1 relative"
             >
+              {/* Серце - улюблені */}
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (!isAuthenticated) { navigate('/auth'); return; }
+                  // Since these are mock products without real IDs, we generate a hash or use index
+                  const mockId = index + 999000; 
+                  if (isFavorite(mockId)) {
+                    removeFavorite(mockId);
+                  } else {
+                    addFavorite({
+                      product_id: mockId,
+                      product_title: name,
+                      product_price: parseInt(info.replace(/\D/g,'')) || 0,
+                    });
+                  }
+                }}
+                className={`absolute top-4 right-4 p-1 border-none bg-transparent cursor-pointer transition-all hover:scale-110 ${
+                  isFavorite(index + 999000)
+                    ? 'text-[#E11D48]'
+                    : 'text-[#D1D5DB] dark:text-[#2B4236] hover:text-[#E11D48] dark:hover:text-[#F43F5E]'
+                }`}
+                title="Додати до улюблених"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill={isFavorite(index + 999000) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                </svg>
+              </button>
               <img 
                 src={product1} 
                 alt={name} 
