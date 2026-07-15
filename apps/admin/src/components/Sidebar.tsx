@@ -13,8 +13,6 @@ import storesActive from '@/assets/SidebarIcons/Stores - active.svg';
 import storesInactive from '@/assets/SidebarIcons/Stores - inactive.svg';
 import usersActive from '@/assets/SidebarIcons/Users - active.svg';
 import usersInactive from '@/assets/SidebarIcons/Users - inactive.svg';
-import mailsActive from '@/assets/SidebarIcons/Mails - active.svg';
-import mailsInactive from '@/assets/SidebarIcons/Mails - inactive.svg';
 import settingsActive from '@/assets/SidebarIcons/Settings - active.svg';
 import settingsInactive from '@/assets/SidebarIcons/Settings - inactive.svg';
 import logsActive from '@/assets/SidebarIcons/Logs - active.svg';
@@ -45,7 +43,6 @@ const mainNavItems = [
   { name: 'Категорії',    path: '/categories',  iconOutline: CategoriesIcon, iconFilled: CategoriesIcon },
   { name: 'Магазини',     path: '/stores',      iconOutline: storesInactive, iconFilled: storesActive },
   { name: 'Клієнти',      path: '/clients',     iconOutline: usersInactive, iconFilled: usersActive },
-  { name: 'Підтримка',    path: '/support',     iconOutline: mailsInactive, iconFilled: mailsActive },
 ];
 
 const bottomNavItems = [

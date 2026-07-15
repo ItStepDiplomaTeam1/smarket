@@ -43,7 +43,7 @@ export const QuickActions: React.FC = () => {
         <button 
           onClick={() => handleAction('start')}
           disabled={etlControl.isPending || isRunning || statusLoading}
-          className={`h-[54px] flex items-center justify-center gap-2 sm:gap-3 px-3 sm:px-5 rounded-2xl border-2 transition-colors group relative
+          className={`h-[54px] w-full flex items-center justify-start gap-1.5 pl-2.5 pr-1.5 rounded-2xl border-2 transition-colors group relative
             ${isRunning 
               ? 'border-[#008C5E] bg-[#008C5E] cursor-default' // Active state
               : (isDarkMode ? 'border-[#008C5E] bg-[#008C5E]/70 hover:bg-[#008C5E]/90' : 'border-[#008C5E] bg-[#EBF6F1]/70 hover:bg-[#EBF6F1]/90')
@@ -58,15 +58,15 @@ export const QuickActions: React.FC = () => {
               <img 
                 src={startIcon} 
                 alt="Запустити" 
-                className="h-[24px] sm:h-[28px] w-auto object-contain shrink-0" 
+                className="h-[22px] w-auto object-contain shrink-0" 
                 style={isRunning || isDarkMode ? { filter: 'brightness(0) invert(1)' } : undefined}
               />
               <span 
-                className={`text-[10px] sm:text-xs md:text-sm font-bold text-left leading-tight
+                className={`flex-1 min-w-0 text-[11px] md:text-xs xl:text-[11px] 2xl:text-xs font-bold text-left leading-tight
                   ${isRunning ? 'text-white' : (isDarkMode ? 'text-white' : 'text-[#008C5E]')}
                 `}
               >
-                Запустити<br className="hidden sm:block"/>всі парсери
+                Запустити парсер
               </span>
             </>
           )}
@@ -75,7 +75,7 @@ export const QuickActions: React.FC = () => {
         <button 
           onClick={() => handleAction('stop')}
           disabled={etlControl.isPending || !isRunning || statusLoading}
-          className={`h-[54px] flex items-center justify-center gap-2 sm:gap-3 px-3 sm:px-5 rounded-2xl border-2 transition-colors group relative
+          className={`h-[54px] w-full flex items-center justify-start gap-1.5 pl-2.5 pr-1.5 rounded-2xl border-2 transition-colors group relative
             ${!isRunning 
               ? 'border-[#FDC80D] bg-[#FDC80D] cursor-default' // Active state
               : (isDarkMode ? 'border-[#FDC80D] bg-[#FDC80D]/70 hover:bg-[#FDC80D]/90' : 'border-[#FDC80D] bg-[#FFFBEB]/70 hover:bg-[#FFFBEB]/90')
@@ -90,15 +90,15 @@ export const QuickActions: React.FC = () => {
               <img 
                 src={stopIcon} 
                 alt="Зупинити" 
-                className="h-[24px] sm:h-[28px] w-auto object-contain shrink-0" 
+                className="h-[22px] w-auto object-contain shrink-0" 
                 style={!isRunning || isDarkMode ? { filter: 'brightness(0) invert(1)' } : undefined}
               />
               <span 
-                className={`text-[10px] sm:text-xs md:text-sm font-bold text-left leading-tight
+                className={`flex-1 min-w-0 text-[11px] md:text-xs xl:text-[11px] 2xl:text-xs font-bold text-left leading-tight
                   ${!isRunning ? 'text-white' : (isDarkMode ? 'text-white' : 'text-[#FDC80D]')}
                 `}
               >
-                Зупинити<br className="hidden sm:block"/>всі парсери
+                Зупинити парсер
               </span>
             </>
           )}

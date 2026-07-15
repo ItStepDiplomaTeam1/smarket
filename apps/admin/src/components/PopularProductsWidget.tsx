@@ -40,7 +40,7 @@ export const PopularProductsWidget: React.FC<PopularProductsWidgetProps> = ({ pr
       <div className="flex-1 overflow-hidden">
         <ul className="divide-y divide-border">
           {products.map((product) => (
-            <li key={product.id} className="p-4 flex gap-4 hover:bg-background/50 transition-colors">
+            <li key={product.id} className="p-4 flex items-center gap-4 hover:bg-background/50 transition-colors">
               <ProductImage src={product.image} alt={product.name} />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-textMain truncate mb-0.5" title={product.name}>

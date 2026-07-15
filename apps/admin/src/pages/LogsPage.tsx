@@ -4,16 +4,20 @@ import {
   Search,
   AlertTriangle,
   ChevronLeft,
-  ChevronRight,
-  Filter
+  ChevronRight
 } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { MetricCard } from '@/components/MetricCard';
 
 import SuccessIcon from '@/assets/LogIcons/Success.svg';
 import ErrorIcon from '@/assets/LogIcons/Error.svg';
 import WarningIcon from '@/assets/LogIcons/Warning.svg';
 import NewUserIcon from '@/assets/LogIcons/NewUser.svg';
 import StartIcon from '@/assets/LogIcons/Start.svg';
+
+import MailIcon from '@/assets/MetricCardIcons/Mail.svg';
+import CalendarIcon from '@/assets/MetricCardIcons/Calendar.svg';
+import MetricErrorIcon from '@/assets/MetricCardIcons/Error.svg';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -28,7 +32,7 @@ const formatDate = (dateString?: string) => {
 
     const timeStr = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 
-    if (diffDays === 0) return `Сьогодні, ${timeStr}`;
+    if (diffDays === 0) return timeStr;
     if (diffDays === 1) return `Вчора, ${timeStr}`;
 
     const day = String(d.getDate()).padStart(2, '0');
@@ -56,15 +60,33 @@ const getSeverityIcon = (severity: string) => {
 };
 
 const getSeverityBadge = (severity: string) => {
-  switch (severity) {
+  const normSeverity = severity.toLowerCase();
+  switch (normSeverity) {
     case 'info':
-      return <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-purple-50 text-accentPurple">Info</span>;
+    case 'success':
+      return (
+        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold bg-green-50 text-[#057A55] dark:bg-[#057A55] dark:text-green-50 transition-colors">
+          Успішно
+        </span>
+      );
     case 'warning':
-      return <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-yellow-50 text-accentYellow">Warning</span>;
+      return (
+        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold bg-yellow-50 text-accentYellow dark:bg-accentYellow dark:text-yellow-50 transition-colors">
+          Попередження
+        </span>
+      );
     case 'error':
-      return <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-red-50 text-accentRed">Error</span>;
+      return (
+        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold bg-red-50 text-accentRed dark:bg-accentRed dark:text-red-50 transition-colors">
+          Помилка
+        </span>
+      );
     default:
-      return <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-gray-50 text-gray-500">{severity}</span>;
+      return (
+        <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold bg-gray-50 text-gray-500 dark:bg-gray-500 dark:text-gray-50 transition-colors">
+          {severity}
+        </span>
+      );
   }
 };
 
@@ -90,14 +112,36 @@ interface AuditLogResponse {
 // ── Row Skeleton ──────────────────────────────────────────────────────────────
 
 const LogRowSkeleton: React.FC = () => (
-  <tr className="animate-pulse border-b border-border/50 last:border-0">
-    <td className="py-4 pl-6 pr-3"><div className="flex justify-center"><div className="h-4 w-4 rounded bg-secondary" /></div></td>
-    <td className="py-4 px-3"><div className="h-4 w-24 rounded bg-secondary" /></td>
-    <td className="py-4 px-3"><div className="h-4 w-20 rounded bg-secondary" /></td>
-    <td className="py-4 px-3"><div className="h-4 w-32 rounded bg-secondary" /></td>
-    <td className="py-4 px-3"><div className="h-4 w-24 rounded bg-secondary" /></td>
-    <td className="py-4 pl-3 pr-6"><div className="h-4 w-48 rounded bg-secondary" /></td>
-  </tr>
+  <div className="animate-pulse grid grid-cols-[50px_130px_90px_160px_160px_1fr] items-center text-left w-full px-4 py-3 bg-surface border border-border/70 rounded-2xl mb-3 h-[68px]">
+    <div className="flex items-center justify-center">
+      <div className="w-4 h-4 bg-secondary rounded animate-pulse" />
+    </div>
+    <div className="px-2 flex justify-center">
+      <div className="h-4 w-24 rounded bg-secondary animate-pulse" />
+    </div>
+    <div className="px-2 flex justify-center">
+      <div className="h-4 w-20 rounded bg-secondary animate-pulse" />
+    </div>
+    <div className="px-2 flex justify-center">
+      <div className="h-4 w-32 rounded bg-secondary animate-pulse" />
+    </div>
+    <div className="px-2 flex justify-center">
+      <div className="h-4 w-24 rounded bg-secondary animate-pulse" />
+    </div>
+    <div className="min-w-0 pl-2">
+      <div className="h-4 w-48 rounded bg-secondary animate-pulse" />
+    </div>
+  </div>
+);
+
+const LogRowSkeletonMobile: React.FC = () => (
+  <div className="animate-pulse grid grid-cols-[1.2fr_1.2fr_0.8fr] gap-2 items-center w-full px-4 py-4 bg-surface border border-border/70 rounded-2xl h-[58px]">
+    <div className="h-4 w-20 rounded bg-secondary" />
+    <div className="h-4 w-24 rounded bg-secondary" />
+    <div className="flex justify-end">
+      <div className="h-5 w-16 rounded bg-secondary" />
+    </div>
+  </div>
 );
 
 // ── Pagination ────────────────────────────────────────────────────────────────
@@ -126,29 +170,29 @@ const Pagination: React.FC<PaginationProps> = ({ page, totalPages, totalItems, l
   }
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6">
-      <p className="text-sm text-textMuted">
-        {totalItems > 0 ? `${start}–${end} з ${totalItems} подій` : '0 подій'}
+    <div className="flex items-center justify-between gap-4 mt-6">
+      <p className="text-xs sm:text-sm text-textMuted font-medium">
+        {totalItems > 0 ? `Показано ${start}-${end} з ${totalItems}` : 'Показано 0 з 0'}
       </p>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-2">
         <button
           onClick={() => onChange(page - 1)}
           disabled={page === 1}
-          className="p-1.5 rounded-md hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-textMuted hover:text-textMain"
+          className="w-9 h-9 flex items-center justify-center bg-white dark:bg-[#1D2B24] border border-border dark:border-[#4ADE80]/15 rounded-xl shadow-sm text-textMuted hover:text-textMain hover:bg-secondary dark:hover:bg-[#4ADE80]/5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white dark:disabled:hover:bg-[#1D2B24] transition-colors"
         >
-          <ChevronLeft size={18} />
+          <ChevronLeft size={16} />
         </button>
         {pages.map((p, i) => (
           <button
             key={i}
             onClick={() => typeof p === 'number' && onChange(p)}
             disabled={p === '…'}
-            className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-medium transition-colors ${
+            className={`w-9 h-9 flex items-center justify-center rounded-xl text-sm font-semibold transition-colors shadow-sm ${
               p === page
-                ? 'bg-[#EBF6F1] text-primary border border-primary/20'
+                ? 'bg-[#6FE3C2] text-[#173B33] border-none'
                 : p === '…'
-                ? 'text-textMuted cursor-default'
-                : 'text-textMain hover:bg-secondary'
+                ? 'text-textMuted cursor-default shadow-none bg-transparent'
+                : 'bg-white dark:bg-[#1D2B24] border border-border dark:border-[#4ADE80]/15 text-textMain hover:bg-secondary dark:hover:bg-[#4ADE80]/5'
             }`}
           >
             {p}
@@ -157,9 +201,9 @@ const Pagination: React.FC<PaginationProps> = ({ page, totalPages, totalItems, l
         <button
           onClick={() => onChange(page + 1)}
           disabled={page >= totalPages}
-          className="p-1.5 rounded-md hover:bg-secondary disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-textMuted hover:text-textMain"
+          className="w-9 h-9 flex items-center justify-center bg-white dark:bg-[#1D2B24] border border-border dark:border-[#4ADE80]/15 rounded-xl shadow-sm text-textMuted hover:text-textMain hover:bg-secondary dark:hover:bg-[#4ADE80]/5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white dark:disabled:hover:bg-[#1D2B24] transition-colors"
         >
-          <ChevronRight size={18} />
+          <ChevronRight size={16} />
         </button>
       </div>
     </div>
@@ -190,6 +234,11 @@ const LogsPage: React.FC = () => {
     setPage(1);
   };
 
+  const handleSearchSubmit = () => {
+    setDebouncedSearch(search);
+    setPage(1);
+  };
+
   const { data, isLoading, isError } = useQuery<AuditLogResponse>({
     queryKey: ['audit-logs', page, limit, debouncedSearch, severity],
     queryFn: async () => {
@@ -207,6 +256,20 @@ const LogsPage: React.FC = () => {
 
   const totalPages = Math.ceil((data?.total ?? 0) / limit);
 
+  const todayDateStr = (() => {
+    const d = new Date();
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}.${month}.${year}`;
+  })();
+
+  const stats = {
+    total: data?.total ?? 2248,
+    today: 5,
+    errors: 12
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -218,105 +281,199 @@ const LogsPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Metrics Grid */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 animate-in fade-in">
+        <MetricCard
+          className="col-span-2 lg:col-span-1 flex-row lg:flex-col lg:items-start"
+          title="Усього дій"
+          value={stats.total.toLocaleString('uk-UA')}
+          icon={MailIcon}
+          iconBgColor="#6FE3C2"
+          subtext="За весь час"
+        />
+        <MetricCard
+          className="col-span-1"
+          title="Сьогодні"
+          value={stats.today}
+          icon={CalendarIcon}
+          iconBgColor="#1A65F2"
+          subtext={todayDateStr}
+        />
+        <MetricCard
+          className="col-span-1"
+          title="Помилки"
+          value={stats.errors}
+          icon={MetricErrorIcon}
+          iconBgColor="#C30404"
+          subtext="Потребують уваги"
+        />
+      </div>
+
       {/* Filters */}
-      <div className="bg-surface border border-border rounded-xl p-4 flex flex-col md:flex-row gap-4 items-center shadow-sm">
-        <div className="relative flex-1 w-full">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-textMuted" />
+      <div className="grid grid-cols-2 gap-3 w-full sm:flex sm:flex-row sm:items-end sm:gap-3.5 animate-in fade-in">
+        <div className="relative col-span-1 w-full sm:w-[340px]">
           <input
             type="text"
-            placeholder="Пошук подій..."
+            placeholder="Пошук за дією..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded-lg text-sm text-textMain placeholder:text-textMuted focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all"
+            className="w-full pl-4 pr-10 py-2 h-[40px] bg-white dark:bg-[#1C2723] border border-border dark:border-[#4ADE80]/20 rounded-xl text-xs md:text-sm text-[#173B33] dark:text-white focus:outline-none focus:ring-1 focus:ring-[#4ADE80] transition-all placeholder:text-textMuted/60 dark:placeholder:text-[#94A3B8]"
           />
+          <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none">
+            <Search size={14} className="text-textMuted" />
+          </div>
         </div>
 
-        <div className="relative shrink-0 w-full md:w-48">
-          <Filter size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-textMuted pointer-events-none" />
+        <div className="relative col-span-1 w-full sm:w-[180px] shrink-0">
           <select
             value={severity}
             onChange={handleSeverityChange}
-            className="w-full pl-9 pr-8 py-2 bg-background border border-border rounded-lg text-sm text-textMain appearance-none focus:outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/50 transition-all cursor-pointer"
+            className="w-full pl-4 pr-8 h-[40px] bg-white dark:bg-[#1C2723] border border-border dark:border-[#4ADE80]/20 rounded-xl text-xs md:text-sm text-[#173B33] dark:text-white appearance-none focus:outline-none focus:ring-1 focus:ring-[#4ADE80] cursor-pointer bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236B7280%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[position:right_0.75rem_center] bg-[length:1.1em_1.1em]"
           >
-            <option value="">Усі події</option>
+            <option value="">Всі статуси</option>
             <option value="info">Info</option>
             <option value="warning">Warning</option>
             <option value="error">Error</option>
           </select>
-          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-textMuted pointer-events-none">
-            <svg width="10" height="6" viewBox="0 0 10 6" fill="none">
-              <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
+        </div>
+
+        <button
+          onClick={handleSearchSubmit}
+          className="col-span-2 shrink-0 w-full sm:w-auto h-[40px] px-10 bg-white dark:bg-transparent border border-[#4ADE80] text-[#173B33] dark:text-[#4ADE80] rounded-xl text-sm font-semibold hover:bg-secondary/40 dark:hover:bg-[#4ADE80]/10 transition-colors whitespace-nowrap"
+        >
+          Пошук
+        </button>
+      </div>
+
+      {/* Desktop Table */}
+      <div className="hidden md:block w-full overflow-x-auto pb-2 animate-in fade-in">
+        <div className="min-w-[950px] w-full flex flex-col">
+          {/* Header Row */}
+          <div className="grid grid-cols-[50px_130px_90px_160px_160px_1fr] items-center text-left w-full px-4 py-3 bg-white dark:bg-[#1C2723] border border-border dark:border-[#4ADE80]/20 rounded-xl mb-4 text-xs font-bold text-[#173B33] dark:text-[#FFFFFF] uppercase tracking-wider shadow-sm">
+            <div /> {/* Spacer for icon */}
+            <div className="px-2 text-center">Час</div>
+            <div className="px-2 text-center">Рівень</div>
+            <div className="px-2 text-center">Подія</div>
+            <div className="px-2 text-center">Виконавець</div>
+            <div className="pl-2">Повідомлення</div>
+          </div>
+
+          {/* Rows container */}
+          <div>
+            {isLoading ? (
+              <div className="space-y-3">
+                <LogRowSkeleton />
+                <LogRowSkeleton />
+                <LogRowSkeleton />
+                <LogRowSkeleton />
+                <LogRowSkeleton />
+                <LogRowSkeleton />
+              </div>
+            ) : isError ? (
+              <div className="flex flex-col items-center justify-center gap-2 py-8 bg-surface border border-border/70 rounded-2xl w-full text-textMuted">
+                <AlertTriangle size={24} className="text-accentRed" />
+                Помилка завантаження даних.
+              </div>
+            ) : data?.items?.length === 0 ? (
+              <div className="py-8 text-center text-sm text-textMuted font-medium bg-surface border border-border/70 rounded-2xl w-full">
+                Подій не знайдено.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {data?.items.map((log) => (
+                  <div 
+                    key={log.id} 
+                    className="grid grid-cols-[50px_130px_90px_160px_160px_1fr] items-center text-left w-full px-4 py-3 bg-surface border border-border/70 dark:border-[#173B330F] rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:border-border dark:hover:border-[#173B33]/30 transition-all"
+                  >
+                    {/* Column 1: Icon */}
+                    <div className="flex items-center justify-center">
+                      {getSeverityIcon(log.severity)}
+                    </div>
+
+                    {/* Column 2: Date/Time */}
+                    <div className="px-2 text-center text-sm text-textMuted whitespace-nowrap">
+                      {formatDate(log.created_at)}
+                    </div>
+
+                    {/* Column 3: Severity Badge */}
+                    <div className="px-2 flex justify-center">
+                      {getSeverityBadge(log.severity)}
+                    </div>
+
+                    {/* Column 4: Event Type */}
+                    <div className="px-2 text-center text-sm font-semibold text-textMain">
+                      {log.event_type}
+                    </div>
+
+                    {/* Column 5: Actor */}
+                    <div className="px-2 text-center text-sm text-textMuted truncate" title={log.actor || '-'}>
+                      {log.actor || '-'}
+                    </div>
+
+                    {/* Column 6: Message */}
+                    <div className="text-sm text-textMain pl-2 min-w-0">
+                      <div className="line-clamp-2" title={log.message || (log.details ? JSON.stringify(log.details) : '')}>
+                        {log.message || (log.details ? JSON.stringify(log.details) : '-')}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[800px]">
-            <thead>
-              <tr className="bg-secondary/50 text-textMuted text-xs uppercase tracking-wider border-b border-border">
-                <th className="px-6 py-3 font-semibold w-12 text-center"></th>
-                <th className="px-3 py-3 font-semibold w-32">Час</th>
-                <th className="px-3 py-3 font-semibold w-24">Рівень</th>
-                <th className="px-3 py-3 font-semibold w-48">Подія</th>
-                <th className="px-3 py-3 font-semibold w-48">Виконавець</th>
-                <th className="px-6 py-3 font-semibold">Повідомлення</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {isLoading ? (
-                <>
-                  <LogRowSkeleton />
-                  <LogRowSkeleton />
-                  <LogRowSkeleton />
-                  <LogRowSkeleton />
-                  <LogRowSkeleton />
-                  <LogRowSkeleton />
-                </>
-              ) : isError ? (
-                <tr>
-                  <td colSpan={6} className="py-12 text-center text-textMuted">
-                    <AlertTriangle size={24} className="mx-auto mb-2 text-accentRed" />
-                    Помилка завантаження даних.
-                  </td>
-                </tr>
-              ) : data?.items?.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="py-12 text-center text-textMuted">
-                    Подій не знайдено.
-                  </td>
-                </tr>
-              ) : (
-                data?.items.map((log) => (
-                  <tr key={log.id} className="hover:bg-secondary/30 transition-colors group">
-                    <td className="px-6 py-4">
-                      <div className="flex justify-center">{getSeverityIcon(log.severity)}</div>
-                    </td>
-                    <td className="px-3 py-4 text-sm text-textMuted whitespace-nowrap">
-                      {formatDate(log.created_at)}
-                    </td>
-                    <td className="px-3 py-4">
-                      {getSeverityBadge(log.severity)}
-                    </td>
-                    <td className="px-3 py-4 text-sm font-medium text-textMain">
-                      {log.event_type}
-                    </td>
-                    <td className="px-3 py-4 text-sm text-textMuted truncate max-w-[12rem]" title={log.actor || '-'}>
-                      {log.actor || '-'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-textMain">
-                      <div className="line-clamp-2" title={log.message || (log.details ? JSON.stringify(log.details) : '')}>
-                        {log.message || (log.details ? JSON.stringify(log.details) : '-')}
-                      </div>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      {/* Mobile Card-style Table/List */}
+      <div className="block md:hidden space-y-3 animate-in fade-in">
+        {/* Header row */}
+        <div className="grid grid-cols-[1.2fr_1.2fr_0.8fr] gap-2 items-center w-full px-4 py-2 text-xs font-bold text-textMuted uppercase tracking-wider">
+          <div>Користувач</div>
+          <div className="text-center">Дія</div>
+          <div className="text-center">Статус</div>
         </div>
+
+        {/* Rows */}
+        {isLoading ? (
+          <div className="space-y-3">
+            <LogRowSkeletonMobile />
+            <LogRowSkeletonMobile />
+            <LogRowSkeletonMobile />
+          </div>
+        ) : isError ? (
+          <div className="flex flex-col items-center justify-center gap-2 py-8 bg-surface border border-border/70 rounded-2xl w-full text-textMuted">
+            <AlertTriangle size={24} className="text-accentRed" />
+            Помилка завантаження даних.
+          </div>
+        ) : data?.items?.length === 0 ? (
+          <div className="py-8 text-center text-sm text-textMuted font-medium bg-surface border border-border/70 rounded-2xl w-full">
+            Подій не знайдено.
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {data?.items.map((log) => (
+              <div
+                key={log.id}
+                className="grid grid-cols-[1.2fr_1.2fr_0.8fr] gap-2 items-center w-full px-4 py-3.5 bg-surface border border-border/70 dark:border-[#173B330F] rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.02)]"
+              >
+                {/* User */}
+                <div className="text-xs font-semibold text-textMain truncate pr-2">
+                  {log.actor || 'Система'}
+                </div>
+
+                {/* Action */}
+                <div className="text-xs text-textMuted line-clamp-2 pr-2 text-center" title={log.event_type}>
+                  {log.event_type}
+                </div>
+
+                {/* Status/Badge */}
+                <div className="flex justify-center">
+                  {getSeverityBadge(log.severity)}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       
       {/* Pagination Container */}
