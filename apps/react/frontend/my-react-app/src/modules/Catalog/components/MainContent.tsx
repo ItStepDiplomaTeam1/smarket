@@ -82,7 +82,11 @@ interface Product {
   weight: number;
   image_url: string | null;
   canonical_category_id: number;
-  category: Category;
+  category?: Category;
+  // Fields returned directly from search_service
+  category_name?: string;
+  category_slug?: string;
+  main_category_id?: number;
   created_at: string;
   offers?: StoreOffer[]; 
 }
@@ -148,17 +152,40 @@ const SUBCATEGORY_OPTIONS = [
 ];
 
 const DISCOUNT_OPTIONS = [
-  { id: '10', name: 'до 10%', count: 120 },
-  { id: '10-20', name: '10%-20%', count: 85 },
-  { id: '20-30', name: '20%-30%', count: 43 },
-  { id: '30+', name: '30%+', count: 14 },
+  { id: '10', name: 'до 10%' },
+  { id: '10-20', name: '10%-20%' },
+  { id: '20-30', name: '20%-30%' },
+  { id: '30+', name: '30%+' },
 ];
 
 const PROPOSAL_OPTIONS = [
-  { id: 'promo', name: 'Тільки акції', count: '340' },
-  { id: 'new', name: 'Нові надходження', count: '58' },
-  { id: 'save', name: 'Найбільша економія', count: '120' },
+  { id: 'promo', name: 'Тільки акції' },
+  { id: 'new', name: 'Нові надходження' },
+  { id: 'save', name: 'Найбільша економія' },
 ];
+
+// Fetch total_hits for a given filter combination (limit=1 for efficiency)
+const fetchCount = async (params: Record<string, string>): Promise<number> => {
+  const apiBase = import.meta.env.VITE_API_URL || 'https://smarket-api.duckdns.org';
+  const url = new URL(`${apiBase}/api/v1/search/search`);
+  url.searchParams.set('limit', '1');
+  url.searchParams.set('offset', '0');
+  Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+  try {
+    const res = await fetch(url.toString());
+    if (!res.ok) return 0;
+    const json = await res.json();
+    return json.total_hits ?? json.nb_hits ?? 0;
+  } catch {
+    return 0;
+  }
+};
+
+interface FilterCounts {
+  categories: Record<string, number>;
+  subcategories: Record<string, number>;
+  discounts: Record<string, number>;
+}
 
 const fetchProducts = async (filters: FetchFilters): Promise<ProductsResponse> => {
     const limit = 12;
@@ -256,6 +283,49 @@ export function MainContent() {
   const { data, isLoading } = useQuery<ProductsResponse>({
       queryKey: ['productsList', filterParams],
       queryFn: () => fetchProducts(filterParams),
+  });
+
+  // Dynamic filter counts — parallel requests with limit=1
+  const { data: filterCounts } = useQuery<FilterCounts>({
+    queryKey: ['filterCounts', selectedStores, debouncedSearch],
+    queryFn: async () => {
+      const storeParams: Record<string, string> = {};
+      if (selectedStores.length === 1) storeParams['retail_chain'] = selectedStores[0];
+      if (debouncedSearch.trim()) storeParams['q'] = debouncedSearch.trim();
+
+      const [catCounts, subCounts, discCounts] = await Promise.all([
+        // Category counts
+        Promise.all(
+          CATEGORY_OPTIONS.map(async (cat) => {
+            const params: Record<string, string> = { ...storeParams };
+            if (cat.id !== 'products') params['category_slug'] = cat.id;
+            const count = await fetchCount(params);
+            return [cat.id, count] as [string, number];
+          })
+        ),
+        // Subcategory counts (always within products category context)
+        Promise.all(
+          SUBCATEGORY_OPTIONS.map(async (sub) => {
+            const count = await fetchCount({ ...storeParams, subcategory_slug: sub.id });
+            return [sub.id, count] as [string, number];
+          })
+        ),
+        // Discount counts
+        Promise.all(
+          DISCOUNT_OPTIONS.map(async (d) => {
+            const count = await fetchCount({ ...storeParams, discount_range: d.id });
+            return [d.id, count] as [string, number];
+          })
+        ),
+      ]);
+
+      return {
+        categories: Object.fromEntries(catCounts),
+        subcategories: Object.fromEntries(subCounts),
+        discounts: Object.fromEntries(discCounts),
+      };
+    },
+    staleTime: 2 * 60 * 1000, // 2 хвилини кеш
   });
 
   const products = data?.items ?? [];
@@ -358,7 +428,9 @@ export function MainContent() {
                     <span className={`text-[12px] px-[8px] py-[2px] rounded-[100px] ${
                       isCatActive ? 'bg-[#D1E8DD] text-[#173B33] dark:bg-transparent dark:text-[#3CD27D] font-bold' : 'bg-[#F3F4F6] text-[#6D8279] dark:bg-transparent dark:text-[#7A8D85] font-semibold'
                     }`}>
-                      {cat.count}
+                      {filterCounts?.categories[cat.id] !== undefined
+                        ? filterCounts.categories[cat.id].toLocaleString('uk-UA')
+                        : '...'}
                     </span>
                   </li>
                 );
@@ -454,7 +526,11 @@ export function MainContent() {
                       <span className={`flex-1 text-[13px] font-medium ${isSubActive ? 'text-[#374151] dark:text-[#3CD27D]' : 'text-[#374151] dark:text-[#7A8D85]'}`}>
                           {item.name}
                       </span>
-                      <span className="text-[12px] text-[#9CA3AF] dark:text-[#7A8D85]">{item.count}</span>
+                      <span className="text-[12px] text-[#9CA3AF] dark:text-[#7A8D85]">
+                        {filterCounts?.subcategories[item.id] !== undefined
+                          ? filterCounts.subcategories[item.id].toLocaleString('uk-UA')
+                          : '...'}
+                      </span>
                     </label>
                   );
                 })}
@@ -485,7 +561,11 @@ export function MainContent() {
                       <span className={`flex-1 text-[13px] font-medium ${isDiscountActive ? 'text-[#374151] dark:text-[#3CD27D]' : 'text-[#374151] dark:text-[#7A8D85]'}`}>
                           {item.name}
                       </span>
-                      <span className="text-[12px] text-[#9CA3AF] dark:text-[#7A8D85]">{item.count}</span>
+                      <span className="text-[12px] text-[#9CA3AF] dark:text-[#7A8D85]">
+                        {filterCounts?.discounts[item.id] !== undefined
+                          ? filterCounts.discounts[item.id].toLocaleString('uk-UA')
+                          : '...'}
+                      </span>
                     </label>
                   );
                 })}
@@ -546,8 +626,17 @@ export function MainContent() {
                 До п'ятниці: ексклюзивні знижки в АТБ та Сільпо
               </p>
             </div>
-            <button className="w-full sm:w-auto bg-[#FFD600] text-[#111827] font-bold text-[14px] px-[16px] py-[8px] rounded-[100px] border-none cursor-pointer hover:bg-[#FACC15] transition-colors">
-              До -30%
+            <button
+              onClick={() => {
+                setSelectedDiscounts(prev =>
+                  prev.includes('30+') ? prev : [...prev, '30+']
+                );
+                setPage(1);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="w-full sm:w-auto bg-[#FFD600] text-[#111827] font-bold text-[14px] px-[16px] py-[8px] rounded-[100px] border-none cursor-pointer hover:bg-[#FACC15] transition-colors"
+            >
+              До -30%+
             </button>
           </div>
 
@@ -755,7 +844,7 @@ export function MainContent() {
                     
                     <div className="flex flex-col flex-1">
                       <span className="text-[10px] font-bold text-[#9CA3AF] dark:text-[#7E968C] uppercase tracking-[0.05em] mb-[4px] truncate">
-                        {product.category?.name || 'Молочна продукція'}
+                        {product.category_name || product.category?.name || ''}
                       </span>
                       <h3 className="font-manrope text-[14px] font-bold text-[#111827] dark:text-white leading-[1.3] mb-[4px] line-clamp-2 min-h-[36px]">
                         {product.title}
