@@ -1,29 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { NavLink, Link, useNavigate } from 'react-router-dom';
+import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import lupa from '@/shared/assets/lupa.svg';
+import koshuk from '@/shared/assets/koshuk.svg';
 import fix_logo from '@/shared/assets/Logo-Smarket.svg';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
-import { apiClient } from '@/shared/api/apiClient';
-import { ThemeToggle } from '@/shared/components/ThemeToggle';
-import { useFavoritesStore } from '@/shared/context/favoritesStore';
 
-// ================= ICONS =================
-const HeartIcon = ({ filled = false }: { filled?: boolean }) => (
-  <svg className="w-4 h-4" viewBox="0 0 24 24" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
-  </svg>
-);
-
-const TrashIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 6 5 6 21 6"></polyline>
-    <path d="M19 6l-1 14H6L5 6"></path>
-    <path d="M10 11v6M14 11v6"></path>
-    <path d="M9 6V4h6v2"></path>
-  </svg>
-);
-
-// ================= HELPERS =================
 function getInitials(name?: string, email?: string): string {
     if (name?.trim()) {
         const parts = name.trim().split(' ');
@@ -50,238 +31,252 @@ function stringToHsl(str: string): string {
 }
 
 const navLinkClass = ({ isActive }: { isActive: boolean }) =>
-    `no-underline text-sm font-medium transition-colors duration-200 block py-2 md:py-0 ${
-        isActive 
-            ? 'text-[#265447] dark:text-[#3CD27D] font-semibold' 
-            : 'text-[#173B33] dark:text-[#A4B3AF] hover:text-[#265447] dark:hover:text-white'
+    `no-underline text-sm font-medium transition-colors duration-200 ${
+        isActive ? 'text-[#265447] font-semibold' : 'text-[#173B33] hover:text-[#265447]'
     }`;
 
-// ================= COMPONENT =================
 export function Header() {
     const navigate = useNavigate();
+    const location = useLocation();
     const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
     const user = useAuthStore((state) => state.user);
     const logout = useAuthStore((state) => state.logout);
 
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const [favoritesOpen, setFavoritesOpen] = useState(false);
-
     const dropdownRef = useRef<HTMLDivElement>(null);
-    const favoritesRef = useRef<HTMLDivElement>(null);
 
-    // Favorites store
-    const { items: favorites, isLoaded, load: loadFavorites, remove: removeFavorite } = useFavoritesStore();
-
-    // Load favorites when user is authenticated
     useEffect(() => {
-        if (isAuthenticated && !isLoaded) {
-            loadFavorites();
-        }
-    }, [isAuthenticated, isLoaded, loadFavorites]);
+        setMobileMenuOpen(false);
+    }, [location.pathname]);
 
-    // Close dropdowns on outside click
     useEffect(() => {
         const handler = (e: MouseEvent) => {
             if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
                 setDropdownOpen(false);
-            }
-            if (favoritesRef.current && !favoritesRef.current.contains(e.target as Node)) {
-                setFavoritesOpen(false);
             }
         };
         document.addEventListener('mousedown', handler);
         return () => document.removeEventListener('mousedown', handler);
     }, []);
 
+    useEffect(() => {
+        if (mobileMenuOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => { document.body.style.overflow = ''; };
+    }, [mobileMenuOpen]);
+
     const initials = getInitials(user?.name, user?.email);
     const displayName = getDisplayName(user?.name, user?.email);
     const avatarColor = stringToHsl(user?.email ?? user?.name ?? 'user');
 
-    const handleLogout = async () => {
+    const handleLogout = () => {
         setDropdownOpen(false);
-        try {
-            await apiClient.post('/api/v1/auth/logout');
-        } catch {}
+        setMobileMenuOpen(false);
         logout();
-        useFavoritesStore.getState().reset();
         navigate('/');
     };
 
-    const displayedFavorites = favorites.slice(0, 10);
+    const mobileNavLinks = [
+        { to: '/promotions', label: 'Акції' },
+        { to: '/catalog', label: 'Каталог' },
+        { to: '/stores', label: 'Магазини' },
+        { to: '/cart', label: 'Кошик' },
+    ];
 
     return (
-        <header className="w-full bg-white dark:bg-[#0D1513] border-b border-[#E5E7EB] dark:border-[#1A2E28] h-18 sticky top-0 z-50 transition-colors duration-200 relative">
-            <div className="max-w-[1230px] mx-auto px-4 md:px-6 h-full flex justify-between items-center">
+        <>
+            <header className="w-full bg-white border-b border-[#E5E7EB] h-18 sticky top-0 z-50">
+                <div className="max-w-[1230px] mx-auto px-4 sm:px-6 h-full flex justify-between items-center">
 
-                <Link to="/" viewTransition className="flex items-center h-full py-0 z-10">
-                    <img src={fix_logo} alt="Smarket Logo" className="h-7 md:h-8 w-auto block object-contain dark:brightness-0 dark:invert transition-all" />
-                </Link>
+                    <Link to="/" className="flex items-center h-full py-0 shrink-0">
+                        <img src={fix_logo} alt="Smarket Logo" className="h-8 w-auto block object-contain" />
+                    </Link>
 
-                <nav className={`absolute md:static top-full left-0 w-full md:w-auto bg-white dark:bg-[#0D1513] md:bg-transparent border-b md:border-none border-[#E5E7EB] dark:border-[#1A2E28] px-4 md:px-0 py-4 md:py-0 flex-col md:flex-row items-start md:items-center gap-4 md:gap-8 transition-all duration-200 ${mobileMenuOpen ? 'flex shadow-lg md:shadow-none' : 'hidden md:flex'}`}>
-                    <NavLink to="/" viewTransition className={navLinkClass} onClick={() => setMobileMenuOpen(false)}>Головна</NavLink>
-                    <NavLink to="/catalog" viewTransition className={navLinkClass} onClick={() => setMobileMenuOpen(false)}>Каталог</NavLink>
-                    <NavLink to="/shops" viewTransition className={navLinkClass} onClick={() => setMobileMenuOpen(false)}>Магазини</NavLink>
-                    <NavLink to="/cart" viewTransition className={navLinkClass} onClick={() => setMobileMenuOpen(false)}>Кошик</NavLink>
-                </nav>
+                    {/* Десктопна навігація */}
+                    <nav className="desktop-nav hidden md:flex items-center gap-8">
+                        <NavLink to="/promotions" className={navLinkClass}>Акції</NavLink>
+                        <NavLink to="/catalog" className={navLinkClass}>Каталог</NavLink>
+                        <NavLink to="/stores" className={navLinkClass}>Магазини</NavLink>
+                        <NavLink to="/cart" className={navLinkClass}>Кошик</NavLink>
+                    </nav>
 
-                <div className="flex items-center gap-4 md:gap-6 z-10">
-                    <ThemeToggle />
+                    <div className="flex items-center gap-4 sm:gap-6">
 
-                    {/* ЛУПА */}
-                    <button className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0 w-6 h-6 group">
-                        <img src={lupa} alt="Search" className="w-6 h-6 block dark:brightness-0 dark:invert transition-transform group-hover:scale-110" />
-                    </button>
-
-                    {/* ПРОФІЛЬ */}
-                    {isAuthenticated && user ? (
-                        <div className="relative" ref={dropdownRef}>
-                            <button
-                                onClick={() => setDropdownOpen((v) => !v)}
-                                className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-[40px] border border-[rgba(38,84,71,0.12)] dark:border-[rgba(255,255,255,0.15)] bg-white dark:bg-[#14221E] hover:bg-[#F6FAF8] dark:hover:bg-[#1B2E29] transition-all cursor-pointer"
-                            >
-                                <span className="w-7 h-7 md:w-8.5 md:h-8.5 rounded-full flex items-center justify-center text-[10px] md:text-[12px] font-bold text-white shrink-0 overflow-hidden" style={{ backgroundColor: avatarColor }}>
-                                    {user.photoUrl ? <img src={user.photoUrl} alt="Avatar" className="w-full h-full object-cover" /> : initials}
-                                </span>
-                                <span className="text-[12px] md:text-[13px] font-semibold text-[#173B33] dark:text-white max-w-[70px] md:max-w-22.5 truncate transition-colors">
-                                    {displayName}
-                                </span>
-                            </button>
-
-                            <div className={`absolute right-0 mt-2.5 w-55 bg-white dark:bg-[#14221E] rounded-2xl border border-[rgba(38,84,71,0.10)] dark:border-[rgba(255,255,255,0.1)] shadow-[0_8px_32px_rgba(23,59,51,0.14)] dark:shadow-none overflow-hidden transition-all duration-200 origin-top-right ${dropdownOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'}`}>
-                                <div className="px-4 pt-4 pb-3 border-b border-[rgba(38,84,71,0.08)] dark:border-[rgba(255,255,255,0.08)]">
-                                    <div className="flex items-center gap-3">
-                                        <span className="w-10 h-10 rounded-full flex items-center justify-center text-[14px] font-bold text-white shrink-0 overflow-hidden" style={{ backgroundColor: avatarColor }}>
-                                            {user.photoUrl ? <img src={user.photoUrl} alt="Avatar" className="w-full h-full object-cover" /> : initials}
-                                        </span>
-                                        <div className="min-w-0">
-                                            <p className="text-[13px] font-semibold text-[#111827] dark:text-white truncate m-0 leading-4.5 transition-colors">{user?.name || displayName}</p>
-                                            <p className="text-[11px] text-[#6D8279] dark:text-[#A4B3AF] truncate m-0 leading-4 transition-colors">{user?.email}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="py-2">
-                                    <button onClick={() => { setDropdownOpen(false); navigate('/profile'); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium text-[#173B33] dark:text-[#A4B3AF] hover:bg-[#F6FAF8] dark:hover:bg-[#1A2E25] hover:text-[#265447] dark:hover:text-white transition-colors duration-150 cursor-pointer bg-transparent border-none text-left">Профіль</button>
-                                    <button onClick={() => { setDropdownOpen(false); navigate('/cart'); }} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium text-[#173B33] dark:text-[#A4B3AF] hover:bg-[#F6FAF8] dark:hover:bg-[#1A2E25] hover:text-[#265447] dark:hover:text-white transition-colors duration-150 cursor-pointer bg-transparent border-none text-left">Мої кошики</button>
-                                </div>
-                                <div className="py-2 border-t border-[rgba(38,84,71,0.08)] dark:border-[rgba(255,255,255,0.08)]">
-                                    <button onClick={handleLogout} className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors duration-150 cursor-pointer bg-transparent border-none text-left">Вийти</button>
-                                </div>
-                            </div>
-                        </div>
-                    ) : (
-                        <Link to="/auth" className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0 w-4 h-4 text-[#173B33] dark:text-white hover:text-[#265447] dark:hover:text-[#3CD27D] transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                                <circle cx="12" cy="7" r="4" />
-                            </svg>
-                        </Link>
-                    )}
-
-                    {/* ================= СЕРДЕЧКО / FAVORITES DROPDOWN ================= */}
-                    <div className="relative" ref={favoritesRef}>
                         <button
-                            id="favorites-toggle-btn"
-                            onClick={() => {
-                                if (!isAuthenticated) { navigate('/auth'); return; }
-                                setFavoritesOpen((v) => !v);
-                            }}
-                            className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0 relative text-[#173B33] dark:text-white hover:text-[#E11D48] dark:hover:text-[#F43F5E] transition-colors"
+                            className="touch-target bg-transparent border-none cursor-pointer flex items-center justify-center text-[#173B33] hover:text-[#265447] transition-colors"
+                            aria-label="Пошук"
                         >
-                            <HeartIcon filled={favorites.length > 0} />
-                            {favorites.length > 0 && (
-                                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] bg-[#E11D48] text-white text-[9px] font-bold rounded-full flex items-center justify-center px-[3px] leading-none">
-                                    {favorites.length > 9 ? '9+' : favorites.length}
-                                </span>
-                            )}
+                            <img src={lupa} alt="Search" className="w-5 h-5 block" />
                         </button>
 
-                        {/* Favorites Dropdown */}
-                        <div className={`absolute right-0 mt-3 w-[320px] bg-white dark:bg-[#14221E] rounded-2xl border border-[rgba(38,84,71,0.10)] dark:border-[rgba(255,255,255,0.08)] shadow-[0_8px_32px_rgba(23,59,51,0.18)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)] overflow-hidden transition-all duration-200 origin-top-right ${favoritesOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'}`}>
-                            
-                            {/* Header */}
-                            <div className="px-4 py-3 border-b border-[rgba(38,84,71,0.08)] dark:border-[rgba(255,255,255,0.08)] flex items-center justify-between">
-                                <div className="flex items-center gap-2">
-                                    <span className="text-[#E11D48]"><HeartIcon filled /></span>
-                                    <span className="text-[14px] font-bold text-[#111827] dark:text-white">Улюблені</span>
-                                    {favorites.length > 0 && (
-                                        <span className="text-[11px] font-semibold text-[#6D8279] dark:text-[#7A8D85]">({favorites.length})</span>
-                                    )}
+                        {isAuthenticated && user ? (
+                            <div className="relative" ref={dropdownRef}>
+                                <button
+                                    onClick={() => setDropdownOpen((v) => !v)}
+                                    className="flex items-center gap-2.5 pl-1 pr-2.5 py-1 rounded-[40px] border border-[rgba(38,84,71,0.12)] bg-white hover:bg-[#F6FAF8] hover:border-[#265447] transition-all duration-200 cursor-pointer min-h-[44px]"
+                                    aria-label="Профіль"
+                                >
+                                    <span
+                                        className="w-8.5 h-8.5 rounded-full flex items-center justify-center text-[12px] font-bold text-white shrink-0 select-none"
+                                        style={{ backgroundColor: avatarColor }}
+                                    >
+                                        {initials}
+                                    </span>
+                                    <span className="hidden sm:block text-[13px] font-semibold text-[#173B33] max-w-22.5 truncate leading-none">
+                                        {displayName}
+                                    </span>
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        className={`w-3.5 h-3.5 text-[#6D8279] transition-transform duration-200 ${dropdownOpen ? 'rotate-180' : ''}`}
+                                        viewBox="0 0 20 20" fill="currentColor"
+                                    >
+                                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                                    </svg>
+                                </button>
+
+                                <div
+                                    className={`absolute right-0 mt-2.5 w-55 bg-white rounded-2xl border border-[rgba(38,84,71,0.10)] shadow-[0_8px_32px_rgba(23,59,51,0.14)] overflow-hidden transition-all duration-200 origin-top-right ${
+                                        dropdownOpen
+                                            ? 'opacity-100 scale-100 pointer-events-auto'
+                                            : 'opacity-0 scale-95 pointer-events-none'
+                                    }`}
+                                >
+                                    <div className="px-4 pt-4 pb-3 border-b border-[rgba(38,84,71,0.08)]">
+                                        <div className="flex items-center gap-3">
+                                            <span
+                                                className="w-10 h-10 rounded-full flex items-center justify-center text-[14px] font-bold text-white shrink-0"
+                                                style={{ backgroundColor: avatarColor }}
+                                            >
+                                                {initials}
+                                            </span>
+                                            <div className="min-w-0">
+                                                <p className="text-[13px] font-semibold text-[#111827] truncate m-0 leading-4.5">
+                                                    {user?.name || displayName}
+                                                </p>
+                                                <p className="text-[11px] text-[#6D8279] truncate m-0 leading-4">
+                                                    {user?.email}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="py-2">
+                                        <button
+                                            onClick={() => { setDropdownOpen(false); navigate('/profile'); }}
+                                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium text-[#173B33] hover:bg-[#F6FAF8] hover:text-[#265447] transition-colors duration-150 cursor-pointer bg-transparent border-none text-left min-h-[44px]"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0 text-[#6D8279]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                                <circle cx="12" cy="7" r="4"/>
+                                            </svg>
+                                            Профіль
+                                        </button>
+                                        <button
+                                            onClick={() => { setDropdownOpen(false); navigate('/cart'); }}
+                                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium text-[#173B33] hover:bg-[#F6FAF8] hover:text-[#265447] transition-colors duration-150 cursor-pointer bg-transparent border-none text-left min-h-[44px]"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0 text-[#6D8279]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                                                <line x1="3" y1="6" x2="21" y2="6"/>
+                                                <path d="M16 10a4 4 0 0 1-8 0"/>
+                                            </svg>
+                                            Мої кошики
+                                        </button>
+                                    </div>
+
+                                    <div className="py-2 border-t border-[rgba(38,84,71,0.08)]">
+                                        <button
+                                            onClick={handleLogout}
+                                            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] font-medium text-red-500 hover:bg-red-50 transition-colors duration-150 cursor-pointer bg-transparent border-none text-left min-h-[44px]"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                                                <polyline points="16 17 21 12 16 7"/>
+                                                <line x1="21" y1="12" x2="9" y2="12"/>
+                                            </svg>
+                                            Вийти
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
+                        ) : (
+                            <Link
+                                to="/auth"
+                                className="touch-target bg-transparent border-none cursor-pointer flex items-center justify-center p-0 w-5 h-5 text-[#173B33] hover:text-[#265447] transition-colors duration-200"
+                                aria-label="Увійти"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                    <circle cx="12" cy="7" r="4" />
+                                </svg>
+                            </Link>
+                        )}
 
-                            {/* Content */}
-                            {displayedFavorites.length === 0 ? (
-                                <div className="py-8 px-4 text-center">
-                                    <div className="text-[#D1D5DB] dark:text-[#2B4236] mb-3">
-                                        <svg className="w-10 h-10 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                                        </svg>
-                                    </div>
-                                    <p className="text-[13px] text-[#9CA3AF] dark:text-[#7A8D85] m-0">Список улюблених порожній</p>
-                                    <p className="text-[12px] text-[#C0CCC7] dark:text-[#4A5D54] m-0 mt-1">Натисніть ♡ на товарі, щоб зберегти</p>
-                                </div>
-                            ) : (
-                                <ul className="py-1 max-h-[360px] overflow-y-auto">
-                                    {displayedFavorites.map((item) => (
-                                        <li key={item.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-[#F6FAF8] dark:hover:bg-[#1A2E25] transition-colors group">
-                                            {/* Thumbnail */}
-                                            <div
-                                                className="w-10 h-10 rounded-[8px] bg-[#F3F4F6] dark:bg-[#1A2E25] flex items-center justify-center shrink-0 overflow-hidden cursor-pointer"
-                                                onClick={() => { setFavoritesOpen(false); navigate(`/product/${item.product_id}`); }}
-                                            >
-                                                {item.product_image_url ? (
-                                                    <img src={item.product_image_url} alt={item.product_title ?? ''} className="w-full h-full object-contain p-1 mix-blend-multiply dark:mix-blend-normal" />
-                                                ) : (
-                                                    <svg className="w-5 h-5 text-[#9CA3AF]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
-                                                )}
-                                            </div>
+                        <button
+                            onClick={() => navigate('/cart')}
+                            className="touch-target bg-transparent border-none cursor-pointer flex items-center justify-center p-0 w-5 h-5 relative"
+                        >
+                            <img src={koshuk} alt="Basket" className="w-5 h-5 block" />
+                            <span className="absolute -top-1.5 -right-1.5 bg-[#FFC72C] text-[#173B33] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center select-none shadow-[0_0_0_2px_#fff]">
+                                3
+                            </span>
+                        </button>
 
-                                            {/* Info */}
-                                            <div
-                                                className="flex-1 min-w-0 cursor-pointer"
-                                                onClick={() => { setFavoritesOpen(false); navigate(`/product/${item.product_id}`); }}
-                                            >
-                                                <p className="text-[13px] font-medium text-[#111827] dark:text-white m-0 line-clamp-1 leading-snug">
-                                                    {item.product_title ?? `Товар #${item.product_id}`}
-                                                </p>
-                                                {item.product_price !== null && (
-                                                    <p className="text-[12px] font-bold text-[#265447] dark:text-[#3CD27D] m-0 mt-0.5">
-                                                        від {item.product_price} ₴
-                                                    </p>
-                                                )}
-                                            </div>
-
-                                            {/* Remove button */}
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); removeFavorite(item.product_id); }}
-                                                className="opacity-0 group-hover:opacity-100 p-1.5 rounded-[6px] hover:bg-red-50 dark:hover:bg-red-950/30 text-[#9CA3AF] hover:text-[#E11D48] transition-all cursor-pointer bg-transparent border-none shrink-0"
-                                                title="Видалити з улюблених"
-                                            >
-                                                <TrashIcon />
-                                            </button>
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-
-                            {favorites.length > 10 && (
-                                <div className="px-4 py-2 border-t border-[rgba(38,84,71,0.08)] dark:border-[rgba(255,255,255,0.08)] text-center">
-                                    <span className="text-[12px] text-[#9CA3AF] dark:text-[#7A8D85]">
-                                        Показано 10 з {favorites.length} товарів
-                                    </span>
-                                </div>
-                            )}
-                        </div>
+                        {/* Бургер */}
+                        <button
+                            className={`burger-btn md:hidden touch-target bg-transparent border-none cursor-pointer flex flex-col items-center justify-center gap-[6px] ${mobileMenuOpen ? 'burger-open' : ''}`}
+                            onClick={() => setMobileMenuOpen((v) => !v)}
+                            aria-label={mobileMenuOpen ? 'Закрити меню' : 'Відкрити меню'}
+                            aria-expanded={mobileMenuOpen}
+                        >
+                            <span className="burger-line" />
+                            <span className="burger-line" />
+                            <span className="burger-line" />
+                        </button>
                     </div>
-
-                    {/* Бургер меню для мобільних */}
-                    <button className="md:hidden flex items-center justify-center bg-transparent border-none cursor-pointer text-[#173B33] dark:text-white" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d={mobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"}/></svg>
-                    </button>
                 </div>
-            </div>
-        </header>
+            </header>
+
+            {/* Мобільна навігація */}
+            <nav className={`mobile-nav md:hidden ${mobileMenuOpen ? 'mobile-nav--open' : ''}`} aria-hidden={!mobileMenuOpen}>
+                {mobileNavLinks.map(({ to, label }) => (
+                    <NavLink
+                        key={to}
+                        to={to}
+                        className={({ isActive }) => isActive ? 'active' : ''}
+                        onClick={() => setMobileMenuOpen(false)}
+                    >
+                        {label}
+                    </NavLink>
+                ))}
+                {isAuthenticated ? (
+                    <>
+                        <NavLink to="/profile" onClick={() => setMobileMenuOpen(false)}>Профіль</NavLink>
+                        <button
+                            onClick={handleLogout}
+                            className="w-full flex items-center px-4 py-2.5 rounded-[10px] text-left text-[15px] font-medium text-red-500 bg-transparent border-none cursor-pointer min-h-[44px] transition-colors hover:bg-red-50"
+                        >
+                            Вийти
+                        </button>
+                    </>
+                ) : (
+                    <NavLink to="/auth" onClick={() => setMobileMenuOpen(false)}>Увійти</NavLink>
+                )}
+            </nav>
+
+            {mobileMenuOpen && (
+                <div
+                    className="fixed inset-0 z-40 md:hidden"
+                    style={{ top: '64px', background: 'rgba(23,59,51,0.18)', backdropFilter: 'blur(2px)' }}
+                    onClick={() => setMobileMenuOpen(false)}
+                    aria-hidden="true"
+                />
+            )}
+        </>
     );
 }
 
