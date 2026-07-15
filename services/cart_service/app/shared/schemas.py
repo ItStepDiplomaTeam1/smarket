@@ -4,6 +4,25 @@ from typing import List, Optional
 from pydantic import BaseModel, Field, ConfigDict
 
 
+class FavoriteAdd(BaseModel):
+    product_id: int
+    product_title: Optional[str] = None
+    product_image_url: Optional[str] = None
+    product_price: Optional[float] = None
+
+
+class FavoriteResponse(BaseModel):
+    id: uuid.UUID
+    product_id: int
+    product_title: Optional[str] = None
+    product_image_url: Optional[str] = None
+    product_price: Optional[float] = None
+    added_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+
 class CartCreate(BaseModel):
     name: str = Field(..., description="Назва кошика")
 

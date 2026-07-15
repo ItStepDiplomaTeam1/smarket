@@ -8,10 +8,13 @@ import { useFetchProductReviews } from '@/hooks/api/useReviewsApi';
 import zeroStar from '@/shared/assets/star-for-review.svg';
 import { useFetchCarts, useUpdateCartItem } from '@/hooks/api/useCartApi';
 import { useCartStore } from '@/modules/Cart/store/useCartStore';
+import { useFavoritesStore } from '@/shared/context/favoritesStore';
 
 import mainMilk from '@/shared/assets/milk.svg';
 import starIcon from '@/shared/assets/gold-star.svg';
 import staricongreen from '@/shared/assets/star.svg';
+import heartIcon from '@/shared/assets/heart.svg';
+import heartFilledIcon from '@/shared/assets/heart-filled.svg';
 
 interface ProductHeroProps {
     product: Product | null;
@@ -29,6 +32,8 @@ export function ProductHero({ product }: ProductHeroProps) {
     const { data: carts } = useFetchCarts();
     const { mutateAsync: updateCartItem } = useUpdateCartItem();
     const { activeCartId } = useCartStore();
+    const { isFavorite, add: addFavorite, remove: removeFavorite } = useFavoritesStore();
+    const navigate = useNavigate();
 
     const [quantity, setQuantity] = useState<number>(1);
     const [isAdding, setIsAdding] = useState<boolean>(false);
@@ -325,8 +330,32 @@ export function ProductHero({ product }: ProductHeroProps) {
                                 {isAdding ? 'Додаємо...' : 'Додати до кошика'}
                             </button>
 
-                            <button className="h-[44px] px-[24px] rounded-[10px] border border-[rgba(38,84,71,0.16)] bg-white font-inter text-[13px] font-semibold text-[#265447] whitespace-nowrap cursor-pointer transition-colors duration-200 hover:bg-[#F9FAFB]">
-                                Додати до списку
+                            {/* ДОДАТИ В УЛЮБЛЕНІ */}
+                            <button
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    if (!isAuthenticated) { navigate('/auth'); return; }
+                                    if (isFavorite(product.id)) {
+                                        removeFavorite(product.id);
+                                    } else {
+                                        addFavorite({
+                                            product_id: product.id,
+                                            product_title: product.title,
+                                            product_image_url: product.image_url ?? undefined,
+                                            product_price: activePriceObj?.price || undefined,
+                                        });
+                                    }
+                                }}
+                                className={`h-[44px] px-[24px] rounded-[10px] border flex items-center justify-center gap-2 font-inter text-[13px] font-semibold whitespace-nowrap cursor-pointer transition-colors duration-200 ${
+                                    isFavorite(product.id)
+                                        ? 'border-[#E11D48] text-[#E11D48] bg-red-50 hover:bg-red-100'
+                                        : 'border-[rgba(38,84,71,0.16)] text-[#265447] bg-white hover:bg-[#F9FAFB]'
+                                }`}
+                            >
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill={isFavorite(product.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                                </svg>
+                                {isFavorite(product.id) ? 'В улюблених' : 'В улюблені'}
                             </button>
                         </div>
 

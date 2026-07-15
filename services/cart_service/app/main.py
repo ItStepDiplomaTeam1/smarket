@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 
-from app.routers import cart, internal
+from app.routers import cart, internal, favorites
 from app.config import settings
 from faststream.rabbit import RabbitBroker
 from contextlib import asynccontextmanager
@@ -71,6 +71,7 @@ app.add_middleware(
 )
 
 app.include_router(cart.router)
+app.include_router(favorites.router)
 app.include_router(internal.router, prefix="/internal", tags=["Internal"])
 
 
