@@ -1,7 +1,7 @@
-from datetime import UTC, datetime
 import uuid
+from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Header, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 from fastapi.responses import ORJSONResponse
 from loguru import logger
 from pydantic import BaseModel
@@ -11,11 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from services.auth_service.database.models import User
 from services.auth_service.database.session import get_db
 from services.auth_service.plugins.checking.user import get_authenticated_user  # noqa: F401
-from services.auth_service.plugins.security.jwt_handler import (
-    JWTExpiredError,
-    JWTInvalidError,
-    decode_token,
-)
+from services.auth_service.plugins.security.auth_cache import invalidate_cached_auth_user
 
 router = APIRouter(default_response_class=ORJSONResponse)
 
@@ -46,6 +42,12 @@ def _require_admin_from_header(x_user_role: str | None) -> None:
 def _format_user(user: User) -> AdminUserItem:
     name = user.email.split("@")[0] if "@" in user.email else user.email
     status_str = "Активний" if user.is_active else "Неактивний"
+
+    if user.is_active and user.created_at:
+        now = datetime.now(UTC)
+        if now - user.created_at < timedelta(days=7):
+            status_str = "Новий"
+
     created_iso = user.created_at.isoformat() if user.created_at else datetime.now(UTC).isoformat()
     return AdminUserItem(
         id=str(user.id),
@@ -94,16 +96,17 @@ async def block_user(
     _require_admin_from_header(x_user_role)
     try:
         uid = uuid.UUID(user_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid user ID format")
-    
+    except ValueError as err:
+        raise HTTPException(status_code=400, detail="Invalid user ID format") from err
+
     result = await db.execute(select(User).where(User.id == uid))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Користувача не знайдено")
-        
+
     user.is_active = False
     await db.commit()
+    await invalidate_cached_auth_user(user.email)
     logger.info(f"Admin blocked user {user_id}")
     return {"status": "ok", "message": "Користувача заблоковано"}
 
@@ -116,15 +119,16 @@ async def unblock_user(
     _require_admin_from_header(x_user_role)
     try:
         uid = uuid.UUID(user_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid user ID format")
-    
+    except ValueError as err:
+        raise HTTPException(status_code=400, detail="Invalid user ID format") from err
+
     result = await db.execute(select(User).where(User.id == uid))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(status_code=404, detail="Користувача не знайдено")
-        
+
     user.is_active = True
     await db.commit()
+    await invalidate_cached_auth_user(user.email)
     logger.info(f"Admin unblocked user {user_id}")
     return {"status": "ok", "message": "Користувача розблоковано"}

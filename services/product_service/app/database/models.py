@@ -179,7 +179,7 @@ class Price(Base):
     old_price: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)
     in_stock: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     recorded_at: Mapped[datetime.datetime] = mapped_column(
-        "recorded_at", DateTime(timezone=True), nullable=False
+        "recorded_at", DateTime(timezone=True), nullable=False, index=True
     )
 
     product: Mapped["Product"] = relationship("Product", back_populates="prices")

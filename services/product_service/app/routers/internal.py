@@ -15,7 +15,7 @@ from app.database.session import _get_engine, get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends
 from sqlalchemy import text, select, func
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 from app.database.models import Product, Store, Price
 
@@ -113,6 +113,7 @@ async def internal_health_check() -> dict:
         "PostgreSQL": pg,
         "Redis": redis,
         "Meilisearch": meili,
+        "RabbitMQ": rmq,
     }
 
 
@@ -130,15 +131,51 @@ async def internal_dashboard_stats(db: AsyncSession = Depends(get_db)) -> dict:
             select(func.count(Price.id)).where(Price.recorded_at >= today)
         )
         
+        # Отримання динаміки оновлення цін за останні 7 днів
+        seven_days_ago = today - timedelta(days=7)
+        stmt = (
+            select(
+                func.date_trunc(text("'day'"), Price.recorded_at).label('day'),
+                func.count(Price.id).label('count')
+            )
+            .where(Price.recorded_at >= seven_days_ago)
+            .group_by(func.date_trunc(text("'day'"), Price.recorded_at))
+            .order_by(func.date_trunc(text("'day'"), Price.recorded_at).asc())
+        )
+        result = await db.execute(stmt)
+        price_dynamics = []
+        for row in result.all():
+            d_date = row.day
+            if d_date:
+                price_dynamics.append({
+                    "name": d_date.strftime("%d.%m"),
+                    "value": row.count
+                })
+        # Отримання кількості товарів без категорії (аномалії)
+        products_without_category = await db.scalar(
+            select(func.count(Product.id)).where(Product.canonical_category_id.is_(None))
+        )
+        
+        # Отримання кількості прихованих (неактивних) товарів
+        hidden_products = await db.scalar(
+            select(func.count(Product.id)).where(Product.is_hidden == True)
+        )
+        
         return {
             "totalProducts": total_products or 0,
             "totalStores": total_stores or 0,
-            "pricesUpdatedToday": prices_updated_today or 0
+            "pricesUpdatedToday": prices_updated_today or 0,
+            "priceDynamics": price_dynamics,
+            "productsWithoutCategory": products_without_category or 0,
+            "hiddenProducts": hidden_products or 0
         }
     except Exception as exc:
         logger.error(f"[dashboard-stats] failed: {exc}")
         return {
             "totalProducts": 0,
             "totalStores": 0,
-            "pricesUpdatedToday": 0
+            "pricesUpdatedToday": 0,
+            "priceDynamics": [],
+            "productsWithoutCategory": 0,
+            "hiddenProducts": 0
         }

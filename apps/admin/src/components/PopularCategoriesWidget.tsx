@@ -9,7 +9,7 @@ interface PopularCategoriesWidgetProps {
 
 export const PopularCategoriesWidget: React.FC<PopularCategoriesWidgetProps> = ({ categories }) => {
   return (
-    <div className="bg-surface border border-border rounded-2xl flex flex-col shadow-sm mt-6">
+    <div className="bg-surface border border-border rounded-2xl flex flex-col shadow-sm h-full">
       <div className="p-5 pb-3">
         <h3 className="font-semibold text-lg text-textMain">Найпопулярніші категорії</h3>
       </div>

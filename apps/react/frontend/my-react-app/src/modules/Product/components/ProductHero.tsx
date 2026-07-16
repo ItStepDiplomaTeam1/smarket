@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { apiClient } from '../../../shared/api/apiClient';
 import { type Product } from '../type';
 import axios from 'axios';
@@ -13,8 +13,6 @@ import { useFavoritesStore } from '@/shared/context/favoritesStore';
 import mainMilk from '@/shared/assets/milk.svg';
 import starIcon from '@/shared/assets/gold-star.svg';
 import staricongreen from '@/shared/assets/star.svg';
-import heartIcon from '@/shared/assets/heart.svg';
-import heartFilledIcon from '@/shared/assets/heart-filled.svg';
 
 interface ProductHeroProps {
     product: Product | null;

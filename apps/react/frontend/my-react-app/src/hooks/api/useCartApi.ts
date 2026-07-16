@@ -35,18 +35,6 @@ export const useFetchCartDetails = (cartId: string | null) => {
     queryFn: async () => {
       const { data } = await apiClient.get(`/api/v1/cart/${cartId}`);
       
-      let comparisonData = [];
-      try {
-        const compRes = await apiClient.get(`/api/v1/cart/${cartId}/compare`);
-        comparisonData = compRes.data.map((c: { store_name: string; total_price: number; is_complete: boolean }) => ({
-          storeName: c.store_name,
-          totalPrice: c.total_price,
-          isBest: c.is_complete,
-        }));
-      } catch (err) {
-        console.error("Failed to fetch comparison", err);
-      }
-      
       const itemsWithImages = data.items.map((item: { product_id: string; product_name: string; quantity: number; price: number; id: string; image_url?: string }) => {
         return {
           productId: item.product_id,
@@ -63,17 +51,32 @@ export const useFetchCartDetails = (cartId: string | null) => {
         id: data.id,
         title: data.name,
         itemsCount: data.items.length,
-        bestStore: comparisonData[0]?.storeName || '-',
-        bestPrice: comparisonData[0]?.totalPrice || data.total_price,
+        bestStore: '-',
+        bestPrice: data.total_price || 0,
         potentialSavings: 0,
         updatedAt: data.updated_at,
         items: itemsWithImages,
         summary: {
           totalItems: data.items.length,
           maxPossibleSavings: 0,
-          comparison: comparisonData
+          comparison: []
         }
       };
+    },
+    enabled: !!cartId,
+  });
+};
+
+export const useFetchCartComparison = (cartId: string | null) => {
+  return useQuery({
+    queryKey: ['cart-compare', cartId],
+    queryFn: async () => {
+      const { data } = await apiClient.get(`/api/v1/cart/${cartId}/compare`);
+      return data.map((c: { store_name: string; total_price: number; is_complete: boolean }) => ({
+        storeName: c.store_name,
+        totalPrice: c.total_price,
+        isBest: c.is_complete,
+      }));
     },
     enabled: !!cartId,
   });

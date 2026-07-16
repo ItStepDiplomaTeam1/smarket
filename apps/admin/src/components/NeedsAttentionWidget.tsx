@@ -1,7 +1,20 @@
 import React from 'react';
 import type { DashboardData } from '@/hooks/useDashboardData';
-import { AlertTriangle, RefreshCw, Info, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+
+import ErrorIcon from '@/assets/LogIcons/Error.svg';
+import WarningIcon from '@/assets/LogIcons/Warning.svg';
+import SuccessIcon from '@/assets/LogIcons/Success.svg';
+import StartIcon from '@/assets/LogIcons/Start.svg';
+
+export interface NeedsAttentionItem {
+  id: string;
+  source: string;
+  message?: string;
+  time?: string;
+  type: 'error' | 'warning' | 'sync' | 'success';
+}
 
 interface NeedsAttentionWidgetProps {
   items: DashboardData['needsAttention'];
@@ -9,7 +22,7 @@ interface NeedsAttentionWidgetProps {
 
 export const NeedsAttentionWidget: React.FC<NeedsAttentionWidgetProps> = ({ items }) => {
   return (
-    <div className="bg-surface border border-border rounded-2xl flex flex-col shadow-sm">
+    <div className="bg-surface border border-border rounded-2xl flex flex-col shadow-sm h-full">
       <div className="p-5 pb-3">
         <h3 className="font-semibold text-lg text-textMain">Потребує уваги</h3>
       </div>
@@ -18,10 +31,11 @@ export const NeedsAttentionWidget: React.FC<NeedsAttentionWidgetProps> = ({ item
         <ul className="space-y-3">
           {items.map((item) => (
             <li key={item.id} className="flex gap-3 text-sm">
-              <div className="mt-0.5">
-                {item.type === 'error' && <AlertTriangle size={16} className="text-accentRed" />}
-                {item.type === 'sync' && <RefreshCw size={16} className="text-accentYellow" />}
-                {item.type === 'warning' && <Info size={16} className="text-accentYellow" />}
+              <div className="mt-0.5 shrink-0">
+                {item.type === 'error' && <img src={ErrorIcon} alt="error" className="w-4 h-4 object-contain" />}
+                {item.type === 'sync' && <img src={StartIcon} alt="sync" className="w-4 h-4 object-contain animate-spin" />}
+                {item.type === 'warning' && <img src={WarningIcon} alt="warning" className="w-4 h-4 object-contain" />}
+                {item.type === 'success' && <img src={SuccessIcon} alt="success" className="w-4 h-4 object-contain" />}
               </div>
               <div>
                 <p className="text-textMain font-medium leading-tight">
@@ -29,7 +43,10 @@ export const NeedsAttentionWidget: React.FC<NeedsAttentionWidgetProps> = ({ item
                 </p>
                 {item.time && (
                   <p className="text-xs text-textMuted mt-0.5">
-                    {item.type === 'error' ? 'Остання помилка:' : 'Запущено:'} <span className={item.type === 'error' ? 'text-accentRed font-medium' : 'text-textMain'}>{item.time}</span>
+                    {item.type === 'error' && <span className="text-accentRed mr-1">Остання помилка:</span>}
+                    <span className={item.type === 'error' ? 'text-accentRed font-medium' : 'text-textMain'}>
+                      {item.time}
+                    </span>
                   </p>
                 )}
               </div>

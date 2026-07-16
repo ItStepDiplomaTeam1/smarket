@@ -11,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 )
 
@@ -69,6 +70,16 @@ func InitInfrastructure(ctx context.Context, cfg *config.Config) (*Infrastructur
 		return nil, fmt.Errorf("не вдалось підключитись до MongoDB після %d спроб: %w", maxRetries, err)
 	}
 
+	// Створення індексів у MongoDB
+	indexCtx, indexCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	err = EnsureMongoIndexes(indexCtx, mongoClient, cfg.MongoDBName)
+	indexCancel()
+	if err != nil {
+		log.Printf("[Init] Попередження: не вдалось перевірити/створити індекси в MongoDB: %v", err)
+	} else {
+		log.Println("[Init] Індекси MongoDB успішно ініціалізовано")
+	}
+
 	// 2. PostgreSQL
 	var pgPool *pgxpool.Pool
 	for i := 1; i <= maxRetries; i++ {
@@ -118,4 +129,12 @@ func InitInfrastructure(ctx context.Context, cfg *config.Config) (*Infrastructur
 		PgPool:      pgPool,
 		RabbitConn:  rabbitConn,
 	}, nil
+}
+
+func EnsureMongoIndexes(ctx context.Context, client *mongo.Client, dbName string) error {
+	collection := client.Database(dbName).Collection("raw_pages")
+	_, err := collection.Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys: bson.D{{Key: "status", Value: 1}},
+	})
+	return err
 }

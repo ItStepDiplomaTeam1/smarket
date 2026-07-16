@@ -37,12 +37,12 @@ export const CartPage: React.FC = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#F6FAF8] flex flex-col">
+      <div className="min-h-screen bg-[#F6FAF8] dark:bg-[#0B110F] flex flex-col transition-colors duration-200">
         <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center text-sm text-[#6D8279] font-['Inter'] mb-8">
-            <span className="hover:text-[#173B33] cursor-pointer" onClick={() => navigate('/')}>Головна</span>
+          <div className="flex items-center text-sm text-[#6D8279] dark:text-[#A9B6B0] font-['Inter'] mb-8 transition-colors">
+            <span className="hover:text-[#173B33] dark:hover:text-white cursor-pointer" onClick={() => navigate('/')}>Головна</span>
             <ChevronRight className="w-4 h-4 mx-2" />
-            <span className="text-[#173B33] font-medium">Кошик</span>
+            <span className="text-[#173B33] dark:text-white font-medium">Кошик</span>
           </div>
           <CartUnauthState />
         </main>
@@ -51,33 +51,33 @@ export const CartPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#F6FAF8] flex flex-col">
+    <div className="min-h-screen bg-[#F6FAF8] dark:bg-[#0B110F] flex flex-col transition-colors duration-200">
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
         {/* Page Header */}
         <div className="mb-8">
-          <div className="flex items-center text-sm text-[#6D8279] font-['Inter'] mb-4">
-            <span className="hover:text-[#173B33] cursor-pointer" onClick={() => navigate('/')}>Головна</span>
+          <div className="flex items-center text-sm text-[#6D8279] dark:text-[#A9B6B0] font-['Inter'] mb-4 transition-colors">
+            <span className="hover:text-[#173B33] dark:hover:text-white cursor-pointer" onClick={() => navigate('/')}>Головна</span>
             <ChevronRight className="w-4 h-4 mx-2" />
-            <span className="text-[#173B33] font-medium">Кошик</span>
+            <span className="text-[#173B33] dark:text-white font-medium">Кошик</span>
           </div>
           
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h1 className="text-3xl font-[800] font-['Manrope'] text-[#173B33]">Мої кошики</h1>
-              <p className="text-[#6D8279] font-['Inter'] mt-1">Керуйте своїми списками покупок та порівнюйте ціни</p>
+              <h1 className="text-3xl font-[800] font-['Manrope'] text-[#173B33] dark:text-white">Мої кошики</h1>
+              <p className="text-[#6D8279] dark:text-[#A9B6B0] font-['Inter'] mt-1">Керуйте своїми списками покупок та порівнюйте ціни</p>
             </div>
             
             {(!isLoading && carts && carts.length > 0) && (
               <div className="flex gap-3">
                 <button 
-                  className="px-4 py-2 border border-gray-300 text-[#265447] bg-white rounded-xl font-medium font-['Inter'] hover:bg-gray-50 transition-colors"
+                  className="px-4 py-2 border border-gray-300 dark:border-[#265447]/30 text-[#265447] dark:text-[#3DAE8B] bg-white dark:bg-[#111A17] rounded-xl font-medium font-['Inter'] hover:bg-gray-50 dark:hover:bg-[#1D2A25] transition-colors"
                   onClick={() => navigate('/catalog')}
                 >
                   Перейти в каталог
                 </button>
                 <button 
-                  className="px-4 py-2 bg-[#265447] text-white rounded-xl font-medium font-['Inter'] hover:bg-[#1A3E2F] transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-[#265447] dark:bg-[#3DAE8B] text-white dark:text-[#111A17] rounded-xl font-medium font-['Inter'] hover:bg-[#1A3E2F] dark:hover:bg-[#2C9E7C] transition-colors disabled:opacity-50"
                   onClick={() => setIsCreateModalOpen(true)}
                 >
                   Створити новий кошик
@@ -90,14 +90,14 @@ export const CartPage: React.FC = () => {
         {/* Conditional Rendering */}
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#265447]"></div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#265447] dark:border-b-[#3DAE8B]"></div>
           </div>
         ) : isError ? (
           <div className="bg-red-50 text-red-600 p-4 rounded-xl text-center font-['Inter']">
             Помилка завантаження даних
           </div>
         ) : !carts || carts.length === 0 ? (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 min-h-[500px] flex items-center justify-center">
+          <div className="bg-white dark:bg-[#111A17] rounded-2xl shadow-sm border border-gray-100 dark:border-[#265447]/30 p-8 min-h-[500px] flex items-center justify-center transition-colors">
             <CartEmptyState onOpenCreateModal={() => setIsCreateModalOpen(true)} />
           </div>
         ) : (

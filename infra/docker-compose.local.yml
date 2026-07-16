@@ -157,7 +157,7 @@ services:
     command:
       - sh
       - -c
-      - alembic upgrade head
+      - cd /app/services/audit_service && alembic upgrade head
     env_file:
       - ../services/audit_service/.env
 

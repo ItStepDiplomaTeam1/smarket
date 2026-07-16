@@ -13,26 +13,9 @@ const UserRowSkeleton: React.FC = () => (
       <div className="h-3 w-24 rounded bg-secondary" />
       <div className="h-2.5 w-32 rounded bg-secondary" />
     </div>
-    <div className="h-5 w-14 rounded-full bg-secondary shrink-0" />
+    <div className="h-3 w-16 rounded bg-secondary shrink-0" />
   </li>
 );
-
-// ── Status badge ──────────────────────────────────────────────────────────────
-
-const StatusBadge: React.FC<{ status: string }> = ({ status }) => {
-  const isActive = status === 'Активний';
-  return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${
-        isActive
-          ? 'bg-green-100 text-green-800'
-          : 'bg-gray-100 text-gray-600'
-      }`}
-    >
-      {status}
-    </span>
-  );
-};
 
 // ── Main widget ───────────────────────────────────────────────────────────────
 
@@ -44,7 +27,7 @@ export const NewUsersWidget: React.FC = () => {
   // Prevents firing a 403 request when the user is not an admin.
   if (!isAdmin) {
     return (
-      <div className="bg-surface border border-border rounded-2xl flex flex-col shadow-sm">
+      <div className="bg-surface border border-border rounded-2xl flex flex-col shadow-sm h-full">
         <div className="p-5 pb-3">
           <h3 className="font-semibold text-lg text-textMain">Нові користувачі</h3>
         </div>
@@ -121,10 +104,9 @@ export const NewUsersWidget: React.FC = () => {
                 </span>
               </div>
 
-              {/* Right side: status badge + date */}
-              <div className="flex flex-col items-end gap-0.5 shrink-0">
-                <StatusBadge status={user.status} />
-                <span className="text-[10px] text-textMuted">{formattedDate}</span>
+              {/* Right side: registration date */}
+              <div className="flex items-center shrink-0">
+                <span className="text-[11px] sm:text-xs text-textMuted">{formattedDate}</span>
               </div>
             </li>
           );
@@ -134,7 +116,7 @@ export const NewUsersWidget: React.FC = () => {
   };
 
   return (
-    <div className="bg-surface border border-border rounded-2xl flex flex-col shadow-sm">
+    <div className="bg-surface border border-border rounded-2xl flex flex-col shadow-sm h-full">
       {/* Header */}
       <div className="p-5 pb-3 flex items-center justify-between">
         <h3 className="font-semibold text-lg text-textMain">Нові користувачі</h3>

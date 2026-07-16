@@ -6,7 +6,7 @@ use tracing::info;
 use chrono::Utc;
 
 use handlers::get_search::search_handler;
-use handlers::post_index::{index_handler, delete_handler};
+use handlers::post_index::{index_handler, patch_handler, delete_handler};
 
 struct Config {
     service_port: u16,
@@ -96,7 +96,7 @@ async fn main() {
 
     configure_meilisearch_index(&client).await;
 
-    use axum::{routing::{get, post, delete}, Json, Router};
+    use axum::{routing::{get, post, patch, delete}, Json, Router};
     use serde_json::json;
 
     let api_routes = Router::new()
@@ -111,7 +111,7 @@ async fn main() {
             }),
         )
         .route("/search", get(search_handler))
-        .route("/index", post(index_handler))
+        .route("/index", post(index_handler).patch(patch_handler))
         .route("/index/:id", delete(delete_handler))
         .with_state(client);
 

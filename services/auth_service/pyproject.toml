@@ -25,6 +25,7 @@ dependencies = [
     "slowapi>=0.1.9",
     "faststream[rabbit]>=0.5.15",
     "sqlalchemy>=2.0.49",
+    "aiosmtplib>=3.0.1",
 ]
 
 [tool.setuptools]
@@ -53,3 +54,9 @@ exclude = ["\\.venv", "tests"]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 addopts = "--tb=short -q"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+]
