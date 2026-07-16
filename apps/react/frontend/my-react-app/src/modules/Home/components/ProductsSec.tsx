@@ -64,11 +64,6 @@ export function ProductsSec() {
     }))
   });
 
-  const handleCompare = (productName: string) => {
-    const searchWord = PRODUCT_MAP[productName] || productName;
-    navigate(`/catalog?q=${encodeURIComponent(searchWord)}`);
-  };
-
   return (
     <section className="w-full py-[60px] sm:py-[96px] bg-white dark:bg-[#0B120F] transition-colors duration-300">
       <div className="w-full max-w-[1228px] mx-auto px-[20px] flex flex-col gap-[32px] sm:gap-[48px]">
@@ -79,7 +74,7 @@ export function ProductsSec() {
             Популярні товари для порівняння
           </h2>
           <p className="font-inter text-[15px] sm:text-[16px] text-[#6D8279] dark:text-[#A4B3AF] leading-[1.5] m-0 transition-colors">
-            Швидко перевіряйте ціни на товары, які найчастіше додають у кошик.
+            Швидко перевіряйте ціни на товари, які найчастіше додають у кошик.
           </p>
         </div>
 

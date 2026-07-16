@@ -241,11 +241,6 @@ const fetchProducts = async (filters: FetchFilters): Promise<ProductsResponse> =
 };
 
 export function MainContent() {
-  const [searchParams] = useSearchParams();
-  const urlQ = searchParams.get('q') || searchParams.get('search') || '';
-  const urlCategory = searchParams.get('category') || 'products';
-  const urlOfferType = searchParams.get('offer_type');
-
   const navigate = useNavigate();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const { isFavorite, add: addFavorite, remove: removeFavorite } = useFavoritesStore();
@@ -297,19 +292,6 @@ export function MainContent() {
   const [sortBy, setSortBy] = useState<string>('best_price');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
-  // Sync URL search params to states
-  useEffect(() => {
-    const q = searchParams.get('q') || searchParams.get('search') || '';
-    const cat = searchParams.get('category') || 'products';
-    const offer = searchParams.get('offer_type');
-
-    setSearchQuery(q);
-    setDebouncedSearch(q);
-    setSelectedCategory(cat);
-    setSelectedOffers(offer ? [offer] : []);
-    setPage(1);
-  }, [searchParams]);
-
   useEffect(() => {
     const s = searchParams.get('search');
     if (s !== null && s !== searchQuery) {
@@ -334,33 +316,6 @@ export function MainContent() {
     }, 500);
     return () => clearTimeout(handler);
   }, [searchQuery]);
-
-  // Listen to filter updates from Zephyros AI Agent
-  useEffect(() => {
-    const handleApplyFilters = (e: Event) => {
-      const detail = (e as CustomEvent).detail || {};
-      if (detail.query !== undefined) {
-        setSearchQuery(detail.query || '');
-        setDebouncedSearch(detail.query || '');
-      }
-      if (detail.retail_chain !== undefined) {
-        if (detail.retail_chain) {
-          setSelectedStores([detail.retail_chain.toLowerCase()]);
-        } else {
-          setSelectedStores([]);
-        }
-      }
-      if (detail.category_slug !== undefined) {
-        setSelectedCategory(detail.category_slug || 'products');
-      }
-      if (detail.price_max !== undefined) {
-        setMaxPrice(detail.price_max || 2000);
-      }
-      setPage(1);
-    };
-    window.addEventListener('smarket:apply-filters', handleApplyFilters);
-    return () => window.removeEventListener('smarket:apply-filters', handleApplyFilters);
-  }, []);
 
   const filterParams: FetchFilters = {
     page,

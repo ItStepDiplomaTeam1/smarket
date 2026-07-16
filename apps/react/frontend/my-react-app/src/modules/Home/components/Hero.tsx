@@ -1,5 +1,3 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import mockupCardLight from '@/shared/assets/mockup-card.svg';
 import mockupCardDark from '@/shared/assets/mockup-card-dark.svg'; 
 import checkIcon from '@/shared/assets/check.svg';
@@ -52,9 +50,6 @@ export function Hero() {
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
                 placeholder="Введіть товар або список покупок"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                 className="w-full border-none outline-none text-[14px] bg-transparent p-0 text-[#111827] dark:text-white placeholder:text-[#9CA3AF] dark:placeholder-[#7A8D85] transition-colors"
               />
             </div>

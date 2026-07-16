@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 interface StatItem { value: string; label: string; }
-interface ProductsResponse { items: []; total: number; }
+interface ProductsResponse { items?: any[]; total?: number; total_hits?: number; nb_hits?: number; }
 
 const fetchProducts = async (page: number, stores: string[]): Promise<ProductsResponse> => {
     const apiBaseUrl = import.meta.env.VITE_API_URL || 'https://smarket-api.duckdns.org';
