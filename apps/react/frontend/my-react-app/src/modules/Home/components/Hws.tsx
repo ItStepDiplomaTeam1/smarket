@@ -8,7 +8,7 @@ import hwsVisualDark from '@/shared/assets/div.hiw-visual-dark.svg';
 
 export function Hws() {
   return (
-    <section className="w-full bg-white dark:bg-[#0B120F] py-[60px] sm:py-[96px] transition-colors duration-300">
+    <section id="how-it-works" className="w-full bg-white dark:bg-[#0B120F] py-[60px] sm:py-[96px] transition-colors duration-300">
       <div className="w-full max-w-[1228px] mx-auto px-[20px] flex flex-col lg:flex-row justify-between items-center gap-[40px] lg:gap-[96px]">
 
         {/* LEFT — text */}
