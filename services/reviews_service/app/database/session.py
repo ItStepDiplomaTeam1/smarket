@@ -11,8 +11,8 @@ def _get_engine():
     return create_async_engine(
         settings.DATABASE_URL,
         echo=_IS_DEBUG,
-        pool_size=10,
-        max_overflow=20,
+        pool_size=2,
+        max_overflow=2,
         pool_pre_ping=True,
         pool_timeout=30,
     )

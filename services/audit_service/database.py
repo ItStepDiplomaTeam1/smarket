@@ -11,7 +11,9 @@ if "neon.tech" in settings.DATABASE_URL:
 engine = create_async_engine(
     settings.DATABASE_URL,
     connect_args=connect_args,
-    echo=False
+    echo=False,
+    pool_size=2,
+    max_overflow=2
 )
 
 AsyncSessionLocal = async_sessionmaker(
