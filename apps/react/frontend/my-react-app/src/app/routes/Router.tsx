@@ -110,6 +110,14 @@ const router = createBrowserRouter([
         ),
       },
       {
+        path: '/cart/:cartId',
+        element: (
+          <Suspense fallback={<PageSkeleton />}>
+            <CartPage />
+          </Suspense>
+        ),
+      },
+      {
         path: '/ConfidentialPolicy',
         element: (
           <Suspense fallback={<PageSkeleton />}>

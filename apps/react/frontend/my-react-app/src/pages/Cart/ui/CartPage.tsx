@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useCartStore } from '@/modules/Cart/store/useCartStore';
-import { useFetchCarts, useCreateCart } from '@/hooks/api/useCartApi';
+import { useFetchCarts, useCreateCart, useImportCart } from '@/hooks/api/useCartApi';
 import { CartEmptyState } from '@/modules/Cart/components/CartEmptyState';
 import { CartSavedList } from '@/modules/Cart/components/CartSavedList';
 import { CartDetails } from '@/modules/Cart/components/CartDetails';
@@ -10,23 +10,36 @@ import { CartUnauthState } from '@/modules/Cart/components/CartUnauthState';
 import { CreateCartModal } from '@/modules/Cart/components/CreateCartModal';
 import { MyReceiptsModal } from '@/modules/Cart/components/MyReceiptsModal';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Download, X } from 'lucide-react';
 
 export const CartPage: React.FC = () => {
   const navigate = useNavigate();
+  const { cartId } = useParams<{ cartId: string }>();
   const { isAuthenticated } = useAuthStore();
   const { data: carts, isLoading, isError } = useFetchCarts();
   const { mutate: createCart, isPending: isCreating } = useCreateCart();
+  const { mutate: importCart, isPending: isImporting } = useImportCart();
   const { activeCartId, setActiveCart } = useCartStore();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isMyReceiptsOpen, setIsMyReceiptsOpen] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
 
   useEffect(() => {
-    // If we have carts and no active cart is selected, select the first one
-    if (carts && carts.length > 0 && !activeCartId) {
+    // If we have carts and a cartId parameter is in the URL
+    if (carts && cartId) {
+      const exists = carts.some(c => c.id === cartId);
+      if (exists) {
+        setActiveCart(cartId);
+        // Silently clear the URL parameter
+        navigate('/cart', { replace: true });
+      } else {
+        setShowImportDialog(true);
+      }
+    } else if (carts && carts.length > 0 && !activeCartId) {
+      // If we have carts and no active cart is selected, select the first one
       setActiveCart(carts[0].id);
     }
-  }, [carts, activeCartId, setActiveCart]);
+  }, [carts, cartId, activeCartId, setActiveCart, navigate]);
 
   const handleCreateCart = (name: string) => {
     createCart(name, {
@@ -35,6 +48,28 @@ export const CartPage: React.FC = () => {
         setIsCreateModalOpen(false);
       }
     });
+  };
+
+  const handleImportCart = () => {
+    if (cartId) {
+      importCart(cartId, {
+        onSuccess: (data) => {
+          setActiveCart(data.new_cart_id);
+          setShowImportDialog(false);
+          navigate('/cart', { replace: true });
+        },
+        onError: (err: any) => {
+          alert('Не вдалося імпортувати кошик: ' + (err.response?.data?.detail || err.message));
+          setShowImportDialog(false);
+          navigate('/cart', { replace: true });
+        }
+      });
+    }
+  };
+
+  const handleCancelImport = () => {
+    setShowImportDialog(false);
+    navigate('/cart', { replace: true });
   };
 
   if (!isAuthenticated) {
@@ -144,6 +179,53 @@ export const CartPage: React.FC = () => {
         isOpen={isMyReceiptsOpen}
         onClose={() => setIsMyReceiptsOpen(false)}
       />
+
+      {/* Import Shared Cart Dialog */}
+      {showImportDialog && (
+        <div className="fixed inset-0 bg-[#0B110F]/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-opacity duration-300">
+          <div className="bg-white dark:bg-[#111A17] rounded-2xl max-w-md w-full border border-gray-100 dark:border-[#265447]/30 shadow-2xl overflow-hidden transition-all duration-300 transform scale-100">
+            <div className="flex justify-between items-center px-6 py-4 border-b border-gray-100 dark:border-[#265447]/10">
+              <div className="flex items-center gap-2">
+                <Download className="w-5 h-5 text-[#265447] dark:text-[#3DAE8B]" />
+                <h3 className="text-lg font-[800] font-['Manrope'] text-[#173B33] dark:text-white">Імпорт кошика</h3>
+              </div>
+              <button 
+                onClick={handleCancelImport}
+                className="p-1 rounded-lg text-gray-400 hover:bg-gray-50 dark:hover:bg-[#1D2A25] transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <p className="text-sm text-[#6D8279] dark:text-[#A9B6B0] font-['Inter'] leading-relaxed">
+                Вам надіслали посилання на спільний список покупок. Бажаєте імпортувати його копію до свого профілю?
+              </p>
+            </div>
+            
+            <div className="px-6 py-4 bg-gray-50 dark:bg-[#1D2A25]/50 flex justify-end gap-3 border-t border-gray-100 dark:border-[#265447]/10">
+              <button
+                onClick={handleCancelImport}
+                className="px-4 py-2 text-sm font-medium font-['Inter'] text-[#6D8279] dark:text-[#A9B6B0] hover:text-[#173B33] dark:hover:text-white transition-colors"
+              >
+                Скасувати
+              </button>
+              <button
+                onClick={handleImportCart}
+                disabled={isImporting}
+                className="px-5 py-2.5 bg-[#265447] dark:bg-[#3DAE8B] text-white dark:text-[#111A17] rounded-xl text-sm font-medium font-['Inter'] hover:bg-[#1A3E2F] dark:hover:bg-[#2C9E7C] transition-colors flex items-center gap-2 disabled:opacity-50"
+              >
+                {isImporting ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent"></div>
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
+                Імпортувати кошик
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

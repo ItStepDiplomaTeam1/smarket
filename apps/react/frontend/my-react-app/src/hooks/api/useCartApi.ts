@@ -294,3 +294,28 @@ export const useGetMyReceipts = () => {
     },
   });
 };
+
+export const useImportCart = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ new_cart_id: string; message: string }, Error, string>({
+    mutationFn: async (sharedCartId: string) => {
+      const { data } = await apiClient.post(`/api/v1/cart/import/${sharedCartId}`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['carts'] });
+    },
+  });
+};
+
+export const useFetchSharedCart = (cartId: string | null) => {
+  return useQuery({
+    queryKey: ['shared-cart', cartId],
+    queryFn: async () => {
+      const { data } = await apiClient.get(`/api/v1/cart/shared/${cartId}`);
+      return data;
+    },
+    enabled: !!cartId,
+  });
+};
