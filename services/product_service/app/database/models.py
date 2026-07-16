@@ -55,6 +55,9 @@ class Store(Base):
     last_parsed_at: Mapped[Optional[datetime.datetime]] = mapped_column(
         "last_parsed_at", DateTime(timezone=True), nullable=True
     )
+    address: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    lat: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    lng: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     prices: Mapped[list["Price"]] = relationship("Price", back_populates="store")
     store_products: Mapped[list["StoreProduct"]] = relationship(

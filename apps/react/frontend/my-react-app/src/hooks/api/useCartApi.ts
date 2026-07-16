@@ -217,3 +217,80 @@ export const useDuplicateCart = () => {
     },
   });
 };
+
+
+export interface ReceiptSnapshotItem {
+  product_id: number;
+  name: string;
+  quantity: number;
+  price: number;
+  subtotal: number;
+  in_stock: boolean;
+}
+
+export interface ReceiptSnapshotStore {
+  store_id: string;
+  store_name: string;
+  retail_chain: string;
+  address?: string;
+  lat?: number;
+  lng?: number;
+  is_complete: boolean;
+  items: ReceiptSnapshotItem[];
+  subtotal: number;
+}
+
+export interface ReceiptResponse {
+  id: string;
+  cart_id?: string;
+  created_at: string;
+  total_price: number;
+  savings_amount: number;
+  share_token: string;
+  ai_description?: string;
+  snapshot: ReceiptSnapshotStore[];
+}
+
+export interface ReceiptListItem {
+  id: string;
+  share_token: string;
+  created_at: string;
+  total_price: number;
+  savings_amount: number;
+  store_name: string;
+}
+
+export const useCompleteCart = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<ReceiptResponse, Error, string>({
+    mutationFn: async (cartId: string) => {
+      const { data } = await apiClient.post(`/api/v1/cart/${cartId}/complete`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-receipts'] });
+    },
+  });
+};
+
+export const useGetReceipt = (token: string) => {
+  return useQuery<ReceiptResponse>({
+    queryKey: ['receipt', token],
+    queryFn: async () => {
+      const { data } = await apiClient.get(`/api/v1/cart/receipts/${token}`);
+      return data;
+    },
+    enabled: !!token,
+  });
+};
+
+export const useGetMyReceipts = () => {
+  return useQuery<ReceiptListItem[]>({
+    queryKey: ['my-receipts'],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/api/v1/cart/receipts');
+      return data;
+    },
+  });
+};

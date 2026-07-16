@@ -1,6 +1,8 @@
 import json
 import time
 import uuid
+import asyncio
+from pydantic_ai import Agent
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any
@@ -131,6 +133,77 @@ class ChatRequest(BaseModel):
 @app.get("/health", tags=["System"])
 async def health_check():
     return {"status": "ok", "service": "zephyros_agent"}
+
+
+class SummarizePlanRequest(BaseModel):
+    store_name: str
+    items_count: int
+    total_price: float
+    savings_amount: float
+
+
+SUMMARIZE_SYSTEM_PROMPT = (
+    "Напиши 2-3 короткі речення українською для чека з покупками. "
+    "Тон — легкий, з дрібкою гумору, але без сарказму. "
+    "МОЖНА жартувати про суму економії, кількість товарів, сам процес шопінгу. "
+    "НЕ МОЖНА жартувати чи коментувати конкретні товари зі списку — вони можуть бути особистими. "
+    "Без емодзі, без окликів у кожному реченні. "
+    "Не пиши вітання чи підписи."
+)
+
+
+@app.post("/agent/summarize-plan", tags=["Agent"])
+async def summarize_plan(
+    request: SummarizePlanRequest,
+):
+    prompt = (
+        f"Магазин: {request.store_name}. "
+        f"Кількість товарів: {request.items_count}. "
+        f"Загальна сума: {request.total_price:.2f} грн. "
+        f"Сума економії: {request.savings_amount:.2f} грн."
+    )
+    
+    candidates = available_provider_chain()
+    if not candidates:
+        logger.error("No AI providers configured for summarize-plan")
+        raise HTTPException(status_code=503, detail="ШІ-провайдери не налаштовані на сервері.")
+        
+    last_error: Exception | None = None
+    for provider in candidates:
+        if _is_down(provider):
+            logger.warning(f"Provider {provider} is in cooldown, skipping summarize-plan")
+            continue
+            
+        try:
+            current_model = build_model(provider)
+            simple_agent = Agent(current_model, system_prompt=SUMMARIZE_SYSTEM_PROMPT)
+            
+            # 4.0 second strict timeout
+            result = await asyncio.wait_for(
+                simple_agent.run(prompt),
+                timeout=4.0
+            )
+            return {"text": result.data.strip()}
+            
+        except asyncio.TimeoutError as e:
+            logger.warning(f"Provider {provider} timed out during summarize-plan")
+            last_error = e
+            continue
+        except ModelHTTPError as e:
+            if e.status_code in (401, 429):
+                _mark_down(provider, settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS)
+            logger.warning(f"Provider {provider} returned HTTP error {e.status_code} during summarize-plan")
+            last_error = e
+            continue
+        except Exception as e:
+            logger.exception(f"Unexpected error with provider {provider} during summarize-plan")
+            last_error = e
+            continue
+            
+    if last_error is None:
+        raise HTTPException(status_code=503, detail="Усі ШІ-провайдери тимчасово недоступні.")
+        
+    raise HTTPException(status_code=503, detail="Помилка генерації опису чека.")
 
 
 @app.post("/agent/chat", response_model=ZephyrosResponse, tags=["Agent"])

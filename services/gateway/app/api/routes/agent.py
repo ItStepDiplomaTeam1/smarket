@@ -15,6 +15,34 @@ def _error_response(error: str, detail: str, status_code: int) -> JSONResponse:
     )
 
 
+@router.post("/summarize-plan", include_in_schema=False)
+async def proxy_summarize_plan(
+    request: Request,
+):
+    client: httpx.AsyncClient = request.app.state.http_client
+    target_url = f"{settings.AGENT_SERVICE_URL}/agent/summarize-plan"
+
+    headers = dict(request.headers)
+    headers.pop("host", None)
+
+    try:
+        req = client.build_request(
+            method="POST",
+            url=target_url,
+            headers=headers,
+            params=request.query_params,
+            content=request.stream(),
+        )
+        response = await client.send(req, stream=True)
+        return StreamingResponse(
+            response.aiter_raw(),
+            status_code=response.status_code,
+            headers=dict(response.headers),
+        )
+    except httpx.ConnectError:
+        return _error_response("agent_unavailable", "Сервіс агента недоступний", 503)
+
+
 @router.api_route(
     "/{path:path}",
     methods=["GET", "POST", "PUT", "DELETE", "PATCH"],

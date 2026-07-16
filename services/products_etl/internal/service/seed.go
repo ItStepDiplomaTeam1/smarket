@@ -16,13 +16,28 @@ import (
 // Структура магазину з Zakaz.ua API
 // ---------------------------------------------------------------------------
 
+// zakazStoreAddress — вкладений об'єкт адреси
+type zakazStoreAddress struct {
+	City     string           `json:"city"`
+	Street   string           `json:"street"`
+	Building string           `json:"building"`
+	Coords   zakazStoreCoords `json:"coords"`
+}
+
+// zakazStoreCoords — географічні координати
+type zakazStoreCoords struct {
+	Lat float64 `json:"lat"`
+	Lng float64 `json:"lng"`
+}
+
 // zakazStore — відповідь одного елементу GET /stores/
 type zakazStore struct {
-	ID          string  `json:"id"`
-	Name        string  `json:"name"`
-	RetailChain string  `json:"retail_chain"`
-	City        *string `json:"city"` // nullable — деякі магазини не мають міста
-	IsActive    bool    `json:"is_active"`
+	ID          string             `json:"id"`
+	Name        string             `json:"name"`
+	RetailChain string             `json:"retail_chain"`
+	City        *string            `json:"city"` // nullable — деякі магазини не мають міста
+	IsActive    bool               `json:"is_active"`
+	Address     zakazStoreAddress  `json:"address"`
 }
 
 // ---------------------------------------------------------------------------
@@ -54,16 +69,33 @@ func SeedStores(ctx context.Context, pool *pgxpool.Pool) error {
 			city = *s.City
 		}
 
+		// Формуємо рядок адреси з вкладеного об'єкта
+		var addressStr *string
+		if s.Address.Street != "" {
+			a := fmt.Sprintf("%s %s, %s", s.Address.Street, s.Address.Building, s.Address.City)
+			addressStr = &a
+		}
+
+		// Нульові координати трактуємо як відсутні → NULL
+		var lat, lng *float64
+		if s.Address.Coords.Lat != 0 || s.Address.Coords.Lng != 0 {
+			lat = &s.Address.Coords.Lat
+			lng = &s.Address.Coords.Lng
+		}
+
 		// UPSERT: якщо магазин вже є — оновити актуальні поля
 		const query = `
-			INSERT INTO stores (external_id, name, retail_chain, city, is_active, synced_at)
-			VALUES ($1, $2, $3, $4, $5, NOW())
+			INSERT INTO stores (external_id, name, retail_chain, city, is_active, synced_at, address, lat, lng)
+			VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8)
 			ON CONFLICT (external_id) DO UPDATE SET
 				name         = EXCLUDED.name,
 				retail_chain = EXCLUDED.retail_chain,
 				city         = EXCLUDED.city,
 				is_active    = EXCLUDED.is_active,
-				synced_at    = NOW()
+				synced_at    = NOW(),
+				address      = EXCLUDED.address,
+				lat          = EXCLUDED.lat,
+				lng          = EXCLUDED.lng
 		`
 		tag, err := pool.Exec(ctx, query,
 			s.ID,
@@ -71,6 +103,9 @@ func SeedStores(ctx context.Context, pool *pgxpool.Pool) error {
 			s.RetailChain,
 			city,
 			s.IsActive,
+			addressStr,
+			lat,
+			lng,
 		)
 		if err != nil {
 			log.Printf("[seed] WARN: не вдалось зберегти магазин %s (%s): %v", s.ID, s.Name, err)
