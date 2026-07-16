@@ -58,9 +58,9 @@ export function CategoriesSec() {
                 />
               </div>
 
-              <h3 className="font-inter text-[14px] sm:text-[15px] font-bold text-[#173B33] dark:text-white m-0 mb-[8px] transition-colors">
-                {name}
-              </h3>
+                <h3 className="font-inter text-[14px] sm:text-[15px] font-bold text-[#173B33] dark:text-white m-0 mb-[8px] transition-colors">
+                  {name}
+                </h3>
 
               <div
                 className="font-inter text-[12px] sm:text-[13px] font-semibold text-[#265447] dark:text-[#3CD27D] no-underline transition-colors duration-200 hover:text-[#1A453A] dark:hover:text-white"
