@@ -25,6 +25,8 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@emnapi/core": "1.11.2",
+    "@emnapi/runtime": "1.11.2",
     "@cloudflare/vite-plugin": "^1.43.2",
     "@eslint/js": "^10.0.1",
     "@types/node": "^24.12.3",
@@ -39,9 +41,5 @@
     "typescript-eslint": "^8.59.2",
     "vite": "^8.0.12",
     "wrangler": "^4.107.0"
-  },
-  "overrides": {
-    "@emnapi/core": "1.11.2",
-    "@emnapi/runtime": "1.11.2"
   }
 }
