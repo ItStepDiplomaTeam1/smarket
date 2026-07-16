@@ -16,6 +16,7 @@ const Profile = lazyWithRetry(() => import('@/pages/Profile/ui/ProfilePage.tsx')
 const Catalog = lazyWithRetry(() => import('@/pages/Catalog/ui/Catalog.tsx'));
 const ShopsPage = lazyWithRetry(() => import('@/pages/Shops/ui/ShopPage.tsx'));
 const CartPage = lazyWithRetry(() => import('@/pages/Cart/ui/CartPage.tsx').then(m => ({ default: m.CartPage })));
+const ReceiptPage = lazyWithRetry(() => import('@/pages/ReceiptPage/ReceiptPage.tsx'));
 
 const ConfidentialPolicy = lazyWithRetry(() => import('@/pages/ConfidentionalPolicy/ui/ConfidentialPolicyPage.tsx'));
 const Privacy = lazyWithRetry(() => import('@/pages/Privacy/ui/PrivacyPage.tsx'));
@@ -145,6 +146,14 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageSkeleton />}>
             <TelegramCallbackPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: '/receipts/:token',
+        element: (
+          <Suspense fallback={<PageSkeleton />}>
+            <ReceiptPage />
           </Suspense>
         ),
       }

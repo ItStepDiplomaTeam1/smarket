@@ -79,3 +79,49 @@ class ShareEmailRequest(BaseModel):
 class ImportCartResponse(BaseModel):
     new_cart_id: uuid.UUID
     message: str
+
+
+class ReceiptSnapshotItem(BaseModel):
+    product_id: int
+    name: str
+    quantity: int
+    price: float
+    subtotal: float
+    in_stock: bool
+
+
+class ReceiptSnapshotStore(BaseModel):
+    store_id: str
+    store_name: str
+    retail_chain: str
+    address: Optional[str] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    is_complete: bool
+    items: List[ReceiptSnapshotItem]
+    subtotal: float
+
+
+class ReceiptResponse(BaseModel):
+    id: uuid.UUID
+    cart_id: Optional[uuid.UUID] = None
+    created_at: datetime
+    total_price: float
+    savings_amount: float
+    share_token: str
+    ai_description: Optional[str] = None
+    snapshot: List[ReceiptSnapshotStore]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ReceiptListItem(BaseModel):
+    id: uuid.UUID
+    share_token: str
+    created_at: datetime
+    total_price: float
+    savings_amount: float
+    store_name: str
+
+    model_config = ConfigDict(from_attributes=True)
+

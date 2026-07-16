@@ -8,6 +8,7 @@ import { CartDetails } from '@/modules/Cart/components/CartDetails';
 import { CartSummary } from '@/modules/Cart/components/CartSummary';
 import { CartUnauthState } from '@/modules/Cart/components/CartUnauthState';
 import { CreateCartModal } from '@/modules/Cart/components/CreateCartModal';
+import { MyReceiptsModal } from '@/modules/Cart/components/MyReceiptsModal';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { ChevronRight } from 'lucide-react';
 
@@ -18,6 +19,7 @@ export const CartPage: React.FC = () => {
   const { mutate: createCart, isPending: isCreating } = useCreateCart();
   const { activeCartId, setActiveCart } = useCartStore();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isMyReceiptsOpen, setIsMyReceiptsOpen] = useState(false);
 
   useEffect(() => {
     // If we have carts and no active cart is selected, select the first one
@@ -68,22 +70,37 @@ export const CartPage: React.FC = () => {
               <p className="text-[#6D8279] dark:text-[#A9B6B0] font-['Inter'] mt-1">Керуйте своїми списками покупок та порівнюйте ціни</p>
             </div>
             
-            {(!isLoading && carts && carts.length > 0) && (
-              <div className="flex gap-3">
+            <div className="flex gap-3">
+              <button 
+                className="px-4 py-2 border border-gray-300 dark:border-[#265447]/30 text-[#265447] dark:text-[#3DAE8B] bg-white dark:bg-[#111A17] rounded-xl font-medium font-['Inter'] hover:bg-gray-50 dark:hover:bg-[#1D2A25] transition-colors"
+                onClick={() => setIsMyReceiptsOpen(true)}
+              >
+                Мої чеки
+              </button>
+              {(!isLoading && carts && carts.length > 0) ? (
+                <>
+                  <button 
+                    className="px-4 py-2 border border-gray-300 dark:border-[#265447]/30 text-[#265447] dark:text-[#3DAE8B] bg-white dark:bg-[#111A17] rounded-xl font-medium font-['Inter'] hover:bg-gray-50 dark:hover:bg-[#1D2A25] transition-colors"
+                    onClick={() => navigate('/catalog')}
+                  >
+                    Перейти в каталог
+                  </button>
+                  <button 
+                    className="px-4 py-2 bg-[#265447] dark:bg-[#3DAE8B] text-white dark:text-[#111A17] rounded-xl font-medium font-['Inter'] hover:bg-[#1A3E2F] dark:hover:bg-[#2C9E7C] transition-colors disabled:opacity-50"
+                    onClick={() => setIsCreateModalOpen(true)}
+                  >
+                    Створити новий кошик
+                  </button>
+                </>
+              ) : (
                 <button 
-                  className="px-4 py-2 border border-gray-300 dark:border-[#265447]/30 text-[#265447] dark:text-[#3DAE8B] bg-white dark:bg-[#111A17] rounded-xl font-medium font-['Inter'] hover:bg-gray-50 dark:hover:bg-[#1D2A25] transition-colors"
-                  onClick={() => navigate('/catalog')}
-                >
-                  Перейти в каталог
-                </button>
-                <button 
-                  className="px-4 py-2 bg-[#265447] dark:bg-[#3DAE8B] text-white dark:text-[#111A17] rounded-xl font-medium font-['Inter'] hover:bg-[#1A3E2F] dark:hover:bg-[#2C9E7C] transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-[#265447] dark:bg-[#3DAE8B] text-white dark:text-[#111A17] rounded-xl font-medium font-['Inter'] hover:bg-[#1A3E2F] dark:hover:bg-[#2C9E7C] transition-colors"
                   onClick={() => setIsCreateModalOpen(true)}
                 >
                   Створити новий кошик
                 </button>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
@@ -122,6 +139,10 @@ export const CartPage: React.FC = () => {
         onClose={() => setIsCreateModalOpen(false)} 
         onSubmit={handleCreateCart}
         isCreating={isCreating}
+      />
+      <MyReceiptsModal
+        isOpen={isMyReceiptsOpen}
+        onClose={() => setIsMyReceiptsOpen(false)}
       />
     </div>
   );

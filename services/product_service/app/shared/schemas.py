@@ -10,6 +10,9 @@ class StoreResponse(BaseModel):
     city: Optional[str] = None
     is_active: bool
     synced_at: datetime.datetime
+    address: Optional[str] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
 
     model_config = ConfigDict(from_attributes=True)
 

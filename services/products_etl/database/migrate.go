@@ -33,7 +33,10 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 					retail_chain  TEXT        NOT NULL,            -- "auchan", "novus", "metro" тощо
 					city          TEXT,                            -- "kiev", "lviv", NULL якщо невідоме
 					is_active     BOOLEAN     NOT NULL DEFAULT TRUE,
-					synced_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+					synced_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+					address       TEXT,
+					lat           DOUBLE PRECISION,
+					lng           DOUBLE PRECISION
 				)`,
 		},
 		{
@@ -265,6 +268,15 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 			sql: `
 				ALTER TABLE categories
 					ADD COLUMN IF NOT EXISTS is_hidden BOOLEAN NOT NULL DEFAULT FALSE
+			`,
+		},
+		{
+			name: "add address lat lng to stores",
+			sql: `
+				ALTER TABLE stores
+					ADD COLUMN IF NOT EXISTS address TEXT,
+					ADD COLUMN IF NOT EXISTS lat DOUBLE PRECISION,
+					ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION
 			`,
 		},
 	}

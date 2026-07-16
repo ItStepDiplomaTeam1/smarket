@@ -8,6 +8,34 @@ from app.api.dependencies import verify_jwt
 router = APIRouter()
 
 
+@router.get("/receipts/{share_token}", include_in_schema=False)
+async def proxy_public_receipt(
+    request: Request,
+    share_token: str,
+):
+    client: httpx.AsyncClient = request.app.state.http_client
+    target_url = f"{settings.CART_SERVICE_URL}/cart/receipts/{share_token}"
+
+    headers = dict(request.headers)
+    headers.pop("host", None)
+
+    try:
+        req = client.build_request(
+            method="GET",
+            url=target_url,
+            headers=headers,
+            params=request.query_params,
+        )
+        response = await client.send(req, stream=True)
+        return StreamingResponse(
+            response.aiter_raw(),
+            status_code=response.status_code,
+            headers=dict(response.headers),
+        )
+    except httpx.ConnectError:
+        raise HTTPException(status_code=503, detail="Сервіс кошика недоступний")
+
+
 # Усі запити до /cart/* вимагають наявності токена!
 @router.api_route(
     "",
