@@ -1,10 +1,25 @@
 import { Outlet, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 import { Header } from '@/shared/ui/Header';
 import { Footer } from '@/shared/ui/Footer';
 import { AiChatWidget } from '@/modules/AiChat';
 
 export const MainLayout = () => {
   const location = useLocation();
+
+  useEffect(() => {
+    if (location.hash) {
+      setTimeout(() => {
+        const id = location.hash.replace('#', '');
+        const element = document.getElementById(id);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      }, 0);
+    } else {
+      window.scrollTo(0, 0);
+    }
+  }, [location.pathname, location.hash]);
 
   return (
     <div className="app-container flex flex-col min-h-screen">

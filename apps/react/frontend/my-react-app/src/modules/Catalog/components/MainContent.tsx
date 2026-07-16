@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, useNavigate} from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useFavoritesStore } from '@/shared/context/favoritesStore';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
@@ -134,13 +134,7 @@ const CATEGORY_OPTIONS = [
   { id: 'zoo', icon: '🐾', name: 'Зоотовари', count: '98' },
 ];
 
-const STORE_OPTIONS = [
-  { id: 'auchan', label: 'Ашан' },
-  { id: 'novus', label: 'Novus' },
-  { id: 'metro', label: 'Metro' },
-  { id: 'zaraz', label: 'За Раз' },
-  { id: 'chudomarket', label: 'Чудо Маркет' },
-];
+// STORE_OPTIONS will be fetched dynamically
 
 const SUBCATEGORY_OPTIONS = [
   { id: 'molochni-produkty', name: 'Молочна продукція', count: '218' },
@@ -251,19 +245,70 @@ export function MainContent() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const { isFavorite, add: addFavorite, remove: removeFavorite } = useFavoritesStore();
 
-  const [page, setPage] = useState(1);
+  const { data: storesList } = useQuery({
+      queryKey: ['availableStores'],
+      queryFn: async () => {
+          const apiBaseUrl = import.meta.env.VITE_API_URL || 'https://smarket-api.duckdns.org';
+          const url = new URL(`${apiBaseUrl}/api/v1/stores/`);
+          const res = await fetch(url.toString());
+          if (!res.ok) return [];
+          const data = await res.json();
+          const activeStores = data.filter((s: any) => s.is_active);
+          
+          const storeMap = new Map<string, string>();
+          activeStores.forEach((s: any) => {
+              if (!storeMap.has(s.retail_chain)) {
+                  let label = s.retail_chain.charAt(0).toUpperCase() + s.retail_chain.slice(1);
+                  if (s.retail_chain === 'atb') label = 'АТБ';
+                  if (s.retail_chain === 'silpo') label = 'Сільпо';
+                  if (s.retail_chain === 'novus') label = 'Novus';
+                  if (s.retail_chain === 'auchan') label = 'Ашан';
+                  if (s.retail_chain === 'metro') label = 'Metro';
+                  if (s.retail_chain === 'ekomarket') label = 'ЕкоМаркет';
+                  storeMap.set(s.retail_chain, label);
+              }
+          });
+          return Array.from(storeMap.entries()).map(([id, label]) => ({ id, label }));
+      }
+  });
   
+  const STORE_OPTIONS = storesList || [];
+
+  const [searchParams] = useSearchParams();
+  const initialSearch = searchParams.get('search') || '';
+  const initialCategory = searchParams.get('category') || 'products';
+  const initialOffer = searchParams.get('offer');
+
+  const [page, setPage] = useState(1);
   const [maxPrice, setMaxPrice] = useState<number>(2000); 
-  const [selectedCategory, setSelectedCategory] = useState<string>('products'); 
+  const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory); 
   const [selectedStores, setSelectedStores] = useState<string[]>([]);
   const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>([]); 
-  const [selectedOffers, setSelectedOffers] = useState<string[]>([]);
+  const [selectedOffers, setSelectedOffers] = useState<string[]>(initialOffer ? [initialOffer] : []);
   const [selectedDiscounts, setSelectedDiscounts] = useState<string[]>([]);
   
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [debouncedSearch, setDebouncedSearch] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>(initialSearch);
+  const [debouncedSearch, setDebouncedSearch] = useState<string>(initialSearch);
   const [sortBy, setSortBy] = useState<string>('best_price');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+
+  useEffect(() => {
+    const s = searchParams.get('search');
+    if (s !== null && s !== searchQuery) {
+      setSearchQuery(s);
+    }
+    const c = searchParams.get('category');
+    if (c !== null && c !== selectedCategory) {
+      setSelectedCategory(c);
+      setSelectedSubcategories([]);
+      setPage(1);
+    }
+    const o = searchParams.get('offer');
+    if (o !== null && !selectedOffers.includes(o)) {
+      setSelectedOffers([o]);
+      setPage(1);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const handler = setTimeout(() => {

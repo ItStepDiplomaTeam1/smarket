@@ -1,4 +1,5 @@
 import logo from '@/shared/assets/logo.svg';
+import { Link } from 'react-router-dom';
 
 export function Footer() {
   return (
@@ -7,28 +8,28 @@ export function Footer() {
 
         <div className="flex flex-col md:flex-row justify-between items-start gap-8 md:gap-0">
           
-          <div className="flex flex-col gap-4 w-full md:w-[298px]">
+          <Link to="/"><div className="flex flex-col gap-4 w-full md:w-[298px]">
             <img src={logo} alt="Smarket" className="w-[100px] md:w-[120px] h-auto block dark:brightness-0 dark:invert transition-all" />
             <p className="font-inter text-[13px] md:text-[14px] font-medium leading-[22px] md:leading-[23px] text-[#6D8279] dark:text-[#81998F] m-0">
               Smarket — сервіс для розумного порівняння цін і планування покупок.
             </p>
-          </div>
+          </div></Link>
 
           <div className="flex flex-col sm:flex-row gap-6 sm:gap-[60px] md:gap-[80px] w-full md:w-auto">
             <div className="flex flex-col gap-3">
-              <a href="/" className="font-inter text-[13px] md:text-[14px] font-medium text-[#173B33] dark:text-[#EAEAEA] no-underline hover:opacity-80 transition-opacity">Головна</a>
-              <a href="/shops" className="font-inter text-[13px] md:text-[14px] font-medium text-[#173B33] dark:text-[#EAEAEA] no-underline hover:opacity-80 transition-opacity">Магазини</a>
+              <Link to="/" className="font-inter text-[13px] md:text-[14px] font-medium text-[#173B33] dark:text-[#EAEAEA] no-underline hover:opacity-80 transition-opacity">Головна</Link>
+              <Link to="/shops" className="font-inter text-[13px] md:text-[14px] font-medium text-[#173B33] dark:text-[#EAEAEA] no-underline hover:opacity-80 transition-opacity">Магазини</Link>
             </div>
 
             <div className="flex flex-col gap-3">
-              <a href="/catalog" className="font-inter text-[13px] md:text-[14px] font-medium text-[#173B33] dark:text-[#EAEAEA] no-underline hover:opacity-80 transition-opacity">Каталог</a>
-              <a href="#" className="font-inter text-[13px] md:text-[14px] font-medium text-[#173B33] dark:text-[#EAEAEA] no-underline hover:opacity-80 transition-opacity">Як це працює</a>
+              <Link to="/catalog" className="font-inter text-[13px] md:text-[14px] font-medium text-[#173B33] dark:text-[#EAEAEA] no-underline hover:opacity-80 transition-opacity">Каталог</Link>
+              <Link to="/#how-it-works" className="font-inter text-[13px] md:text-[14px] font-medium text-[#173B33] dark:text-[#EAEAEA] no-underline hover:opacity-80 transition-opacity">Як це працює</Link>
             </div>
 
             <div className="flex flex-col gap-3">
-              <a href="/ConfidentialPolicy" className="font-inter text-[13px] md:text-[14px] font-medium text-[#173B33] dark:text-[#EAEAEA] no-underline hover:opacity-80 transition-opacity">Політика конфіденційності</a>
-              <a href="/UsingConditions" className="font-inter text-[13px] md:text-[14px] font-medium text-[#173B33] dark:text-[#EAEAEA] no-underline hover:opacity-80 transition-opacity">Умови використання</a>
-              <a href="/Privacy" className="font-inter text-[13px] md:text-[14px] font-medium text-[#173B33] dark:text-[#EAEAEA] no-underline hover:opacity-80 transition-opacity">Обробка персональних даних</a>
+              <Link to="/ConfidentialPolicy" className="font-inter text-[13px] md:text-[14px] font-medium text-[#173B33] dark:text-[#EAEAEA] no-underline hover:opacity-80 transition-opacity">Політика конфіденційності</Link>
+              <Link to="/UsingConditions" className="font-inter text-[13px] md:text-[14px] font-medium text-[#173B33] dark:text-[#EAEAEA] no-underline hover:opacity-80 transition-opacity">Умови використання</Link>
+              <Link to="/Privacy" className="font-inter text-[13px] md:text-[14px] font-medium text-[#173B33] dark:text-[#EAEAEA] no-underline hover:opacity-80 transition-opacity">Обробка персональних даних</Link>
             </div>
           </div>
 

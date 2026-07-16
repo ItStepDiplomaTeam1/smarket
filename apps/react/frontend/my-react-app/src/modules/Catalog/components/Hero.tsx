@@ -4,23 +4,62 @@ interface StatItem { value: string; label: string; }
 interface ProductsResponse { items: []; total: number; }
 
 const fetchProducts = async (page: number, stores: string[]): Promise<ProductsResponse> => {
-    const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://157.180.74.21:8080';
-    let url = new URL(`${apiBaseUrl}/api/v1/products`);
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'https://smarket-api.duckdns.org';
+    let url = new URL(`${apiBaseUrl}/api/v1/search/search?limit=1`);
     const res = await fetch(url.toString());
     if (!res.ok) throw new Error('Помилка завантаження товарів');
     return res.json();
 };
 
+const fetchStoresCount = async (): Promise<number> => {
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'https://smarket-api.duckdns.org';
+    const url = new URL(`${apiBaseUrl}/api/v1/stores/`);
+    const res = await fetch(url.toString());
+    if (!res.ok) return 0;
+    const data = await res.json();
+    const activeStores = data.filter((s: any) => s.is_active);
+    const uniqueChains = new Set(activeStores.map((s: any) => s.retail_chain));
+    return uniqueChains.size;
+};
+
+const fetchMaxDiscount = async (): Promise<number> => {
+    const apiBaseUrl = import.meta.env.VITE_API_URL || 'https://smarket-api.duckdns.org';
+    const url = new URL(`${apiBaseUrl}/api/v1/search/search?limit=1&sort=discount_percent:desc`);
+    const res = await fetch(url.toString());
+    if (!res.ok) return 0;
+    const json = await res.json();
+    if (json.hits && json.hits.length > 0 && json.hits[0].offers && json.hits[0].offers.length > 0) {
+        const price = json.hits[0].offers[0].price;
+        const oldPrice = json.hits[0].offers[0].old_price;
+        if (oldPrice && oldPrice > price) {
+            return Math.round(((oldPrice - price) / oldPrice) * 100);
+        }
+    }
+    return 30; // fallback
+};
+
 export function Hero() {
-  const { data, isLoading } = useQuery<ProductsResponse>({
-      queryKey: ['productsList'],
+  const { data: productsData } = useQuery<ProductsResponse>({
+      queryKey: ['productsListHero'],
       queryFn: () => fetchProducts(1, []),
   });
-  const totalProducts = data?.total ?? 0;
+
+  const { data: storesCount } = useQuery<number>({
+      queryKey: ['heroStoresCount'],
+      queryFn: fetchStoresCount,
+  });
+
+  const { data: maxDiscount } = useQuery<number>({
+      queryKey: ['heroMaxDiscount'],
+      queryFn: fetchMaxDiscount,
+  });
+
+  const totalProducts = productsData?.total_hits ?? productsData?.nb_hits ?? productsData?.total ?? 0;
+  
   const STATS_DATA: StatItem[] = [
     { value: totalProducts.toString(), label: 'товарів' },
-    { value: '12', label: 'магазинів' },
-    { value: 'до 30%', label: 'економії' }
+    { value: (storesCount || 5).toString(), label: 'магазинів' },
+    { value: `до ${maxDiscount || 30}%`, label: 'економії' }
   ];
 
   return (

@@ -1,20 +1,68 @@
-import product1 from '@/shared/assets/div.product-visual.svg';
 import { useNavigate } from 'react-router-dom';
+import { useQueries } from '@tanstack/react-query';
 import { useFavoritesStore } from '@/shared/context/favoritesStore';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 
-const DARK_ICONS = [
-  <svg key="1" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3CD27D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 7h-3a2 2 0 0 1-2-2V2"/><path d="M9 18a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h7l4 4v10a2 2 0 0 1-2 2z"/><path d="M3 15h6"/><path d="M3 18h6"/><path d="M3 21h6"/></svg>,
-  <svg key="2" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3CD27D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>,
-  <svg key="3" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3CD27D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>,
-  <svg key="4" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3CD27D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
-  <svg key="5" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3CD27D" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>,
+import home1 from '@/shared/assets/home1.svg';
+import home2 from '@/shared/assets/home2.svg';
+import home3 from '@/shared/assets/home3.svg';
+import home4 from '@/shared/assets/home4.svg';
+import home5 from '@/shared/assets/home5.svg';
+
+import home1D from '@/shared/assets/home1D.svg';
+import home2D from '@/shared/assets/home2D.svg';
+import home3D from '@/shared/assets/home3D.svg';
+import home4D from '@/shared/assets/home4D.svg';
+import home5D from '@/shared/assets/home5D.svg';
+
+const HOME_ICONS = [home1, home2, home3, home4, home5];
+const HOME_DARK_ICONS = [home1D, home2D, home3D, home4D, home5D];
+
+const POPULAR_PRODUCTS = [
+  { name: 'Молоко 2,5%' },
+  { name: 'Кава мелена' },
+  { name: 'Підгузки' },
+  { name: 'Соняшникова олія' },
+  { name: 'Пральний порошок' },
 ];
 
 export function ProductsSec() {
   const navigate = useNavigate();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const { isFavorite, add: addFavorite, remove: removeFavorite } = useFavoritesStore();
+  const productQueries = useQueries({
+    queries: POPULAR_PRODUCTS.map((prod) => ({
+      queryKey: ['product_stats', prod.name],
+      queryFn: async () => {
+        const url = new URL(`${import.meta.env.VITE_API_URL || 'https://smarket-api.duckdns.org'}/api/v1/search/search?q=${encodeURIComponent(prod.name)}&limit=50`);
+        const res = await fetch(url.toString());
+        if (!res.ok) return { minPrice: 0, storesCount: 0, maxDiscount: 0 };
+        const data = await res.json();
+        
+        let minPrice = Infinity;
+        let maxDiscountAmount = 0;
+        let stores = new Set<string>();
+
+        (data.hits || []).forEach((hit: any) => {
+            (hit.offers || []).forEach((offer: any) => {
+                if (offer.price < minPrice) minPrice = offer.price;
+                if (offer.old_price && offer.old_price > offer.price) {
+                    const diff = offer.old_price - offer.price;
+                    if (diff > maxDiscountAmount) maxDiscountAmount = diff;
+                }
+                stores.add(offer.store.retail_chain || offer.store.id); 
+            });
+        });
+
+        return {
+            minPrice: minPrice === Infinity ? 0 : minPrice,
+            storesCount: stores.size,
+            maxDiscount: maxDiscountAmount
+        };
+      },
+      staleTime: 5 * 60 * 1000,
+    }))
+  });
 
   return (
     <section className="w-full py-[60px] sm:py-[96px] bg-white dark:bg-[#0B120F] transition-colors duration-300">
@@ -30,15 +78,26 @@ export function ProductsSec() {
           </p>
         </div>
 
-        {/* 5-column responsive product grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-[20px]">
-          {[
-            { name: 'Молоко 2,5%',       info: 'від 38 грн · 4 магазини',     discount: 'Економія до 17 грн' },
-            { name: 'Кава мелена',       info: 'від 129 грн · 3 магазини',    discount: 'Економія до 42 грн' },
-            { name: 'Підгузки',          info: 'від 349 грн · 3 магазини',    discount: 'Економія до 86 грн' },
-            { name: 'Соняшникова олія',  info: 'від 62 грн · 6 магазинів',    discount: 'Економія до 21 грн' },
-            { name: 'Пральний порошок',  info: 'від 219 грн · 4 магазини',    discount: 'Економія до 62 грн' },
-          ].map(({ name, info, discount }, index) => (
+          {POPULAR_PRODUCTS.map(({ name }, index) => {
+            const queryData = productQueries[index]?.data;
+            const isLoading = productQueries[index]?.isLoading;
+            
+            let info = 'Завантаження...';
+            let discount = '';
+            
+            if (!isLoading && queryData) {
+              if (queryData.storesCount === 0) {
+                 info = 'Немає в наявності';
+              } else {
+                 info = `від ${queryData.minPrice} грн · ${queryData.storesCount} магазин${[2,3,4].includes(queryData.storesCount % 10) && ![12,13,14].includes(queryData.storesCount % 100) ? 'и' : queryData.storesCount % 10 === 1 && queryData.storesCount % 100 !== 11 ? '' : 'ів'}`;
+                 if (queryData.maxDiscount > 0) {
+                     discount = `Економія до ${Math.round(queryData.maxDiscount)} грн`;
+                 }
+              }
+            }
+
+            return (
             <div
               key={name}
               className="bg-white dark:bg-[#15231D] border border-[#F3F4F6] dark:border-transparent rounded-[16px] px-[20px] py-[24px] flex flex-col items-center text-center transition-all duration-300 hover:shadow-[0_10px_25px_rgba(0,0,0,0.05)] dark:hover:shadow-none hover:-translate-y-1 relative"
@@ -73,12 +132,16 @@ export function ProductsSec() {
                 </svg>
               </button>
               <img 
-                src={product1} 
+                src={HOME_ICONS[index % HOME_ICONS.length]} 
                 alt={name} 
                 className="w-full max-w-[80px] h-auto mb-[24px] block dark:hidden" 
               />
               <div className="hidden dark:flex w-[100px] h-[100px] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#1A3B2A] to-[#111C17] rounded-[16px] border border-[#1A3125] items-center justify-center mb-[24px]">
-                {DARK_ICONS[index]}
+                <img 
+                  src={HOME_DARK_ICONS[index % HOME_DARK_ICONS.length]} 
+                  alt={name} 
+                  className="w-[60px] h-[60px] object-contain opacity-90" 
+                />
               </div>
 
               <h3 className="font-inter text-[15px] font-bold text-[#173B33] dark:text-white m-0 mb-[8px] leading-[1.4] transition-colors">
@@ -93,11 +156,13 @@ export function ProductsSec() {
                 {discount}
               </p>
 
-              <button className="w-full p-[10px] rounded-[100px] border border-[#E5E7EB] dark:border-[#2B4236] bg-transparent font-inter text-[14px] font-semibold text-[#265447] dark:text-[#3CD27D] cursor-pointer mt-auto transition-all duration-200 hover:border-[#265447] dark:hover:border-transparent hover:text-[#265447] dark:hover:text-[#0B120F] hover:bg-[#F6FAF8] dark:hover:bg-[#3CD27D]">
-                Порівняти
+              <button 
+                onClick={() => navigate(`/catalog?search=${encodeURIComponent(name)}`)}
+                className="w-full p-[10px] rounded-[100px] border border-[#E5E7EB] dark:border-[#2B4236] bg-transparent font-inter text-[14px] font-semibold text-[#265447] dark:text-[#3CD27D] cursor-pointer mt-auto transition-all duration-200 hover:border-[#265447] dark:hover:border-transparent hover:text-[#265447] dark:hover:text-[#0B120F] hover:bg-[#F6FAF8] dark:hover:bg-[#3CD27D]">
+                Переглянути
               </button>
             </div>
-          ))}
+          )})}
         </div>
 
       </div>

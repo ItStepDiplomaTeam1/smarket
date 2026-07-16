@@ -1,8 +1,18 @@
 import mockupCardLight from '@/shared/assets/mockup-card.svg';
 import mockupCardDark from '@/shared/assets/mockup-card-dark.svg'; 
 import checkIcon from '@/shared/assets/check.svg';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 export function Hero() {
+  const [query, setQuery] = useState('');
+  const navigate = useNavigate();
+
+  const handleSearch = () => {
+    if (query.trim()) {
+      navigate(`/catalog?search=${encodeURIComponent(query.trim())}`);
+    }
+  };
   return (
     <section className="w-full py-[40px] sm:py-[64px] lg:py-[96px] bg-[#FFFFFF] dark:bg-gradient-to-r dark:from-[#123322] dark:via-[#0D1C14] dark:to-[#0B120F] transition-colors duration-300">
       <div className="w-full max-w-[1228px] mx-auto px-[20px] flex flex-col lg:flex-row justify-between items-center gap-[32px] lg:gap-[40px]">
@@ -36,12 +46,17 @@ export function Hero() {
               </span>
               <input
                 type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
                 placeholder="Введіть товар або список покупок"
                 className="w-full border-none outline-none text-[14px] bg-transparent p-0 text-[#111827] dark:text-white placeholder:text-[#9CA3AF] dark:placeholder-[#7A8D85] transition-colors"
               />
             </div>
-            <button className="bg-[#FFD600] dark:bg-[#3CD27D] text-[#173B33] dark:text-[#0B120F] border-none h-[44px] sm:h-[48px] px-[24px] sm:pw-[32px] rounded-[12px] sm:rounded-[100px] font-inter font-semibold text-[14px] cursor-pointer flex items-center justify-center transition-colors duration-200 hover:bg-[#FACC15] dark:hover:bg-[#34B86D]">
-              Порівняти ціни
+            <button 
+              onClick={handleSearch}
+              className="bg-[#FFD600] dark:bg-[#3CD27D] text-[#173B33] dark:text-[#0B120F] border-none h-[44px] sm:h-[48px] px-[24px] sm:pw-[32px] rounded-[12px] sm:rounded-[100px] font-inter font-semibold text-[14px] cursor-pointer flex items-center justify-center transition-colors duration-200 hover:bg-[#FACC15] dark:hover:bg-[#34B86D]">
+              Шукати товар
             </button>
           </div>
 
