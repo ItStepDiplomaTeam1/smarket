@@ -1,7 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGetMyReceipts } from '@/hooks/api/useCartApi';
-import { X, Calendar, ShoppingBag, AlertCircle, RefreshCw } from 'lucide-react';
+import { useQueries } from '@tanstack/react-query';
+import { apiClient } from '@/shared/api/apiClient';
+import { type ReceiptResponse, useGetMyReceipts } from '@/hooks/api/useCartApi';
+import { X, Calendar, ShoppingBag, AlertCircle, RefreshCw, ReceiptText } from 'lucide-react';
 
 interface MyReceiptsModalProps {
   isOpen: boolean;
@@ -11,6 +13,17 @@ interface MyReceiptsModalProps {
 export const MyReceiptsModal: React.FC<MyReceiptsModalProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
   const { data: receipts, isLoading, isError, error, refetch } = useGetMyReceipts();
+  const receiptDetails = useQueries({
+    queries: (receipts ?? []).map((receipt) => ({
+      queryKey: ['receipt', receipt.share_token],
+      queryFn: async (): Promise<ReceiptResponse> => {
+        const { data } = await apiClient.get(`/api/v1/cart/receipts/${receipt.share_token}`);
+        return data;
+      },
+      enabled: isOpen,
+      staleTime: 60_000,
+    })),
+  });
 
   if (!isOpen) return null;
 
@@ -68,38 +81,53 @@ export const MyReceiptsModal: React.FC<MyReceiptsModalProps> = ({ isOpen, onClos
               </p>
             </div>
           ) : (
-            <div className="flex flex-col gap-3">
-              {receipts.map((receipt) => {
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {receipts.map((receipt, index) => {
                 const date = new Date(receipt.created_at).toLocaleDateString('uk-UA', {
                   day: 'numeric',
                   month: 'short',
                   hour: '2-digit',
                   minute: '2-digit',
                 });
+                const detail = receiptDetails[index]?.data;
+                const snapshot = detail?.snapshot[0];
+                const items = snapshot?.items ?? [];
                 return (
                   <button
                     key={receipt.id}
                     onClick={() => handleReceiptClick(receipt.share_token)}
-                    className="w-full text-left p-4 rounded-xl border border-gray-100 dark:border-[#265447]/20 hover:border-[#265447]/40 dark:hover:border-[#3DAE8B]/40 hover:bg-gray-50 dark:hover:bg-[#1D2A25]/30 transition-all flex justify-between items-center gap-4 group"
+                    className="w-full overflow-hidden rounded-xl bg-[#fffef8] dark:bg-[#18231f] border border-dashed border-[#265447]/35 dark:border-[#3DAE8B]/35 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all text-left font-mono"
                   >
-                    <div className="min-w-0">
-                      <p className="font-bold text-gray-900 dark:text-white truncate font-['Inter']">
-                        {receipt.store_name}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-[#A9B6B0]/60 mt-1 flex items-center gap-1 font-['Inter']">
-                        <Calendar className="w-3.5 h-3.5" /> {date}
-                      </p>
-                    </div>
-                    
-                    <div className="text-right shrink-0">
-                      <p className="font-extrabold text-[#265447] dark:text-[#3DAE8B] font-['Inter']">
-                        {Number(receipt.total_price).toFixed(2)} ₴
-                      </p>
-                      {receipt.savings_amount > 0 && (
-                        <p className="text-[10px] font-bold text-green-600 dark:text-green-400 mt-0.5 font-['Inter']">
-                          Заощаджено: {Number(receipt.savings_amount).toFixed(2)} ₴
-                        </p>
-                      )}
+                    <div className="p-4">
+                      <div className="flex items-start justify-between gap-2 border-b border-dashed border-[#265447]/25 dark:border-[#3DAE8B]/25 pb-3">
+                        <div className="min-w-0">
+                          <p className="font-bold text-sm text-[#173B33] dark:text-white truncate uppercase">{receipt.store_name}</p>
+                          <p className="mt-1 text-[10px] text-[#6D8279] dark:text-[#A9B6B0] flex items-center gap-1"><Calendar className="w-3 h-3" /> {date}</p>
+                        </div>
+                        <ReceiptText className="w-5 h-5 shrink-0 text-[#265447] dark:text-[#3DAE8B]" />
+                      </div>
+
+                      <div className="py-3 space-y-1.5 text-[11px] text-[#40564d] dark:text-[#c2d0ca]">
+                        {receiptDetails[index]?.isPending ? (
+                          <div className="h-10 rounded bg-[#265447]/10 dark:bg-[#3DAE8B]/10 animate-pulse" />
+                        ) : items.length > 0 ? (
+                          <>
+                            {items.slice(0, 2).map((item) => (
+                              <div key={item.product_id} className="flex gap-2 justify-between">
+                                <span className="truncate">{item.name} × {item.quantity}</span>
+                                <span className="shrink-0">{Number(item.subtotal).toFixed(2)}</span>
+                              </div>
+                            ))}
+                            {items.length > 2 && <p className="text-[#6D8279] dark:text-[#A9B6B0]">… ще {items.length - 2} товар(и)</p>}
+                          </>
+                        ) : <p>Склад чека завантажиться при відкритті</p>}
+                      </div>
+
+                      <div className="border-t border-dashed border-[#265447]/25 dark:border-[#3DAE8B]/25 pt-3 flex justify-between items-end gap-2">
+                        <span className="text-[10px] text-[#6D8279] dark:text-[#A9B6B0]">РАЗОМ</span>
+                        <span className="font-bold text-base text-[#265447] dark:text-[#3DAE8B]">{Number(receipt.total_price).toFixed(2)} ₴</span>
+                      </div>
+                      {receipt.savings_amount > 0 && <p className="mt-2 text-[10px] font-sans font-semibold text-green-700 dark:text-green-400">Економія: {Number(receipt.savings_amount).toFixed(2)} ₴</p>}
                     </div>
                   </button>
                 );

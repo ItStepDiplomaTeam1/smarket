@@ -77,9 +77,11 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "X-User-Id"],
 )
 
+# More specific routes must be registered before /cart/{cart_id}; otherwise
+# GET /cart/receipts is interpreted as a request for a cart with id "receipts".
+app.include_router(receipts.router)
 app.include_router(cart.router)
 app.include_router(favorites.router)
-app.include_router(receipts.router)
 app.include_router(internal.router, prefix="/internal", tags=["Internal"])
 
 
