@@ -12,14 +12,14 @@
             Вам надіслали кошик з товарами. Щоб переглянути його та зберегти собі, натисніть на кнопку нижче:
         </p>
         <div style="text-align: center; margin-top: 30px; margin-bottom: 30px;">
-            <a href="http://localhost:5173/cart/shared/{{ token }}" 
+            <a href="{{ frontend_url }}/cart/shared/{{ token }}" 
                style="background-color: #265447; color: #ffffff; text-decoration: none; padding: 14px 28px; font-size: 16px; border-radius: 6px; display: inline-block; font-weight: bold;">
                 Переглянути кошик
             </a>
         </div>
         <p style="color: #666666; font-size: 14px; text-align: center;">
             Якщо кнопка не працює, скопіюйте та вставте це посилання у ваш браузер:<br>
-            <a href="http://localhost:5173/cart/shared/{{ token }}" style="color: #265447;">http://localhost:5173/cart/shared/{{ token }}</a>
+            <a href="{{ frontend_url }}/cart/shared/{{ token }}" style="color: #265447;">{{ frontend_url }}/cart/shared/{{ token }}</a>
         </p>
     </div>
 </body>

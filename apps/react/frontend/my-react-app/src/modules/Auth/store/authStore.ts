@@ -58,11 +58,6 @@ export const useAuthStore = create<AuthState> () (
         }),
         {
           name: 'auth-storage',
-          onRehydrateStorage: () => (state) => {
-            if (state?.isAuthenticated && isTokenExpired(state.token)) {
-              state.logout();
-            }
-          },
         }
     )
 )

@@ -5,9 +5,8 @@ from logging.config import fileConfig
 from pathlib import Path
 
 from alembic import context
-from sqlalchemy.ext.asyncio import create_async_engine
-
 from dotenv import load_dotenv
+from sqlalchemy.ext.asyncio import create_async_engine
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 

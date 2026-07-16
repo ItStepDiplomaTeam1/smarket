@@ -7,7 +7,7 @@ export type UIBlock =
   | { type: 'product_card'; product_id: number; name: string; store: string; price: string; in_stock: boolean; savings?: string }
   | { type: 'tabs'; items: { label: string; blocks: UIBlock[] }[] }
   | { type: 'clarification'; question: string; options: string[] }
-  | { type: 'action_button'; label: string; action: 'add_to_cart'; payload: { product_id: number; quantity: number; store_id: string } }
+  | { type: 'action_button'; label: string; action: 'add_to_cart' | 'navigate' | 'apply_filters'; payload: any }
   | { type: 'badge'; variant: 'savings' | 'best_price' | 'warning' | 'info'; label: string; value: string }
   | { type: 'fallback'; message: string; suggestion?: string }
   | { type: 'divider' };

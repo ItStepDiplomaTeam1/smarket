@@ -66,9 +66,20 @@ pub struct ProductDocument {
     pub discount_percent: Option<i32>,
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct PartialProductDocument {
+    pub id: i64,
+    pub is_hidden: bool,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct IndexRequest {
     pub documents: Vec<ProductDocument>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct PatchIndexRequest {
+    pub documents: Vec<PartialProductDocument>,
 }
 
 #[derive(Serialize)]
@@ -107,10 +118,49 @@ pub async fn index_handler(
             })))
         }
         Err(err) => {
-            error!("[index] Помилка при індексації в Meilisearch: {:?}", err);
+            error!("[index] Помилка індексації в Meilisearch: {:?}", err);
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "error": "Meilisearch indexing failed", "detail": err.to_string() })),
+            ))
+        }
+    }
+}
+
+pub async fn patch_handler(
+    State(client): State<Client>,
+    Json(payload): Json<PatchIndexRequest>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    if payload.documents.is_empty() {
+        warn!("[patch] Отримано порожній запит на оновлення");
+        return Ok(Json(json!({ "status": "ok", "updated": 0 })));
+    }
+
+    let count = payload.documents.len();
+    info!("[patch] Отримано {} документів для часткового оновлення", count);
+
+    let index = client.index("products");
+
+    match index
+        .add_or_update(&payload.documents, Some("id"))
+        .await
+    {
+        Ok(task) => {
+            info!(
+                "[patch] Запит на оновлення {} документів відправлено в Meilisearch. Task UID: {:?}",
+                count, task.task_uid
+            );
+            Ok(Json(json!({
+                "status": "accepted",
+                "updated": count,
+                "task_uid": task.task_uid,
+            })))
+        }
+        Err(err) => {
+            error!("[patch] Помилка часткового оновлення в Meilisearch: {:?}", err);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": "Meilisearch partial update failed", "detail": err.to_string() })),
             ))
         }
     }

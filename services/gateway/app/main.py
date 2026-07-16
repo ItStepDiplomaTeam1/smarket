@@ -45,6 +45,8 @@ if cors_origins_env:
 # Always ensure pages.dev production domain is allowed
 if "https://smarket-7go.pages.dev" not in origins:
     origins.append("https://smarket-7go.pages.dev")
+if "https://smarket-admin.pages.dev" not in origins:
+    origins.append("https://smarket-admin.pages.dev")
 
 app.add_middleware(
     CORSMiddleware,

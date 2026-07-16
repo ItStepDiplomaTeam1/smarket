@@ -30,3 +30,31 @@ async def fetch_product_offers(product_id: int) -> dict:
     except httpx.RequestError as e:
         print(f"Помилка зв'язку з Product Service (offers): {e}")
         return {}
+
+
+async def fetch_products_batch_details(client: httpx.AsyncClient, product_ids: list[int]) -> list[dict]:
+    if not product_ids:
+        return []
+    url = f"{settings.PRODUCT_SERVICE_URL}/api/v1/products/batch/details"
+    try:
+        response = await client.post(url, json={"product_ids": product_ids})
+        if response.status_code == 200:
+            return response.json()
+        return []
+    except httpx.RequestError as e:
+        print(f"Помилка зв'язку з Product Service (batch details): {e}")
+        return []
+
+
+async def fetch_products_batch_offers(client: httpx.AsyncClient, product_ids: list[int]) -> list[dict]:
+    if not product_ids:
+        return []
+    url = f"{settings.PRODUCT_SERVICE_URL}/api/v1/products/batch/offers"
+    try:
+        response = await client.post(url, json={"product_ids": product_ids})
+        if response.status_code == 200:
+            return response.json()
+        return []
+    except httpx.RequestError as e:
+        print(f"Помилка зв'язку з Product Service (batch offers): {e}")
+        return []

@@ -1,12 +1,14 @@
 import hashlib
 import hmac
 import time
-from typing import Dict, Any
+from typing import Any
+
 from loguru import logger
+
 from services.auth_service.plugins.security.secrets.load_secret import get_secret
 
 
-def verify_telegram_auth(data: Dict[str, Any], bot_token: str = None) -> bool:
+def verify_telegram_auth(data: dict[str, Any], bot_token: str | None = None) -> bool:
     """
     Verifies authentication data received from the Telegram Login Widget.
     Spec: https://core.telegram.org/widgets/login

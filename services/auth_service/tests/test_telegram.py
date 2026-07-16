@@ -1,7 +1,9 @@
 import hashlib
 import hmac
 import time
+
 from fastapi.testclient import TestClient
+
 from services.auth_service.main import app
 from services.auth_service.plugins.security.telegram_validator import verify_telegram_auth
 

@@ -33,6 +33,13 @@ class CategoryResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class GlobalCategoryResponse(BaseModel):
+    """Глобальна категорія, сформована на льоту."""
+    id: int
+    name: str
+    is_hidden: bool
+
+
 class SubcategoryResponse(BaseModel):
     """Category row returned by the /categories/{main_category_id}/subcategories endpoint.
 
@@ -163,3 +170,7 @@ class ProductVisibilityUpdate(BaseModel):
 
 class CategoryVisibilityUpdate(BaseModel):
     is_hidden: bool
+
+
+class ProductBatchRequest(BaseModel):
+    product_ids: list[int]

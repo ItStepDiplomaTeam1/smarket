@@ -52,7 +52,9 @@ services:
     expose:
       - "8001"
     environment:
-      COOKIE_SECURE: "${COOKIE_SECURE:-false}"
+      COOKIE_SECURE: "${COOKIE_SECURE:-true}"
+      COOKIE_SAMESITE: "${COOKIE_SAMESITE:-none}"
+      COOKIE_DOMAIN: "${COOKIE_DOMAIN:-smarket-api.duckdns.org}"
       RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
     env_file:
       - ../services/auth_service/.env
@@ -261,7 +263,7 @@ services:
     command:
       - sh
       - -c
-      - alembic upgrade head
+      - cd /app/services/audit_service && alembic upgrade head
     environment:
       RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
     env_file:
@@ -408,7 +410,7 @@ services:
       - "8082"
     healthcheck:
       <<: *healthcheck-defaults
-      test: ["CMD-SHELL", "curl -sf http://127.0.0.1:8082/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8082/health || exit 1"]
       start_period: "${SMARKET_API_HEALTH_START_PERIOD:-30s}"
     depends_on:
       rabbitmq:
@@ -497,6 +499,8 @@ services:
       HTTP_PROXY: "${HTTP_PROXY:-}"
       NO_PROXY: "search_service,product_service,cart_service,localhost,127.0.0.1"
     depends_on:
+      redis:
+        condition: service_healthy
       search_service:
         condition: service_started
       product_service:

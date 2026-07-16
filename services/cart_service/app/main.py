@@ -4,16 +4,22 @@ from fastapi.responses import ORJSONResponse
 
 from app.routers import cart, internal, favorites
 from app.config import settings
-from faststream.rabbit import RabbitBroker
+from faststream.rabbit import RabbitBroker, RabbitExchange, ExchangeType
 from contextlib import asynccontextmanager
 
 import uuid
 import datetime
+import httpx
 
 broker = RabbitBroker(settings.RABBITMQ_URL)
+smarket_events_exchange = RabbitExchange("smarket_events", type=ExchangeType.TOPIC)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    app.state.http_client = httpx.AsyncClient(
+        limits=httpx.Limits(max_keepalive_connections=20, max_connections=50),
+        timeout=10.0,
+    )
     try:
         await broker.connect()
         await broker.publish(
@@ -28,12 +34,13 @@ async def lifespan(app: FastAPI):
                 "details": {},
                 "severity": "info"
             },
-            exchange="smarket_events",
+            exchange=smarket_events_exchange,
             routing_key="service.lifecycle"
         )
     except Exception as e:
         pass
     yield
+    await app.state.http_client.aclose()
     try:
         await broker.publish(
             {
@@ -47,7 +54,7 @@ async def lifespan(app: FastAPI):
                 "details": {},
                 "severity": "warning"
             },
-            exchange="smarket_events",
+            exchange=smarket_events_exchange,
             routing_key="service.lifecycle"
         )
         await broker.close()

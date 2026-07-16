@@ -110,9 +110,9 @@ func SeedStores(ctx context.Context, pool *pgxpool.Pool) error {
 func SeedCategories(ctx context.Context, pool *pgxpool.Pool) error {
 	log.Println("[seed] Синхронізація категорій із Zakaz.ua...")
 
-	// Слаги специфічні для мережі — обходимо всі активні магазини.
+	// Слаги специфічні для мережі — обходимо по одному магазину для кожної мережі.
 	rows, err := pool.Query(ctx,
-		`SELECT external_id FROM stores WHERE is_active = true ORDER BY external_id`,
+		`SELECT DISTINCT ON (retail_chain) external_id FROM stores WHERE is_active = true ORDER BY retail_chain, external_id`,
 	)
 	if err != nil {
 		return fmt.Errorf("отримання активних магазинів: %w", err)
@@ -137,6 +137,10 @@ func SeedCategories(ctx context.Context, pool *pgxpool.Pool) error {
 
 	totalInserted, totalUpdated := 0, 0
 	for _, storeID := range storeIDs {
+		if err := ctx.Err(); err != nil {
+			return fmt.Errorf("seed context cancelled: %w", err)
+		}
+
 		categories, err := fetchCategorySlugs(storeID)
 		if err != nil {
 			log.Printf("[seed] WARN: не вдалось отримати категорії для магазину %s: %v", storeID, err)
@@ -145,6 +149,10 @@ func SeedCategories(ctx context.Context, pool *pgxpool.Pool) error {
 		log.Printf("[seed] Магазин %s: отримано %d категорій", storeID, len(categories))
 
 		for _, c := range categories {
+			if err := ctx.Err(); err != nil {
+				return fmt.Errorf("seed context cancelled: %w", err)
+			}
+
 			if c.Slug == "" {
 				continue
 			}

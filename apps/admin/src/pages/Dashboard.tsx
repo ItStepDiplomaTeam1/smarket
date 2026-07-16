@@ -3,13 +3,17 @@ import { useDashboardData } from '@/hooks/useDashboardData';
 import { MetricCard } from '@/components/MetricCard';
 import { SystemLogsTable } from '@/components/SystemLogsTable';
 import { QuickActions } from '@/components/QuickActions';
+import { SystemStatusWidget } from '@/components/SystemStatusWidget';
+import { PriceDynamicsChart } from '@/components/PriceDynamicsChart';
 
 import { NeedsAttentionWidget } from '@/components/NeedsAttentionWidget';
-import { PopularCategoriesWidget } from '@/components/PopularCategoriesWidget';
 import { NewUsersWidget } from '@/components/NewUsersWidget';
 import { PopularProductsWidget } from '@/components/PopularProductsWidget';
 
-import { Package, Store, Users, Tag } from 'lucide-react';
+import PackageIcon from '@/assets/MetricCardIcons/Package.svg';
+import StoreIcon from '@/assets/MetricCardIcons/Stores.svg';
+import UsersIcon from '@/assets/MetricCardIcons/Users.svg';
+import TagIcon from '@/assets/MetricCardIcons/Tag.svg';
 
 
 const Dashboard: React.FC = () => {
@@ -41,57 +45,58 @@ const Dashboard: React.FC = () => {
 
       {/* ─── Main Content Area (Left: 2 cols, Right: 1 col "Sidebar") ─── */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
-        
+
         {/* Left Column (Main Content) */}
         <div className="xl:col-span-2 flex flex-col gap-6">
-          
+
           {/* ─── Top section: 4 KPI Cards in a single row ─── */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
               title="Всього товарів"
               value={data.metrics.totalProducts.toLocaleString('uk-UA')}
-              icon={Package}
-              iconBgColor="#10B981"
+              icon={PackageIcon}
+              iconBgColor="#6FE3C2"
             />
             <MetricCard
               title="Магазинів"
               value={data.metrics.totalStores}
-              icon={Store}
-              iconBgColor="#F59E0B"
+              icon={StoreIcon}
+              iconBgColor="#FDC80D"
             />
             <MetricCard
               title="Користувачів"
               value={data.metrics.totalUsers.toLocaleString('uk-UA')}
-              icon={Users}
-              iconBgColor="#8B5CF6"
+              icon={UsersIcon}
+              iconBgColor="#9704C3"
             />
             <MetricCard
-              title="Цін оновлено сьогодні"
+              title="Цін оновлено"
               value={data.metrics.pricesUpdatedToday.toLocaleString('uk-UA')}
-              icon={Tag}
-              iconBgColor="#3B82F6"
+              icon={TagIcon}
+              iconBgColor="#1A65F2"
             />
           </div>
 
-
+          {/* Price Dynamics Chart */}
+          <PriceDynamicsChart data={data.priceDynamics} />
 
           {/* System logs */}
-          <SystemLogsTable logs={data.systemLogs} />
+          <SystemLogsTable />
 
-          {/* 4-col bottom widgets */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {/* Bottom widgets row (50/50 split) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <NeedsAttentionWidget items={data.needsAttention} />
             <NewUsersWidget />
-            <PopularCategoriesWidget categories={data.popularCategories} />
           </div>
         </div>
 
         {/* Right Column ("Sidebar" of widgets) */}
         <div className="flex flex-col gap-6">
           <QuickActions />
+          <SystemStatusWidget />
           <PopularProductsWidget products={data.popularProducts} />
         </div>
-        
+
       </div>
     </div>
   );

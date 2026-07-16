@@ -1,70 +1,84 @@
 import React from 'react';
-import type { LucideIcon } from 'lucide-react';
 import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MetricCardProps {
   title: string;
   value: string | number;
-  icon: LucideIcon;
+  icon: string;
   iconBgColor: string;
   trend?: {
     value: number;
     isPositive: boolean;
     text: string;
   };
+  subtext?: string;
   className?: string;
 }
 
 export const MetricCard: React.FC<MetricCardProps> = ({
   title,
   value,
-  icon: Icon,
+  icon,
   iconBgColor,
   trend,
+  subtext,
   className,
 }) => {
+  // Determine if it has row orientation in its className (e.g. flex-row)
+  const isRowLayout = className?.includes('flex-row');
+
   return (
     <div
       className={cn(
-        'bg-surface rounded-2xl p-5 flex flex-col justify-between border border-border shadow-sm aspect-square max-h-[220px]',
+        'bg-surface rounded-2xl p-4 sm:p-5 flex flex-col items-start border border-border shadow-sm w-full',
         className
       )}
     >
-      {/* Icon square */}
-      <div
-        className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0"
-        style={{ backgroundColor: iconBgColor }}
-      >
-        <Icon size={22} strokeWidth={2} className="text-white" />
-      </div>
-
-      {/* Content */}
-      <div className="flex flex-col gap-1">
-        <p className="text-sm text-textMuted leading-tight">{title}</p>
-        <p className="text-[28px] font-bold text-textMain leading-none tracking-tight">
-          {value}
-        </p>
-      </div>
-
-      {/* Trend */}
-      {trend && (
+      <div className={cn("flex w-full", isRowLayout ? "flex-row items-center gap-4 lg:flex-col lg:items-start lg:gap-0" : "flex-col items-start")}>
         <div
-          className={cn(
-            'flex items-center gap-1 text-sm font-medium',
-            trend.isPositive ? 'text-accentGreen' : 'text-accentRed'
-          )}
+          className="w-10 h-10 sm:w-12 sm:h-12 rounded-[22%] flex items-center justify-center shrink-0"
+          style={{ backgroundColor: iconBgColor }}
         >
-          {trend.isPositive ? (
-            <ArrowUpRight size={16} strokeWidth={2} />
-          ) : (
-            <ArrowDownRight size={16} strokeWidth={2} />
-          )}
-          <span>
-            {trend.value}% {trend.text}
-          </span>
+          <img src={icon} alt={title} className="w-5 h-5 sm:w-6 sm:h-6 object-contain" />
         </div>
-      )}
+
+        {/* Content */}
+        <div className={cn("flex flex-col w-full", isRowLayout ? "mt-0 lg:mt-4" : "mt-4")}>
+          <p className="text-xs sm:text-sm text-textMuted leading-tight font-medium">
+            {title}
+          </p>
+          <p className="text-xl sm:text-2xl font-bold text-textMain leading-none tracking-tight mt-1.5">
+            {value}
+          </p>
+
+          {/* Trend */}
+          {trend && (
+            <div
+              className={cn(
+                'flex items-center gap-1 text-xs sm:text-sm font-medium mt-3',
+                trend.isPositive ? 'text-accentGreen' : 'text-accentRed'
+              )}
+            >
+              {trend.isPositive ? (
+                <ArrowUpRight size={14} className="shrink-0" />
+              ) : (
+                <ArrowDownRight size={14} className="shrink-0" />
+              )}
+              <span>
+                {trend.value}% {trend.text}
+              </span>
+            </div>
+          )}
+
+          {/* Subtext */}
+          {subtext && (
+            <div className="text-xs text-textMuted mt-3 font-medium">
+              {subtext}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
