@@ -247,6 +247,11 @@ const fetchProducts = async (filters: FetchFilters): Promise<ProductsResponse> =
 };
 
 export function MainContent() {
+  const [searchParams] = useSearchParams();
+  const urlQ = searchParams.get('q') || searchParams.get('search') || '';
+  const urlCategory = searchParams.get('category') || 'products';
+  const urlOfferType = searchParams.get('offer_type');
+
   const navigate = useNavigate();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const { isFavorite, add: addFavorite, remove: removeFavorite } = useFavoritesStore();

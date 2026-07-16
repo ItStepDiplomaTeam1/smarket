@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useAuthStore } from '@/store/useAuthStore';
 import { apiClient } from '@/lib/apiClient';
 import { Lock, Mail, AlertCircle } from 'lucide-react';
 import logo from '@/assets/HeaderIcons/Logo-Smarket.svg';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { useUiStore } from '@/store/useUiStore';
 
 interface LoginPayload {
   access_token: string;
@@ -22,9 +24,19 @@ const Login: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const { setToken } = useAuthStore();
+  const { isDarkMode, setTheme } = useUiStore();
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
+
+  // Apply dark mode class to html element
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,7 +64,7 @@ const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F0F2F5] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-[#F0F2F5] dark:bg-[#111A17] flex items-center justify-center p-4 relative">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="flex justify-center mb-8">
@@ -60,7 +72,10 @@ const Login: React.FC = () => {
         </div>
 
         {/* Card */}
-        <div className="bg-white border border-border rounded-2xl shadow-sm p-8">
+        <div className="bg-white dark:bg-[#1C2723] border border-border dark:border-[#4ADE80]/20 rounded-2xl shadow-sm p-8 relative">
+          <div className="absolute top-8 right-8">
+            <ThemeToggle isDark={isDarkMode} onChange={setTheme} />
+          </div>
           <div className="mb-7">
             <h1 className="font-manrope text-2xl font-bold text-textMain mb-1">
               Вхід до адмін-панелі
@@ -94,7 +109,7 @@ const Login: React.FC = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="admin@smarket.com"
-                  className="w-full pl-10 pr-4 py-2.5 border border-border rounded-xl text-sm text-textMain placeholder:text-[#D1D5DB] focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all bg-white"
+                  className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-[#1C2723] border border-border dark:border-[#4ADE80]/20 rounded-xl text-sm text-textMain dark:text-white placeholder:text-[#D1D5DB] focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                   required
                   autoComplete="email"
                 />
@@ -116,7 +131,7 @@ const Login: React.FC = () => {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full pl-10 pr-4 py-2.5 border border-border rounded-xl text-sm text-textMain placeholder:text-[#D1D5DB] focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all bg-white"
+                  className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-[#1C2723] border border-border dark:border-[#4ADE80]/20 rounded-xl text-sm text-textMain dark:text-white placeholder:text-[#D1D5DB] focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all"
                   required
                   autoComplete="current-password"
                 />

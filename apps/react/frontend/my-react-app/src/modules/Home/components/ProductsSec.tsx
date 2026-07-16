@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom';
 import product1 from '@/shared/assets/div.product-visual.svg';
-import { useNavigate } from 'react-router-dom';
 import { useFavoritesStore } from '@/shared/context/favoritesStore';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 
@@ -24,6 +23,11 @@ export function ProductsSec() {
   const navigate = useNavigate();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const { isFavorite, add: addFavorite, remove: removeFavorite } = useFavoritesStore();
+
+  const handleCompare = (productName: string) => {
+    const searchWord = PRODUCT_MAP[productName] || productName;
+    navigate(`/catalog?q=${encodeURIComponent(searchWord)}`);
+  };
 
   return (
     <section className="w-full py-[60px] sm:py-[96px] bg-white dark:bg-[#0B120F] transition-colors duration-300">

@@ -10,6 +10,7 @@ export interface MeiliSearchProduct {
   image_url: string | null;
   canonical_ean: string | null;
   category_id: number | null;
+  main_category_id: number | null;
   category_slug: string | null;
   category_name: string | null;
   is_hidden: boolean;

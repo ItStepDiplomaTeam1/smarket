@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Search, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import React from 'react';
+import { AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useCategories, useToggleCategoryVisibility } from '@/hooks/useCategories';
 
 import alcoholsIcon from '@/assets/CategoryIcons/Alcohols.svg';
@@ -29,32 +29,19 @@ const CATEGORY_ICONS: Record<number, string> = {
 const StatusBadge: React.FC<{ isHidden?: boolean }> = ({ isHidden }) => {
   if (isHidden) {
     return (
-      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold bg-[#f3f4f6] text-[#4b5563] dark:bg-[#757877] dark:text-[#ffffff]">
+      <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold bg-[#f3f4f6] text-[#4b5563] dark:bg-[#C30404] dark:text-[#400202]">
         Прихована
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold bg-[#e6f4ea] text-[#1e8e3e] dark:bg-[#6FE3C2] dark:text-[#06513C]">
+    <span className="inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-semibold bg-[#e6f4ea] text-[#1e8e3e] dark:bg-[#6FE3C2] dark:text-[#003B2A]">
       Активна
     </span>
   );
 };
 
-// ── Row Skeleton ──────────────────────────────────────────────────────────────
 
-const CategoryRowSkeleton: React.FC = () => (
-  <tr className="animate-pulse border-b border-border/50 last:border-0">
-    <td className="py-4 pl-6 pr-3">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-secondary" />
-        <div className="h-4 w-40 rounded bg-secondary" />
-      </div>
-    </td>
-    <td className="py-4 px-3"><div className="h-5 w-16 rounded bg-secondary" /></td>
-    <td className="py-4 px-3 text-center"><div className="h-5 w-8 rounded bg-secondary inline-block" /></td>
-  </tr>
-);
 
 const CategoriesPage: React.FC = () => {
   const { data: categories = [], isLoading, isError } = useCategories();
@@ -62,76 +49,78 @@ const CategoriesPage: React.FC = () => {
 
   const renderBody = () => {
     if (isLoading) {
-      return Array.from({ length: 5 }).map((_, i) => <CategoryRowSkeleton key={i} />);
+      return Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="animate-pulse grid grid-cols-[1fr_180px_100px] items-center text-left w-full px-6 py-3 bg-surface border border-border/70 rounded-2xl mb-3 h-[68px]">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-secondary" />
+            <div className="h-4 w-32 rounded bg-secondary" />
+          </div>
+          <div className="px-2 flex justify-center">
+            <div className="h-5 w-16 rounded-full bg-secondary" />
+          </div>
+          <div className="flex items-center justify-center gap-2">
+            <div className="h-6 w-8 rounded bg-secondary" />
+          </div>
+        </div>
+      ));
     }
 
     if (isError) {
       return (
-        <tr>
-          <td colSpan={3} className="py-12 text-center">
-            <div className="flex flex-col items-center gap-2">
-              <AlertCircle size={24} className="text-[#c5221f] opacity-70" />
-              <p className="text-sm text-textMuted font-medium">
-                Не вдалося завантажити категорії.<br />
-                <span className="text-xs">Перевірте підключення до сервера.</span>
-              </p>
-            </div>
-          </td>
-        </tr>
+        <div className="flex flex-col items-center justify-center gap-2 py-8 bg-surface border border-border/70 rounded-2xl w-full">
+          <AlertCircle size={24} className="text-accentRed opacity-70" />
+          <p className="text-sm text-textMuted font-medium text-center">
+            Не вдалося завантажити категорії.
+          </p>
+        </div>
       );
     }
 
     if (categories.length === 0) {
       return (
-        <tr>
-          <td colSpan={3} className="py-12 text-center text-sm text-textMuted font-medium">
-            Категорій не знайдено.
-          </td>
-        </tr>
+        <div className="py-8 text-center text-sm text-textMuted font-medium bg-surface border border-border/70 rounded-2xl w-full">
+          Категорій не знайдено.
+        </div>
       );
     }
 
     return categories.map((category) => (
-      <tr
+      <div
         key={category.id}
-        className="hover:bg-secondary/40 transition-colors group border-b border-border/50 last:border-0"
+        className="grid grid-cols-[1fr_180px_100px] items-center text-left w-full px-6 py-3 bg-surface border border-border/70 dark:border-[#173B330F] rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:border-border dark:hover:border-[#173B33]/30 transition-all mb-3"
       >
-        <td className="py-4 pl-6 pr-3">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#e6f4ea] dark:bg-[#173B33] flex items-center justify-center shrink-0 p-1.5">
-              <img 
-                src={CATEGORY_ICONS[category.id] || productsIcon} 
-                alt="" 
-                className="w-full h-full object-contain dark:[filter:brightness(0)_invert(72%)_sepia(35%)_saturate(836%)_hue-rotate(81deg)_brightness(108%)_contrast(92%)]" 
-              />
-            </div>
-            <span className="text-sm font-semibold text-textMain dark:text-[#FFFFFF]">{category.name}</span>
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-[#e6f4ea] dark:bg-[#173B33] flex items-center justify-center shrink-0 p-1.5">
+            <img 
+              src={CATEGORY_ICONS[category.id] || productsIcon} 
+              alt="" 
+              className="w-full h-full object-contain dark:[filter:brightness(0)_invert(72%)_sepia(35%)_saturate(836%)_hue-rotate(81deg)_brightness(108%)_contrast(92%)]" 
+            />
           </div>
-        </td>
-        <td className="py-4 px-3">
+          <span className="text-sm font-semibold text-textMain dark:text-[#FFFFFF]">{category.name}</span>
+        </div>
+        <div className="px-2 flex justify-center">
           <StatusBadge isHidden={category.is_hidden} />
-        </td>
-        <td className="py-4 px-3 text-center">
-          <div className="flex items-center justify-center gap-1">
-            <button
-              onClick={() => {
-                if(confirm(`Ви впевнені, що хочете ${category.is_hidden ? 'показати' : 'приховати'} глобальну категорію "${category.name}"?\n\nЦе змінить статус ВСІХ вкладених підкатегорій та товарів.`)) {
-                  toggleVisibility({ categoryId: category.id, isHidden: !category.is_hidden });
-                }
-              }}
-              disabled={isToggling}
-              className={`p-1.5 rounded-md transition-colors ${
-                category.is_hidden
-                  ? 'text-textMuted hover:text-textMain hover:bg-secondary dark:text-[#4ADE80] dark:hover:bg-[#4ADE80]/10'
-                  : 'text-textMuted hover:text-[#c5221f] hover:bg-[#c5221f]/10 dark:text-[#4ADE80] dark:hover:bg-[#4ADE80]/10'
-              } disabled:opacity-50`}
-              title={category.is_hidden ? 'Показати' : 'Приховати'}
-            >
-              {category.is_hidden ? <Eye size={16} /> : <EyeOff size={16} />}
-            </button>
-          </div>
-        </td>
-      </tr>
+        </div>
+        <div className="flex items-center justify-center gap-1">
+          <button
+            onClick={() => {
+              if (confirm(`Ви впевнені, що хочете ${category.is_hidden ? 'показати' : 'приховати'} глобальну категорію "${category.name}"?\n\nЦе змінить статус ВСІХ вкладених підкатегорій та товарів.`)) {
+                toggleVisibility({ categoryId: category.id, isHidden: !category.is_hidden });
+              }
+            }}
+            disabled={isToggling}
+            className={`p-1.5 rounded-md transition-colors ${
+              category.is_hidden
+                ? 'text-textMuted hover:text-textMain hover:bg-secondary dark:text-[#4ADE80] dark:hover:bg-[#4ADE80]/10'
+                : 'text-textMuted hover:text-[#c5221f] hover:bg-[#c5221f]/10 dark:text-[#4ADE80] dark:hover:bg-[#4ADE80]/10'
+            } disabled:opacity-50`}
+            title={category.is_hidden ? 'Показати' : 'Приховати'}
+          >
+            {category.is_hidden ? <Eye size={16} /> : <EyeOff size={16} />}
+          </button>
+        </div>
+      </div>
     ));
   };
 
@@ -175,11 +164,10 @@ const CategoriesPage: React.FC = () => {
           </div>
         ) : (
           categories.map((category) => {
-            const isActive = !category.is_hidden;
             return (
               <div
                 key={category.id}
-                className="flex items-center justify-between p-4 bg-surface border border-border/60 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:shadow-none hover:shadow-md transition-shadow duration-200"
+                className="flex items-center justify-between p-4 bg-surface border border-border/60 dark:border-[#173B330F] rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] dark:shadow-none hover:shadow-md transition-shadow duration-200"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-[#e6f4ea] dark:bg-[#173B33] flex items-center justify-center shrink-0 p-2">
@@ -221,24 +209,19 @@ const CategoriesPage: React.FC = () => {
       </div>
 
       {/* Desktop View: Table (hidden on mobile, visible on md and up) */}
-      <div className="hidden md:block bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[500px]">
-            <thead>
-              <tr className="border-b border-border bg-secondary/30">
-                <th className="py-3 pl-6 pr-3 text-xs font-semibold text-textMuted dark:text-[#FFFFFF] uppercase tracking-wider">
-                  Назва категорії
-                </th>
-                <th className="py-3 px-3 text-xs font-semibold text-textMuted dark:text-[#FFFFFF] uppercase tracking-wider">
-                  Статус
-                </th>
-                <th className="py-3 px-3 text-center text-xs font-semibold text-textMuted dark:text-[#FFFFFF] uppercase tracking-wider w-24">
-                  Дії
-                </th>
-              </tr>
-            </thead>
-            <tbody>{renderBody()}</tbody>
-          </table>
+      <div className="hidden md:block w-full overflow-x-auto pb-2">
+        <div className="min-w-[800px] w-full">
+          {/* Header Row */}
+          <div className="grid grid-cols-[1fr_180px_100px] items-center text-left w-full px-6 py-3 bg-white dark:bg-[#1C2723] border border-border dark:border-[#4ADE80]/20 rounded-xl mb-4 text-xs font-bold text-[#173B33] dark:text-[#FFFFFF] uppercase tracking-wider shadow-sm animate-in fade-in">
+            <div>Назва категорії</div>
+            <div className="text-center">Статус</div>
+            <div className="text-center">Дії</div>
+          </div>
+
+          {/* Rows container */}
+          <div className="space-y-3 animate-in fade-in">
+            {renderBody()}
+          </div>
         </div>
       </div>
     </div>
