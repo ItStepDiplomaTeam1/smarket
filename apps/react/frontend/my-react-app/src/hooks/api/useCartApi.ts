@@ -286,7 +286,7 @@ export const useGetReceipt = (token: string) => {
 };
 
 export const useGetMyReceipts = () => {
-  return useQuery<ReceiptListItem[]>({
+  return useQuery<ReceiptListItem[], Error>({
     queryKey: ['my-receipts'],
     queryFn: async () => {
       const { data } = await apiClient.get('/api/v1/cart/receipts');

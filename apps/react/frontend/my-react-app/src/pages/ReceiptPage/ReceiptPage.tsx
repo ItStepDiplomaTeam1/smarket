@@ -1,24 +1,36 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGetReceipt } from '@/hooks/api/useCartApi';
 import toast from 'react-hot-toast';
 import { MapPin, Share2, Check, ArrowLeft } from 'lucide-react';
 
+const MAX_RETRIES = 3;
+const BACKOFF_DELAYS = [3000, 6000, 12000];
+
 const ReceiptPage: React.FC = () => {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
   const { data: receipt, isLoading, refetch } = useGetReceipt(token || '');
-  const [retried, setRetried] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const scheduleRetry = useCallback((attempt: number) => {
+    if (attempt >= MAX_RETRIES) return;
+    const delay = BACKOFF_DELAYS[attempt];
+    timerRef.current = setTimeout(() => {
+      refetch();
+      setRetryCount(attempt + 1);
+    }, delay);
+  }, [refetch]);
 
   useEffect(() => {
-    if (receipt && !receipt.ai_description && !retried) {
-      const timer = setTimeout(() => {
-        refetch();
-        setRetried(true);
-      }, 4000);
-      return () => clearTimeout(timer);
+    if (receipt && !receipt.ai_description && retryCount < MAX_RETRIES) {
+      scheduleRetry(retryCount);
     }
-  }, [receipt, retried, refetch]);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [receipt, retryCount, scheduleRetry]);
 
   if (isLoading) {
     return (
@@ -120,7 +132,7 @@ const ReceiptPage: React.FC = () => {
               « {receipt.ai_description} »
             </p>
           </div>
-        ) : !retried ? (
+        ) : retryCount < MAX_RETRIES ? (
           <div className="bg-[#f0fdf4]/50 dark:bg-[#162a22]/50 border-l-4 border-gray-300 dark:border-gray-700 p-5 rounded-r-xl animate-pulse">
             <div className="h-3 w-24 bg-gray-300 dark:bg-gray-700 rounded mb-2"></div>
             <div className="h-4 bg-gray-300 dark:bg-gray-700 rounded w-full mb-1"></div>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useGetMyReceipts } from '@/hooks/api/useCartApi';
-import { X, Calendar, ShoppingBag } from 'lucide-react';
+import { X, Calendar, ShoppingBag, AlertCircle, RefreshCw } from 'lucide-react';
 
 interface MyReceiptsModalProps {
   isOpen: boolean;
@@ -10,7 +10,7 @@ interface MyReceiptsModalProps {
 
 export const MyReceiptsModal: React.FC<MyReceiptsModalProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
-  const { data: receipts, isLoading } = useGetMyReceipts();
+  const { data: receipts, isLoading, isError, error, refetch } = useGetMyReceipts();
 
   if (!isOpen) return null;
 
@@ -41,6 +41,22 @@ export const MyReceiptsModal: React.FC<MyReceiptsModalProps> = ({ isOpen, onClos
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#265447] dark:border-b-[#3DAE8B]"></div>
+            </div>
+          ) : isError ? (
+            <div className="text-center py-12 flex flex-col items-center justify-center">
+              <AlertCircle className="w-10 h-10 text-red-400 dark:text-red-500 mb-3" />
+              <p className="text-gray-700 dark:text-gray-200 mb-2 font-['Inter'] font-medium">
+                {error?.message || 'Помилка завантаження чеків'}
+              </p>
+              <p className="text-xs text-gray-400 dark:text-[#A9B6B0]/50 mb-4 font-['Inter']">
+                Спробуйте ще раз або перевірте з'єднання з мережею.
+              </p>
+              <button
+                onClick={() => refetch()}
+                className="flex items-center gap-2 px-4 py-2 bg-[#265447] dark:bg-[#3DAE8B] text-white dark:text-[#111A17] rounded-xl font-semibold hover:bg-[#1A3E2F] dark:hover:bg-[#2C9E7C] transition-colors text-sm"
+              >
+                <RefreshCw className="w-4 h-4" /> Спробувати знову
+              </button>
             </div>
           ) : !receipts || receipts.length === 0 ? (
             <div className="text-center py-12 flex flex-col items-center justify-center">
