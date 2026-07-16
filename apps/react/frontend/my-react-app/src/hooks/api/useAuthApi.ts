@@ -68,7 +68,7 @@ export const useGoogleOAuth = () => {
             try {
                 const { data: me } = await apiClient.get<MeResponse>('/api/v1/auth/me');
                 useAuthStore.setState((state) => ({
-                    user: state.user ? { ...state.user, name: me.username, photoUrl: me.photo_url || state.user.photoUrl } : state.user,
+                    user: state.user ? { ...state.user, name: savedName || me.username, photoUrl: me.photo_url || state.user.photoUrl } : state.user,
                 }));
             } catch {
                 // fallback
