@@ -204,7 +204,7 @@ export const Sidebar = () => {
           {navItems.map(renderNavItem)}
 
           <div className="py-[4px]">
-             <hr className="w-full border-t border-[#E5E7EB] dark:border-[#265447]/15" />
+             <hr className="w-full border-t border-[#6FE3C2] dark:border-[#6FE3C2]/50" />
           </div>
 
           {renderNavItem(settingsItem)}

@@ -207,6 +207,31 @@ export function SettingsContent() {
     }
   }, [user?.email, meData]);
 
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'save' | 'security' | 'logout';
+  children: React.ReactNode;
+}
+
+const Button: React.FC<ButtonProps> = ({ variant = 'save', children, className = '', ...props }) => {
+  let colorClasses = '';
+  if (variant === 'save') {
+    colorClasses = 'border-[#6FE3C2] text-[#255848] hover:bg-[#6FE3C2]/5 dark:text-[#6FE3C2] dark:border-[#6FE3C2]/40';
+  } else if (variant === 'security') {
+    colorClasses = 'border-[#00B15E] text-[#00B15E] hover:bg-[#00B15E]/5 dark:text-[#00B15E] dark:border-[#00B15E]/40';
+  } else if (variant === 'logout') {
+    colorClasses = 'border-[#6D8279] text-[#255848] hover:bg-[#6D8279]/5 dark:text-white/70 dark:border-white/20';
+  }
+
+  return (
+    <button
+      className={`h-[36px] px-[19px] py-[10px] rounded-[10px] bg-transparent border text-[13px] font-bold font-inter cursor-pointer transition-all flex items-center justify-center whitespace-nowrap active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${colorClasses} ${className}`}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+};
+
   const BreadcrumbChevron = () => (
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 mx-[2px] brightness-50 dark:brightness-100">
       <path d="M4.5 9L7.5 6L4.5 3" stroke="#6D8279" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -223,13 +248,13 @@ export function SettingsContent() {
           <BreadcrumbChevron />
           <span className="cursor-pointer hover:text-[#173B33] dark:hover:text-[#3DAE8B] transition-colors" onClick={() => navigate('/profile')}>Особистий кабінет</span>
           <BreadcrumbChevron />
-          <span className="text-[#94A3B8] font-semibold">Налаштування</span>
+          <span className="text-[#265447] dark:text-[#4ADE80] font-semibold">Налаштування</span>
         </div>
 
         {/* Заголовок */}
         <div className="flex items-center justify-between mb-[24px] relative">
           <div>
-            <h1 className="font-manrope text-[24px] font-[250] leading-[31.2px] text-[#173B33] dark:text-white m-0 mb-[4px]">
+            <h1 className="font-manrope text-[24px] font-[200] leading-[31.2px] text-[#173633] dark:text-white m-0 mb-[4px]">
               Налаштування
             </h1>
             <p className="font-inter text-[12px] text-[#6D8279] dark:text-[#94A3B8] m-0">
@@ -239,7 +264,7 @@ export function SettingsContent() {
 
           {/* Спливаюче сповіщення про збереження */}
           {saveStatus && (
-            <div className="absolute right-0 top-0 bg-[#3DAE8B] text-[#111A17] font-semibold text-[13px] px-[16px] py-[8px] rounded-[8px] shadow-[0_4px_12px_rgba(0,0,0,0.2)] animate-bounce">
+            <div className="absolute right-0 top-0 bg-[#EAF7F2] dark:bg-[#173B33] border border-[#265447]/10 dark:border-[#265447]/30 text-[#265447] dark:text-[#6FE3C2] font-semibold text-[13px] px-[16px] py-[8px] rounded-[10px] shadow-[0_4px_12px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_12px_rgba(0,0,0,0.3)] animate-bounce">
               {saveStatus}
             </div>
           )}
@@ -260,59 +285,53 @@ export function SettingsContent() {
                   <circle cx="12" cy="7" r="4" />
                 </svg>
               </div>
-              <h3 className="font-manrope text-[16px] font-extrabold text-[#173B33] dark:text-white leading-[31.2px] m-0">
+              <h3 className="font-manrope text-[19px] font-extrabold text-[#173633] dark:text-white leading-[31.2px] m-0">
                 Особисті дані
               </h3>
             </div>
 
             <div className="flex flex-col lg:flex-row gap-[20px] items-end w-full">
-              <div className="flex-1 flex flex-col gap-[6px] w-full">
-                <label className="text-[14px] font-normal font-inter text-[#173B33] dark:text-white leading-[21.5px] text-left">Ім'я</label>
-                <input 
-                  type="text" 
-                  value={name} 
-                  onChange={(e) => setName(e.target.value)}
-                  className="h-[36px] w-full border border-[#E5E7EB] dark:border-[#265447]/30 rounded-[8px] px-[12px] bg-white dark:bg-[#173B33] text-[#173B33] dark:text-white font-inter text-[13px] outline-none focus:border-[#173B33] dark:focus:border-[#4ADE80] transition-colors"
-                />
-              </div>
+              <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-[16px] w-full">
+                <div className="flex flex-col gap-[6px] w-full">
+                  <label className="text-[14px] font-normal font-inter text-[#173633] dark:text-white leading-[21.5px] text-left">Ім'я</label>
+                  <input 
+                    type="text" 
+                    value={name} 
+                    onChange={(e) => setName(e.target.value)}
+                    className="h-[36px] w-full border border-[#6D8279]/24 dark:border-[#265447]/30 rounded-[10px] px-[12px] py-[5px] bg-white dark:bg-[#173B33] text-[#173B33] dark:text-white font-inter text-[13px] outline-none focus:border-[#173B33] dark:focus:border-[#4ADE80] transition-colors"
+                  />
+                </div>
 
-              <div className="flex-1 flex flex-col gap-[6px] w-full">
-                <label className="text-[14px] font-normal font-inter text-[#173B33] dark:text-white leading-[21.5px] text-left">E-mail</label>
-                <div className="flex gap-[8px] items-center">
+                <div className="flex flex-col gap-[6px] w-full">
+                  <label className="text-[14px] font-normal font-inter text-[#173633] dark:text-white leading-[21.5px] text-left">E-mail</label>
                   <input
                     type="email"
                     value={email}
                     readOnly
-                    disabled
-                    className="h-[36px] flex-1 border border-[#E5E7EB] dark:border-[#265447]/30 rounded-[8px] px-[12px] bg-[#F3F4F6] dark:bg-[#173B33] text-[#6D8279] dark:text-[#94A3B8] font-inter text-[13px] outline-none cursor-not-allowed opacity-75"
-                  />
-                  <button
-                    id="btn-change-email"
                     onClick={() => setShowEmailModal(true)}
-                    title="Змінити email"
-                    className="h-[36px] px-[12px] shrink-0 flex items-center justify-center rounded-[8px] font-inter text-[12px] font-semibold cursor-pointer transition-all border border-[#173B33]/30 bg-transparent text-[#6D8279] hover:text-[#173B33] hover:border-[#173B33] dark:border-[#265447]/50 dark:text-[#94A3B8] dark:hover:text-[#4ADE80] dark:hover:border-[#4ADE80] whitespace-nowrap"
-                  >
-                    Змінити
-                  </button>
+                    title="Натисніть для зміни E-mail"
+                    className="h-[36px] w-full border border-[#6D8279]/24 dark:border-[#265447]/30 rounded-[10px] px-[12px] py-[5px] bg-white dark:bg-[#173B33] text-[#173633] dark:text-white font-inter text-[13px] outline-none cursor-pointer hover:border-[#173B33] dark:hover:border-[#4ADE80] transition-colors"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-[6px] w-full">
+                  <label className="text-[14px] font-normal font-inter text-[#173633] dark:text-white leading-[21.5px] text-left">Телефон</label>
+                  <input 
+                    type="text" 
+                    value={phone} 
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="h-[36px] w-full border border-[#6D8279]/24 dark:border-[#265447]/30 rounded-[10px] px-[12px] py-[5px] bg-white dark:bg-[#173B33] text-[#173B33] dark:text-white font-inter text-[13px] outline-none focus:border-[#173B33] dark:focus:border-[#4ADE80] transition-colors"
+                  />
                 </div>
               </div>
 
-              <div className="flex-1 flex flex-col gap-[6px] w-full">
-                <label className="text-[14px] font-normal font-inter text-[#173B33] dark:text-white leading-[21.5px] text-left">Телефон</label>
-                <input 
-                  type="text" 
-                  value={phone} 
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="h-[36px] w-full border border-[#E5E7EB] dark:border-[#265447]/30 rounded-[8px] px-[12px] bg-white dark:bg-[#173B33] text-[#173B33] dark:text-white font-inter text-[13px] outline-none focus:border-[#173B33] dark:focus:border-[#4ADE80] transition-colors"
-                />
-              </div>
-
-              <button 
+              <Button 
+                variant="save"
                 onClick={handleSavePersonal}
-                className="h-[36px] w-full lg:w-[135px] flex items-center justify-center rounded-[8px] font-inter text-[13px] font-semibold cursor-pointer transition-all border border-[#173B33] bg-transparent text-[#111A17] hover:bg-[#173B33]/5 dark:bg-[#3DAE8B] dark:border-transparent dark:text-[#111A17] dark:hover:bg-[#329677] whitespace-nowrap active:scale-[0.98] shrink-0"
+                className="w-full lg:w-[135px] shrink-0"
               >
                 Зберегти зміни
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -328,74 +347,80 @@ export function SettingsContent() {
                   <circle cx="12" cy="10" r="3" />
                 </svg>
               </div>
-              <h3 className="font-manrope text-[16px] font-extrabold text-[#173B33] dark:text-white leading-[31.2px] m-0">
+              <h3 className="font-manrope text-[19px] font-extrabold text-[#173633] dark:text-white leading-[31.2px] m-0">
                 Локація та магазини
               </h3>
             </div>
 
             <div className="flex flex-col gap-[16px] w-full">
               {/* Ряд 1: Країна та Місто */}
-              <div className="flex flex-col lg:flex-row gap-[20px] items-end w-full justify-start">
-                {/* Країна */}
-                <div className="w-full lg:w-[264px] flex flex-col gap-[6px] shrink-0">
-                  <label className="text-[14px] font-normal font-inter text-[#173B33] dark:text-white leading-[21.5px] text-left">Країна</label>
-                  <input 
-                    type="text" 
-                    value="Україна" 
-                    readOnly
-                    disabled
-                    className="h-[36px] w-full border border-[#E5E7EB] dark:border-[#265447]/30 rounded-[8px] px-[12px] bg-[#F3F4F6] dark:bg-[#173B33] text-[#6D8279] dark:text-[#94A3B8] font-inter text-[13px] outline-none cursor-not-allowed opacity-75"
-                  />
+              <div className="flex flex-col lg:flex-row gap-[20px] items-end w-full">
+                <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-[16px] w-full">
+                  {/* Країна */}
+                  <div className="flex flex-col gap-[6px] w-full">
+                    <label className="text-[14px] font-normal font-inter text-[#173633] dark:text-white leading-[21.5px] text-left">Країна</label>
+                    <input 
+                      type="text" 
+                      value="Україна" 
+                      readOnly
+                      disabled
+                      className="h-[36px] w-full border border-[#6D8279]/24 dark:border-[#265447]/30 rounded-[10px] px-[12px] py-[5px] bg-[#F3F4F6] dark:bg-[#173B33] text-[#6D8279] dark:text-[#94A3B8] font-inter text-[13px] outline-none cursor-not-allowed opacity-75"
+                    />
+                  </div>
+                  {/* Місто */}
+                  <div className="flex flex-col gap-[6px] w-full relative">
+                    <label className="text-[14px] font-normal font-inter text-[#173633] dark:text-white leading-[21.5px] text-left">Місто</label>
+                    <input 
+                      type="text" 
+                      value={city} 
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setCity(value);
+                        if (value.trim().length > 0) {
+                          const filtered = UKRAINIAN_CITIES.filter(item => 
+                            item.toLowerCase().startsWith(value.toLowerCase())
+                          );
+                          setSuggestions(filtered);
+                          setShowSuggestions(true);
+                        } else {
+                          setSuggestions([]);
+                          setShowSuggestions(false);
+                        }
+                      }}
+                      placeholder="Введіть місто"
+                      className="h-[36px] w-full border border-[#6D8279]/24 dark:border-[#265447]/30 rounded-[10px] px-[12px] py-[5px] bg-white dark:bg-[#173B33] text-[#173B33] dark:text-white font-inter text-[13px] outline-none focus:border-[#173B33] dark:focus:border-[#4ADE80] transition-colors"
+                    />
+                    {showSuggestions && suggestions.length > 0 && (
+                      <ul className="absolute top-[64px] left-0 w-full bg-white dark:bg-[#1C2723] border border-[#E5E7EB] dark:border-[#265447]/30 rounded-[10px] max-h-[150px] overflow-y-auto z-[10] shadow-lg m-0 p-0 list-none">
+                        {suggestions.map((item) => (
+                          <li 
+                            key={item} 
+                            onClick={() => {
+                              setCity(item);
+                              setShowSuggestions(false);
+                            }}
+                            className="px-[12px] py-[8px] text-[13px] text-[#173B33] dark:text-white hover:bg-[#F6FAF8] dark:hover:bg-[#173B33] cursor-pointer text-left"
+                          >
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                  {/* Spacer Column */}
+                  <div className="hidden md:block"></div>
                 </div>
-                {/* Місто */}
-                <div className="w-full lg:w-[264px] flex flex-col gap-[6px] shrink-0 relative">
-                  <label className="text-[14px] font-normal font-inter text-[#173B33] dark:text-white leading-[21.5px] text-left">Місто</label>
-                  <input 
-                    type="text" 
-                    value={city} 
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setCity(value);
-                      if (value.trim().length > 0) {
-                        const filtered = UKRAINIAN_CITIES.filter(item => 
-                          item.toLowerCase().startsWith(value.toLowerCase())
-                        );
-                        setSuggestions(filtered);
-                        setShowSuggestions(true);
-                      } else {
-                        setSuggestions([]);
-                        setShowSuggestions(false);
-                      }
-                    }}
-                    placeholder="Введіть місто"
-                    className="h-[36px] w-full border border-[#E5E7EB] dark:border-[#265447]/30 rounded-[8px] px-[12px] bg-white dark:bg-[#173B33] text-[#173B33] dark:text-white font-inter text-[13px] outline-none focus:border-[#173B33] dark:focus:border-[#4ADE80] transition-colors"
-                  />
-                  {showSuggestions && suggestions.length > 0 && (
-                    <ul className="absolute top-[64px] left-0 w-full bg-white dark:bg-[#1C2723] border border-[#E5E7EB] dark:border-[#265447]/30 rounded-[8px] max-h-[150px] overflow-y-auto z-[10] shadow-lg m-0 p-0 list-none">
-                      {suggestions.map((item) => (
-                        <li 
-                          key={item} 
-                          onClick={() => {
-                            setCity(item);
-                            setShowSuggestions(false);
-                          }}
-                          className="px-[12px] py-[8px] text-[13px] text-[#173B33] dark:text-white hover:bg-[#F6FAF8] dark:hover:bg-[#173B33] cursor-pointer text-left"
-                        >
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
+                {/* Spacer matching save button width for perfect vertical alignment */}
+                <div className="hidden lg:block w-[135px] shrink-0" />
               </div>
 
-              {/* Ряд 2: Улюблений магазин та кнопка збереження */}
-              <div className="flex flex-col lg:flex-row gap-[20px] items-end w-full justify-start">
-                <div className="w-full lg:w-[264px] flex flex-col gap-[6px] relative">
-                  <label className="text-[14px] font-normal font-inter text-[#173B33] dark:text-white leading-[21.5px] text-left">Улюблений супермаркет</label>
+              {/* Ряд 2: Улюблені магазини та кнопка збереження */}
+              <div className="flex flex-col lg:flex-row gap-[20px] items-end w-full">
+                <div className="w-full lg:w-[548px] flex flex-col gap-[6px] relative shrink-0">
+                  <label className="text-[14px] font-normal font-inter text-[#173633] dark:text-white leading-[21.5px] text-left">Улюблені магазини</label>
                   <button 
                     onClick={() => setShowStoreDropdown(!showStoreDropdown)}
-                    className="h-[36px] w-full border border-[#E5E7EB] dark:border-[#265447]/30 rounded-[8px] px-[12px] bg-white dark:bg-[#173B33] text-[#173B33] dark:text-white font-inter text-[13px] outline-none flex items-center justify-between cursor-pointer"
+                    className="h-[36px] w-full border border-[#6D8279]/24 dark:border-[#265447]/30 rounded-[10px] px-[12px] py-[5px] bg-white dark:bg-[#173B33] text-[#173633] dark:text-white font-inter text-[13px] outline-none flex items-center justify-between cursor-pointer"
                   >
                     <span>{favoriteStore}</span>
                     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className={`transition-transform duration-200 ${showStoreDropdown ? 'rotate-180' : ''}`}>
@@ -403,7 +428,7 @@ export function SettingsContent() {
                     </svg>
                   </button>
                   {showStoreDropdown && (
-                    <ul className="absolute top-[64px] left-0 w-full bg-white dark:bg-[#1C2723] border border-[#E5E7EB] dark:border-[#265447]/30 rounded-[8px] max-h-[200px] overflow-y-auto z-[10] shadow-lg m-0 p-0 list-none">
+                    <ul className="absolute top-[64px] left-0 w-full bg-white dark:bg-[#1C2723] border border-[#E5E7EB] dark:border-[#265447]/30 rounded-[10px] max-h-[200px] overflow-y-auto z-[10] shadow-lg m-0 p-0 list-none">
                       {['Всі магазини', 'Novus', 'Сільпо', 'Auchan', 'Metro', 'Varus', 'Fozzy'].map((store) => (
                         <li 
                           key={store} 
@@ -420,12 +445,15 @@ export function SettingsContent() {
                   )}
                 </div>
 
-                <button 
+                <div className="hidden lg:block flex-grow" />
+
+                <Button 
+                  variant="save"
                   onClick={handleSaveLocation}
-                  className="h-[36px] w-full lg:w-[135px] flex items-center justify-center rounded-[8px] font-inter text-[13px] font-semibold cursor-pointer transition-all border border-[#173B33] bg-transparent text-[#111A17] hover:bg-[#173B33]/5 dark:bg-[#3DAE8B] dark:border-transparent dark:text-[#111A17] dark:hover:bg-[#329677] whitespace-nowrap active:scale-[0.98] shrink-0"
+                  className="w-full lg:w-[135px] shrink-0"
                 >
                   Зберегти зміни
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -441,46 +469,45 @@ export function SettingsContent() {
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 </svg>
               </div>
-              <h3 className="font-manrope text-[16px] font-extrabold text-[#173B33] dark:text-white leading-[31.2px] m-0">
+              <h3 className="font-manrope text-[19px] font-extrabold text-[#173633] dark:text-white leading-[31.2px] m-0">
                 Безпека акаунту
               </h3>
             </div>
 
-            <div className="flex flex-col lg:flex-row gap-[24px] items-end w-full">
+            <div className="flex flex-col lg:flex-row gap-[20px] items-end w-full justify-between">
               {/* Пароль */}
-              <div className="flex flex-col md:flex-row gap-[16px] items-end flex-1 w-full">
-                <div className="flex-1 flex flex-col gap-[6px] w-full">
-                  <label className="text-[14px] font-normal font-inter text-[#173B33] dark:text-white leading-[21.5px] text-left">Пароль</label>
-                  <input 
-                    type="password" 
-                    value={password} 
-                    disabled
-                    className="h-[36px] w-full border border-[#E5E7EB] dark:border-[#265447]/30 rounded-[8px] px-[12px] bg-white dark:bg-[#173B33] text-[#173B33] dark:text-white font-inter text-[13px] outline-none opacity-80"
-                  />
-                </div>
-
-                <button 
-                  onClick={() => setShowPasswordModal(true)}
-                  className="h-[36px] w-full md:w-[135px] flex items-center justify-center rounded-[8px] font-inter text-[13px] font-semibold cursor-pointer transition-all border border-[#173B33] bg-transparent text-[#111A17] hover:bg-[#173B33]/5 dark:bg-[#4ADE80] dark:border-transparent dark:text-[#111A17] dark:hover:bg-[#329677] whitespace-nowrap shrink-0"
-                >
-                  Змінити пароль
-                </button>
+              <div className="w-full lg:w-[264px] flex flex-col gap-[6px] shrink-0">
+                <label className="text-[14px] font-normal font-inter text-[#173633] dark:text-white leading-[21.5px] text-left">Пароль</label>
+                <input 
+                  type="password" 
+                  value={password} 
+                  disabled
+                  className="h-[36px] w-full border border-[#6D8279]/24 dark:border-[#265447]/30 rounded-[10px] px-[12px] py-[5px] bg-white dark:bg-[#173B33] text-[#173633] dark:text-white font-inter text-[13px] outline-none opacity-80"
+                />
               </div>
 
-              {/* Вертикальний роздільник Vector 8 */}
-              <div className="hidden lg:block w-[1px] h-[61px] bg-[#E5E7EB] dark:bg-[#265447]/15 self-end" />
+              {/* Кнопка Змінити пароль */}
+              <Button 
+                variant="security"
+                onClick={() => setShowPasswordModal(true)}
+                className="w-full lg:w-[135px] shrink-0"
+              >
+                Змінити пароль
+              </Button>
+
+              {/* Вертикальний роздільник строго по центру між кнопками */}
+              <div className="hidden lg:block w-[1px] h-[61px] bg-[#265447]/8 shrink-0 self-end mb-[2px]" />
 
               {/* Дії з акаунтом */}
-              <div className="flex-1 flex flex-col gap-[6px] w-full border-t lg:border-t-0 border-[#E5E7EB] dark:border-[#265447]/10 pt-[16px] lg:pt-0 lg:items-end">
-                <div className="flex flex-col items-center gap-[6px] w-full lg:w-[135px]">
-                  <label className="text-[14px] font-normal font-inter text-[#173B33] dark:text-white leading-[21.5px] text-center w-full whitespace-nowrap">Дії з акаунтом</label>
-                  <button 
-                    onClick={handleLogoutClick}
-                    className="h-[36px] w-full flex items-center justify-center rounded-[8px] font-inter text-[13px] font-semibold cursor-pointer transition-all border border-[#255848] bg-transparent text-[#111A17] hover:bg-[#265447]/5 dark:bg-[#3DAE8B] dark:border-transparent dark:text-[#111A17] dark:hover:bg-[#329677] whitespace-nowrap shrink-0"
-                  >
-                    Вийти з акаунту
-                  </button>
-                </div>
+              <div className="flex flex-col gap-[6px] w-full lg:w-[135px] shrink-0 items-center">
+                <label className="text-[14px] font-normal font-inter text-[#173633] dark:text-white leading-[21.5px] text-center w-full whitespace-nowrap">Дії з акаунтом</label>
+                <Button 
+                  variant="logout"
+                  onClick={handleLogoutClick}
+                  className="w-full"
+                >
+                  Вийти з акаунту
+                </Button>
               </div>
             </div>
           </div>
