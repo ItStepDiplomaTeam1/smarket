@@ -58,23 +58,49 @@ export function SettingsContent() {
     navigate('/');
   };
 
-  const handleSaveLocation = () => {
-    if (user?.email) {
+  const handleSaveLocation = async () => {
+    if (!user?.email) return;
+    try {
       localStorage.setItem(`smarket_user_city_${user.email}`, city);
       localStorage.setItem(`smarket_user_favorite_store_${user.email}`, favoriteStore);
+
+      const currentSettings = meData?.settings || {};
+      await apiClient.patch('/api/v1/auth/settings', {
+        settings: {
+          ...currentSettings,
+          city: city,
+          favorite_store: favoriteStore
+        }
+      });
+
       window.dispatchEvent(new Event('profile-updated'));
+      triggerSave('Локацію збережено!');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || 'Не вдалося зберегти локацію на сервері');
     }
-    triggerSave('Локацію збережено!');
   };
 
-  const handleSavePersonal = () => {
+  const handleSavePersonal = async () => {
     if (!user?.email) return;
-    localStorage.setItem(`smarket_user_name_${user.email}`, name);
-    localStorage.setItem(`smarket_user_phone_${user.email}`, phone);
+    try {
+      localStorage.setItem(`smarket_user_name_${user.email}`, name);
+      localStorage.setItem(`smarket_user_phone_${user.email}`, phone);
 
-    updateUser({ name });
-    window.dispatchEvent(new Event('profile-updated'));
-    triggerSave('Дані збережено!');
+      const currentSettings = meData?.settings || {};
+      await apiClient.patch('/api/v1/auth/settings', {
+        settings: {
+          ...currentSettings,
+          name: name,
+          phone: phone
+        }
+      });
+
+      updateUser({ name });
+      window.dispatchEvent(new Event('profile-updated'));
+      triggerSave('Дані збережено!');
+    } catch (error: any) {
+      toast.error(error?.response?.data?.detail || 'Не вдалося зберегти дані на сервері');
+    }
   };
 
   const handlePasswordChange = async () => {
@@ -83,7 +109,7 @@ export function SettingsContent() {
       return;
     }
     try {
-      await apiClient.put('/api/v1/auth/me/password', {
+      await apiClient.patch('/api/v1/auth/password', {
         old_password: oldPassword,
         new_password: newPassword,
       });
@@ -146,6 +172,9 @@ export function SettingsContent() {
         toast.error('Цей email вже використовується іншим акаунтом');
       } else if (status === 400) {
         toast.error(detail || 'Неправильний пароль');
+      } else if (status === 404) {
+        // Деталізований фолбек для 404 у випадку відсутності API зміни пошти
+        toast.error('Функція зміни email наразі недоступна на сервері.');
       } else {
         toast.error(detail || 'Не вдалося змінити email. Спробуйте пізніше.');
       }
@@ -164,15 +193,22 @@ export function SettingsContent() {
   }, [user?.name, user?.email]);
 
   useEffect(() => {
-    if (user?.email) {
-      const savedCity = localStorage.getItem(`smarket_user_city_${user.email}`);
-      const savedStore = localStorage.getItem(`smarket_user_favorite_store_${user.email}`);
-      const savedPhone = localStorage.getItem(`smarket_user_phone_${user.email}`);
+    const userEmail = user?.email;
+    if (userEmail) {
+      const backendSettings = meData?.settings || {};
+      const savedCity = backendSettings.city || localStorage.getItem(`smarket_user_city_${userEmail}`);
+      const savedStore = backendSettings.favorite_store || localStorage.getItem(`smarket_user_favorite_store_${userEmail}`);
+      const savedPhone = backendSettings.phone || localStorage.getItem(`smarket_user_phone_${userEmail}`);
+      const savedName = backendSettings.name || user?.name || localStorage.getItem(`smarket_user_name_${userEmail}`);
+
       setCity(savedCity || 'Київ');
       setFavoriteStore(savedStore || 'Всі магазини');
       setPhone(savedPhone || '+38 000 000 00 00');
+      if (savedName) {
+        setName(savedName);
+      }
     }
-  }, [user?.email]);
+  }, [user?.email, meData]);
 
   const BreadcrumbChevron = () => (
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 mx-[2px] brightness-50 dark:brightness-100">

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -24,12 +25,13 @@ export interface MeResponse {
     username: string;
     role: string;
     photo_url?: string;
+    settings?: Record<string, any>;
 }
 
 export const useFetchMe = () => {
     const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
-    return useQuery<MeResponse>({
+    const query = useQuery<MeResponse>({
         queryKey: ['me'],
         queryFn: async () => {
             const { data } = await apiClient.get<MeResponse>('/api/v1/auth/me');
@@ -38,6 +40,23 @@ export const useFetchMe = () => {
         enabled: isAuthenticated,
         staleTime: 5 * 60 * 1000,
     });
+
+    useEffect(() => {
+        if (query.data && isAuthenticated) {
+            useAuthStore.setState((state) => {
+                if (!state.user) return state;
+                return {
+                    user: {
+                        ...state.user,
+                        name: query.data.username || state.user.name,
+                        photoUrl: query.data.photo_url || state.user.photoUrl,
+                    }
+                };
+            });
+        }
+    }, [query.data, isAuthenticated]);
+
+    return query;
 };
 
 export const useGoogleOAuth = () => {
