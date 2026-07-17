@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { apiClient } from '@/shared/api/apiClient';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
-import { useFetchMe, useChangePassword } from '@/hooks/api/useAuthApi';
+import { useFetchMe, useChangePassword, useChangeEmail } from '@/hooks/api/useAuthApi';
 import toast from 'react-hot-toast';
 import { Check } from 'lucide-react';
 import { PASSWORD_RULES, validatePassword } from '@/shared/utils/password';
@@ -45,7 +45,6 @@ export function SettingsContent() {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [newEmail, setNewEmail] = useState('');
   const [emailPassword, setEmailPassword] = useState('');
-  const [emailLoading, setEmailLoading] = useState(false);
 
   // Стани збереження (для фідбеку користувачу)
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
@@ -136,6 +135,8 @@ export function SettingsContent() {
     }
   };
 
+  const changeEmailMutation = useChangeEmail();
+
   const handleEmailChange = async () => {
     const trimmedEmail = newEmail.trim().toLowerCase();
 
@@ -155,9 +156,8 @@ export function SettingsContent() {
       return;
     }
 
-    setEmailLoading(true);
     try {
-      await apiClient.put('/api/v1/auth/me/email', {
+      await changeEmailMutation.mutateAsync({
         new_email: trimmedEmail,
         current_password: emailPassword,
       });
@@ -174,21 +174,7 @@ export function SettingsContent() {
       logout();
       navigate('/login');
     } catch (error: any) {
-      const status = error?.response?.status;
-      const detail = error?.response?.data?.detail;
-
-      if (status === 409) {
-        toast.error('Цей email вже використовується іншим акаунтом');
-      } else if (status === 400) {
-        toast.error(detail || 'Неправильний пароль');
-      } else if (status === 404) {
-        // Деталізований фолбек для 404 у випадку відсутності API зміни пошти
-        toast.error('Функція зміни email наразі недоступна на сервері.');
-      } else {
-        toast.error(detail || 'Не вдалося змінити email. Спробуйте пізніше.');
-      }
-    } finally {
-      setEmailLoading(false);
+      toast.error(error.message || 'Не вдалося змінити email. Спробуйте пізніше.');
     }
   };
 
@@ -571,7 +557,7 @@ export function SettingsContent() {
                   setNewEmail('');
                   setEmailPassword('');
                 }}
-                disabled={emailLoading}
+                disabled={changeEmailMutation.isPending}
                 className="h-[36px] px-[16px] rounded-[8px] bg-transparent border-none text-[#6D8279] dark:text-[#94A3B8] font-semibold text-[13px] cursor-pointer hover:bg-black/5 disabled:opacity-50"
               >
                 Скасувати
@@ -579,15 +565,15 @@ export function SettingsContent() {
               <button
                 id="btn-confirm-email-change"
                 onClick={handleEmailChange}
-                disabled={emailLoading || !newEmail.trim() || !emailPassword}
+                disabled={changeEmailMutation.isPending || !newEmail.trim() || !emailPassword}
                 className="h-[36px] px-[20px] rounded-[8px] bg-[#173B33] dark:bg-[#4ADE80] border-none text-white dark:text-[#111A17] font-semibold text-[13px] cursor-pointer hover:bg-[#265447] dark:hover:bg-[#3ce076] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-[6px]"
               >
-                {emailLoading && (
+                {changeEmailMutation.isPending && (
                   <svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <path d="M21 12a9 9 0 1 1-6.219-8.56" />
                   </svg>
                 )}
-                {emailLoading ? 'Збереження...' : 'Змінити Email'}
+                {changeEmailMutation.isPending ? 'Збереження...' : 'Змінити Email'}
               </button>
             </div>
           </div>

@@ -274,4 +274,32 @@ export const useChangePassword = () => {
     });
 };
 
+export interface ChangeEmailRequest {
+    new_email: string;
+    current_password: string;
+}
+
+export interface ChangeEmailResponse {
+    message: string;
+}
+
+export const useChangeEmail = () => {
+    return useMutation<ChangeEmailResponse, Error, ChangeEmailRequest>({
+        mutationFn: async ({ new_email, current_password }) => {
+            try {
+                const response = await apiClient.patch<ChangeEmailResponse>('/api/v1/auth/email', {
+                    new_email,
+                    current_password,
+                });
+                return response.data;
+            } catch (error) {
+                if (axios.isAxiosError(error) && error.response?.data?.detail) {
+                    throw new Error(error.response.data.detail, { cause: error });
+                }
+                throw new Error('Не вдалося змінити email. Спробуйте ще раз.', { cause: error });
+            }
+        },
+    });
+};
+
 
