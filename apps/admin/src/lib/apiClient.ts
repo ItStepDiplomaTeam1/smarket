@@ -11,7 +11,7 @@ import { useAuthStore } from '@/store/useAuthStore';
  *   (refresh_token) on every request.
  */
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://157.180.74.21:8080/api/v1',
+  baseURL: import.meta.env.VITE_API_URL || '/api/v1',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',

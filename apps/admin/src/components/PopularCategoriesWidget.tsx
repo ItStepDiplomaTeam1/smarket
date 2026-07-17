@@ -1,6 +1,7 @@
 import React from 'react';
 import type { DashboardData } from '@/hooks/useDashboardData';
 import { ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface PopularCategoriesWidgetProps {
   categories: DashboardData['popularCategories'];
@@ -8,7 +9,7 @@ interface PopularCategoriesWidgetProps {
 
 export const PopularCategoriesWidget: React.FC<PopularCategoriesWidgetProps> = ({ categories }) => {
   return (
-    <div className="bg-surface border border-border rounded-2xl flex flex-col shadow-sm mt-6">
+    <div className="bg-surface border border-border rounded-2xl flex flex-col shadow-sm h-full">
       <div className="p-5 pb-3">
         <h3 className="font-semibold text-lg text-textMain">Найпопулярніші категорії</h3>
       </div>
@@ -32,9 +33,9 @@ export const PopularCategoriesWidget: React.FC<PopularCategoriesWidgetProps> = (
       </div>
 
       <div className="px-5 py-3 border-t border-border mt-auto">
-        <a href="#" className="text-sm font-medium text-textMuted hover:text-primary transition-colors flex items-center">
+        <Link to="/categories" className="text-sm font-medium text-textMuted hover:text-primary transition-colors flex items-center">
           Переглянути всі категорії <ChevronRight size={16} className="ml-1" />
-        </a>
+        </Link>
       </div>
     </div>
   );

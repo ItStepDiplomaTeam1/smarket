@@ -1,6 +1,7 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { useFetchMe } from '@/hooks/api/useAuthApi';
+import { apiClient } from '@/shared/api/apiClient';
 
 import profileHome from '@/shared/assets/profile-home.svg';
 import profileCart from '@/shared/assets/profile-cart.svg';
@@ -52,7 +53,12 @@ export const Sidebar = () => {
 
   const progress = user?.name ? 40 : 20;
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await apiClient.post('/api/v1/auth/logout');
+    } catch {
+      // Clear local state regardless of server response
+    }
     logout();
     navigate('/');
   };
@@ -94,7 +100,11 @@ export const Sidebar = () => {
           className="w-[100px] h-[100px] rounded-full overflow-hidden shrink-0 flex items-center justify-center text-white text-[32px] font-bold select-none"
           style={{ backgroundColor: avatarColor }}
         >
-          {initials}
+          {user?.photoUrl ? (
+            <img src={user.photoUrl} alt="Avatar" className="w-full h-full object-cover" />
+          ) : (
+            initials
+          )}
         </div>
         <div className="flex flex-col w-[202px] gap-[6px]">
           <h2 className="text-[14px] font-semibold text-[#265447] leading-none truncate">{displayName}</h2>

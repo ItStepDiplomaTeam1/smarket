@@ -1,10 +1,34 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { DashboardData } from '@/hooks/useDashboardData';
-import { Star } from 'lucide-react';
+import { Star, Image as ImageIcon } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface PopularProductsWidgetProps {
   products: DashboardData['popularProducts'];
 }
+
+const ProductImage: React.FC<{ src: string; alt: string }> = ({ src, alt }) => {
+  const [error, setError] = useState(!src);
+
+  if (error) {
+    return (
+      <div className="w-12 h-12 bg-secondary rounded border border-border flex items-center justify-center shrink-0">
+        <ImageIcon className="text-textMuted w-5 h-5" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-12 h-12 bg-white rounded border border-border flex items-center justify-center overflow-hidden shrink-0">
+      <img 
+        src={src} 
+        alt={alt} 
+        className="w-full h-full object-contain p-1" 
+        onError={() => setError(true)}
+      />
+    </div>
+  );
+};
 
 export const PopularProductsWidget: React.FC<PopularProductsWidgetProps> = ({ products }) => {
   return (
@@ -16,10 +40,8 @@ export const PopularProductsWidget: React.FC<PopularProductsWidgetProps> = ({ pr
       <div className="flex-1 overflow-hidden">
         <ul className="divide-y divide-border">
           {products.map((product) => (
-            <li key={product.id} className="p-4 flex gap-4 hover:bg-background/50 transition-colors">
-              <div className="w-12 h-12 bg-white rounded border border-border flex items-center justify-center overflow-hidden shrink-0">
-                <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
-              </div>
+            <li key={product.id} className="p-4 flex items-center gap-4 hover:bg-background/50 transition-colors">
+              <ProductImage src={product.image} alt={product.name} />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-textMain truncate mb-0.5" title={product.name}>
                   {product.name}
@@ -42,9 +64,12 @@ export const PopularProductsWidget: React.FC<PopularProductsWidgetProps> = ({ pr
       </div>
 
       <div className="p-4 border-t border-border mt-auto">
-        <button className="w-full py-2 bg-background border border-border rounded-lg text-sm font-medium text-textMain hover:bg-secondary hover:text-primary transition-colors">
+        <Link 
+          to="/products"
+          className="w-full block text-center py-2 bg-background border border-border rounded-lg text-sm font-medium text-textMain hover:bg-secondary hover:text-primary transition-colors btn-outline-theme"
+        >
           Переглянути всі
-        </button>
+        </Link>
       </div>
     </div>
   );

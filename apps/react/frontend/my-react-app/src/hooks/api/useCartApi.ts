@@ -35,18 +35,6 @@ export const useFetchCartDetails = (cartId: string | null) => {
     queryFn: async () => {
       const { data } = await apiClient.get(`/api/v1/cart/${cartId}`);
       
-      let comparisonData = [];
-      try {
-        const compRes = await apiClient.get(`/api/v1/cart/${cartId}/compare`);
-        comparisonData = compRes.data.map((c: { store_name: string; total_price: number; is_complete: boolean }) => ({
-          storeName: c.store_name,
-          totalPrice: c.total_price,
-          isBest: c.is_complete,
-        }));
-      } catch (err) {
-        console.error("Failed to fetch comparison", err);
-      }
-      
       const itemsWithImages = data.items.map((item: { product_id: string; product_name: string; quantity: number; price: number; id: string; image_url?: string }) => {
         return {
           productId: item.product_id,
@@ -63,17 +51,32 @@ export const useFetchCartDetails = (cartId: string | null) => {
         id: data.id,
         title: data.name,
         itemsCount: data.items.length,
-        bestStore: comparisonData[0]?.storeName || '-',
-        bestPrice: comparisonData[0]?.totalPrice || data.total_price,
+        bestStore: '-',
+        bestPrice: data.total_price || 0,
         potentialSavings: 0,
         updatedAt: data.updated_at,
         items: itemsWithImages,
         summary: {
           totalItems: data.items.length,
           maxPossibleSavings: 0,
-          comparison: comparisonData
+          comparison: []
         }
       };
+    },
+    enabled: !!cartId,
+  });
+};
+
+export const useFetchCartComparison = (cartId: string | null) => {
+  return useQuery({
+    queryKey: ['cart-compare', cartId],
+    queryFn: async () => {
+      const { data } = await apiClient.get(`/api/v1/cart/${cartId}/compare`);
+      return data.map((c: { store_name: string; total_price: number; is_complete: boolean }) => ({
+        storeName: c.store_name,
+        totalPrice: c.total_price,
+        isBest: c.is_complete,
+      }));
     },
     enabled: !!cartId,
   });
@@ -212,5 +215,107 @@ export const useDuplicateCart = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['carts'] });
     },
+  });
+};
+
+
+export interface ReceiptSnapshotItem {
+  product_id: number;
+  name: string;
+  quantity: number;
+  price: number;
+  subtotal: number;
+  in_stock: boolean;
+}
+
+export interface ReceiptSnapshotStore {
+  store_id: string;
+  store_name: string;
+  retail_chain: string;
+  address?: string;
+  lat?: number;
+  lng?: number;
+  is_complete: boolean;
+  items: ReceiptSnapshotItem[];
+  subtotal: number;
+}
+
+export interface ReceiptResponse {
+  id: string;
+  cart_id?: string;
+  created_at: string;
+  total_price: number;
+  savings_amount: number;
+  share_token: string;
+  ai_description?: string;
+  snapshot: ReceiptSnapshotStore[];
+}
+
+export interface ReceiptListItem {
+  id: string;
+  share_token: string;
+  created_at: string;
+  total_price: number;
+  savings_amount: number;
+  store_name: string;
+}
+
+export const useCompleteCart = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<ReceiptResponse, Error, string>({
+    mutationFn: async (cartId: string) => {
+      const { data } = await apiClient.post(`/api/v1/cart/${cartId}/complete`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-receipts'] });
+    },
+  });
+};
+
+export const useGetReceipt = (token: string) => {
+  return useQuery<ReceiptResponse>({
+    queryKey: ['receipt', token],
+    queryFn: async () => {
+      const { data } = await apiClient.get(`/api/v1/cart/receipts/${token}`);
+      return data;
+    },
+    enabled: !!token,
+  });
+};
+
+export const useGetMyReceipts = () => {
+  return useQuery<ReceiptListItem[], Error>({
+    queryKey: ['my-receipts'],
+    queryFn: async () => {
+      const { data } = await apiClient.get('/api/v1/cart/receipts');
+      return data;
+    },
+  });
+};
+
+export const useImportCart = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ new_cart_id: string; message: string }, Error, string>({
+    mutationFn: async (sharedCartId: string) => {
+      const { data } = await apiClient.post(`/api/v1/cart/import/${sharedCartId}`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['carts'] });
+    },
+  });
+};
+
+export const useFetchSharedCart = (cartId: string | null) => {
+  return useQuery({
+    queryKey: ['shared-cart', cartId],
+    queryFn: async () => {
+      const { data } = await apiClient.get(`/api/v1/cart/shared/${cartId}`);
+      return data;
+    },
+    enabled: !!cartId,
   });
 };

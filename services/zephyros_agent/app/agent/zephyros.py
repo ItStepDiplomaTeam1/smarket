@@ -1,60 +1,107 @@
 import os
 from pydantic_ai import Agent
 from pydantic_ai.models import Model
+from pydantic_ai.models.cerebras import CerebrasModel
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_ai.providers.cerebras import CerebrasProvider
 from pydantic_ai.models.google import GoogleModel
+from dataclasses import replace
+from pydantic_ai.capabilities import PrepareTools
+from pydantic_ai.tools import ToolDefinition, RunContext
 
 from app.config import settings
 from app.deps import AgentDeps
 from app.schemas import ZephyrosResponse
 from app.tools import (
-    search_catalog,
-    compare_product_offers,
+    search_and_compare_offers,
     get_user_cart,
     add_product_to_cart,
+    clear_user_cart,
+    remove_item_from_cart,
+    compare_cart_stores,
+    get_product_reviews,
+    create_product_review,
 )
 
-# Set Gemini environment variables eagerly if available during startup
 if settings.GEMINI_API_KEY:
     os.environ["GEMINI_API_KEY"] = settings.GEMINI_API_KEY
     os.environ["GOOGLE_API_KEY"] = settings.GEMINI_API_KEY
 
-def get_default_model() -> Model:
-    if settings.GEMINI_API_KEY:
-        return GoogleModel("gemini-1.5-flash")
-    return OpenAIChatModel(
-        model_name="llama-3.3-70b-versatile",
-        provider=OpenAIProvider(
-            base_url="https://api.groq.com/openai/v1",
-            api_key=settings.GROQ_API_KEY or "stub",
-        ),
-    )
+# Порядок провайдеров для автоматического перебора, если явный provider не передан
+PROVIDER_CHAIN = ["groq", "gemini", "openrouter", "cerebras"]
 
-model = get_default_model()
 
-def get_agent_model(provider: str | None, model_name: str | None, attempt: int = 0) -> Model:
-    prov = (provider or "").lower()
-    if not prov:
-        prov = "gemini" if settings.GEMINI_API_KEY else "groq"
+def _provider_available(prov: str) -> bool:
+    return {
+        "openrouter": bool(settings.OPENROUTER_API_KEY),
+        "gemini": bool(settings.GEMINI_API_KEY),
+        "groq": bool(settings.GROQ_API_KEY),
+        "cerebras": bool(settings.CEREBRAS_API_KEY),
+    }.get(prov, False)
 
-    if prov == "gemini":
-        if settings.GEMINI_API_KEY:
-            os.environ["GEMINI_API_KEY"] = settings.GEMINI_API_KEY
-            os.environ["GOOGLE_API_KEY"] = settings.GEMINI_API_KEY
-        gemini_models = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-3.1-flash-lite"]
-        m_name = model_name or gemini_models[attempt % len(gemini_models)]
-        return GoogleModel(m_name)
-    else:
-        groq_models = ["llama-3.3-70b-versatile", "gemma2-9b-it", "llama-3.1-8b-instant"]
-        m_name = model_name or groq_models[attempt % len(groq_models)]
+
+def available_provider_chain() -> list[str]:
+    """Провайдеры в порядке приоритета, для которых реально задан ключ."""
+    return [p for p in PROVIDER_CHAIN if _provider_available(p)]
+
+
+def build_model(provider: str, model_name: str | None = None) -> Model:
+    """Собрать Model для конкретного провайдера. Бросает ValueError, если ключа нет."""
+    if provider == "openrouter":
+        if not settings.OPENROUTER_API_KEY:
+            raise ValueError("OPENROUTER_API_KEY is not configured")
         return OpenAIChatModel(
-            model_name=m_name,
+            model_name=model_name or settings.OPENROUTER_MODEL,
             provider=OpenAIProvider(
-                base_url="https://api.groq.com/openai/v1",
-                api_key=settings.GROQ_API_KEY or "stub",
+                base_url="https://openrouter.ai/api/v1",
+                api_key=settings.OPENROUTER_API_KEY,
             ),
         )
+
+    if provider == "gemini":
+        if not settings.GEMINI_API_KEY:
+            raise ValueError("GEMINI_API_KEY is not configured")
+        return GoogleModel(model_name or settings.GEMINI_MODEL)
+
+    if provider == "groq":
+        if not settings.GROQ_API_KEY:
+            raise ValueError("GROQ_API_KEY is not configured")
+        return OpenAIChatModel(
+            model_name=model_name or settings.GROQ_MODEL,
+            provider=OpenAIProvider(
+                base_url="https://api.groq.com/openai/v1",
+                api_key=settings.GROQ_API_KEY,
+            ),
+        )
+
+    if provider == "cerebras":
+        if not settings.CEREBRAS_API_KEY:
+            raise ValueError("CEREBRAS_API_KEY is not configured")
+        return CerebrasModel(
+            model_name=model_name or settings.CEREBRAS_MODEL,
+            provider=CerebrasProvider(api_key=settings.CEREBRAS_API_KEY),
+        )
+
+    raise ValueError(f"Unknown provider: {provider}")
+
+
+def get_default_model() -> Model:
+    """Модель для инициализации Agent(...) при импорте модуля. Реальный выбор
+    провайдера на запрос происходит в main.py через build_model()."""
+    chain = available_provider_chain()
+    if not chain:
+        # Не роняем импорт модуля, если ни один ключ не задан — health check должен
+        # оставаться живым, чтобы это было видно в логах, а не в падении контейнера.
+        return OpenAIChatModel(
+            model_name="llama-3.3-70b-versatile",
+            provider=OpenAIProvider(base_url="https://api.groq.com/openai/v1", api_key="stub"),
+        )
+    return build_model(chain[0])
+
+
+default_model = get_default_model()
+
 
 SYSTEM_PROMPT = """
 You are Zephyros — a smart AI shopping assistant for the Smarket price aggregator platform.
@@ -74,8 +121,9 @@ Use for: introductory sentences, explanations, confirmations.
 
 ### "table"
 { "type": "table", "title": "<string|null>", "columns": ["<col>", ...], "rows": [["<cell>", ...], ...], "highlight_row": <int|null> }
-Use for: price comparison across stores. Set highlight_row to the index of the cheapest offer.
-Columns for product comparison MUST be: ["Назва", "Магазин", "Ціна", "Наявність"]
+Use for: price comparison across stores, or full cart store comparisons. Set highlight_row to the index of the cheapest offer.
+- Columns for product comparison MUST be: ["Назва", "Магазин", "Ціна", "Наявність"]
+- Columns for cart comparison MUST be: ["Супермаркет", "Сума кошика", "Знайдено товарів", "Статус"]
 "Наявність" cell must be boolean true or false.
 
 ### "product_card"
@@ -91,9 +139,15 @@ Use for: grouping results into named tabs (e.g. by category or by store). Each t
 Use for: asking the user to narrow down their request. Always provide 2–4 specific options.
 
 ### "action_button"
-{ "type": "action_button", "label": "<string>", "action": "add_to_cart", "payload": { "product_id": <int>, "quantity": <int>, "store_id": "<string>" } }
-Use for: proposing an action. NEVER call add_product_to_cart tool directly — show this button first.
-When the user replies with a confirmation (e.g. "так", "додай", "yes") — THEN call add_product_to_cart tool.
+{ "type": "action_button", "label": "<string>", "action": "<add_to_cart|navigate|apply_filters>", "payload": <dict> }
+Use for: proposing an action.
+Actions and their payloads:
+1. "add_to_cart": payload: { "product_id": <int>, "quantity": <int>, "store_id": "<string>" }
+   - NEVER call add_product_to_cart tool directly — show this button first. Only call add_product_to_cart tool AFTER the user replies with a confirmation (e.g. "так", "додай", "yes").
+2. "navigate": payload: { "route": "<string>" }
+   - Use to navigate the browser. Example routes: "/cart" (shopping cart page), "/shops/metro" (Metro store page), "/products/123" (product detail page).
+3. "apply_filters": payload: { "retail_chain": "<string|null>", "query": "<string|null>", "category_slug": "<string|null>", "price_min": <float|null>, "price_max": <float|null> }
+   - Use to apply store/price/category filters to the main product catalog view.
 
 ### "badge"
 { "type": "badge", "variant": "<savings|best_price|warning|info>", "label": "<string>", "value": "<string>" }
@@ -111,10 +165,10 @@ Use for: visual separation between sections.
 
 ## BEHAVIOR RULES
 
-1. ALWAYS call search_catalog first when a user asks about any product. Never invent product data.
-2. After search results:
-   - match_percentage >= 80% → call compare_product_offers, then build a "table" block with results.
-   - match_percentage < 80% → build a "clarification" block with 2–4 options.
+1. ALWAYS call search_and_compare_offers first when a user asks about any product. Never invent product data.
+2. After tool execution:
+   - If the results contain products with match_percentage >= 80%, build a "table" block with the matched product offers across stores.
+   - If match_percentage < 80% or results are ambiguous, build a "clarification" block with 2–4 options.
 3. After 3 failed clarification attempts → build a "fallback" block.
 4. When showing price comparison: always add a "badge" block with variant "savings" showing how much cheaper the best option is vs the most expensive.
 5. After comparison, add ONE "action_button" with action "add_to_cart" for the best-price product.
@@ -122,18 +176,37 @@ Use for: visual separation between sections.
 7. Use "tabs" when results span multiple product categories.
 8. Respond in the same language the user writes in (Ukrainian or Russian).
 9. Always wrap your entire answer in {"blocks": [...]} — no raw text outside this JSON.
-10. CRITICAL: NEVER invent or include block types representing tool/function calls (like "type": "function") in your "blocks" list. If you need to search, compare, or get the cart, call the corresponding tools directly. The JSON output blocks must only contain the allowed UI element types (text, table, product_card, tabs, clarification, action_button, badge, fallback, divider).
+10. CRITICAL: NEVER invent or include block types representing tool/function calls (like "type": "function") in your "blocks" list. Call tools directly.
+11. CART ACTIONS:
+    - If the user asks to empty or clear their cart, call `clear_user_cart`.
+    - If the user asks to remove a product from their cart (e.g., "видали молоко"), search for the product in their cart first, get the ID, and call `remove_item_from_cart`.
+    - If the user asks to compare or optimize their cart (e.g. "де дешевше мій кошик"), call `compare_cart_stores`. If successful, render a "table" block with columns ["Супермаркет", "Сума кошика", "Знайдено товарів", "Статус"], and add an action_button to navigate to "/cart".
+12. REVIEWS ACTIONS:
+    - If the user asks about reviews/ratings of a product, call `get_product_reviews` and summarize the results.
+    - If the user wants to leave/submit a review (e.g. "постав 5 зірок шоколадці"), call `create_product_review`.
+13. NAVIGATION & FILTER ACTIONS:
+    - If the user asks to navigate (e.g., "відкрий кошик" or "покажи супермаркет Metro"), return an `action_button` with action "navigate" and route "/cart" or "/shops/metro".
+    - If the user asks to filter catalog (e.g. "покажи молоко до 40 грн у Novus"), return an `action_button` with action "apply_filters" and the corresponding parameters in the payload.
 """
 
-agent: Agent[AgentDeps, str] = Agent(
-    model=model,
+def normalize_tool_strict(ctx: RunContext, tool_defs: list[ToolDefinition]) -> list[ToolDefinition]:
+    return [replace(t, strict=False) for t in tool_defs]
+
+
+agent: Agent[AgentDeps, ZephyrosResponse] = Agent(
+    model=default_model,
     deps_type=AgentDeps,
-    output_type=str,
+    output_type=ZephyrosResponse,
     system_prompt=SYSTEM_PROMPT,
-    retries=3,
+    retries=2,
+    capabilities=[PrepareTools(normalize_tool_strict)],
 )
 
-agent.tool(search_catalog)
-agent.tool(compare_product_offers)
+agent.tool(search_and_compare_offers)
 agent.tool(get_user_cart)
 agent.tool(add_product_to_cart)
+agent.tool(clear_user_cart)
+agent.tool(remove_item_from_cart)
+agent.tool(compare_cart_stores)
+agent.tool(get_product_reviews)
+agent.tool(create_product_review)

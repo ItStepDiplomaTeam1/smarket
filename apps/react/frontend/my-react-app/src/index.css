@@ -5,12 +5,38 @@
 @theme {
   --font-inter: 'Inter', sans-serif;
   --font-manrope: 'Manrope', sans-serif;
+
+  --color-admin-bg: var(--admin-bg);
+  --color-admin-surface: var(--admin-surface);
+  --color-sidebar-text: var(--sidebar-text);
+  --color-admin-text-bold: var(--admin-text-bold);
+  --color-admin-text-regular: var(--admin-text-regular);
 }
+
+@variant dark (&:where(.dark, .dark *));
+
+:root {
+  --admin-bg: #F3F4F6;
+  --admin-surface: #FFFFFF;
+  --admin-text-bold: #265447;
+  --admin-text-regular: #6D8279;
+  --sidebar-text: #6D8279;
+}
+
+.dark {
+  --admin-bg: #111A17;
+  --admin-surface: #1C2723;
+  --admin-text-bold: #FFFFFF;
+  --admin-text-regular: #9CA3AF;
+  --sidebar-text: #4ADE80;
+}
+
+@variant dark (&:where(.dark, .dark *));
 
 @keyframes chatIn {
   from {
     opacity: 0;
-    transform: scale(0.85) translateY(12px);
+    transform: scale(0.97) translateY(8px);
   }
   to {
     opacity: 1;
@@ -37,5 +63,86 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes sweep {
+  from {
+    transform: translateX(-40%);
+  }
+  to {
+    transform: translateX(140%);
+  }
+}
+
+/* View Transitions API Animations */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 300ms;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+::view-transition-old(root) {
+  animation-name: page-fade-out;
+}
+
+::view-transition-new(root) {
+  animation-name: page-fade-in-slide-up;
+}
+
+@keyframes page-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes page-fade-in-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fallback/universal mounting transitions */
+.animate-page-enter {
+  animation: page-fade-in-slide-up 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes modal-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-scale-up {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-modal-fade-in {
+  animation: modal-fade-in 200ms ease-out forwards;
+}
+
+.animate-modal-scale-up {
+  animation: modal-scale-up 300ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  ::view-transition-group(root) {
+    animation: none !important;
   }
 }

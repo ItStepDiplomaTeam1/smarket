@@ -1,10 +1,13 @@
+import datetime
 import os
+import uuid
 from contextlib import asynccontextmanager
 from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
+from faststream.rabbit import RabbitBroker, RabbitExchange, ExchangeType
 from granian import Granian
 from granian.constants import Interfaces
 from loguru import logger
@@ -14,14 +17,22 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from services.auth_service.database.session import _get_engine
 from services.auth_service.plugins.logger import setup_logger
+from services.auth_service.plugins.security.auth_cache import (
+    close_auth_cache,
+    initialize_auth_cache,
+)
 from services.auth_service.plugins.security.limiters.auth_limiter import auth_limiter
 from services.auth_service.plugins.security.secrets.load_secret import get_secret
-from services.auth_service.routers.auth import router as auth_router
-from services.auth_service.routers.oauth import router as oauth_router
 from services.auth_service.routers.admin import router as admin_router
+from services.auth_service.routers.auth import router as auth_router
+from services.auth_service.routers.internal import router as internal_router
+from services.auth_service.routers.oauth import router as oauth_router
 
 setup_logger()
 
+rmq_url = os.getenv("RABBITMQ_URL") or "amqp://localhost:5672/"
+broker = RabbitBroker(rmq_url)
+smarket_events_exchange = RabbitExchange("smarket_events", type=ExchangeType.TOPIC)
 
 def _coerce_int(value: Any, default: int) -> int:
     try:
@@ -36,8 +47,52 @@ async def lifespan(app: FastAPI):
     async with engine.connect() as conn:
         await conn.close()
     logger.info("DB connection pool pre-warmed")
+    await initialize_auth_cache()
+
+    try:
+        await broker.connect()
+        await broker.publish(
+            {
+                "event_id": str(uuid.uuid4()),
+                "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+                "actor": "system",
+                "event_type": "service.lifecycle",
+                "entity_type": "service",
+                 "entity_id": "auth_service",
+                "message": "Auth Service started",
+                "details": {},
+                "severity": "info"
+            },
+            exchange=smarket_events_exchange,
+            routing_key="service.lifecycle"
+        )
+    except Exception as e:
+        logger.error(f"Failed to connect to RabbitMQ: {e}")
+
     yield
+
+    try:
+        await broker.publish(
+            {
+                "event_id": str(uuid.uuid4()),
+                "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+                "actor": "system",
+                "event_type": "service.lifecycle",
+                "entity_type": "service",
+                "entity_id": "auth_service",
+                "message": "Auth Service shutting down",
+                "details": {},
+                "severity": "warning"
+            },
+            exchange=smarket_events_exchange,
+            routing_key="service.lifecycle"
+        )
+        await broker.close()
+    except Exception as e:
+        logger.error(f"Failed to close RabbitMQ connection: {e}")
+
     await engine.dispose()
+    await close_auth_cache()
     logger.info("DB connection pool closed")
 
 
@@ -68,6 +123,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router, prefix="/auth", tags=["auth"])
     app.include_router(oauth_router, prefix="/auth", tags=["oauth"])
     app.include_router(admin_router, prefix="/admin", tags=["admin"])
+    app.include_router(internal_router, prefix="/internal", tags=["internal"])
 
     @app.get("/health", tags=["system"])
     async def health() -> dict:

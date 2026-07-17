@@ -7,6 +7,8 @@ import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { useFetchCarts, useUpdateCartItem } from '@/hooks/api/useCartApi';
 import { useCartStore } from '@/modules/Cart/store/useCartStore';
 import { generateSlug } from '@/shared/utils/url'; 
+import { useFavoritesStore } from '@/shared/context/favoritesStore';
+import { useNavigate } from 'react-router-dom';
 
 import zagluska from '@/shared/assets/Vectorbuttle.svg';
 
@@ -15,6 +17,8 @@ const SmCard = ({ product }: { product: Product }) => {
     const { data: carts } = useFetchCarts();
     const { mutateAsync: updateCartItem } = useUpdateCartItem();
     const { activeCartId } = useCartStore();
+    const { isFavorite, add: addFavorite, remove: removeFavorite } = useFavoritesStore();
+    const navigate = useNavigate();
 
     const [isAdding, setIsAdding] = useState<boolean>(false);
     const userId = user?.id;
@@ -84,13 +88,42 @@ const SmCard = ({ product }: { product: Product }) => {
     return (
         <Link 
             to={`/product/${product.id}-${generateSlug(product.title)}`}
-            className="w-[271px] h-[489px] shrink-0 bg-white border border-[rgba(38,84,71,0.08)] rounded-[16px] p-[16px] flex flex-col box-border cursor-pointer transition-shadow hover:shadow-[0_4px_12px_rgba(38,84,71,0.08)] no-underline text-inherit block"
+            viewTransition
+            className="w-[271px] h-[489px] shrink-0 bg-white border border-[rgba(38,84,71,0.08)] rounded-[16px] p-[16px] flex flex-col box-border cursor-pointer transition-shadow hover:shadow-[0_4px_12px_rgba(38,84,71,0.08)] no-underline text-inherit block relative"
         >
+            <button
+                onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!isAuthenticated) { navigate('/auth'); return; }
+                    if (isFavorite(product.id)) {
+                        removeFavorite(product.id);
+                    } else {
+                        addFavorite({
+                            product_id: product.id,
+                            product_title: product.title,
+                            product_image_url: product.image_url ?? undefined,
+                            product_price: Number(minPrice) || undefined,
+                        });
+                    }
+                }}
+                className={`absolute top-4 right-4 p-1 border-none bg-transparent cursor-pointer transition-all hover:scale-110 z-10 ${
+                    isFavorite(product.id)
+                        ? 'text-[#E11D48]'
+                        : 'text-[#D1D5DB] hover:text-[#E11D48]'
+                }`}
+                title="Додати до улюблених"
+            >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill={isFavorite(product.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                </svg>
+            </button>
             <div className="w-full h-[339px] rounded-[10px] flex justify-center items-center mb-[16px] overflow-hidden">
                 <img 
                     src={product.image_url || zagluska} 
                     alt={product.title} 
                     className="max-w-[80%] max-h-[80%] object-contain" 
+                    style={{ viewTransitionName: `product-image-${product.id}` }}
                 />
             </div>
             <h3 

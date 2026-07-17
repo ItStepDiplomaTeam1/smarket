@@ -1,11 +1,22 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Search, ChevronDown, LogOut, User } from 'lucide-react';
+import { ChevronDown, LogOut } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useUiStore } from '@/store/useUiStore';
 import { apiClient } from '@/lib/apiClient';
+import logoLight from '@/assets/HeaderIcons/Logo-Smarket.svg';
+import logoDark from '@/assets/HeaderIcons/Logo-Smarket-DarkTheme.svg.svg';
+import sidebarIcon from '@/assets/SidebarIcons/Sidebar.svg';
+import { ThemeToggle } from './ThemeToggle';
 
-export const Header: React.FC = () => {
+interface HeaderProps {
+  onToggleSidebar?: () => void;
+}
+
+export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const { user, logout } = useAuthStore();
+  const { isDarkMode, setTheme } = useUiStore();
+  const logo = isDarkMode ? logoDark : logoLight;
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -37,28 +48,17 @@ export const Header: React.FC = () => {
   const initials = displayName.slice(0, 2).toUpperCase();
 
   return (
-    <header className="h-[68px] flex items-center justify-between px-6 bg-surface border border-border rounded-xl shadow-sm z-10 sticky top-0 shrink-0">
-      {/* Search */}
-      <div className="flex items-center gap-4 flex-1">
-        <div className="hidden md:flex relative w-full max-w-md">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search size={16} className="text-textMuted" />
-          </div>
-          <input
-            type="text"
-            placeholder="Пошук товарів, категорій, замовлень"
-            className="w-full pl-10 pr-4 py-2 border border-border rounded-lg text-sm text-textMain focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all bg-surface"
-          />
-        </div>
+    <header className="h-[68px] w-full flex items-center justify-between px-6 lg:px-[10%] bg-surface border-b border-border z-10 sticky top-0 shrink-0">
+      {/* Left side: Logo */}
+      <div className="flex items-center gap-3">
+        <img src={logo} alt="Smarket" className="h-7 w-auto shrink-0" />
       </div>
 
       {/* Right side */}
       <div className="flex items-center gap-3">
-        {/* Bell */}
-        <button className="relative p-2 rounded-full hover:bg-secondary text-textMuted hover:text-primary transition-colors">
-          <Bell size={20} />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accentGreen rounded-full border border-white" />
-        </button>
+        <ThemeToggle isDark={isDarkMode} onChange={setTheme} />
+
+
 
         {/* User menu */}
         <div className="relative" ref={menuRef}>
@@ -88,18 +88,10 @@ export const Header: React.FC = () => {
                 <p className="text-xs text-textMuted truncate">{user?.email}</p>
               </div>
 
-              <button
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-textMain hover:bg-secondary transition-colors"
-                onClick={() => { setMenuOpen(false); }}
-              >
-                <User size={15} className="text-textMuted" />
-                Мій профіль
-              </button>
-
-              <div className="border-t border-border mt-1 pt-1">
+              <div className="py-1">
                 <button
                   onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-accentRed hover:bg-red-50 transition-colors"
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-accentRed hover:bg-red-50 dark:hover:bg-[#173B33] transition-colors"
                 >
                   <LogOut size={15} />
                   Вийти
@@ -108,6 +100,15 @@ export const Header: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Toggle Sidebar Button */}
+        <button
+          onClick={onToggleSidebar}
+          className="p-2 -mr-1 rounded-lg hover:bg-secondary text-[#265447] transition-colors lg:hidden shrink-0"
+          title="Меню"
+        >
+          <img src={sidebarIcon} alt="Меню" className="w-[18px] h-[18px] object-contain shrink-0" />
+        </button>
       </div>
     </header>
   );

@@ -1,16 +1,22 @@
-import { Suspense, lazy } from 'react';
+import { Suspense } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { MainLayout } from '../layouts/MainLayout';
+import { CatalogSkeleton, ShopsSkeleton, PageSkeleton, ProductDetailSkeleton } from '@/shared/ui';
+import { lazyWithRetry } from '@/shared/utils/lazyWithRetry';
+import { RootErrorBoundary } from '@/shared/components/ErrorBoundary/RootErrorBoundary';
 
-const HomePage = lazy(() => import('@/pages/Home/ui/Home.tsx'));
-const AuthPage = lazy(() => import('@/pages/Auth'));
-const Registerform = lazy(() => import('@/pages/Register/ui/RegisterPage.tsx')); 
-const ForgotPassword = lazy(() => import('@/pages/ForgotPassword/ui/ForgotPasswordPage.tsx')); 
-const LoginPage = lazy(() => import('@/pages/Login/ui/LoginPage.tsx'));
-const ProductDetail = lazy(() => import('@/pages/ProductDetail/ui/ProductDetail.tsx'));
-const Profile = lazy(() => import('@/pages/Profile/ui/ProfilePage.tsx'));
-const Catalog = lazy(() => import('@/pages/Catalog/ui/Catalog.tsx'));
-const CartPage = lazy(() => import('@/pages/Cart/ui/CartPage.tsx').then(m => ({ default: m.CartPage })));
+const HomePage = lazyWithRetry(() => import('@/pages/Home/ui/Home.tsx'));
+const AuthPage = lazyWithRetry(() => import('@/pages/Auth'));
+const Registerform = lazyWithRetry(() => import('@/pages/Register/ui/RegisterPage.tsx')); 
+const ForgotPassword = lazyWithRetry(() => import('@/pages/ForgotPassword/ui/ForgotPasswordPage.tsx')); 
+const ResetPassword = lazyWithRetry(() => import('@/pages/ResetPassword/ui/ResetPasswordPage.tsx'));
+const LoginPage = lazyWithRetry(() => import('@/pages/Login/ui/LoginPage.tsx'));
+const ProductDetail = lazyWithRetry(() => import('@/pages/ProductDetail/ui/ProductDetail.tsx'));
+const Profile = lazyWithRetry(() => import('@/pages/Profile/ui/ProfilePage.tsx'));
+const Catalog = lazyWithRetry(() => import('@/pages/Catalog/ui/Catalog.tsx'));
+const ShopsPage = lazyWithRetry(() => import('@/pages/Shops/ui/ShopPage.tsx'));
+const CartPage = lazyWithRetry(() => import('@/pages/Cart/ui/CartPage.tsx').then(m => ({ default: m.CartPage })));
+const ReceiptPage = lazyWithRetry(() => import('@/pages/ReceiptPage/ReceiptPage.tsx'));
 
 const ProfileDashboard = lazy(() => import('@/modules/Profile/components/MainContent').then(m => ({ default: m.MainContent })));
 const ProfileReviews = lazy(() => import('@/modules/Profile/components/Reviews/ReviewsContent').then(m => ({ default: m.ReviewsContent })));
@@ -21,16 +27,21 @@ const ProfileSettings = lazy(() => import('@/modules/Profile/components/Settings
 const ConfidentialPolicy = lazy(() => import('@/pages/ConfidentionalPolicy/ui/ConfidentialPolicyPage.tsx'));
 const Privacy = lazy(() => import('@/pages/Privacy/ui/PrivacyPage.tsx'));
 const UsingConditions = lazy(() => import('@/pages/UsingConditions/ui/UsingConditionsPage.tsx'));
+const ConfidentialPolicy = lazyWithRetry(() => import('@/pages/ConfidentionalPolicy/ui/ConfidentialPolicyPage.tsx'));
+const Privacy = lazyWithRetry(() => import('@/pages/Privacy/ui/PrivacyPage.tsx'));
+const UsingConditions = lazyWithRetry(() => import('@/pages/UsingConditions/ui/UsingConditionsPage.tsx'));
+const TelegramCallbackPage = lazyWithRetry(() => import('@/pages/TelegramCallback/ui/TelegramCallbackPage.tsx'));
 
 const router = createBrowserRouter([
   {
     path: '/',
     element: <MainLayout />,
+    errorElement: <RootErrorBoundary />,
     children: [
       {
         path: '/',
         element: (
-          <Suspense fallback={<div>Завантаження сторінки...</div>}>
+          <Suspense fallback={<PageSkeleton />}>
             <HomePage />
           </Suspense>
         ),
@@ -38,7 +49,7 @@ const router = createBrowserRouter([
       {
         path: '/auth',
         element: (
-          <Suspense fallback={<div>Завантаження авторизації...</div>}>
+          <Suspense fallback={<PageSkeleton />}>
             <AuthPage />
           </Suspense>
         ),
@@ -46,7 +57,7 @@ const router = createBrowserRouter([
       {
         path: '/register',
         element: (
-          <Suspense fallback={<div>Завантаження реєстрації...</div>}>
+          <Suspense fallback={<PageSkeleton />}>
             <Registerform />
           </Suspense>
         ),
@@ -54,15 +65,23 @@ const router = createBrowserRouter([
       {
         path: '/forgot-password',
         element: (
-          <Suspense fallback={<div>Завантаження відновлення пароля...</div>}>
+          <Suspense fallback={<PageSkeleton />}>
             <ForgotPassword />
+          </Suspense>
+        ),
+      },
+      {
+        path: '/reset-password',
+        element: (
+          <Suspense fallback={<PageSkeleton />}>
+            <ResetPassword />
           </Suspense>
         ),
       },
       {
         path: '/login',
         element: (
-          <Suspense fallback={<div>Завантаження входу...</div>}>
+          <Suspense fallback={<PageSkeleton />}>
             <LoginPage />
           </Suspense>
         ),
@@ -70,7 +89,7 @@ const router = createBrowserRouter([
       {
         path: '/product/:id',
         element: (
-          <Suspense fallback={<div>Завантаження деталей продукту...</div>}>
+          <Suspense fallback={<ProductDetailSkeleton />}>
             <ProductDetail />
           </Suspense>
         ),
@@ -78,7 +97,7 @@ const router = createBrowserRouter([
       {
         path: '/profile',
         element: (
-          <Suspense fallback={<div>Завантаження профілю...</div>}>
+          <Suspense fallback={<PageSkeleton />}>
             <Profile />
           </Suspense>
         ),
@@ -93,7 +112,7 @@ const router = createBrowserRouter([
       {
         path: '/catalog',
         element: (
-          <Suspense fallback={<div>Завантаження каталогу...</div>}>
+          <Suspense fallback={<CatalogSkeleton />}>
             <Catalog />
           </Suspense>
         ),
@@ -101,7 +120,15 @@ const router = createBrowserRouter([
       {
         path: '/cart',
         element: (
-          <Suspense fallback={<div>Завантаження кошика...</div>}>
+          <Suspense fallback={<PageSkeleton />}>
+            <CartPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: '/cart/:cartId',
+        element: (
+          <Suspense fallback={<PageSkeleton />}>
             <CartPage />
           </Suspense>
         ),
@@ -109,7 +136,7 @@ const router = createBrowserRouter([
       {
         path: '/ConfidentialPolicy',
         element: (
-          <Suspense fallback={<div>Завантаження політики конфіденційності...</div>}>
+          <Suspense fallback={<PageSkeleton />}>
             <ConfidentialPolicy />
           </Suspense>
         ),
@@ -117,7 +144,7 @@ const router = createBrowserRouter([
       {
         path: '/Privacy',
         element: (
-          <Suspense fallback={<div>Завантаження обробки персональних даних...</div>}>
+          <Suspense fallback={<PageSkeleton />}>
             <Privacy />
           </Suspense>
         ),
@@ -125,8 +152,32 @@ const router = createBrowserRouter([
       {
         path: '/UsingConditions',
         element: (
-          <Suspense fallback={<div>Завантаження умов використання...</div>}>
+          <Suspense fallback={<PageSkeleton />}>
             <UsingConditions />
+          </Suspense>
+        ),
+      },
+      {
+        path: '/Shops',
+        element: (
+          <Suspense fallback={<ShopsSkeleton />}>
+            <ShopsPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: '/auth/telegram/callback',
+        element: (
+          <Suspense fallback={<PageSkeleton />}>
+            <TelegramCallbackPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: '/receipts/:token',
+        element: (
+          <Suspense fallback={<PageSkeleton />}>
+            <ReceiptPage />
           </Suspense>
         ),
       }

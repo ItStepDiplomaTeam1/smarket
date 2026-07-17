@@ -46,7 +46,7 @@ class ClarificationBlock(BaseModel):
 class ActionButtonBlock(BaseModel):
     type: Literal["action_button"] = "action_button"
     label: str
-    action: Literal["add_to_cart"]
+    action: Literal["add_to_cart", "navigate", "apply_filters"]
     payload: dict[str, Any]
 
 
@@ -85,6 +85,11 @@ UIBlock = Annotated[
 
 class ZephyrosResponse(BaseModel):
     blocks: list[UIBlock]
+
+
+class ErrorResponse(BaseModel):
+    error: str
+    detail: str
 
 
 TabItem.model_rebuild()

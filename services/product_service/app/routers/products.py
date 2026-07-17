@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+# Trigger CI rebuild 2
+import httpx
 from fastapi.responses import ORJSONResponse
-from sqlalchemy import select, func, and_, update
+from sqlalchemy import select, func, and_, update, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from typing import Optional
@@ -22,12 +24,30 @@ from app.shared.schemas import (
     ProductOffersResponse,
     ProductWithStoresResponse,
     CategoryResponse,
+    SubcategoryResponse,
+    GlobalCategoryResponse,
     PaginatedProductsResponse,
     ProductResponse,
     ProductVisibilityUpdate,
+    CategoryVisibilityUpdate,
+    ProductBatchRequest,
 )
 
 from app.database.session import get_db
+from app.config import settings
+
+GLOBAL_CATEGORIES = {
+    1: "Продукти харчування",
+    2: "Напої",
+    3: "Алкоголь",
+    4: "Для дітей",
+    5: "Зоотовари",
+    6: "Краса та здоров'я",
+    7: "Дім та побут",
+    8: "Одяг та взуття",
+    9: "Дача, сад, город",
+    10: "Канцелярія та книги",
+}
 
 router = APIRouter(tags=["Products"], default_response_class=ORJSONResponse)
 
@@ -37,21 +57,16 @@ router = APIRouter(tags=["Products"], default_response_class=ORJSONResponse)
     response_model=PaginatedProductsResponse,
     status_code=status.HTTP_200_OK,
     summary="Список товарів",
-    description="Повертає каталог товарів з підтримкою фільтрів (ціна, магазини, акції) та глобальним сортуванням.",
 )
 async def get_products(
     skip: int = Query(0, ge=0),
     limit: int = Query(12, ge=1, le=1000),
-    stores: Optional[str] = Query(
-        None, description="Магазини через кому (напр. 'atb,novus')"
-    ),
-    category: Optional[str] = Query(None, description="ID категорії або 'products'"),
-    subcategories: Optional[str] = Query(
-        None, description="Слаги підкатегорій через кому"
-    ),
-    offers: Optional[str] = Query(
-        None, description="Фільтри пропозицій (promo, new, save)"
-    ),
+    stores: Optional[str] = Query(None, description="Магазини через кому"),
+    category: Optional[str] = Query(None, description="ID категорії"),
+    subcategories: Optional[str] = Query(None, description="Слаги підкатегорій"),
+    offers: Optional[str] = Query(None, description="Фільтри пропозицій (promo, new, save)"),
+    # === НОВИЙ ПАРАМЕТР З ФРОНТЕНДУ ===
+    discounts: Optional[str] = Query(None, description="Розмір знижки через кому (напр. '10,20,30-50')"),
     max_price: Optional[float] = Query(None, description="Максимальна ціна"),
     search: Optional[str] = Query(None, description="Пошук по назві товару"),
     sort_by: Optional[str] = Query("best_price", description="Сортування"),
@@ -61,9 +76,10 @@ async def get_products(
     store_ids = [s.strip() for s in stores.split(",")] if stores else []
     subcat_list = [s.strip() for s in subcategories.split(",")] if subcategories else []
     offer_list = [o.strip() for o in offers.split(",")] if offers else []
+    # Парсинг знижок
+    discount_list = [d.strip() for d in discounts.split(",")] if discounts else []
 
-    # 2. CTE (Common Table Expression) для ОСТАННІХ ЦІН
-    # Спочатку знаходимо найсвіжіший запис для кожного товару в кожному магазині
+    # 2. CTE для ОСТАННІХ ЦІН (залишається без змін)
     latest_price_subq = (
         select(
             Price.product_id,
@@ -72,7 +88,7 @@ async def get_products(
         ).group_by(Price.product_id, Price.store_id)
     ).subquery("latest_prices")
 
-    # 3. CTE актуальних цін (приєднуємо самі ціни)
+    # 3. CTE актуальних цін (залишається без змін)
     current_prices_stmt = select(
         Price.product_id, Price.store_id, Price.price, Price.old_price, Price.in_stock
     ).join(
@@ -84,7 +100,6 @@ async def get_products(
         ),
     )
 
-    # Якщо користувач вибрав конкретні магазини, шукаємо по МЕРЕЖІ (retail_chain)
     if store_ids:
         current_prices_stmt = current_prices_stmt.join(
             Store, Price.store_id == Store.external_id
@@ -92,17 +107,23 @@ async def get_products(
 
     current_prices_cte = current_prices_stmt.cte("current_prices")
 
-    # 4. Агрегація цін для кожного товару (знаходимо мінімальну ціну та чи є акція)
+    # === 4. МОДИФІКАЦІЯ: Агрегація цін + розрахунок МАКСИМАЛЬНОГО ВІДСОТКА ЗНИЖКИ ===
+    discount_percent_expr = func.coalesce(
+        ((current_prices_cte.c.old_price - current_prices_cte.c.price) / current_prices_cte.c.old_price) * 100,
+        0
+    )
+
     product_stats_subq = (
         select(
             current_prices_cte.c.product_id,
             func.min(current_prices_cte.c.price).label("min_price"),
-            # Використовуємо bool_or щоб перевірити чи є хоча б в одному магазині стара ціна
             func.bool_or(current_prices_cte.c.old_price.isnot(None)).label("has_promo"),
+            # Обчислюємо найкращу знижку на товар серед усіх доступних магазинів
+            func.max(discount_percent_expr).label("max_discount_percent"),
         ).group_by(current_prices_cte.c.product_id)
     ).subquery("product_stats")
 
-    # 5. Будуємо базовий запит Товарів, приєднуючи статистику цін
+    # 5. Будуємо базовий запит Товарів
     base_stmt = (
         select(Product, product_stats_subq.c.min_price, product_stats_subq.c.has_promo)
         .join(product_stats_subq, Product.id == product_stats_subq.c.product_id)
@@ -112,26 +133,44 @@ async def get_products(
     # 6. Застосування Фільтрів Фронтенду
     if search:
         base_stmt = base_stmt.where(Product.title.ilike(f"%{search}%"))
-
-    # Фільтр по категорії (ігноруємо текстове 'products' з фронтенду)
     if category and category.isdigit():
         base_stmt = base_stmt.where(Product.canonical_category_id == int(category))
-
-    # Фільтр "Підкатегорії" (якщо є поле slug в Category)
     if subcat_list:
         base_stmt = base_stmt.join(Category).where(Category.slug.in_(subcat_list))
-
-    # Фільтр "Ціна до"
     if max_price is not None:
         base_stmt = base_stmt.where(product_stats_subq.c.min_price <= max_price)
 
-    # Фільтри пропозицій
+    # Фільтри пропозицій (вже працюють за ключами 'promo', 'new', 'save')
     if "promo" in offer_list or "save" in offer_list:
         base_stmt = base_stmt.where(product_stats_subq.c.has_promo.is_(True))
-
     if "new" in offer_list:
         fourteen_days_ago = datetime.now(timezone.utc) - timedelta(days=14)
         base_stmt = base_stmt.where(Product.created_at >= fourteen_days_ago)
+
+    # === НОВИЙ ФІЛЬТР: Розмір знижки ===
+    if discount_list:
+        discount_conditions = []
+        for d in discount_list:
+            if "-" in d:  # Якщо прийшов діапазон, наприклад "10-30"
+                try:
+                    low, high = map(float, d.split("-"))
+                    discount_conditions.append(
+                        and_(
+                            product_stats_subq.c.max_discount_percent >= low,
+                            product_stats_subq.c.max_discount_percent <= high
+                        )
+                    )
+                except ValueError:
+                    continue
+            else:  # Якщо прийшло одне число, наприклад "20" (означає від 20% і вище)
+                try:
+                    val = float(d)
+                    discount_conditions.append(product_stats_subq.c.max_discount_percent >= val)
+                except ValueError:
+                    continue
+        
+        if discount_conditions:
+            base_stmt = base_stmt.where(or_(*discount_conditions))
 
     base_stmt = base_stmt.where(Product.is_hidden == False)
 
@@ -182,7 +221,7 @@ async def get_products(
         .where(Price.product_id.in_(product_ids))
     )
     if store_ids:
-        offers_stmt = offers_stmt.where(Price.store_id.in_(store_ids))
+        offers_stmt = offers_stmt.join(Store, Price.store_id == Store.external_id).where(Store.retail_chain.in_(store_ids))
 
     offers_result = await db.execute(offers_stmt)
     prices = offers_result.scalars().all()
@@ -362,11 +401,217 @@ async def get_products_by_store(
     summary="Отримати список категорій",
 )
 async def get_categories(
+    include_hidden: bool = Query(False, description="Показувати приховані категорії"),
     db: AsyncSession = Depends(get_db),
 ):
-    stmt = select(Category).order_by(Category.name)
+    stmt = select(Category)
+    if not include_hidden:
+        stmt = stmt.where(Category.is_hidden == False)
+    stmt = stmt.order_by(Category.name)
     result = await db.execute(stmt)
     return list(result.scalars().all())
+
+
+@router.get(
+    "/categories/{main_category_id}/subcategories",
+    response_model=list[SubcategoryResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Підкатегорії за головною категорією",
+    description=(
+        "Повертає всі неприховані категорії (підкатегорії) "
+        "для заданого main_category_id (цілочисельний ідентифікатор 1–10). "
+        "Кожна підкатегорія містить product_count — кількість видимих "
+        "товарів в цій підкатегорії."
+    ),
+)
+async def get_subcategories_by_main_category(
+    main_category_id: int,
+    db: AsyncSession = Depends(get_db),
+):
+    """Повертає підкатегорії (з product_count) для заданого main_category_id."""
+    product_count_expr = (
+        select(func.count(Product.id))
+        .where(
+            Product.canonical_category_id == Category.id,
+            Product.is_hidden == False,
+        )
+        .correlate(Category)
+        .scalar_subquery()
+    )
+
+    stmt = (
+        select(
+            Category.id,
+            Category.slug,
+            Category.name,
+            Category.main_category_id,
+            product_count_expr.label("product_count"),
+        )
+        .where(
+            Category.main_category_id == main_category_id,
+            Category.is_hidden == False,
+        )
+        .order_by(Category.name)
+    )
+
+    result = await db.execute(stmt)
+    rows = result.all()
+
+    return [
+        SubcategoryResponse(
+            id=row.id,
+            slug=row.slug,
+            name=row.name,
+            main_category_id=row.main_category_id,
+            product_count=row.product_count or 0,
+        )
+        for row in rows
+    ]
+
+
+@router.patch(
+    "/categories/{category_id}/visibility",
+    response_model=CategoryResponse,
+)
+async def update_category_visibility(
+    category_id: int,
+    body: CategoryVisibilityUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Category).where(Category.id == category_id)
+    )
+    category = result.scalar_one_or_none()
+
+    if category is None:
+        raise HTTPException(status_code=404, detail="Категорію не знайдено")
+
+    category.is_hidden = body.is_hidden
+    await db.commit()
+    await db.refresh(category)
+    return category
+
+
+async def update_search_index_visibility(product_ids: list[int], is_hidden: bool):
+    """Надсилає PATCH запит до search_service для часткового оновлення is_hidden"""
+    if not product_ids:
+        return
+        
+    documents = [{"id": pid, "is_hidden": is_hidden} for pid in product_ids]
+    
+    # Розбиваємо на чанки по 1000 документів, щоб не перевантажувати мережу
+    chunk_size = 1000
+    
+    async with httpx.AsyncClient() as client:
+        for i in range(0, len(documents), chunk_size):
+            chunk = documents[i:i + chunk_size]
+            try:
+                await client.patch(
+                    f"{settings.SEARCH_SERVICE_URL}/api/v1/index",
+                    json={"documents": chunk},
+                    timeout=10.0
+                )
+            except Exception as e:
+                print(f"[ProductService] Error updating search index: {e}")
+
+@router.get(
+    "/categories/global",
+    response_model=list[GlobalCategoryResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Глобальні категорії",
+)
+async def get_global_categories(
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Повертає 10 глобальних категорій зі статусом is_hidden.
+    Якщо хоча б одна підкатегорія видима, глобальна категорія вважається видимою.
+    Якщо всі підкатегорії приховані (або їх немає), вона прихована.
+    """
+    stmt = (
+        select(
+            Category.main_category_id,
+            func.bool_and(Category.is_hidden).label("all_hidden")
+        )
+        .where(Category.main_category_id.isnot(None))
+        .group_by(Category.main_category_id)
+    )
+    result = await db.execute(stmt)
+    
+    status_map = {row.main_category_id: row.all_hidden for row in result.all()}
+    
+    response = []
+    for cid, name in GLOBAL_CATEGORIES.items():
+        is_hidden = status_map.get(cid, True)
+        response.append(GlobalCategoryResponse(
+            id=cid,
+            name=name,
+            is_hidden=is_hidden
+        ))
+        
+    return response
+
+@router.patch(
+    "/categories/global/{main_category_id}/visibility",
+    response_model=GlobalCategoryResponse,
+)
+async def update_global_category_visibility(
+    main_category_id: int,
+    body: CategoryVisibilityUpdate,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Приховує або показує ВСІ підкатегорії цієї глобальної категорії,
+    а також ВСІ товари в цих підкатегоріях.
+    Синхронізує статус товарів із Meilisearch.
+    """
+    if main_category_id not in GLOBAL_CATEGORIES:
+        raise HTTPException(status_code=404, detail="Глобальну категорію не знайдено")
+        
+    # 1. Знаходимо всі ID категорій
+    cat_stmt = select(Category.id).where(Category.main_category_id == main_category_id)
+    cat_result = await db.execute(cat_stmt)
+    category_ids = cat_result.scalars().all()
+    
+    if not category_ids:
+        return GlobalCategoryResponse(
+            id=main_category_id,
+            name=GLOBAL_CATEGORIES[main_category_id],
+            is_hidden=body.is_hidden
+        )
+        
+    # 2. Знаходимо всі товари в цих категоріях (щоб оновити Meilisearch)
+    prod_stmt = select(Product.id).where(Product.canonical_category_id.in_(category_ids))
+    prod_result = await db.execute(prod_stmt)
+    product_ids = prod_result.scalars().all()
+    
+    # 3. Оновлюємо статус в категоріях (PostgreSQL)
+    await db.execute(
+        update(Category)
+        .where(Category.id.in_(category_ids))
+        .values(is_hidden=body.is_hidden)
+    )
+    
+    # 4. Оновлюємо статус в товарах (PostgreSQL)
+    if product_ids:
+        await db.execute(
+            update(Product)
+            .where(Product.id.in_(product_ids))
+            .values(is_hidden=body.is_hidden)
+        )
+        
+    await db.commit()
+    
+    # 5. Оновлюємо Meilisearch (fire-and-forget, але await для надійності)
+    if product_ids:
+        import asyncio
+        asyncio.create_task(update_search_index_visibility(list(product_ids), body.is_hidden))
+        
+    return GlobalCategoryResponse(
+        id=main_category_id,
+        name=GLOBAL_CATEGORIES[main_category_id],
+        is_hidden=body.is_hidden
+    )
 
 
 @router.patch(
@@ -379,7 +624,9 @@ async def update_product_visibility(
     db: AsyncSession = Depends(get_db),
 ):
     result = await db.execute(
-        select(Product).where(Product.id == product_id)
+        select(Product)
+        .options(selectinload(Product.category))
+        .where(Product.id == product_id)
     )
     product = result.scalar_one_or_none()
 
@@ -389,7 +636,180 @@ async def update_product_visibility(
     product.is_hidden = body.is_hidden
     await db.commit()
     await db.refresh(product)
+    
+    # Синхронізація з Meilisearch
+    import asyncio
+    asyncio.create_task(update_search_index_visibility([product_id], body.is_hidden))
+    
     return product
+
+
+@router.post(
+    "/batch/details",
+    response_model=list[ProductDetail],
+    status_code=status.HTTP_200_OK,
+    summary="Деталі декількох товарів",
+)
+async def get_products_batch_details(
+    request: ProductBatchRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    if not request.product_ids:
+        return []
+
+    # 1. Завантажуємо товари
+    products_result = await db.scalars(
+        select(Product)
+        .options(selectinload(Product.category))
+        .where(Product.id.in_(request.product_ids))
+    )
+    products = list(products_result.all())
+    
+    if not products:
+        return []
+        
+    found_product_ids = [p.id for p in products]
+
+    # 2. Останні ціни для кожного магазину
+    latest_price_subq = (
+        select(
+            Price.product_id,
+            Price.store_id,
+            func.max(Price.recorded_at).label("max_recorded_at"),
+        )
+        .where(Price.product_id.in_(found_product_ids))
+        .group_by(Price.product_id, Price.store_id)
+        .subquery()
+    )
+
+    prices_stmt = (
+        select(Price)
+        .options(selectinload(Price.store))
+        .join(
+            latest_price_subq,
+            and_(
+                Price.product_id == latest_price_subq.c.product_id,
+                Price.store_id == latest_price_subq.c.store_id,
+                Price.recorded_at == latest_price_subq.c.max_recorded_at,
+            ),
+        )
+        .where(Price.product_id.in_(found_product_ids))
+        .order_by(Price.product_id, Price.price)
+    )
+
+    prices_result = await db.scalars(prices_stmt)
+    prices = list(prices_result.all())
+
+    # 3. Групуємо ціни по товарах
+    from collections import defaultdict
+    prices_by_product = defaultdict(list)
+    for p in prices:
+        prices_by_product[p.product_id].append(p)
+
+    results = []
+    for product in products:
+        results.append(ProductDetail(
+            id=product.id,
+            ean=product.ean,
+            store_product_id=product.store_product_id,
+            title=product.title,
+            brand=product.brand,
+            unit=product.unit,
+            weight=product.weight,
+            image_url=product.image_url,
+            canonical_category_id=product.canonical_category_id,
+            category=product.category,
+            created_at=product.created_at,
+            prices=prices_by_product[product.id],
+        ))
+    return results
+
+
+@router.post(
+    "/batch/offers",
+    response_model=list[ProductOffersResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Пропозиції для декількох товарів",
+)
+async def get_products_batch_offers(
+    request: ProductBatchRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    if not request.product_ids:
+        return []
+
+    products_result = await db.scalars(
+        select(Product)
+        .options(selectinload(Product.category))
+        .where(Product.id.in_(request.product_ids))
+    )
+    products = list(products_result.all())
+    
+    if not products:
+        return []
+
+    found_product_ids = [p.id for p in products]
+
+    latest_price_subq = (
+        select(
+            Price.product_id,
+            Price.store_id,
+            func.max(Price.recorded_at).label("max_recorded_at"),
+        )
+        .where(Price.product_id.in_(found_product_ids))
+        .group_by(Price.product_id, Price.store_id)
+        .subquery()
+    )
+
+    prices_stmt = (
+        select(Price)
+        .options(selectinload(Price.store))
+        .join(
+            latest_price_subq,
+            and_(
+                Price.product_id == latest_price_subq.c.product_id,
+                Price.store_id == latest_price_subq.c.store_id,
+                Price.recorded_at == latest_price_subq.c.max_recorded_at,
+            ),
+        )
+        .where(Price.product_id.in_(found_product_ids))
+    )
+
+    prices_result = await db.scalars(prices_stmt)
+    prices = list(prices_result.all())
+
+    from collections import defaultdict
+    offers_by_product = defaultdict(list)
+    for price in prices:
+        offers_by_product[price.product_id].append(
+            ProductOfferResponse(
+                store=price.store,
+                price=price.price,
+                old_price=price.old_price,
+                in_stock=price.in_stock,
+                recorded_at=price.recorded_at,
+            )
+        )
+
+    results = []
+    for product in products:
+        results.append(ProductOffersResponse(
+            id=product.id,
+            ean=product.ean,
+            store_product_id=product.store_product_id,
+            title=product.title,
+            brand=product.brand,
+            unit=product.unit,
+            weight=product.weight,
+            image_url=product.image_url,
+            canonical_category_id=product.canonical_category_id,
+            category=product.category,
+            created_at=product.created_at,
+            is_hidden=product.is_hidden,
+            offers=offers_by_product[product.id],
+        ))
+
+    return results
 
 
 @router.get(

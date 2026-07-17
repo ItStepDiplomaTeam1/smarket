@@ -55,6 +55,9 @@ class Store(Base):
     last_parsed_at: Mapped[Optional[datetime.datetime]] = mapped_column(
         "last_parsed_at", DateTime(timezone=True), nullable=True
     )
+    address: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    lat: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    lng: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     prices: Mapped[list["Price"]] = relationship("Price", back_populates="store")
     store_products: Mapped[list["StoreProduct"]] = relationship(
@@ -76,6 +79,13 @@ class Category(Base):
     name: Mapped[str] = mapped_column(String, nullable=False)
     created_at: Mapped[datetime.datetime] = mapped_column(
         "created_at", DateTime(timezone=True), nullable=False
+    )
+    is_hidden: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # main_category_id — integer (1–10) that groups store-specific slugs into universal
+    # top-level categories. Set by products_etl (category_mapping.go). Nullable for
+    # legacy rows that predate the mapping feature.
+    main_category_id: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True
     )
 
     products: Mapped[list["Product"]] = relationship(
@@ -172,7 +182,7 @@ class Price(Base):
     old_price: Mapped[Optional[float]] = mapped_column(Numeric(10, 2), nullable=True)
     in_stock: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     recorded_at: Mapped[datetime.datetime] = mapped_column(
-        "recorded_at", DateTime(timezone=True), nullable=False
+        "recorded_at", DateTime(timezone=True), nullable=False, index=True
     )
 
     product: Mapped["Product"] = relationship("Product", back_populates="prices")

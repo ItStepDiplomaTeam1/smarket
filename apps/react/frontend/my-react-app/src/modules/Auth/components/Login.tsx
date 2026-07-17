@@ -30,8 +30,15 @@ export const LoginForm = () => {
                 const response = await apiClient.post<LoginResponse>('/api/v1/auth/login', { email, password });
                 return response.data;
             } catch (error) {
-                if (axios.isAxiosError(error) && error.response?.data?.message) {
-                    throw new Error(error.response.data.message, { cause: error });
+                if (axios.isAxiosError(error)) {
+                    const detail = error.response?.data?.detail;
+                    if (typeof detail === 'string') {
+                        throw new Error(detail, { cause: error });
+                    } else if (Array.isArray(detail) && detail.length > 0 && detail[0].msg) {
+                        throw new Error(detail[0].msg, { cause: error });
+                    } else if (error.response?.data?.message) {
+                        throw new Error(error.response.data.message, { cause: error });
+                    }
                 }
                 throw new Error('Помилка авторизації. Спробуйте ще раз.', { cause: error });
             }
@@ -60,7 +67,7 @@ export const LoginForm = () => {
 
     return (
         <form className="flex flex-col" onSubmit={handleSubmit}>
-            <label className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Email</label>
+            <label className="text-[13px] font-semibold text-[#265447] dark:text-[#A9B6B0] mb-[8px] block transition-colors">Email</label>
             <input
                 type="email"
                 placeholder="smarket@gmail.com"
@@ -68,10 +75,10 @@ export const LoginForm = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 disabled={loginMutation.isPending}
-                className="w-full h-[44px] border border-[rgba(38,84,71,0.16)] rounded-[10px] px-[16px] mb-[8px] bg-white font-inter text-[14px] text-[#111827] outline-none transition-colors duration-200 focus:border-[#265447]"
+                className="w-full h-[44px] border border-[rgba(38,84,71,0.16)] dark:border-[rgba(38,84,71,0.2)] rounded-[10px] px-[16px] mb-[8px] bg-white dark:bg-[#1D2A25] font-inter text-[14px] text-[#111827] dark:text-[#EAF7F2] outline-none transition-colors duration-200 focus:border-[#265447] dark:focus:border-[#3DAE8B] placeholder-[#D1D5DB] dark:placeholder-[#6D8279]"
             />
 
-            <label className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Пароль</label>
+            <label className="text-[13px] font-semibold text-[#265447] dark:text-[#A9B6B0] mb-[8px] block transition-colors">Пароль</label>
             <div className="relative mb-[8px]">
                 <input
                     type={showPassword ? 'text' : 'password'}
@@ -79,19 +86,19 @@ export const LoginForm = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     disabled={loginMutation.isPending}
-                    className="w-full h-[44px] border border-[rgba(38,84,71,0.16)] rounded-[10px] px-[16px] pr-[40px] bg-white font-inter text-[14px] text-[#111827] outline-none transition-colors duration-200 focus:border-[#265447]"
+                    className="w-full h-[44px] border border-[rgba(38,84,71,0.16)] dark:border-[rgba(38,84,71,0.2)] rounded-[10px] px-[16px] pr-[40px] bg-white dark:bg-[#1D2A25] font-inter text-[14px] text-[#111827] dark:text-[#EAF7F2] outline-none transition-colors duration-200 focus:border-[#265447] dark:focus:border-[#3DAE8B] placeholder-[#D1D5DB] dark:placeholder-[#6D8279]"
                 />
                 <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-[12px] top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer p-0 flex items-center"
                 >
-                    <img src={eyeIcon} alt="toggle" className="w-[18px] h-[18px]" />
+                    <img src={eyeIcon} alt="toggle" className="w-[18px] h-[18px] opacity-70 hover:opacity-100" />
                 </button>
             </div>
 
             <div className="flex justify-end mb-[24px]">
-                <a href="/forgot-password" className="font-inter text-[14px] font-normal leading-[21px] text-[#6D8279] no-underline hover:underline">
+                <a href="/forgot-password" className="font-inter text-[14px] font-normal leading-[21px] text-[#6D8279] dark:text-[#3DAE8B] no-underline hover:underline transition-colors">
                     Забули пароль?
                 </a>
             </div>
@@ -104,15 +111,15 @@ export const LoginForm = () => {
             <button 
                 type="submit" 
                 disabled={loginMutation.isPending}
-                className="flex items-center justify-center gap-[8px] w-full h-[46px] bg-[#265447] text-white rounded-[10px] border-none cursor-pointer font-inter text-[14px] font-bold transition-all duration-200 hover:bg-[#1A3E2F] hover:shadow-md disabled:opacity-50"
+                className="flex items-center justify-center gap-[8px] w-full h-[46px] bg-[#265447] dark:bg-[#3DAE8B] text-white dark:text-[#111A17] rounded-[10px] border-none cursor-pointer font-inter text-[14px] font-bold transition-all duration-200 hover:bg-[#1A3E2F] dark:hover:bg-[#2C9E7C] hover:shadow-md disabled:opacity-50"
             >
-                {loginMutation.isPending && <Loader2 className="w-[18px] h-[18px] animate-spin" />}
+                {loginMutation.isPending && <Loader2 className="w-[18px] h-[18px] animate-spin text-white dark:text-[#111A17]" />}
                 <span>{loginMutation.isPending ? 'Завантаження...' : 'Увійти'}</span>
             </button>
 
-            <p className="text-center text-[14px] mt-[24px] text-[#6B7280]">
+            <p className="text-center text-[14px] mt-[24px] text-[#6B7280] dark:text-[#A9B6B0] transition-colors">
                 У вас немає акаунту?{' '}
-                <Link to="/register" className="text-[#265447] font-semibold no-underline hover:underline">
+                <Link to="/register" viewTransition className="text-[#265447] dark:text-[#3DAE8B] font-semibold no-underline hover:underline transition-colors">
                     Зареєструватися
                 </Link>
             </p>

@@ -17,6 +17,7 @@ type Config struct {
 	ETLQueueName      string `env:"ETL_QUEUE_NAME" envDefault:"etl_tasks"`
 	Environment       string `env:"ENV" envDefault:"development"`
 	SearchServiceURL  string `env:"SEARCH_SERVICE_URL" envDefault:"http://search_service:8083"`
+	ETLAdminKey       string `env:"ETL_ADMIN_KEY,required"`
 }
 
 func LoadConfig() *Config {

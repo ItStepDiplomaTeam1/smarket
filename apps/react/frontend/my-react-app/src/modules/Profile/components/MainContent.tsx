@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { useFetchCarts } from '@/hooks/api/useCartApi';
 import { useFetchUserReviews } from '@/hooks/api/useReviewsApi';
-import { apiClient } from '@/shared/api/apiClient';
+import { useFavoritesStore } from '@/shared/context/favoritesStore';
 
 function formatDate(iso: string): string {
   const months = [
@@ -20,54 +20,18 @@ export function MainContent() {
   const { data: carts } = useFetchCarts();
   const { data: userReviews = [], isLoading: reviewsLoading, isError: reviewsError } = useFetchUserReviews(user?.id);
 
-
-  const latestReviews = useMemo(() => {
-    return [...userReviews]
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 4);
-  }, [userReviews]);
-
-  // Завантажуємо інформацію про товари для відгуків (назва, фото)
-  const [productsMap, setProductsMap] = useState<Record<number, { title: string; image_url: string | null }>>({}); 
+  const navigate = useNavigate();
+  const { items: favorites, load: loadFavorites, isLoaded } = useFavoritesStore();
 
   useEffect(() => {
-    if (latestReviews.length === 0) return;
-
-    const productIds = [...new Set(latestReviews.map((r) => r.product_id))];
-    const idsToFetch = productIds.filter((id) => !productsMap[id]);
-    if (idsToFetch.length === 0) return;
-
-    let cancelled = false;
-    (async () => {
-      const results: Record<number, { title: string; image_url: string | null }> = {};
-      await Promise.all(
-        idsToFetch.map(async (id) => {
-          const { data, status } = await apiClient.get(`/api/v1/products/${id}`, {
-            validateStatus: (s) => s === 200 || s === 404,
-          });
-          if (status === 200 && data?.title) {
-            results[id] = { title: data.title, image_url: data.image_url };
-          } else {
-            results[id] = { title: `Товар #${id}`, image_url: null };
-          }
-        })
-      );
-      if (!cancelled) {
-        setProductsMap((prev) => ({ ...prev, ...results }));
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [latestReviews]);
+    if (!isLoaded) {
+      loadFavorites();
+    }
+  }, [isLoaded, loadFavorites]);
 
   // Відображуване ім'я для привітання: якщо є name — ім'я, інакше email
   const userName = user?.name || user?.email || 'Користувачу';
 
-  const favoriteProducts = [
-    { title: 'Молоко Яготинське пастеризоване 2,6%', category: 'Молочні продукти', price: '54.49 - 61.91 грн', rating: 4.8, views: 400 },
-    { title: 'Вино Marlborough Sun Sauvignon Blanc', category: 'Алкоголь', price: '469.00 - 585.00 грн', rating: 4.9, views: 340 },
-    { title: 'Напій кокосовий Vega Milk', category: 'Молочні продукти', price: '85.49 - 118.00 грн', rating: 4.7, views: 259 },
-    { title: 'Віскі Monkey Shoulder, 40%, 0.7 л', category: 'Алкоголь', price: '999.00 - 1559.00 грн', rating: 4.8, views: 129 },
-  ];
 
   const StarIcon = ({ filled }: { filled: boolean }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill={filled ? "#FFB800" : "#E8E8E8"} className="shrink-0">
@@ -170,27 +134,53 @@ export function MainContent() {
           <div className="bg-white border border-[#265447]/[0.08] shadow-[0_4px_12px_rgba(23,59,51,0.06)] rounded-[16px] py-[24px] px-[24px] flex flex-col h-full">
             <h3 className="font-manrope text-[18px] font-bold text-[#173B33] m-0 mb-[24px]">Обрані товари</h3>
             
-            <div className="flex flex-col gap-[12px] mb-[24px]">
-              {favoriteProducts.map((product, i) => (
-                <div key={i} className="flex items-center justify-between w-full h-[56px]">
-                  <div className="flex items-center gap-[12px] flex-1 min-w-0 pr-[16px]">
-                    <div className="w-[44px] h-[56px] bg-[#F6FAF8] rounded-[5px] shrink-0 border border-[#265447]/[0.08]"></div>
-                    <div className="flex flex-col justify-between h-[56px] py-[2px] min-w-0 flex-1">
-                      <h4 className="font-inter text-[12px] font-medium text-[#173B33] leading-[14px] m-0 line-clamp-2 break-words">{product.title}</h4>
-                      <span className="font-inter text-[10px] text-[#173B33] leading-none m-0">{product.category}</span>
-                      <div className="flex items-center gap-[6px] font-inter text-[10px] text-[#6D8279] leading-none">
-                        <div className="flex items-center gap-[2px]"><SmallStarIcon /><span>{product.rating}</span></div>
-                        <div className="flex items-center gap-[2px]"><EyeIcon /><span>{product.views}</span></div>
+            {favorites.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-[32px] flex-1">
+                <svg className="w-8 h-8 text-[#9CA3AF] mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                </svg>
+                <p className="font-manrope font-semibold text-[14px] text-[#265447] m-0 mb-1">Немає обраних товарів</p>
+                <p className="font-inter text-[12px] text-[#6D8279] m-0">Додайте товари з каталогу, щоб бачити їх тут.</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-[12px] mb-[24px]">
+                {favorites.slice(0, 4).map((product) => (
+                  <div 
+                    key={product.id} 
+                    className="flex items-center justify-between w-full h-[56px] cursor-pointer hover:bg-[#F6FAF8] dark:hover:bg-[#1A2E25]/30 p-1 rounded-[8px] transition-colors"
+                    onClick={() => navigate(`/product/${product.product_id}`)}
+                  >
+                    <div className="flex items-center gap-[12px] flex-1 min-w-0 pr-[16px]">
+                      <div className="w-[44px] h-[56px] bg-[#F6FAF8] dark:bg-[#1A2E25] rounded-[5px] shrink-0 border border-[#265447]/[0.08] dark:border-[rgba(255,255,255,0.08)] flex items-center justify-center overflow-hidden">
+                        {product.product_image_url ? (
+                          <img src={product.product_image_url} alt={product.product_title ?? ''} className="w-full h-full object-contain p-1 mix-blend-multiply dark:mix-blend-normal" />
+                        ) : (
+                          <svg className="w-5 h-5 text-[#9CA3AF]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+                        )}
+                      </div>
+                      <div className="flex flex-col justify-center h-[56px] py-[2px] min-w-0 flex-1">
+                        <h4 className="font-inter text-[12px] font-medium text-[#173B33] dark:text-white leading-[14px] m-0 line-clamp-2 break-words">
+                          {product.product_title ?? `Товар #${product.product_id}`}
+                        </h4>
+                        <span className="font-inter text-[10px] text-[#6D8279] mt-1 leading-none m-0">
+                          Додано {formatDate(product.added_at)}
+                        </span>
                       </div>
                     </div>
+                    <div className="font-manrope text-[14px] font-bold text-[#173B33] dark:text-white text-right shrink-0 whitespace-nowrap">
+                      {product.product_price !== null ? `${product.product_price} ₴` : '—'}
+                    </div>
                   </div>
-                  <div className="font-manrope text-[14px] font-bold text-[#173B33] text-right shrink-0 whitespace-nowrap">{product.price}</div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
 
-            <a href="#" className="flex items-center gap-[2px] font-inter text-[14px] font-semibold text-[#6D8279] mt-auto hover:text-[#265447] transition-colors w-full">
-              Переглянути всі товари
+            <a 
+              href="#" 
+              onClick={(e) => { e.preventDefault(); navigate('/'); }}
+              className="flex items-center gap-[2px] font-inter text-[14px] font-semibold text-[#6D8279] mt-auto hover:text-[#265447] transition-colors w-full"
+            >
+              Перейти до каталогу
               <ArrowRightIcon />
             </a>
           </div>

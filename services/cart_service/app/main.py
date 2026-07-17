@@ -2,18 +2,64 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
 
-from app.routers import cart
+from app.routers import cart, internal, favorites, receipts
 from app.config import settings
-from faststream.rabbit import RabbitBroker
+from faststream.rabbit import RabbitBroker, RabbitExchange, ExchangeType
 from contextlib import asynccontextmanager
 
+import uuid
+import datetime
+import httpx
+
 broker = RabbitBroker(settings.RABBITMQ_URL)
+smarket_events_exchange = RabbitExchange("smarket_events", type=ExchangeType.TOPIC)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    await broker.connect()
+    app.state.http_client = httpx.AsyncClient(
+        limits=httpx.Limits(max_keepalive_connections=20, max_connections=50),
+        timeout=10.0,
+    )
+    try:
+        await broker.connect()
+        await broker.publish(
+            {
+                "event_id": str(uuid.uuid4()),
+                "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+                "actor": "system",
+                "event_type": "service.lifecycle",
+                "entity_type": "service",
+                "entity_id": "cart_service",
+                "message": "Cart Service started",
+                "details": {},
+                "severity": "info"
+            },
+            exchange=smarket_events_exchange,
+            routing_key="service.lifecycle"
+        )
+    except Exception as e:
+        pass
     yield
-    await broker.close()
+    await app.state.http_client.aclose()
+    try:
+        await broker.publish(
+            {
+                "event_id": str(uuid.uuid4()),
+                "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+                "actor": "system",
+                "event_type": "service.lifecycle",
+                "entity_type": "service",
+                "entity_id": "cart_service",
+                "message": "Cart Service shutting down",
+                "details": {},
+                "severity": "warning"
+            },
+            exchange=smarket_events_exchange,
+            routing_key="service.lifecycle"
+        )
+        await broker.close()
+    except Exception:
+        pass
 
 app = FastAPI(
     title="Cart Service",
@@ -31,7 +77,12 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "X-User-Id"],
 )
 
+# More specific routes must be registered before /cart/{cart_id}; otherwise
+# GET /cart/receipts is interpreted as a request for a cart with id "receipts".
+app.include_router(receipts.router)
 app.include_router(cart.router)
+app.include_router(favorites.router)
+app.include_router(internal.router, prefix="/internal", tags=["Internal"])
 
 
 @app.get("/health", tags=["Health"])

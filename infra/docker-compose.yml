@@ -52,7 +52,10 @@ services:
     expose:
       - "8001"
     environment:
-      COOKIE_SECURE: "${COOKIE_SECURE:-false}"
+      COOKIE_SECURE: "${COOKIE_SECURE:-true}"
+      COOKIE_SAMESITE: "${COOKIE_SAMESITE:-none}"
+      COOKIE_DOMAIN: "${COOKIE_DOMAIN:-smarket-api.duckdns.org}"
+      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
     env_file:
       - ../services/auth_service/.env
     depends_on:
@@ -98,9 +101,9 @@ services:
       reviews_service:
         condition: service_healthy
       search_service:
-        condition: service_healthy
+        condition: service_started
       zephyros_agent:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
       <<: *healthcheck-defaults
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health', timeout=3).read()\""]
@@ -177,6 +180,8 @@ services:
       - app.main:app
     expose:
       - "8000"
+    environment:
+      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
     env_file:
       - ../services/product_service/.env
     depends_on:
@@ -237,6 +242,8 @@ services:
       - app.main:app
     expose:
       - "8004"
+    environment:
+      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
     env_file:
       - ../services/reviews_service/.env
     depends_on:
@@ -245,6 +252,44 @@ services:
     healthcheck:
       <<: *healthcheck-defaults
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8004/health', timeout=3).read()\""]
+      start_period: "${SMARKET_API_HEALTH_START_PERIOD:-30s}"
+
+  audit_migration_job:
+    <<: *job-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/audit_service:${IMAGE_TAG:-develop}
+    build:
+      context: ..
+      dockerfile: services/audit_service/Dockerfile
+    command:
+      - sh
+      - -c
+      - cd /app/services/audit_service && alembic upgrade head
+    environment:
+      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
+    env_file:
+      - ../services/audit_service/.env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+
+  audit_service:
+    <<: *api-defaults
+    image: ghcr.io/itstepdiplomateam1/smarket/audit_service:${IMAGE_TAG:-develop}
+    build:
+      context: ..
+      dockerfile: services/audit_service/Dockerfile
+    expose:
+      - "8006"
+    environment:
+      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
+    env_file:
+      - ../services/audit_service/.env
+    depends_on:
+      audit_migration_job:
+        condition: service_completed_successfully
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8006/health', timeout=3).read()\""]
       start_period: "${SMARKET_API_HEALTH_START_PERIOD:-30s}"
 
   redis:
@@ -363,6 +408,10 @@ services:
       - ../services/products_etl/.env
     expose:
       - "8082"
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8082/health || exit 1"]
+      start_period: "${SMARKET_API_HEALTH_START_PERIOD:-30s}"
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -421,6 +470,8 @@ services:
   zephyros_agent:
     <<: *api-defaults
     image: ghcr.io/itstepdiplomateam1/smarket/zephyros_agent:${IMAGE_TAG:-develop}
+    extra_hosts:
+        - "host.docker.internal:host-gateway"
     build:
       context: ..
       dockerfile: services/zephyros_agent/Dockerfile
@@ -444,13 +495,18 @@ services:
       SEARCH_SERVICE_URL: "http://search_service:8083/api/v1"
       PRODUCT_SERVICE_URL: "http://product_service:8000/api/v1"
       CART_SERVICE_URL: "http://cart_service:8002/cart"
+      HTTPS_PROXY: "${HTTPS_PROXY:-${HTTP_PROXY:-}}"
+      HTTP_PROXY: "${HTTP_PROXY:-}"
+      NO_PROXY: "search_service,product_service,cart_service,localhost,127.0.0.1"
     depends_on:
+      redis:
+        condition: service_healthy
       search_service:
-        condition: service_healthy
+        condition: service_started
       product_service:
-        condition: service_healthy
+        condition: service_started
       cart_service:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
       <<: *healthcheck-defaults
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8005/health', timeout=3).read()\""]

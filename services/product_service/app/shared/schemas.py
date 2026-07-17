@@ -10,14 +10,50 @@ class StoreResponse(BaseModel):
     city: Optional[str] = None
     is_active: bool
     synced_at: datetime.datetime
+    address: Optional[str] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class StoreStatsResponse(BaseModel):
+    total_products: int
+    promo_products: int
+    max_savings: int
+    store_name: str
+    store_description: str
+    store_logo_url: str
 
 
 class CategoryResponse(BaseModel):
     id: int
     slug: str
     name: str
+    is_hidden: bool = False
+    main_category_id: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class GlobalCategoryResponse(BaseModel):
+    """Глобальна категорія, сформована на льоту."""
+    id: int
+    name: str
+    is_hidden: bool
+
+
+class SubcategoryResponse(BaseModel):
+    """Category row returned by the /categories/{main_category_id}/subcategories endpoint.
+
+    product_count is the number of visible (non-hidden) products in this subcategory.
+    """
+
+    id: int
+    slug: str
+    name: str
+    main_category_id: Optional[int] = None
+    product_count: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -133,3 +169,11 @@ class ProductFilters(BaseModel):
 
 class ProductVisibilityUpdate(BaseModel):
     is_hidden: bool
+
+
+class CategoryVisibilityUpdate(BaseModel):
+    is_hidden: bool
+
+
+class ProductBatchRequest(BaseModel):
+    product_ids: list[int]

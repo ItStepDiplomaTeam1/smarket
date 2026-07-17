@@ -10,6 +10,15 @@ router = APIRouter()
 
 # Динамічна труба для всього, що йде на /products/*
 @router.api_route(
+    "",
+    methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
+    include_in_schema=False,
+)
+async def proxy_to_product_root(request: Request):
+    return await proxy_to_product(request, "")
+
+
+@router.api_route(
     "/{path:path}",
     methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
     include_in_schema=False,
@@ -24,7 +33,7 @@ async def proxy_to_product(request: Request, path: str):
     headers.pop("host", None)
 
     if request.method in ["POST", "PUT", "DELETE", "PATCH"]:
-        auth_header = headers.get("Authorization")
+        auth_header = request.headers.get("Authorization")
         if not auth_header or not auth_header.startswith("Bearer "):
             raise HTTPException(
                 status_code=401, detail="Авторизація обов'язкова для цієї операції"
@@ -39,7 +48,7 @@ async def proxy_to_product(request: Request, path: str):
 
             # ПЕРЕВІРКА НА АДМІНА:
             # Якщо роль користувача не 'admin', Gateway дає відсіч і не пускає запит у мережу
-            if payload.get("role") != "admin":
+            if payload.get("role") not in ("admin", "superadmin"):
                 raise HTTPException(
                     status_code=403,
                     detail="Доступ заборонено. Потрібні права адміністратора!",
@@ -59,12 +68,16 @@ async def proxy_to_product(request: Request, path: str):
     # Якщо це був звичайний GET (перегляд товарів), блок перевірки вище просто проігнорується.
     # Запит полетить у мікросервіс як від анонімного гостя.
     try:
+        # GET requests must NOT have a body — passing stream() on GET causes
+        # FastAPI to raise 422 (Unprocessable Entity) in the downstream service.
+        body_content = b"" if request.method == "GET" else request.stream()
+
         req = client.build_request(
             method=request.method,
             url=target_url,
             headers=headers,
             params=request.query_params,
-            content=request.stream(),
+            content=body_content,
         )
         response = await client.send(req, stream=True)
         return StreamingResponse(

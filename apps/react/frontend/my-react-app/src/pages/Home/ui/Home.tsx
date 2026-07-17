@@ -4,8 +4,8 @@ export default function Home() {
   return (
     <>
       <Hero />
-      <CategoriesSec />
       <ProductsSec />
+      <CategoriesSec />
       <Hws />
       <FinalCTA />
     </>

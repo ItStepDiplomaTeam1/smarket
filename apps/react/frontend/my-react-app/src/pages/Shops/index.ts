@@ -1,0 +1,1 @@
+export { default as ShopsPage } from './ui/ShopPage'

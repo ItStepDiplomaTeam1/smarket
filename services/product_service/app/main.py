@@ -1,10 +1,13 @@
 import asyncio
 import logging
 from contextlib import asynccontextmanager
+import uuid
+import datetime
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import ORJSONResponse
+from faststream.rabbit import RabbitBroker, RabbitExchange, ExchangeType
 
 from app.config import settings
 from app.database.session import _get_engine
@@ -19,19 +22,37 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+broker = RabbitBroker(settings.RABBITMQ_URL)
+smarket_events_exchange = RabbitExchange("smarket_events", type=ExchangeType.TOPIC)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # --- Startup ---
     engine = _get_engine()
-    # Перевіряємо підключення до БД при старті
     async with engine.connect() as conn:
         await conn.close()
     logger.info("[main] ✅ З'єднання з PostgreSQL підтверджено.")
 
-    # Стратегія 3: запускаємо слухач pg_notify у фоновій задачі.
-    # asyncio.create_task гарантує що listener живе весь час роботи сервера,
-    # а не лише поки обробляється якийсь запит.
+    try:
+        await broker.connect()
+        await broker.publish(
+            {
+                "event_id": str(uuid.uuid4()),
+                "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+                "actor": "system",
+                "event_type": "service.lifecycle",
+                "entity_type": "service",
+                "entity_id": "product_service",
+                "message": "Product Service started",
+                "details": {},
+                "severity": "info"
+            },
+            exchange=smarket_events_exchange,
+            routing_key="service.lifecycle"
+        )
+    except Exception as e:
+        logger.error(f"Failed to connect to RabbitMQ: {e}")
+
     notify_dsn = settings.get_notify_dsn()
     logger.info("[main] Запуск PG LISTEN/NOTIFY listener (dsn=...%s)", notify_dsn[-30:])
     listener_task = asyncio.create_task(
@@ -48,6 +69,26 @@ async def lifespan(app: FastAPI):
         await listener_task
     except asyncio.CancelledError:
         pass  # очікувана поведінка при cancel()
+
+    try:
+        await broker.publish(
+            {
+                "event_id": str(uuid.uuid4()),
+                "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+                "actor": "system",
+                "event_type": "service.lifecycle",
+                "entity_type": "service",
+                "entity_id": "product_service",
+                "message": "Product Service shutting down",
+                "details": {},
+                "severity": "warning"
+            },
+            exchange=smarket_events_exchange,
+            routing_key="service.lifecycle"
+        )
+        await broker.close()
+    except Exception as e:
+        logger.error(f"Failed to close RabbitMQ connection: {e}")
 
     await engine.dispose()
     logger.info("[main] Сервіс зупинено.")

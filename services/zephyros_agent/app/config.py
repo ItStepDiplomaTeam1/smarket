@@ -12,10 +12,22 @@ class Settings(BaseSettings):
     OPENROUTER_API_KEY: str | None = None
     GROQ_API_KEY: str | None = None
     GEMINI_API_KEY: str | None = None
+    CEREBRAS_API_KEY: str | None = None
+
+    OPENROUTER_MODEL: str = "openai/gpt-oss-120b:free"
+    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GROQ_MODEL: str = "llama-3.1-8b-instant"
+    CEREBRAS_MODEL: str = "gpt-oss-120b"
+
+    CIRCUIT_BREAKER_COOLDOWN_SECONDS: int = 60
+    LOG_LEVEL: str = "INFO"
+    LOG_JSON: bool = False
 
     SEARCH_SERVICE_URL: str = "http://search_service:8083/api/v1"
     PRODUCT_SERVICE_URL: str = "http://product_service:8000/api/v1"
     CART_SERVICE_URL: str = "http://cart_service:8002/cart"
+    REVIEWS_SERVICE_URL: str = "http://reviews_service:8004/reviews"
+    REDIS_URL: str = "redis://redis:6379"
 
     PORT: int = 8005
 

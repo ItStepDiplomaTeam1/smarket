@@ -5,9 +5,13 @@ from logging.config import fileConfig
 from pathlib import Path
 
 from alembic import context
+from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import create_async_engine
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+# Load env variables from .env file
+load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
 config = context.config
 

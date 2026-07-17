@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
+	"sync/atomic"
 	"smarket/services/products_etl/DTO"
 	"syscall"
 	"time"
@@ -25,6 +27,12 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
+var schedulerEnabled atomic.Bool
+
+func isSchedulerRunning() bool {
+	return schedulerEnabled.Load()
+}
+
 // @title           Products ETL Service API
 // @version         1.0
 // @description     ETL-сервіс для парсингу та синхронізації товарного каталогу з Zakaz.ua.
@@ -33,10 +41,10 @@ import (
 
 // healthHandler provides health check info
 // @Summary     Перевірка стану сервісу
-// @Description Повертає статус "ok" якщо сервіс запущений і доступний, а також перевіряє MongoDB
+// @Description Повертає статус "ok" якщо сервіс запущений і доступний, а також перевіряє MongoDB та стан ETL
 // @Tags        system
 // @Produce     json
-// @Success     200 {object} map[string]string "{"status":"ok","mongodb":"ok"}"
+// @Success     200 {object} map[string]string "{"status":"ok","mongodb":"ok","etl_running":true}"
 // @Router      /health [get]
 func healthHandler(infra *database.Infrastructure) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -55,12 +63,12 @@ func healthHandler(infra *database.Infrastructure) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		if mongoStatus != "ok" {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			_, _ = w.Write([]byte(fmt.Sprintf(`{"status":"error","mongodb":"%s"}`, mongoStatus)))
+			_, _ = w.Write([]byte(fmt.Sprintf(`{"status":"error","mongodb":"%s","etl_running":%v}`, mongoStatus, isSchedulerRunning())))
 			return
 		}
 
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"status":"ok","mongodb":"ok"}`))
+		_, _ = w.Write([]byte(fmt.Sprintf(`{"status":"ok","mongodb":"ok","etl_running":%v}`, isSchedulerRunning())))
 	}
 }
 
@@ -126,6 +134,88 @@ func backfillHandler(pgPool *pgxpool.Pool, searchServiceURL string) http.Handler
 	}
 }
 
+// etlControlRequest represents the request body for the ETL control endpoint
+type etlControlRequest struct {
+	Action string `json:"action"`
+}
+
+// etlControlHandler handles start/stop commands for the ETL scheduler
+// @Summary     Керування ETL-планувальником
+// @Description Зупиняє або запускає ETL-планувальник. Потребує API-ключа.
+// @Tags        admin
+// @Accept      json
+// @Produce     json
+// @Param       X-Admin-Key header string true "API-ключ адміністратора"
+// @Param       body body etlControlRequest true "Дія: start або stop"
+// @Success     200 {object} map[string]string "{"status":"ok","etl_running":true,"message":"..."}"
+// @Failure     401 {object} map[string]string "{"error":"unauthorized","detail":"..."}"
+// @Failure     400 {object} map[string]string "{"error":"bad_request","detail":"..."}"
+// @Router      /admin/etl/control [post]
+func etlControlHandler(infra *database.Infrastructure, adminKey string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Validate API key
+		providedKey := r.Header.Get("X-Admin-Key")
+		if providedKey == "" || providedKey != adminKey {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = w.Write([]byte(`{"error":"unauthorized","detail":"Missing or invalid API key"}`))
+			return
+		}
+
+		// Parse request body
+		var req etlControlRequest
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"bad_request","detail":"Failed to read request body"}`))
+			return
+		}
+		defer r.Body.Close()
+
+		if err := json.Unmarshal(body, &req); err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"bad_request","detail":"Invalid JSON body"}`))
+			return
+		}
+
+		// Handle action
+		switch strings.ToLower(req.Action) {
+		case "stop":
+			if !isSchedulerRunning() {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{"status":"ok","etl_running":false,"message":"ETL scheduler already stopped"}`))
+				return
+			}
+			schedulerEnabled.Store(false)
+			PublishEvent(infra.RabbitConn, "etl_stopped", "ETL scheduler stopped by admin", "info", map[string]interface{}{})
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"ok","etl_running":false,"message":"ETL scheduler stopped"}`))
+
+		case "start":
+			if isSchedulerRunning() {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{"status":"ok","etl_running":true,"message":"ETL scheduler already running"}`))
+				return
+			}
+			schedulerEnabled.Store(true)
+			PublishEvent(infra.RabbitConn, "etl_resumed", "ETL scheduler resumed by admin", "info", map[string]interface{}{})
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"ok","etl_running":true,"message":"ETL scheduler started"}`))
+
+		default:
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"error":"bad_request","detail":"Invalid action. Allowed: start, stop"}`))
+		}
+	}
+}
+
 func declareQueue(conn *amqp.Connection, name string) {
 	ch, err := conn.Channel()
 	if err != nil {
@@ -137,6 +227,46 @@ func declareQueue(conn *amqp.Connection, name string) {
 		log.Fatalf("[main] Не вдалось оголосити чергу: %v", err)
 	}
 	log.Printf("[main] Черга %q готова", name)
+}
+
+func PublishEvent(conn *amqp.Connection, eventType, message, severity string, details interface{}) {
+	ch, err := conn.Channel()
+	if err != nil {
+		log.Printf("[Events] Помилка відкриття каналу RabbitMQ: %v", err)
+		return
+	}
+	defer ch.Close()
+
+	err = ch.ExchangeDeclare("smarket_events", "topic", true, false, false, false, nil)
+	if err != nil {
+		log.Printf("[Events] Помилка оголошення exchange smarket_events: %v", err)
+		return
+	}
+
+	event := map[string]interface{}{
+		"event_id":    time.Now().UnixNano(),
+		"timestamp":   time.Now().UTC().Format(time.RFC3339),
+		"actor":       "products_etl",
+		"event_type":  eventType,
+		"entity_type": "service",
+		"entity_id":   "products_etl",
+		"message":     message,
+		"details":     details,
+		"severity":    severity,
+	}
+
+	body, err := json.Marshal(event)
+	if err != nil {
+		return
+	}
+
+	err = ch.Publish("smarket_events", "service.lifecycle", false, false, amqp.Publishing{
+		ContentType: "application/json",
+		Body:        body,
+	})
+	if err != nil {
+		log.Printf("[Events] Помилка публікації події: %v", err)
+	}
 }
 
 func main() {
@@ -152,6 +282,11 @@ func main() {
 
 	log.Println("Усі підключення до БД та RabbitMQ успішно ініціалізовано!")
 
+	// Initialize scheduler as enabled
+	schedulerEnabled.Store(true)
+
+	PublishEvent(infra.RabbitConn, "service_started", "Products ETL Service started", "info", map[string]interface{}{})
+
 	var server *http.Server
 	{
 		mux := http.NewServeMux()
@@ -166,6 +301,7 @@ func main() {
 		mux.HandleFunc("/health", healthHandler(infra))
 		mux.HandleFunc("GET /product/get", getProductsHandler)
 		mux.HandleFunc("POST /backfill", backfillHandler(infra.PgPool, cfg.SearchServiceURL))
+		mux.HandleFunc("POST /admin/etl/control", etlControlHandler(infra, cfg.ETLAdminKey))
 
 		server = &http.Server{
 			Addr:    ":8082",
@@ -214,6 +350,12 @@ func main() {
 
 		// Функція перевірки застарілих магазинів
 		runSchedulerCheck := func() {
+			// Check if scheduler is enabled
+			if !isSchedulerRunning() {
+				log.Println("[Scheduler] Планувальник зупинено, пропуск циклу")
+				return
+			}
+
 			log.Println("[Scheduler] Синхронізація магазинів та категорій перед перевіркою застарілих даних...")
 			syncCtx, syncCancel := context.WithTimeout(context.Background(), 120*time.Second)
 			if err := service.SeedStores(syncCtx, infra.PgPool); err != nil {
@@ -225,6 +367,7 @@ func main() {
 			syncCancel()
 
 			log.Println("[Scheduler] Перевірка застарілих даних магазинів...")
+			PublishEvent(infra.RabbitConn, "etl_cycle_started", "Розпочато цикл збору даних", "info", map[string]interface{}{})
 			rows, err := infra.PgPool.Query(context.Background(),
 				// last_parsed_at — індексована колонка, яку TransformLoadWorker оновлює
 				// після кожного успішного батчу. Це набагато швидше ніж GROUP BY на prices.
@@ -236,12 +379,14 @@ func main() {
 				 ORDER BY last_parsed_at ASC NULLS FIRST`)
 			if err != nil {
 				log.Printf("[Scheduler] Помилка запиту перевірки застарілих магазинів: %v", err)
+				PublishEvent(infra.RabbitConn, "etl_cycle_failed", fmt.Sprintf("Помилка планувальника: %v", err), "error", map[string]interface{}{})
 				return
 			}
 
 			ch, err := infra.RabbitConn.Channel()
 			if err != nil {
 				log.Printf("[Scheduler] Помилка створення каналу RabbitMQ: %v", err)
+				PublishEvent(infra.RabbitConn, "etl_cycle_failed", fmt.Sprintf("Помилка RabbitMQ: %v", err), "error", map[string]interface{}{})
 				rows.Close()
 				return
 			}
@@ -279,6 +424,7 @@ func main() {
 			ch.Close()
 			rows.Close()
 			log.Printf("[Scheduler] Перевірку застарілих даних завершено. Додано у чергу %d магазинів.", count)
+			PublishEvent(infra.RabbitConn, "etl_cycle_completed", fmt.Sprintf("Завершено цикл планування. Додано у чергу %d магазинів", count), "info", map[string]interface{}{"queued_stores": count})
 		}
 
 		// Запускаємо одразу при старті

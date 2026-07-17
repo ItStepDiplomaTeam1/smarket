@@ -1,50 +1,114 @@
+import { useState } from 'react';
+
 export function PrivacyPolicyPage() {
   const policyItems = [
     {
       id: 1,
       title: "Які дані ми збираємо",
-      content: "Smarket може збирати дані, які користувач надає під час реєстрації або використання сервісу."
+      intro: "Smarket може збирати дані, які користувач надає самостійно під час реєстрації або безпосереднього використання інструментів нашого сервісу.",
+      subIntro: "Категорії інформації, яку ми фіксуємо для забезпечення стабільної роботи:",
+      bullets: [
+        "персональні ідентифікатори: ім'я користувача, діюча адреса електронної пошти та номер телефону;",
+        "дані про поточну геолокацію користувача для точного пошуку найближчих торгових точок;",
+        "інформація про взаємодію: створені користувачем списки покупок, збережені кошики, історія порівнянь;",
+        "технічні параметри пристрою: IP-адреса, версія операційної системи, унікальні ідентифікатори та тип браузера."
+      ],
+      outro: "Збір та обробка цих даних дозволяють нам персоналізувати інтерфейс під ваші індивідуальні потреби."
     },
     {
       id: 2,
       title: "Як ми використовуємо ваші дані",
-      content: "Ми використовуємо дані користувачів для коректної роботи сервісу Smarket."
+      intro: "Усі зібрані персональні дані використовуються виключно для належної, безпечної та ефективної роботи сервісу Smarket.",
+      subIntro: "Ваша особиста інформація застосовується для виконання таких завдань:",
+      bullets: [
+        "успішна авторизація користувачів та синхронізація персональних списків між різними пристроями;",
+        "відображення коректних цін, асортименту та актуальних акційних пропозицій у супермаркетах вашого міста;",
+        "постійне покращення роботи пошукових алгоритмів, швидкодії платформи та зручності інтерфейсу;",
+        "надсилання важливих технічних повідомлень, сповіщень про оновлення безпеки чи зміни в роботі сервісу."
+      ],
+      outro: "Ми суворо дотримуємося регламентів захисту приватности й ніколи не використовуємо дані для несанкціонованих дій."
     },
     {
       id: 3,
       title: "Передача даних третім сторонам",
-      content: "Ми не продаємо персональні дані користувачів третім сторонам."
+      intro: "Ми високо цінуємо вашу довіру, тому сервіс Smarket за жодних обставин не продає, не обмінює та не передає ваші особисті дані стороннім організаціям чи третім особам.",
+      subIntro: "Передача мінімально необхідної інформації можлива лише у виняткових випадках:",
+      bullets: [
+        "за наявності вашої прямої, свідомої та офіційної згоди на виконання такої дії;",
+        "на офіційний та законний запит правоохоронних органів або за відповідним рішенням суду;",
+        "нашим перевіреним технічним партнерам (наприклад, хостинг-провайдерам) виключно для технічної підтримки серверів."
+      ],
+      outro: "Усі залучені технічні партнери підписують суворі договори про конфіденційність без права на власне використання даних."
     },
     {
       id: 4,
       title: "Захист даних",
-      content: "Ми застосовуємо технічні та організаційні заходи для захисту персональних даних користувачів."
+      intro: "Ми застосовуємо сучасні технічні, організаційні та адміністративні заходи безпеки, щоб надійно захистити персональні дані користувачів від випадкової втрати, витоку чи несанкціонованого доступу.",
+      subIntro: "Наша комплексна система захисту інформації включає в себе:",
+      bullets: [
+        "надійне шифрування абсолютно всіх даних під час їх передачі за допомогою протоколів SSL та TLS;",
+        "розділене зберігання внутрішніх баз даних та обов'язкове хешування паролів й інших критичних полів;",
+        "суворе обмеження кола співробітників компанії, які мають доступ до внутрішньої інфраструктури сервісу;",
+        "регулярне проведення ретельних аудитів безпеки систем на предмет виявлення нових потенційних вразливостей."
+      ],
+      outro: "Ми робимо все можливе, щоб ваша взаємодія з нашою платформою була максимально захищеною та стабільною."
     },
     {
       id: 5,
       title: "Ваші права",
-      content: "Користувач має право керувати своїми персональними даними."
+      intro: "Кожен зареєстрований користувач має повне законне право контролювати, переглядати та керувати всією інформацією, яку він надає сервісу Smarket.",
+      subIntro: "Відповідно до чинного законодавства ви маєте безумовне право на:",
+      bullets: [
+        "перегляд, перевірку та безперешкодний доступ до всіх своїх персональних даних через особистий кабінет;",
+        "швидке виправлення або миттєве оновлення застарілих чи неточних відомостей у профілі;",
+        "повне та безповоротне видалення облікового запису користувача (реалізація права бути забутим);",
+        "тимчасове обмеження обробки даних або повне відкликання раніше наданої згоди на аналіз окремих категорій."
+      ],
+      outro: "Реалізувати будь-яке з цих прав ви можете через внутрішні налаштування профілю або звернувшись до нашої підтримки."
     },
     {
       id: 6,
       title: "Файли cookie",
-      content: "Smarket може використовувати файли cookie для покращення роботи сайту."
+      intro: "Smarket використовує файли cookie та аналогічні сучасні технології відстеження для аналізу загальної поведінки користувачів та суттєвого покращення взаємодії з інтерфейсом платформи.",
+      subIntro: "Ці невеликі текстові файли допомагають нам виконувати наступні завдання:",
+      bullets: [
+        "автоматично зберігати обране вами місто, регіон або індивідуальні налаштування колірної теми сайту;",
+        "забезпечувати безпеку поточної сесії та стабільно підтримувати стан авторизації при переходах між сторінками;",
+        "аналізувати загальний трафік сайту за допомогою перевірених інструментів веб-аналітики;",
+        "значно пришвидшувати завантаження елементів інтерфейсу під час ваших повторних візитів на сервіс."
+      ],
+      outro: "Ви можете самостійно обмежити, вимкнути або повністю очистити файли cookie у налаштуваннях вашого веб-браузера."
     },
     {
       id: 7,
       title: "Зміни до політики",
-      content: "Smarket може оновлювати цю Політику конфіденційності."
+      intro: "Адміністрація Smarket залишає за собою право періодично вносити зміни, редагувати або повністю оновлювати цей текст Політики конфіденційності.",
+      subIntro: "Процедура оновлення правил використання інформації регулюється так:",
+      bullets: [
+        "нова редакція документа публікується на цій сторінці та набуває повної юридичної сили негайно;",
+        "ми завжди чітко зазначаємо актуальну дату останнього перегляду у верхній частині документа;",
+        "продовження використання платформи після публікацій змін свідчить про вашу автоматичну згоду з ними;",
+        "якщо нові умови є для вас неприйнятними, ви маєте право припинити роботу з сервісом та видалити профіль."
+      ],
+      outro: "Про масштабні оновлення або критичні зміни політики ми додатково повідомляємо користувачів електронною поштою."
     }
   ];
 
+  const [expandedId, setExpandedId] = useState<number | null>(1);
+
+  const toggleSection = (id: number) => {
+    setExpandedId(prev => (prev === id ? null : id));
+  };
+
   return (
-    <div className="w-full bg-[#F8FAF9] min-h-screen font-inter antialiased py-10">
-      <div className="max-w-[1230px] mx-auto px-4 flex flex-col md:flex-row gap-[30px]">
+    <div className="w-full bg-[#F8FAF9] dark:bg-[#0B120F] min-h-screen font-inter antialiased py-[32px] md:py-10 transition-colors duration-300">
+      <div className="max-w-[1230px] mx-auto px-[16px] md:px-4 flex flex-col md:flex-row gap-[24px] md:gap-[30px] relative">
         
-        {/* ЛІВА КОЛОНКА — ЗМІСТ (w-[307px]) */}
-        <aside className="w-full md:w-[307px] shrink-0 flex flex-col gap-6">
-          <div className="bg-white border border-[#E9ECEB] rounded-[16px] p-6 flex flex-col gap-4">
-            <h3 className="text-[18px] font-bold text-[#173B33] pb-3 border-b border-[#E1E6E4]">
+        {/* ЛІВА КОЛОНКА — ЗМІСТ */}
+        {/* Додано md:sticky md:top-24 h-fit, щоб сайдбар залишався на місці на ПК, але скролився на мобільному */}
+        <aside className="w-full md:w-[280px] lg:w-[307px] shrink-0 flex flex-col gap-[16px] md:gap-6 md:sticky md:top-24 h-fit z-10">
+          <div className="bg-white dark:bg-transparent border border-[#E9ECEB] dark:border-[#1F3227] rounded-[16px] p-[20px] lg:p-6 flex flex-col gap-4 transition-colors">
+            <h3 className="text-[16px] lg:text-[18px] font-bold text-[#173B33] dark:text-white pb-3 border-b border-[#E1E6E4] dark:border-[#1F3227] transition-colors">
               Зміст
             </h3>
             <nav className="flex flex-col gap-3">
@@ -52,7 +116,12 @@ export function PrivacyPolicyPage() {
                 <a
                   key={item.id}
                   href={`#section-${item.id}`}
-                  className="text-[14px] font-medium text-[#6D8279] hover:text-[#173B33] transition-colors leading-[20px]"
+                  onClick={() => setExpandedId(item.id)}
+                  className={`text-[13px] lg:text-[14px] font-medium leading-[20px] transition-colors ${
+                    expandedId === item.id 
+                      ? 'text-[#173B33] dark:text-[#3CD27D] font-bold' 
+                      : 'text-[#6D8279] dark:text-[#7A8D85] hover:text-[#173B33] dark:hover:text-[#A4B3AF]'
+                  }`}
                 >
                   {item.id}. {item.title}
                 </a>
@@ -61,89 +130,124 @@ export function PrivacyPolicyPage() {
           </div>
 
           {/* Блок "Є питання?" */}
-          <div className="bg-[#EAF5F1] border border-[rgba(23,59,51,0.05)] rounded-[16px] p-5 flex flex-col gap-3">
-            <div className="flex items-center gap-2 text-[#173B33]">
-              {/* Іконка питання */}
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="bg-[#173B33] text-white rounded-full p-0.5 w-5 h-5">
+          <div className="bg-[#EAF5F1] dark:bg-[#15231D] border border-[rgba(23,59,51,0.05)] dark:border-[#1F3227] rounded-[16px] p-[20px] lg:p-5 flex flex-col gap-3 transition-colors">
+            <div className="flex items-center gap-2 text-[#173B33] dark:text-white transition-colors">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="bg-[#173B33] dark:bg-[#3CD27D] text-white dark:text-[#0B120F] rounded-full p-0.5 w-5 h-5 transition-colors">
                 <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
                 <line x1="12" y1="17" x2="12.01" y2="17" />
               </svg>
-              <span className="text-[15px] font-bold">Є питання?</span>
+              <span className="text-[14px] lg:text-[15px] font-bold">Є питання?</span>
             </div>
-            <p className="text-[13px] font-medium text-[#6D8279] leading-[18px] m-0">
+            <p className="text-[12px] lg:text-[13px] font-medium text-[#6D8279] dark:text-[#7A8D85] leading-[18px] m-0 transition-colors">
               Якщо у вас є запитання щодо цієї Політики конфіденційності або обробки персональних даних, зв'яжіться з нами:
             </p>
             <a 
               href="mailto:privacy@smarket.ua" 
-              className="text-[15px] font-bold text-[#173B33] underline hover:opacity-80 transition-opacity"
+              className="text-[14px] lg:text-[15px] font-bold text-[#173B33] dark:text-[#3CD27D] underline hover:opacity-80 transition-opacity break-all"
             >
               privacy@smarket.ua
             </a>
           </div>
         </aside>
 
-        {/* ПРАВА КОЛОНКА — КОНТЕНТ (w-[923px]) */}
-        <main className="flex-1 md:max-w-[923px] flex flex-col gap-6">
+        {/* ПРАВА КОЛОНКА — КОНТЕНТ */}
+        <main className="flex-1 md:max-w-[923px] flex flex-col gap-[20px] md:gap-6">
           
           {/* Хлібні крихти та Заголовок */}
           <div className="flex flex-col gap-2">
-            <div className="text-[13px] font-medium text-[#6D8279] flex items-center gap-1.5">
-              <span className="cursor-pointer hover:text-[#173B33] transition-colors">Головна</span>
-              <span className="text-[11px] text-[#B2C0B9]">&gt;</span>
-              <span className="text-[#173B33]">Політика конфіденційності</span>
+            <div className="text-[12px] lg:text-[13px] font-medium text-[#6D8279] dark:text-[#7A8D85] flex flex-wrap items-center gap-1.5 transition-colors">
+              <span className="cursor-pointer hover:text-[#173B33] dark:hover:text-white transition-colors">Головна</span>
+              <span className="text-[10px] lg:text-[11px] text-[#B2C0B9] dark:text-[#4A5D54] transition-colors">&gt;</span>
+              <span className="text-[#173B33] dark:text-white transition-colors">Політика конфіденційності</span>
             </div>
-            <h1 className="text-[32px] font-light text-[#173B33] tracking-tight mt-1">
+            <h1 className="text-[28px] md:text-[32px] font-light text-[#173B33] dark:text-white tracking-tight mt-1 transition-colors leading-tight">
               Політика конфіденційності
             </h1>
-            <div className="text-[14px] text-[#6D8279] leading-[22px] flex flex-col gap-1 mt-1">
+            <div className="text-[13px] lg:text-[14px] text-[#6D8279] dark:text-[#A4B3AF] leading-[22px] flex flex-col gap-1 mt-1 transition-colors">
               <p>Ми поважаємо вашу приватність і дбаємо про захист ваших персональних даних.</p>
-              <p>Ця політика пояснює, які дані мы збираємо, як их використовуємо та як ви можете керувати ними.</p>
-              <p className="text-[13px] font-medium text-[#99A6A0] mt-1">
+              <p>Ця політика пояснює, які дані ми збираємо, як їх використовуємо та як ви можете керувати ними.</p>
+              <p className="text-[12px] lg:text-[13px] font-medium text-[#99A6A0] dark:text-[#6D8279] mt-1 transition-colors">
                 Останнє оновлення: 10 квітня 2026 року
               </p>
             </div>
           </div>
 
-          {/* Список правил (Статичні плашки) */}
-          <div className="flex flex-col gap-4">
-            {policyItems.map((item) => (
-              <div 
-                key={item.id}
-                id={`section-${item.id}`}
-                className="bg-white border border-[#E9ECEB] rounded-[16px] shadow-[0_2px_4px_rgba(0,0,0,0.01)]"
-              >
-                {/* Шапка (тепер просто div без hover ефектів та кліків) */}
-                <div className="w-full flex items-center justify-between p-5 text-left select-none">
-                  <div className="flex items-center gap-4">
-                    {/* Круглий бейдж з номером */}
-                    <div className="w-8 h-8 rounded-full bg-[#EAF5F1] text-[#173B33] font-bold text-[14px] flex items-center justify-center shrink-0">
-                      {item.id}
-                    </div>
-                    <h2 className="text-[16px] font-bold text-[#173B33] tracking-tight">
-                      {item.title}
-                    </h2>
-                  </div>
-                  
-                  {/* Стрілочка дивиться вниз, як на скріншоті */}
-                  <svg 
-                    width="20" height="20" viewBox="0 0 24 24" fill="none" 
-                    stroke="#6D8279" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                    className="shrink-0"
+          {/* Список правил з плавним акордеоном */}
+          <div className="flex flex-col gap-3 md:gap-4">
+            {policyItems.map((item) => {
+              const isOpen = expandedId === item.id;
+              
+              return (
+                <div 
+                  key={item.id}
+                  id={`section-${item.id}`}
+                  className="w-full bg-white dark:bg-[#15231D] border border-[#E9ECEB] dark:border-transparent rounded-[16px] overflow-hidden flex flex-col shadow-[0_2px_4px_rgba(0,0,0,0.01)] dark:shadow-none transition-colors scroll-mt-24"
+                >
+                  {/* Клікабельна шапка картки */}
+                  <button 
+                    type="button"
+                    onClick={() => toggleSection(item.id)}
+                    className="w-full flex items-center justify-between p-[16px] md:p-5 text-left select-none hover:bg-[#FDFEFE] dark:hover:bg-[#1A2E25] transition-colors focus:outline-none gap-3"
                   >
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
-                </div>
+                    <div className="flex items-center gap-[12px] md:gap-4">
+                      <div className="w-[32px] h-[32px] rounded-full bg-[#EAF5F1] dark:bg-[#3CD27D] text-[#173B33] dark:text-[#0B120F] font-bold text-[13px] md:text-[14px] flex items-center justify-center shrink-0 transition-colors">
+                        {item.id}
+                      </div>
+                      <h2 className="text-[15px] md:text-[16px] font-bold text-[#173B33] dark:text-white tracking-tight transition-colors pr-2 leading-snug">
+                        {item.title}
+                      </h2>
+                    </div>
+                    
+                    {/* Стрілочка, що обертається */}
+                    <svg 
+                      width="20" height="20" viewBox="0 0 24 24" fill="none" 
+                      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                      className={`shrink-0 text-[#6D8279] dark:text-[#A4B3AF] transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
+                    >
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </button>
 
-                {/* Текст (завжди видимий) */}
-                <div className="px-5 pb-5 pl-[68px]">
-                  <p className="text-[14px] font-medium text-[#6D8279] leading-[22px] m-0">
-                    {item.content}
-                  </p>
+                  {/* Контейнер анімації висоти */}
+                  <div 
+                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                      isOpen ? 'max-h-[1200px] opacity-100 border-t border-[#F5F7F6] dark:border-[#1F3227]' : 'max-h-0 opacity-0'
+                    }`}
+                  >
+                    {/* Контент всередині плашки */}
+                    <div className="p-[16px] pt-0 md:p-5 md:pt-0 md:pl-[68px] flex flex-col gap-[12px] md:gap-4 text-[13px] md:text-[14px] font-medium text-[#6D8279] dark:text-[#A4B3AF] leading-[22px] transition-colors mt-[12px] md:mt-0">
+                      <p className="m-0">
+                        {item.intro}
+                      </p>
+                      
+                      {item.subIntro && (
+                        <p className="font-semibold text-[#173B33] dark:text-white m-0 mt-1 transition-colors">
+                          {item.subIntro}
+                        </p>
+                      )}
+                      
+                      {item.bullets && (
+                        <ul className="list-disc pl-5 leading-[22px] md:leading-[24px] flex flex-col gap-1.5">
+                          {item.bullets.map((bullet, index) => (
+                            <li key={index} className="pl-1">
+                              {bullet}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      
+                      {item.outro && (
+                        <p className="m-0 mt-1 md:mt-2">
+                          {item.outro}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-
         </main>
       </div>
     </div>

@@ -8,12 +8,16 @@ import { type Product } from '../type';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { useFetchCarts, useUpdateCartItem } from '@/hooks/api/useCartApi';
 import { useCartStore } from '@/modules/Cart/store/useCartStore';
+import { useFavoritesStore } from '@/shared/context/favoritesStore';
+import { useNavigate } from 'react-router-dom';
 
 const RecentlyViewedCard = ({ product }: { product: Product }) => {
     const { isAuthenticated, user } = useAuthStore();
     const { data: carts } = useFetchCarts();
     const { mutateAsync: updateCartItem } = useUpdateCartItem();
     const { activeCartId } = useCartStore();
+    const { isFavorite, add: addFavorite, remove: removeFavorite } = useFavoritesStore();
+    const navigate = useNavigate();
 
     const [isAdding, setIsAdding] = useState<boolean>(false);
     const userId = user?.id;
@@ -79,10 +83,34 @@ const RecentlyViewedCard = ({ product }: { product: Product }) => {
     };
 
     return (
-        <Link 
-            to={`/product/${product.id}-${generateSlug(product.title)}`}
-            className="w-[175px] h-[296px] shrink-0 bg-white border border-[rgba(38,84,71,0.08)] rounded-[16px] p-[16px] flex flex-col box-border cursor-pointer transition-shadow hover:shadow-[0_4px_12px_rgba(38,84,71,0.08)] no-underline text-inherit block"
-        >
+        <div className="w-[175px] h-[296px] shrink-0 bg-white border border-[rgba(38,84,71,0.08)] rounded-[16px] p-[16px] flex flex-col box-border relative">
+            <button
+                onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!isAuthenticated) { navigate('/auth'); return; }
+                    if (isFavorite(product.id)) {
+                        removeFavorite(product.id);
+                    } else {
+                        addFavorite({
+                            product_id: product.id,
+                            product_title: product.title,
+                            product_image_url: product.image_url ?? undefined,
+                            product_price: Number(minPrice) || undefined,
+                        });
+                    }
+                }}
+                className={`absolute top-3 right-3 p-1 border-none bg-transparent cursor-pointer transition-all hover:scale-110 z-10 ${
+                    isFavorite(product.id)
+                        ? 'text-[#E11D48]'
+                        : 'text-[#D1D5DB] hover:text-[#E11D48]'
+                }`}
+                title="Додати до улюблених"
+            >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill={isFavorite(product.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                </svg>
+            </button>
             <div className="w-full h-[141px] rounded-[10px] flex justify-center items-center mb-[16px]">
                 <img 
                     src={product.image_url || zagluska} 

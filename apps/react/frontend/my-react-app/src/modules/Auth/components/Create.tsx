@@ -7,11 +7,12 @@ import { apiClient } from '@/shared/api/apiClient';
 import { Loader2, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuthStore } from '../store/authStore';
-import { useGoogleOAuth, type MeResponse } from '@/hooks/api/useAuthApi';
+import { useGoogleOAuth, useRegisterVerify, type MeResponse } from '@/hooks/api/useAuthApi';
+import { TelegramLoginButton } from './TelegramLoginButton';
+import { OtpModal } from './OtpModal';
 
 import eyeIcon from '@/shared/assets/ButtonEye.svg';
 import btngoogle from '@/shared/assets/google.svg';
-import btnfacebook from '@/shared/assets/facebook.svg';
 import checkIcon from '@/shared/assets/checkgreen.svg';
 import logo from '@/shared/assets/logo.svg';
 import basketImage from '@/shared/assets/logindefault.svg';
@@ -22,9 +23,9 @@ interface User {
     email: string;
 }
 
-interface RegisterResponse {
-    access_token: string;
-    user: User;
+interface RegisterPendingResponse {
+    message: string;
+    email: string;
 }
 
 const PasswordChecklist = ({ password }: { password: string }) => {
@@ -39,15 +40,15 @@ const PasswordChecklist = ({ password }: { password: string }) => {
     if (!password) return null;
 
     return (
-        <div className="mt-[8px] flex flex-col gap-[4px] mb-[8px]">
+        <div className="mt-[6px] flex flex-col gap-[2px] mb-[6px]">
             {rules.map((rule, idx) => {
                 const isValid = rule.check();
                 return (
-                    <div key={idx} className={`flex items-center gap-[6px] text-[12px] font-medium transition-colors duration-300 ${isValid ? 'text-[#265447]' : 'text-gray-400'}`}>
+                    <div key={idx} className={`flex items-center gap-[6px] text-[11px] font-medium transition-colors duration-300 ${isValid ? 'text-[#265447] dark:text-[#3DAE8B]' : 'text-gray-400 dark:text-[#6D8279]'}`}>
                         {isValid ? (
-                            <Check className="w-[14px] h-[14px] shrink-0" strokeWidth={3} />
+                            <Check className="w-[12px] h-[12px] shrink-0" strokeWidth={3} />
                         ) : (
-                            <div className="w-[14px] h-[14px] shrink-0 rounded-full border border-gray-300 flex items-center justify-center" />
+                            <div className="w-[12px] h-[12px] shrink-0 rounded-full border border-gray-300 dark:border-[#265447] flex items-center justify-center" />
                         )}
                         <span>{rule.label}</span>
                     </div>
@@ -151,10 +152,12 @@ export function Create() {
         setTouched((prev) => ({ ...prev, [field]: true }));
     }, []);
 
-    const registerMutation = useMutation<RegisterResponse, Error>({
+    const [showOtpModal, setShowOtpModal] = useState(false);
+
+    const registerMutation = useMutation<RegisterPendingResponse, Error>({
         mutationFn: async () => {
             try {
-                const response = await apiClient.post<RegisterResponse>('/api/v1/auth/register', {
+                const response = await apiClient.post<RegisterPendingResponse>('/api/v1/auth/register', {
                     name,
                     email,
                     password,
@@ -177,22 +180,30 @@ export function Create() {
             }
         },
         onSuccess: async (data) => {
-            setAuth(data.access_token, data.user);
-            try {
-                const { data: me } = await apiClient.get<MeResponse>('/api/v1/auth/me');
-                useAuthStore.setState((state) => ({
-                    user: state.user ? { ...state.user, name: me.username } : state.user,
-                }));
-            } catch {
-                // fallback — ім'я залишиться undefined
-            }
-            toast.success(`Вітаємо, ${name}! Ви успішно зареєструвались.`);
-            navigate('/');
+            toast.success('Код підтвердження надіслано на вашу пошту.');
+            setShowOtpModal(true);
         },
         onError: (error) => {
             setServerError(error.message);
         },
     });
+
+    const verifyMutation = useRegisterVerify();
+
+    const handleVerify = (code: string) => {
+        verifyMutation.mutate(
+            { email, code },
+            {
+                onSuccess: () => {
+                    toast.success(`Вітаємо, ${name}! Ви успішно зареєструвались.`);
+                },
+            }
+        );
+    };
+
+    const handleResend = () => {
+        registerMutation.mutate();
+    };
 
     const handleSubmit = (e: React.SubmitEvent<HTMLFormElement>) => {
         e.preventDefault();
@@ -218,47 +229,61 @@ export function Create() {
 
     const fieldBorder = (error: string, isTouched: boolean) =>
         isTouched && error
-            ? 'border-red-400 focus:border-red-400'
-            : 'border-[rgba(38,84,71,0.16)] focus:border-[#265447]';
+            ? 'border-red-500 focus:border-red-500'
+            : 'border-[rgba(38,84,71,0.16)] dark:border-[rgba(38,84,71,0.2)] focus:border-[#265447] dark:focus:border-[#3DAE8B]';
 
     return (
-        <section className="flex flex-col w-full min-h-screen bg-[#F6FAF8] font-inter">
-            <div className="flex flex-1 justify-center items-center p-[40px]">
+        <section className="flex flex-col w-full min-h-screen bg-[#F6FAF8] dark:bg-[#0B110F] font-inter transition-colors duration-300">
+            <div className="flex justify-center items-start py-[24px] px-[16px] sm:py-[40px] sm:px-[40px]">
 
-            <div className="flex w-[1040px] h-[858.5px] bg-white rounded-[24px] border border-[rgba(38,84,71,0.08)] shadow-[0px_18px_48px_rgba(23,59,51,0.12)] overflow-hidden shrink-0">
+            {/* Height follows form content (no fixed clip) so the register button stays in bounds */}
+            <div className="flex w-full max-w-[1040px] bg-white dark:bg-[#111A17] rounded-[24px] border border-[rgba(38,84,71,0.08)] shadow-[0px_18px_48px_rgba(23,59,51,0.12)] overflow-hidden transition-colors duration-300">
                 {/* Left panel */}
-                <div className="w-[467px] shrink-0 bg-gradient-to-b from-[#EAF7F2] to-[#F6FAF8] border-r border-[rgba(38,84,71,0.08)] p-[48px] text-[#173B33]">
-                    <img src={logo} alt="Smarket Logo" className="w-[128px] mb-[32px]" />
+                <div className="w-[467px] shrink-0 hidden md:flex flex-col bg-gradient-to-b from-[#EAF7F2] to-[#F6FAF8] dark:from-[rgba(74,222,128,0.31)] dark:to-[rgba(17,26,23,0.47)] border-r border-[rgba(38,84,71,0.08)] p-[48px] text-[#173B33] dark:text-white transition-colors duration-300">
+                    <img src={logo} alt="Smarket Logo" className="w-[128px] mb-[32px] dark:brightness-0 dark:invert transition-all" />
                     <h2 className="font-manrope text-[32px] font-bold leading-[40px] mb-[16px]">
                         Купуйте розумніше. <br /> Заощаджуйте <br /> більше.
                     </h2>
-                    <p className="text-[14px] leading-[21px] text-[#6D8279] mb-[24px]">
+                    <p className="text-[14px] leading-[21px] text-[#6D8279] dark:text-[#A9B6B0] mb-[24px] transition-colors">
                         Створіть акаунт, щоб зберігати кошики, <br /> порівнювати ціни між магазинами та бачити, де <br /> вся покупка буде дешевшою.
                     </p>
                     <ul className="list-none m-0 p-0 mb-[40px]">
-                        <li className="flex items-center gap-[12px] mb-[12px] text-[14px] font-medium">
+                        <li className="flex items-center gap-[12px] mb-[12px] text-[14px] font-medium text-[#173B33] dark:text-[#EAF7F2] transition-colors">
                             <img src={checkIcon} alt="check" className="w-[20px] h-[20px] shrink-0" />
                             <span>Зберігайте списки покупок</span>
                         </li>
-                        <li className="flex items-center gap-[12px] mb-[12px] text-[14px] font-medium">
+                        <li className="flex items-center gap-[12px] mb-[12px] text-[14px] font-medium text-[#173B33] dark:text-[#EAF7F2] transition-colors">
                             <img src={checkIcon} alt="check" className="w-[20px] h-[20px] shrink-0" />
                             <span>Порівнюйте ціни між магазинами</span>
                         </li>
-                        <li className="flex items-center gap-[12px] text-[14px] font-medium">
+                        <li className="flex items-center gap-[12px] text-[14px] font-medium text-[#173B33] dark:text-[#EAF7F2] transition-colors">
                             <img src={checkIcon} alt="check" className="w-[20px] h-[20px] shrink-0" />
                             <span>Відстежуйте свою економію</span>
                         </li>
                     </ul>
-                    <img src={basketImage} alt="Ваш тижневий кошик" className="w-[360px] max-w-none h-auto -ml-[18px] block" />
+
+                    {/* WEEKLY BASKET DUMMY CARD */}
+                    <div className="w-full bg-[#EAF7F2]/60 dark:bg-[rgba(38,84,71,0.3)] border border-[#265447]/10 dark:border-[rgba(38,84,71,0.16)] rounded-[16px] p-[16px] mt-auto font-inter text-left transition-colors duration-300">
+                        <p className="text-[11px] font-bold text-[#6D8279] dark:text-[#A9B6B0] mb-[4px] uppercase tracking-wider transition-colors">Ваш тижневий кошик</p>
+                        <p className="text-[14px] font-bold text-[#173B33] dark:text-white mb-[8px] transition-colors">Молоко, Кава, Олія</p>
+                        <div className="inline-block bg-[#FFC72C] text-[#111A17] text-[11px] font-bold px-[8px] py-[3px] rounded-[4px] mb-[16px]">
+                            Економія 426 грн
+                        </div>
+                        <div className="flex justify-between items-center text-[#173B33] dark:text-white text-[13px] font-bold transition-colors">
+                            <span>АТБ</span>
+                            <span>1 842 грн</span>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Right panel */}
-                <div className="w-[573px] flex justify-center items-center">
-                    <div className="w-[380px]">
-                        <h1 className="font-manrope text-[30px] font-extrabold leading-[45px] text-[#265447] mb-[8px]">
+                <div className="flex-1 flex justify-center">
+                    <div className="w-full max-w-[380px] px-[24px] py-[32px] sm:py-[40px]">
+                        <img src={logo} alt="Smarket Logo" className="w-[128px] mb-[24px] md:hidden dark:brightness-0 dark:invert transition-all" />
+                        <h1 className="font-manrope text-[28px] sm:text-[30px] font-extrabold leading-[1.3] text-[#265447] dark:text-white mb-[6px] transition-colors">
                             Створіть акаунт
                         </h1>
-                        <p className="text-[14px] leading-[21px] text-[#6D8279] mb-[24px]">
+                        <p className="text-[14px] leading-[21px] text-[#6D8279] dark:text-[#A9B6B0] mb-[16px] transition-colors">
                             Почніть порівнювати ціни та збирати вигідні кошики вже сьогодні.
                         </p>
 
@@ -273,29 +298,28 @@ export function Create() {
                             type="button"
                             onClick={() => handleGoogleLogin()}
                             disabled={googleOAuthMutation.isPending}
-                            className="flex items-center justify-center gap-[8px] w-full h-[44px] bg-white border border-[rgba(38,84,71,0.16)] rounded-[10px] mb-[12px] cursor-pointer font-inter text-[13px] font-semibold text-[#111827] transition-all duration-200 hover:bg-[#F9FAFB] hover:shadow-sm disabled:opacity-50"
+                            className="flex items-center justify-center gap-[8px] w-full h-[44px] bg-white dark:bg-[#1B2A24] border border-[rgba(38,84,71,0.16)] dark:border-[rgba(38,84,71,0.2)] rounded-[10px] mb-[12px] cursor-pointer font-inter text-[13px] font-semibold text-[#111827] dark:text-white transition-all duration-200 hover:bg-[#F9FAFB] dark:hover:bg-[#203730] hover:shadow-sm disabled:opacity-50"
                         >
                             {googleOAuthMutation.isPending ? (
-                                <Loader2 className="w-[20px] h-[20px] animate-spin text-[#265447]" />
+                                <Loader2 className="w-[20px] h-[20px] animate-spin text-[#265447] dark:text-[#3DAE8B]" />
                             ) : (
                                 <img src={btngoogle} alt="Google" className="w-[20px] h-[20px]" />
                             )}
                             <span>{googleOAuthMutation.isPending ? 'Завантаження...' : 'Продовжити з Google'}</span>
                         </button>
-                        <button className="flex items-center justify-center gap-[8px] w-full h-[44px] bg-white border border-[rgba(38,84,71,0.16)] rounded-[10px] mb-[12px] cursor-pointer font-inter text-[13px] font-semibold text-[#111827] transition-all duration-200 hover:bg-[#F9FAFB] hover:shadow-sm">
-                            <img src={btnfacebook} alt="Facebook" className="w-[20px] h-[20px]" />
-                            <span>Продовжити з Facebook</span>
-                        </button>
+                        <TelegramLoginButton 
+                            botId={import.meta.env.VITE_TELEGRAM_BOT_ID || '8912413936'}
+                        />
 
-                        <div className="flex items-center text-[#6D8279] text-[13px] mt-[24px] mb-[24px] gap-[10px]">
-                            <span className="flex-1 h-px bg-[rgba(38,84,71,0.08)]"></span>
+                        <div className="flex items-center text-[#6D8279] dark:text-[#A9B6B0] text-[13px] my-[16px] gap-[10px] transition-colors">
+                            <span className="flex-1 h-px bg-[rgba(38,84,71,0.08)] dark:bg-[rgba(38,84,71,0.2)] transition-colors"></span>
                             <span className="shrink-0">або зареєструйтесь через email</span>
-                            <span className="flex-1 h-px bg-[rgba(38,84,71,0.08)]"></span>
+                            <span className="flex-1 h-px bg-[rgba(38,84,71,0.08)] dark:bg-[rgba(38,84,71,0.2)] transition-colors"></span>
                         </div>
 
                         <form className="flex flex-col" onSubmit={handleSubmit} noValidate>
                             {/* Name */}
-                            <label htmlFor="reg-name" className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Ім'я</label>
+                            <label htmlFor="reg-name" className="text-[13px] font-semibold text-[#265447] dark:text-[#A9B6B0] mb-[6px] block transition-colors">Ім'я</label>
                             <input
                                 id="reg-name"
                                 type="text"
@@ -305,14 +329,14 @@ export function Create() {
                                 onChange={(e) => setName(e.target.value)}
                                 onBlur={() => handleBlur('name')}
                                 disabled={registerMutation.isPending}
-                                className={`w-full h-[44px] border rounded-[10px] px-[16px] bg-white font-inter text-[14px] text-[#111827] outline-none transition-colors duration-200 ${fieldBorder(nameError, touched.name)}`}
+                                className={`w-full h-[44px] border rounded-[10px] px-[16px] bg-white dark:bg-[#1D2A25] font-inter text-[14px] text-[#111827] dark:text-[#EAF7F2] outline-none transition-colors duration-200 placeholder-[#D1D5DB] dark:placeholder-[#6D8279] ${fieldBorder(nameError, touched.name)}`}
                             />
-                            <div className={`overflow-hidden transition-all duration-300 ${nameError ? 'max-h-[40px] opacity-100 mt-[4px] mb-[8px]' : 'max-h-0 opacity-0 mb-[16px]'}`}>
+                            <div className={`overflow-hidden transition-all duration-300 ${nameError ? 'max-h-[40px] opacity-100 mt-[4px] mb-[8px]' : 'max-h-0 opacity-0 mb-[12px]'}`}>
                                 <p className="text-[12px] text-red-500 font-medium">{nameError}</p>
                             </div>
 
                             {/* Email */}
-                            <label htmlFor="reg-email" className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Email</label>
+                            <label htmlFor="reg-email" className="text-[13px] font-semibold text-[#265447] dark:text-[#A9B6B0] mb-[6px] block transition-colors">Email</label>
                             <input
                                 id="reg-email"
                                 type="email"
@@ -321,14 +345,14 @@ export function Create() {
                                 onChange={(e) => setEmail(e.target.value)}
                                 onBlur={() => handleBlur('email')}
                                 disabled={registerMutation.isPending}
-                                className={`w-full h-[44px] border rounded-[10px] px-[16px] bg-white font-inter text-[14px] text-[#111827] outline-none transition-colors duration-200 ${fieldBorder(emailError, touched.email)}`}
+                                className={`w-full h-[44px] border rounded-[10px] px-[16px] bg-white dark:bg-[#1D2A25] font-inter text-[14px] text-[#111827] dark:text-[#EAF7F2] outline-none transition-colors duration-200 placeholder-[#D1D5DB] dark:placeholder-[#6D8279] ${fieldBorder(emailError, touched.email)}`}
                             />
-                            <div className={`overflow-hidden transition-all duration-300 ${emailError ? 'max-h-[40px] opacity-100 mt-[4px] mb-[8px]' : 'max-h-0 opacity-0 mb-[16px]'}`}>
+                            <div className={`overflow-hidden transition-all duration-300 ${emailError ? 'max-h-[40px] opacity-100 mt-[4px] mb-[8px]' : 'max-h-0 opacity-0 mb-[12px]'}`}>
                                 <p className="text-[12px] text-red-500 font-medium">{emailError}</p>
                             </div>
 
                             {/* Password */}
-                            <label htmlFor="reg-password" className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Пароль</label>
+                            <label htmlFor="reg-password" className="text-[13px] font-semibold text-[#265447] dark:text-[#A9B6B0] mb-[6px] block transition-colors">Пароль</label>
                             <div className="relative">
                                 <input
                                     id="reg-password"
@@ -338,26 +362,26 @@ export function Create() {
                                     onChange={(e) => setPassword(e.target.value)}
                                     onBlur={() => handleBlur('password')}
                                     disabled={registerMutation.isPending}
-                                    className={`w-full h-[44px] border rounded-[10px] px-[16px] pr-[40px] bg-white font-inter text-[14px] text-[#111827] outline-none transition-colors duration-200 ${fieldBorder(passwordError, touched.password)}`}
+                                    className={`w-full h-[44px] border rounded-[10px] px-[16px] pr-[40px] bg-white dark:bg-[#1D2A25] font-inter text-[14px] text-[#111827] dark:text-[#EAF7F2] outline-none transition-colors duration-200 placeholder-[#D1D5DB] dark:placeholder-[#6D8279] ${fieldBorder(passwordError, touched.password)}`}
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
                                     className="absolute right-[12px] top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer p-0 flex items-center"
                                 >
-                                    <img src={eyeIcon} alt="toggle" className="w-[18px] h-[18px]" />
+                                    <img src={eyeIcon} alt="toggle" className="w-[18px] h-[18px] opacity-70 dark:opacity-100" />
                                 </button>
                             </div>
 
                             {/* Strength Checklist */}
                             <PasswordChecklist password={password} />
 
-                            <div className={`overflow-hidden transition-all duration-300 ${passwordError ? 'max-h-[40px] opacity-100 mt-[4px] mb-[8px]' : 'max-h-0 opacity-0 mb-[16px]'}`}>
+                            <div className={`overflow-hidden transition-all duration-300 ${passwordError ? 'max-h-[40px] opacity-100 mt-[4px] mb-[8px]' : 'max-h-0 opacity-0 mb-[12px]'}`}>
                                 <p className="text-[12px] text-red-500 font-medium">{passwordError}</p>
                             </div>
 
                             {/* Confirm password */}
-                            <label htmlFor="reg-confirm" className="text-[13px] font-semibold text-[#265447] mb-[8px] block">Підтвердьте пароль</label>
+                            <label htmlFor="reg-confirm" className="text-[13px] font-semibold text-[#265447] dark:text-[#A9B6B0] mb-[6px] block transition-colors">Підтвердьте пароль</label>
                             <div className="relative">
                                 <input
                                     id="reg-confirm"
@@ -370,57 +394,70 @@ export function Create() {
                                     }}
                                     onBlur={() => handleBlur('confirm')}
                                     disabled={registerMutation.isPending}
-                                    className={`w-full h-[44px] border rounded-[10px] px-[16px] pr-[40px] bg-white font-inter text-[14px] text-[#111827] outline-none transition-colors duration-200 ${fieldBorder(confirmError, touched.confirm)}`}
+                                    className={`w-full h-[44px] border rounded-[10px] px-[16px] pr-[40px] bg-white dark:bg-[#1D2A25] font-inter text-[14px] text-[#111827] dark:text-[#EAF7F2] outline-none transition-colors duration-200 placeholder-[#D1D5DB] dark:placeholder-[#6D8279] ${fieldBorder(confirmError, touched.confirm)}`}
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowConfirm(!showConfirm)}
                                     className="absolute right-[12px] top-1/2 -translate-y-1/2 bg-transparent border-none cursor-pointer p-0 flex items-center"
                                 >
-                                    <img src={eyeIcon} alt="toggle" className="w-[18px] h-[18px]" />
+                                    <img src={eyeIcon} alt="toggle" className="w-[18px] h-[18px] opacity-70 dark:opacity-100" />
                                 </button>
                             </div>
-                            <div className={`overflow-hidden transition-all duration-300 ${confirmError ? 'max-h-[40px] opacity-100 mt-[4px] mb-[8px]' : 'max-h-0 opacity-0 mb-[16px]'}`}>
+                            <div className={`overflow-hidden transition-all duration-300 ${confirmError ? 'max-h-[40px] opacity-100 mt-[4px] mb-[8px]' : 'max-h-0 opacity-0 mb-[12px]'}`}>
                                 <p className="text-[12px] text-red-500 font-medium">{confirmError}</p>
                             </div>
 
                             {/* Agree */}
-                            <div className="flex items-start gap-[12px] mb-[24px]">
+                            <div className="flex items-start gap-[12px] mb-[16px]">
                                 <input
                                     type="checkbox"
                                     id="agree"
                                     checked={agree}
                                     onChange={(e) => setAgree(e.target.checked)}
                                     disabled={registerMutation.isPending}
-                                    className="appearance-none shrink-0 w-[20px] h-[20px] mt-[1px] border border-[rgba(38,84,71,0.16)] rounded-[6px] bg-white cursor-pointer relative checked:bg-[#265447] checked:border-[#265447] after:content-[''] after:absolute after:left-[6px] after:top-[2px] after:w-[4px] after:h-[10px] after:border-white after:border-r-2 after:border-b-2 after:rotate-45 after:opacity-0 checked:after:opacity-100"
+                                    className="appearance-none shrink-0 w-[20px] h-[20px] mt-[1px] border border-[rgba(38,84,71,0.16)] dark:border-[rgba(38,84,71,0.2)] rounded-[6px] bg-white dark:bg-[#1D2A25] cursor-pointer relative checked:bg-[#265447] dark:checked:bg-[#3DAE8B] checked:border-[#265447] dark:checked:border-[#3DAE8B] after:content-[''] after:absolute after:left-[6px] after:top-[2px] after:w-[4px] after:h-[10px] after:border-white dark:after:border-[#111A17] after:border-r-2 after:border-b-2 after:rotate-45 after:opacity-0 checked:after:opacity-100 transition-colors"
                                 />
-                                <label htmlFor="agree" className="text-[13px] leading-[19.5px] text-[#4B5563] cursor-pointer">
-                                    Я погоджуюсь з <span className="font-semibold text-[#111827]">Умовами користування</span> та <span className="font-semibold text-[#111827]">Політикою конфіденційності.</span>
+                                <label htmlFor="agree" className="text-[13px] leading-[19.5px] text-[#4B5563] dark:text-[#A9B6B0] cursor-pointer transition-colors">
+                                    Я погоджуюсь з <span className="font-semibold text-[#111827] dark:text-[#3DAE8B]">Умовами користування</span> та <span className="font-semibold text-[#111827] dark:text-[#3DAE8B]">Політикою конфіденційності.</span>
                                 </label>
                             </div>
 
                             {/* Server error */}
-                            <div className={`overflow-hidden transition-all duration-300 ${serverError ? 'max-h-[40px] opacity-100 mb-[16px]' : 'max-h-0 opacity-0'}`}>
+                            <div className={`overflow-hidden transition-all duration-300 ${serverError ? 'max-h-[40px] opacity-100 mb-[12px]' : 'max-h-0 opacity-0'}`}>
                                 <p className="text-red-500 text-[13px] font-medium">{serverError}</p>
                             </div>
 
                             <button
                                 type="submit"
                                 disabled={registerMutation.isPending}
-                                className="flex items-center justify-center gap-[8px] w-full h-[46px] mt-[8px] bg-[#265447] text-white rounded-[10px] border-none cursor-pointer font-inter text-[14px] font-bold transition-all duration-200 hover:bg-[#1A3E2F] hover:shadow-md disabled:opacity-50"
+                                className="flex items-center justify-center gap-[8px] w-full h-[46px] mt-[4px] bg-[#265447] dark:bg-[#3DAE8B] text-white dark:text-[#111A17] rounded-[10px] border-none cursor-pointer font-inter text-[14px] font-bold transition-all duration-200 hover:bg-[#1A3E2F] dark:hover:bg-[#2C9E7C] hover:shadow-md disabled:opacity-50 shrink-0"
                             >
                                 {registerMutation.isPending && <Loader2 className="w-[18px] h-[18px] animate-spin" />}
                                 <span>{registerMutation.isPending ? 'Завантаження...' : 'Зареєструватися'}</span>
                             </button>
 
-                            <p className="text-center text-[14px] mt-[24px] text-[#6B7280]">
-                                Вже маєте акаунт? <Link to="/auth" className="text-[#265447] font-semibold no-underline hover:underline">Увійти</Link>
+                            <p className="text-center text-[14px] mt-[16px] mb-[8px] text-[#6B7280] dark:text-[#A9B6B0] transition-colors">
+                                Вже маєте акаунт? <Link to="/auth" viewTransition className="text-[#265447] dark:text-[#3DAE8B] font-semibold no-underline hover:underline transition-colors">Увійти</Link>
                             </p>
                         </form>
                     </div>
                 </div>
             </div>
         </div>
+        <OtpModal
+            isOpen={showOtpModal}
+            email={email}
+            onClose={() => {
+                setShowOtpModal(false);
+                verifyMutation.reset();
+            }}
+            onVerify={handleVerify}
+            isVerifying={verifyMutation.isPending}
+            onResend={handleResend}
+            isResending={registerMutation.isPending}
+            error={verifyMutation.error?.message || null}
+        />
         </section>
     );
 }

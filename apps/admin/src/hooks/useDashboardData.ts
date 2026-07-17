@@ -14,7 +14,7 @@ export interface DashboardData {
   };
   priceDynamics: Array<{ name: string; value: number }>;
   systemLogs: Array<{ id: string; time: string; event: string; details: string; status: 'success' | 'warning' | 'error' | 'info' }>;
-  needsAttention: Array<{ id: string; source: string; message: string; time: string; type: 'error' | 'sync' | 'warning' }>;
+  needsAttention: Array<{ id: string; source: string; message: string; time: string; type: 'error' | 'sync' | 'warning' | 'success' }>;
   popularCategories: Array<{ id: string; name: string; count: number; icon: string }>;
   newUsers: Array<{ id: string; name: string; email: string; initials: string }>;
   searchQueries: Array<{ id: string; query: string; count: number; position: number }>;
@@ -28,22 +28,32 @@ export interface DashboardData {
   popularProducts: Array<{ id: string; name: string; category: string; rating: number; reviews: number; image: string; volume?: string }>;
 }
 
-// NOTE: Replace this with a real API call when the backend is ready:
-// import { axiosInstance } from '@/api/axiosInstance';
-// const fetchDashboardData = async (): Promise<DashboardData> => {
-//   try {
-//     const response = await axiosInstance.get<DashboardData>('/admin/dashboard-summary');
-//     if (!response.data?.metrics) return getMockDashboardData();
-//     return response.data;
-//   } catch {
-//     return getMockDashboardData();
-//   }
-// };
+import { apiClient } from '@/lib/apiClient';
 
 const fetchDashboardData = async (): Promise<DashboardData> => {
-  // Simulates a network delay so Suspense / loading states work correctly
-  await new Promise((resolve) => setTimeout(resolve, 400));
-  return getMockDashboardData();
+  try {
+    const response = await apiClient.get<DashboardData>('/admin/dashboard-summary');
+    const mockData = getMockDashboardData();
+    
+    if (!response.data?.metrics) return mockData;
+    
+    return {
+      ...mockData,
+      ...response.data,
+      // Fallback to mock data for empty arrays to keep the dashboard populated
+      priceDynamics: response.data.priceDynamics?.length > 0 ? response.data.priceDynamics : mockData.priceDynamics,
+      systemLogs: response.data.systemLogs?.length > 0 ? response.data.systemLogs : mockData.systemLogs,
+      needsAttention: response.data.needsAttention?.length > 0 ? response.data.needsAttention : mockData.needsAttention,
+      popularCategories: response.data.popularCategories?.length > 0 ? response.data.popularCategories : mockData.popularCategories,
+      newUsers: response.data.newUsers?.length > 0 ? response.data.newUsers : mockData.newUsers,
+      searchQueries: response.data.searchQueries?.length > 0 ? response.data.searchQueries : mockData.searchQueries,
+      sourceStatus: response.data.sourceStatus?.length > 0 ? response.data.sourceStatus : mockData.sourceStatus,
+      systemStatus: response.data.systemStatus?.length > 0 ? response.data.systemStatus : mockData.systemStatus,
+      popularProducts: response.data.popularProducts?.length > 0 ? response.data.popularProducts : mockData.popularProducts,
+    };
+  } catch {
+    return getMockDashboardData();
+  }
 };
 
 export const useDashboardData = () => {
@@ -68,18 +78,13 @@ function getMockDashboardData(): DashboardData {
       pricesUpdatedTrend: 9.1,
     },
     priceDynamics: [
-      { name: 'Черв.', value: 200000 },
-      { name: 'Лип.', value: 250000 },
-      { name: 'Серп.', value: 300000 },
-      { name: 'Вер.', value: 280000 },
-      { name: 'Жовт.', value: 450000 },
-      { name: 'Лист.', value: 300000 },
-      { name: 'Груд.', value: 200000 },
-      { name: 'Січ.', value: 500000 },
-      { name: 'Лют.', value: 500000 },
-      { name: 'Бер.', value: 350000 },
-      { name: 'Квіт.', value: 450000 },
-      { name: 'Трав.', value: 400000 },
+      { name: '04.07', value: 120000 },
+      { name: '05.07', value: 150000 },
+      { name: '06.07', value: 180000 },
+      { name: '07.07', value: 160000 },
+      { name: '08.07', value: 200000 },
+      { name: '09.07', value: 220000 },
+      { name: '10.07', value: 208655 },
     ],
     systemLogs: [
       { id: '1', time: '14:35:12', event: 'Успішне оновлення парсера АТБ', details: 'Оновлено 4 521 товарів', status: 'success' },

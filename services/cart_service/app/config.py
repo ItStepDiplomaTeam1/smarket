@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str
 
     PRODUCT_SERVICE_URL: str = "http://127.0.0.1:8001"
+    ZEPHYROS_AGENT_URL: str = "http://zephyros_agent:8005"
     RABBITMQ_URL: str = "amqp://smarket:secure_rmq_pass_123@rabbitmq:5672/"
 
     model_config = SettingsConfigDict(

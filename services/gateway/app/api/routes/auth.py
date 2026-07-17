@@ -10,7 +10,7 @@ router = APIRouter()
 
 async def proxy_request(request: Request, path: str):
     """Допоміжна функція для проксування запитів до Auth Service."""
-    client: httpx.AsyncClient = request.app.state.http_client
+    client: httpx.AsyncClient = request.app.state.auth_http_client
     target_url = f"{settings.AUTH_SERVICE_URL}/auth/{path}"
 
     headers = dict(request.headers)
@@ -45,6 +45,12 @@ async def register(request: Request):
     return await proxy_request(request, "register")
 
 
+@router.post("/register/verify")
+async def register_verify(request: Request):
+    """Верифікація реєстрації через OTP."""
+    return await proxy_request(request, "register/verify")
+
+
 @router.post("/login")
 async def login(request: Request):
     """Вхід за email/password. Повертає access_token + встановлює httpOnly cookie з refresh_token."""
@@ -67,6 +73,24 @@ async def logout(request: Request):
 async def google_oauth(request: Request):
     """Google OAuth — верифікація Google ID Token і видача системних JWT."""
     return await proxy_request(request, "oauth/google")
+
+
+@router.post("/telegram")
+async def telegram_oauth(request: Request):
+    """Telegram OAuth — верифікація Telegram Login Widget даних і видача системних JWT."""
+    return await proxy_request(request, "oauth/telegram")
+
+
+@router.post("/forgot-password")
+async def forgot_password(request: Request):
+    """Запит на відновлення пароля."""
+    return await proxy_request(request, "forgot-password")
+
+
+@router.post("/reset-password")
+async def reset_password(request: Request):
+    """Скидання пароля за токеном."""
+    return await proxy_request(request, "reset-password")
 
 
 # ---------------------------------------------------------------
@@ -95,3 +119,21 @@ async def get_current_user(
 async def get_user_by_id(request: Request, user_id: str):
     """Отримати інформацію про користувача за його ID (включаючи ім'я)."""
     return await proxy_request(request, f"users/{user_id}")
+
+
+@router.patch("/password")
+async def change_password(
+    request: Request,
+    _: dict = Depends(verify_jwt),
+):
+    """Зміна пароля користувача."""
+    return await proxy_request(request, "password")
+
+
+@router.patch("/settings")
+async def update_settings(
+    request: Request,
+    _: dict = Depends(verify_jwt),
+):
+    """Оновлення налаштувань користувача."""
+    return await proxy_request(request, "settings")
