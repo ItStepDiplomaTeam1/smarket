@@ -1,4 +1,4 @@
-import { Suspense } from 'react';
+import { Suspense, lazy } from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
 import { MainLayout } from '../layouts/MainLayout';
 import { CatalogSkeleton, ShopsSkeleton, PageSkeleton, ProductDetailSkeleton } from '@/shared/ui';
@@ -24,9 +24,6 @@ const ProfileBaskets = lazy(() => import('@/modules/Profile/components/Baskets/B
 const ProfileFavorites = lazy(() => import('@/modules/Profile/components/Favorites/FavoritesContent').then(m => ({ default: m.FavoritesContent })));
 const ProfileSettings = lazy(() => import('@/modules/Profile/components/Settings/SettingsContent').then(m => ({ default: m.SettingsContent })));
 
-const ConfidentialPolicy = lazy(() => import('@/pages/ConfidentionalPolicy/ui/ConfidentialPolicyPage.tsx'));
-const Privacy = lazy(() => import('@/pages/Privacy/ui/PrivacyPage.tsx'));
-const UsingConditions = lazy(() => import('@/pages/UsingConditions/ui/UsingConditionsPage.tsx'));
 const ConfidentialPolicy = lazyWithRetry(() => import('@/pages/ConfidentionalPolicy/ui/ConfidentialPolicyPage.tsx'));
 const Privacy = lazyWithRetry(() => import('@/pages/Privacy/ui/PrivacyPage.tsx'));
 const UsingConditions = lazyWithRetry(() => import('@/pages/UsingConditions/ui/UsingConditionsPage.tsx'));

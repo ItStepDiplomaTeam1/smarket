@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState, useMemo } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { useFetchCarts } from '@/hooks/api/useCartApi';
 import { useFetchUserReviews } from '@/hooks/api/useReviewsApi';
 import { useFavoritesStore } from '@/shared/context/favoritesStore';
+import { apiClient } from '@/shared/api/apiClient';
 
 function formatDate(iso: string): string {
   const months = [
@@ -22,6 +23,51 @@ export function MainContent() {
 
   const navigate = useNavigate();
   const { items: favorites, load: loadFavorites, isLoaded } = useFavoritesStore();
+
+  const latestReviews = useMemo(() => {
+    return [...userReviews]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 4);
+  }, [userReviews]);
+
+  // Завантажуємо інформацію про товари для відгуків (назва, фото)
+  const [productsMap, setProductsMap] = useState<Record<number, { title: string; image_url: string | null }>>({});
+
+  useEffect(() => {
+    if (latestReviews.length === 0) return;
+
+    const productIds = [...new Set(latestReviews.map((r) => r.product_id))];
+    const idsToFetch = productIds.filter((id) => !productsMap[id]);
+    if (idsToFetch.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const results = await Promise.all(
+          idsToFetch.map(async (id) => {
+            try {
+              const res = await apiClient.get(`/api/v1/products/${id}`);
+              return { id, data: res.data };
+            } catch {
+              return { id, data: null };
+            }
+          })
+        );
+        if (cancelled) return;
+
+        const newMap = { ...productsMap };
+        results.forEach(({ id, data }) => {
+          if (data) {
+            newMap[id] = { title: data.title, image_url: data.image_url };
+          }
+        });
+        setProductsMap(newMap);
+      } catch (err) {
+        console.error(err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [latestReviews]);
 
   useEffect(() => {
     if (!isLoaded) {
