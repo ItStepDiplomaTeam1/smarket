@@ -158,8 +158,8 @@ export const Sidebar = () => {
           onClick={() => navigate(item.path)}
           className={`flex items-center w-full h-[44px] px-[12px] gap-[12px] rounded-[10px] border transition-all text-left cursor-pointer transition-colors duration-200 ${
             active
-              ? 'bg-[#F6FAF8] border-[#173B33] text-[#173B33] dark:bg-transparent dark:border-[#4ADE80] dark:text-[#4ADE80]'
-              : 'bg-transparent border-transparent text-[#6D8279] dark:text-[#4ADE80] hover:bg-[#F6FAF8] dark:hover:bg-[#173B33]'
+              ? 'bg-[#EAF7F2] border-[#6FE3C2] text-[#265447] dark:bg-transparent dark:border-[#4ADE80] dark:text-[#4ADE80]'
+              : 'bg-transparent border-transparent text-[#6D8279] dark:text-[#4ADE80] hover:bg-[#EAF7F2]/50 dark:hover:bg-[#173B33]'
           }`}
         >
           <img src={item.icon} alt={item.label} className="w-[20px] h-[20px] flex-shrink-0" />
@@ -187,8 +187,8 @@ export const Sidebar = () => {
           )}
         </div>
         <div className="flex flex-col w-[202px] gap-[6px]">
-          <h2 className="text-[14px] font-semibold text-[#173B33] dark:text-white leading-none truncate">{displayName}</h2>
-          <p className="text-[12px] font-normal text-[#6D8279] dark:text-white/70 leading-none truncate">{locationLabel}</p>
+          <h2 className="text-[14px] font-semibold text-[#265447] dark:text-white leading-none truncate">{displayName}</h2>
+          <p className="text-[12px] font-normal text-[#265447]/75 dark:text-white/70 leading-none truncate">{locationLabel}</p>
         </div>
         <div className="flex flex-col w-full gap-[12px]">
           <span className="text-[12px] font-semibold text-[#265447] dark:text-white leading-none">Профіль заповнено на {progress}%</span>
