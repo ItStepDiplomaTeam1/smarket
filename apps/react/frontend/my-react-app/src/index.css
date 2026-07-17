@@ -2,6 +2,8 @@
 
 @import "tailwindcss";
 
+@variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-inter: 'Inter', sans-serif;
   --font-manrope: 'Manrope', sans-serif;
