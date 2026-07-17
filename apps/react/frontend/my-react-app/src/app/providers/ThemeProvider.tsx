@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useThemeStore } from '../../shared/store/useThemeStore';
+import { useThemeStore } from '@/shared/store/useThemeStore';
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { theme } = useThemeStore();
