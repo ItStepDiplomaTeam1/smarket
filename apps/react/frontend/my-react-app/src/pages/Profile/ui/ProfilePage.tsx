@@ -1,7 +1,22 @@
-import { Outlet } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from '@/modules/Profile';
+import { useAuthStore } from '@/modules/Auth/store/authStore';
 
 export default function ProfilePage() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/auth');
+    }
+  }, [isAuthenticated, navigate]);
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
     <main className="w-full min-h-screen bg-[#F9FBFB] dark:bg-[#111A17] transition-colors duration-200">
 
@@ -16,5 +31,5 @@ export default function ProfilePage() {
       </div>
       
     </main>
-  )
+  );
 }
