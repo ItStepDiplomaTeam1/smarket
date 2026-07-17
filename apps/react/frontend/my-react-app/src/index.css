@@ -5,38 +5,12 @@
 @theme {
   --font-inter: 'Inter', sans-serif;
   --font-manrope: 'Manrope', sans-serif;
-
-  --color-admin-bg: var(--admin-bg);
-  --color-admin-surface: var(--admin-surface);
-  --color-sidebar-text: var(--sidebar-text);
-  --color-admin-text-bold: var(--admin-text-bold);
-  --color-admin-text-regular: var(--admin-text-regular);
 }
-
-@variant dark (&:where(.dark, .dark *));
-
-:root {
-  --admin-bg: #F3F4F6;
-  --admin-surface: #FFFFFF;
-  --admin-text-bold: #265447;
-  --admin-text-regular: #6D8279;
-  --sidebar-text: #6D8279;
-}
-
-.dark {
-  --admin-bg: #111A17;
-  --admin-surface: #1C2723;
-  --admin-text-bold: #FFFFFF;
-  --admin-text-regular: #9CA3AF;
-  --sidebar-text: #4ADE80;
-}
-
-@variant dark (&:where(.dark, .dark *));
 
 @keyframes chatIn {
   from {
     opacity: 0;
-    transform: scale(0.97) translateY(8px);
+    transform: scale(0.85) translateY(12px);
   }
   to {
     opacity: 1;
@@ -66,39 +40,29 @@
   }
 }
 
-@keyframes sweep {
-  from {
-    transform: translateX(-40%);
-  }
-  to {
-    transform: translateX(140%);
-  }
+/* ============================================================
+   MOBILE ADAPTATION — Antigravity Floating UI
+   ============================================================ */
+
+/* Постійна анімація «левітації» для тач-пристроїв
+   Замінює ефект :hover, який не працює на мобільних */
+@keyframes floating {
+  0%   { transform: translateY(0px); }
+  50%  { transform: translateY(-8px); }
+  100% { transform: translateY(0px); }
 }
 
-/* View Transitions API Animations */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: 300ms;
-  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+@keyframes floatingSubtle {
+  0%   { transform: translateY(0px) scale(1); }
+  50%  { transform: translateY(-4px) scale(1.01); }
+  100% { transform: translateY(0px) scale(1); }
 }
 
-::view-transition-old(root) {
-  animation-name: page-fade-out;
-}
-
-::view-transition-new(root) {
-  animation-name: page-fade-in-slide-up;
-}
-
-@keyframes page-fade-out {
-  from { opacity: 1; }
-  to { opacity: 0; }
-}
-
-@keyframes page-fade-in-slide-up {
+/* Анімація появи елементів при скролі (Intersection Observer) */
+@keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(24px);
   }
   to {
     opacity: 1;
@@ -106,43 +70,265 @@
   }
 }
 
-/* Fallback/universal mounting transitions */
-.animate-page-enter {
-  animation: page-fade-in-slide-up 300ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+/* Клас, що додається через JS при появі у viewport */
+.is-visible {
+  animation: fadeInUp 0.45s ease-out forwards;
 }
 
-@keyframes modal-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+.scroll-observe {
+  opacity: 0;
 }
 
-@keyframes modal-scale-up {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(10px);
+/* Бургер-меню — лінії */
+.burger-line {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: #173B33;
+  border-radius: 2px;
+  transition: transform 0.3s ease, opacity 0.2s ease;
+  transform-origin: center;
+}
+
+.burger-open .burger-line:nth-child(1) {
+  transform: translateY(8px) rotate(45deg);
+}
+.burger-open .burger-line:nth-child(2) {
+  opacity: 0;
+  transform: scaleX(0);
+}
+.burger-open .burger-line:nth-child(3) {
+  transform: translateY(-8px) rotate(-45deg);
+}
+
+/* Мобільна навігація — слайд зверху */
+.mobile-nav {
+  position: fixed;
+  top: 64px;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border-bottom: 1px solid rgba(38,84,71,0.10);
+  box-shadow: 0 8px 32px rgba(23,59,51,0.10);
+  padding: 16px 20px 20px;
+  z-index: 49;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  transform: translateY(-110%);
+  opacity: 0;
+  transition: transform 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease;
+  pointer-events: none;
+}
+
+.mobile-nav.mobile-nav--open {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.mobile-nav a {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #173B33;
+  text-decoration: none;
+  transition: background 0.2s;
+  min-height: 44px;
+}
+
+.mobile-nav a:hover,
+.mobile-nav a.active {
+  background: #F6FAF8;
+  color: #265447;
+}
+
+/* Приховуємо нативний скролбар горизонтальних списків,
+   але зберігаємо можливість скролу */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Touch-friendly: мінімальна область кліку 44×44px */
+.touch-target {
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============================================================
+   BREAKPOINT: Планшет — max-width: 768px
+   ============================================================ */
+@media (max-width: 768px) {
+
+  /* Хедер */
+  header .desktop-nav {
+    display: none;
   }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
+
+  header .burger-btn {
+    display: flex;
+  }
+
+  /* Hero секція — вертикальний стек */
+  .product-hero-layout {
+    flex-direction: column !important;
+    gap: 24px !important;
+    align-items: stretch !important;
+  }
+
+  .product-hero-left {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .product-hero-image {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 1 / 1;
+    max-height: 360px;
+  }
+
+  .product-hero-right {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Кнопки дій — wrap */
+  .product-actions {
+    flex-wrap: wrap;
+    gap: 8px !important;
+  }
+
+  .product-actions button,
+  .product-actions .btn-add-to-cart {
+    flex: 1 1 auto;
+    min-height: 48px;
+    font-size: 14px;
+  }
+
+  /* Таблиця характеристик — 2 колонки замість 4 */
+  .info-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Секція відгуків — стек */
+  .review-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+
+  /* Картки схожих товарів — горизонтальний скрол */
+  .products-scroll-row {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 12px;
+  }
+
+  .products-scroll-row > * {
+    scroll-snap-align: start;
+    flex-shrink: 0;
+  }
+
+
+
+  /* Шрифти */
+  h1 { font-size: 22px !important; }
+  h2 { font-size: 20px !important; }
+  h3 { font-size: 18px !important; }
+
+  /* Хлібні крихти на мобільному */
+  .breadcrumb {
+    font-size: 12px;
+    flex-wrap: wrap;
   }
 }
 
-.animate-modal-fade-in {
-  animation: modal-fade-in 200ms ease-out forwards;
-}
+/* ============================================================
+   BREAKPOINT: Смартфон — max-width: 480px
+   ============================================================ */
+@media (max-width: 480px) {
 
-.animate-modal-scale-up {
-  animation: modal-scale-up 300ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-}
+  /* Щільніші відступи */
+  .product-hero-section {
+    padding-top: 20px !important;
+    padding-bottom: 20px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
 
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
+  .product-hero-image {
+    max-height: 280px;
   }
-  ::view-transition-group(root) {
-    animation: none !important;
+
+  /* Ціна */
+  .product-price-main {
+    font-size: 26px !important;
   }
+
+  /* Кнопки — повна ширина на маленьких екранах */
+  .product-actions {
+    flex-direction: column;
+  }
+
+  .product-actions > * {
+    width: 100% !important;
+    min-height: 48px;
+  }
+
+  /* Віджет порівняння цін */
+  .price-compare-widget {
+    padding: 16px !important;
+  }
+
+  .price-compare-row {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 4px;
+    height: auto !important;
+    padding-top: 12px !important;
+    padding-bottom: 12px !important;
+  }
+
+  /* Таблиця характеристик — одна колонка */
+  .info-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Заголовок відгуку */
+  .review-card-header {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px;
+  }
+
+  /* Банер «Де дешевше?» */
+  .savings-badge {
+    font-size: 11px;
+  }
+
+  /* Картки у списках — менша ширина */
+  .recently-viewed-card {
+    width: 145px !important;
+    min-width: 145px;
+  }
+
+  .sm-product-card {
+    width: 200px !important;
+    min-width: 200px;
+  }
+
+  h1 { font-size: 20px !important; }
+  h2 { font-size: 18px !important; }
 }

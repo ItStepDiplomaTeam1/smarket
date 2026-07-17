@@ -16,6 +16,7 @@ interface AuthState {
   isAuthenticated: boolean;
   setAuth: (token: string, user: User) => void;
   logout: () => void;
+  updateUser: (updatedFields: Partial<User>) => void;
 }
 
 
@@ -52,12 +53,25 @@ export const useAuthStore = create<AuthState> () (
         (set) => ({
           ...initialAuthState,
 
-          setAuth: (token, user) => set({token, user, isAuthenticated: true}),
+          setAuth: (token, user) => set(() => {
+            const savedName = localStorage.getItem(`smarket_user_name_${user.email}`);
+            return {
+              token,
+              user: savedName ? { ...user, name: savedName } : user,
+              isAuthenticated: true
+            };
+          }),
 
           logout: () => set(initialAuthState),
-        }),
-        {
-          name: 'auth-storage',
-        }
+
+          updateUser: (updatedFields) => set((state) => {
+            if (state.user?.email && updatedFields.name) {
+              localStorage.setItem(`smarket_user_name_${state.user.email}`, updatedFields.name);
+            }
+            return {
+              user: state.user ? { ...state.user, ...updatedFields } : null
+            };
+          }),
+        }), {name: 'auth-storage'}
     )
 )

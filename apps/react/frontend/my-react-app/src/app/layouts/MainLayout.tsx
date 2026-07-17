@@ -22,7 +22,7 @@ export const MainLayout = () => {
   }, [location.pathname, location.hash]);
 
   return (
-    <div className="app-container flex flex-col min-h-screen">
+    <div className="app-container flex flex-col min-h-screen bg-[#111A17]">
       <Header />
       <main className="flex-1">
         <div key={location.pathname} className="animate-page-enter">

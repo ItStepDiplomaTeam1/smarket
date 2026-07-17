@@ -86,19 +86,19 @@ export function ReviewCard({ reviewId, rating, text, createdAt, productTitle, pr
 
   if (isEditing) {
     return (
-      <div className="w-full bg-white border border-[#6FE3C2] shadow-[0_4px_12px_rgba(23,59,51,0.06)] rounded-[16px] p-[24px] flex flex-col gap-[16px]">
+      <div className="w-full bg-[#1C2723] border border-[#265447]/30 shadow-[0_4px_20px_rgba(0,0,0,0.4)] rounded-[16px] p-[24px] flex flex-col gap-[16px]">
         <div className="flex items-center gap-[16px]">
-          <div className="w-[44px] h-[56px] shrink-0 border border-[#265447]/[0.08] rounded-[5px] flex items-center justify-center overflow-hidden">
+          <div className="w-[56px] h-[56px] shrink-0 border border-[#265447]/30 rounded-[5px] flex items-center justify-center overflow-hidden">
             {productImage ? (
               <img src={productImage} alt={productTitle} className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full bg-[#F6FAF8] flex items-center justify-center">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6D8279" strokeWidth="1.5"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+              <div className="w-full h-full bg-[#111A17] flex items-center justify-center">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="1.5"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
               </div>
             )}
           </div>
           <div>
-            <h4 className="font-inter text-[12px] font-medium text-[#265447] m-0 mb-[8px]">{productTitle}</h4>
+            <h4 className="font-inter text-[12px] font-medium text-white m-0 mb-[8px]">{productTitle}</h4>
             <div className="flex gap-[2px]">
               {[1, 2, 3, 4, 5].map((star) => (
                 <StarIcon key={star} filled={star <= editRating} onClick={() => setEditRating(star)} />
@@ -111,20 +111,20 @@ export function ReviewCard({ reviewId, rating, text, createdAt, productTitle, pr
           value={editText}
           onChange={(e) => setEditText(e.target.value)}
           placeholder="Напишіть свій відгук..."
-          className="w-full h-[80px] border border-[#265447]/[0.16] rounded-[10px] px-[14px] py-[10px] font-inter text-[13px] text-[#173B33] resize-none outline-none focus:border-[#6FE3C2] transition-colors"
+          className="w-full h-[80px] border border-[#265447]/30 rounded-[10px] px-[14px] py-[10px] font-inter text-[13px] bg-[#111A17] text-white resize-none outline-none focus:border-[#3DAE8B] transition-colors placeholder:text-[#94A3B8]/30"
         />
 
         <div className="flex gap-[12px] justify-end">
           <button
             onClick={handleCancelEdit}
-            className="h-[36px] px-[20px] bg-white border border-[#265447]/[0.16] rounded-[8px] font-inter text-[13px] font-semibold text-[#265447] cursor-pointer hover:bg-[#F6FAF8] transition-colors"
+            className="h-[36px] px-[20px] bg-[#1C2723] border border-[#265447]/30 rounded-[8px] font-inter text-[13px] font-semibold text-[#94A3B8] cursor-pointer hover:bg-[#173B33] transition-colors"
           >
             Скасувати
           </button>
           <button
             onClick={handleSaveEdit}
             disabled={updateMutation.isPending}
-            className="h-[36px] px-[20px] bg-[#265447] border-none rounded-[8px] font-inter text-[13px] font-semibold text-white cursor-pointer hover:bg-[#173B33] transition-colors disabled:opacity-50"
+            className="h-[36px] px-[20px] bg-[#3DAE8B] border-none rounded-[8px] font-inter text-[13px] font-semibold text-[#111A17] cursor-pointer hover:bg-[#2E9B78] transition-colors disabled:opacity-50"
           >
             {updateMutation.isPending ? 'Збереження...' : 'Зберегти'}
           </button>
@@ -139,21 +139,21 @@ export function ReviewCard({ reviewId, rating, text, createdAt, productTitle, pr
 
   if (showDeleteConfirm) {
     return (
-      <div className="w-full bg-white border border-[#FECACA] shadow-[0_4px_12px_rgba(23,59,51,0.06)] rounded-[16px] p-[24px] flex items-center justify-between">
+      <div className="w-full bg-[#2D1515] border border-[#EF4444]/30 shadow-[0_4px_20px_rgba(0,0,0,0.4)] rounded-[16px] p-[24px] flex items-center justify-between">
         <div className="flex items-center gap-[12px]">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
             <circle cx="12" cy="12" r="10" />
             <line x1="12" y1="8" x2="12" y2="12" />
             <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
-          <span className="font-inter text-[13px] text-[#173B33]">
+          <span className="font-inter text-[13px] text-white">
             Ви впевнені, що хочете видалити цей відгук?
           </span>
         </div>
         <div className="flex gap-[12px]">
           <button
             onClick={() => setShowDeleteConfirm(false)}
-            className="h-[36px] px-[20px] bg-white border border-[#265447]/[0.16] rounded-[8px] font-inter text-[13px] font-semibold text-[#265447] cursor-pointer hover:bg-[#F6FAF8] transition-colors"
+            className="h-[36px] px-[20px] bg-[#1C2723] border border-[#265447]/30 rounded-[8px] font-inter text-[13px] font-semibold text-[#94A3B8] cursor-pointer hover:bg-[#173B33] transition-colors"
           >
             Скасувати
           </button>
@@ -170,73 +170,78 @@ export function ReviewCard({ reviewId, rating, text, createdAt, productTitle, pr
   }
 
   return (
-    <div className="w-full bg-white border border-[#265447]/[0.08] shadow-[0_4px_12px_rgba(23,59,51,0.06)] rounded-[16px] p-[24px] flex items-center justify-between relative">
+    <div className="w-full bg-[#1C2723] border border-[#265447]/30 shadow-[0_4px_20px_rgba(0,0,0,0.4)] rounded-[16px] p-[16px] sm:p-[24px] flex flex-col sm:flex-row sm:items-center justify-between gap-[16px] sm:gap-0 relative">
       
-      <div className="w-[44px] h-[56px] shrink-0 border border-[#265447]/[0.08] rounded-[5px] flex items-center justify-center overflow-hidden">
-        {productImage ? (
-          <img src={productImage} alt={productTitle} className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full bg-[#F6FAF8] flex items-center justify-center">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6D8279" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
-              <path d="m3.3 7 8.7 5 8.7-5" />
-              <path d="M12 22V12" />
-            </svg>
-          </div>
-        )}
-      </div>
+      {/* Ліві дані: Фото + Назва + Зірочки */}
+      <div className="flex items-center gap-[12px] w-full sm:w-auto min-w-0 pr-[24px] sm:pr-0">
+        <div className="w-[56px] h-[56px] shrink-0 border border-[#265447]/30 rounded-[5px] flex items-center justify-center overflow-hidden bg-white p-[2px]">
+          {productImage ? (
+            <img src={productImage} alt={productTitle} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full bg-[#111A17] flex items-center justify-center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                <path d="m3.3 7 8.7 5 8.7-5" />
+                <path d="M12 22V12" />
+              </svg>
+            </div>
+          )}
+        </div>
 
-      <div className="flex flex-col gap-[12px] w-[156px] shrink-0 ml-[16px]">
-        <h4 className="font-inter text-[12px] font-medium text-[#265447] leading-none m-0">
-          {productTitle}
-        </h4>
-        <div className="flex">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <StarIcon key={star} filled={star <= rating} />
-          ))}
+        <div className="flex flex-col gap-[8px] min-w-0 flex-1 sm:w-[156px] sm:shrink-0 sm:ml-[16px]">
+          <h4 className="font-inter text-[12px] font-medium text-white leading-tight m-0 line-clamp-2 sm:truncate">
+            {productTitle}
+          </h4>
+          <div className="flex">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <StarIcon key={star} filled={star <= rating} />
+            ))}
+          </div>
         </div>
       </div>
 
-      <p className="flex-1 min-w-0 py-[6px] font-inter text-[12px] font-medium text-[#6D8279] leading-[18px] m-0 shrink-0 line-clamp-2 mx-[16px]">
+      {/* Сам відгук */}
+      <p className="w-full sm:flex-1 py-[4px] sm:py-[6px] font-inter text-[12px] font-medium text-[#94A3B8] leading-[18px] m-0 line-clamp-3 sm:line-clamp-2 sm:mx-[16px]">
         {text || 'Без коментаря'}
       </p>
 
-
-      <span className="font-inter text-[12px] text-[#6D8279] shrink-0">
+      {/* Дата */}
+      <span className="font-inter text-[12px] text-[#94A3B8] shrink-0 self-end sm:self-auto">
         {formatDate(createdAt)}
       </span>
 
-      <div ref={menuRef} className="shrink-0 relative z-10 ml-[12px]">
+      {/* Кнопка три крапки */}
+      <div ref={menuRef} className="absolute top-[16px] right-[16px] sm:static sm:ml-[12px] shrink-0 z-10">
         <div 
           onClick={() => setMenuOpen(!menuOpen)} 
           className="cursor-pointer flex items-center justify-center w-[24px] h-[24px]"
         >
-          <img src={kebabMenu} alt="Меню" className="w-[4px] h-[16px]" />
+          <img src={kebabMenu} alt="Меню" className="w-[4px] h-[16px] brightness-0 invert" />
         </div>
 
         {menuOpen && (
-          <div className="absolute right-0 top-[32px] w-[184px] bg-white rounded-[10px] border border-[#265447]/[0.08] shadow-[0_8px_24px_rgba(23,59,51,0.12)] p-[12px] flex flex-col gap-[8px] z-20">
+          <div className="absolute right-0 top-[32px] w-[184px] bg-[#111A17] rounded-[10px] border border-[#265447]/50 shadow-[0_8px_24px_rgba(0,0,0,0.5)] p-[12px] flex flex-col gap-[8px] z-20">
             
             <button
               onClick={() => { setIsEditing(true); setMenuOpen(false); }}
-              className="w-full h-[30px] flex items-center gap-[12px] px-[12px] rounded-[4px] hover:bg-[#F6FAF8] transition-colors text-left bg-transparent border-none cursor-pointer"
+              className="w-full h-[30px] flex items-center gap-[12px] px-[12px] rounded-[4px] hover:bg-white/5 transition-colors text-left bg-transparent border-none cursor-pointer"
             >
-              <img src={editIcon} alt="Редагувати" className="w-[16px] h-[16px]" />
-              <span className="font-inter font-semibold text-[12px] leading-[18.2px] text-[#173B33]">
+              <img src={editIcon} alt="Редагувати" className="w-[16px] h-[16px] brightness-0 invert" />
+              <span className="font-inter font-semibold text-[12px] leading-[18.2px] text-white">
                 Редагувати коментар
               </span>
             </button>
             
             <button
               onClick={() => { setShowDeleteConfirm(true); setMenuOpen(false); }}
-              className="w-full h-[30px] flex items-center gap-[12px] px-[12px] rounded-[4px] bg-[#FDC80D] hover:bg-[#F5C200] transition-colors text-left border-none cursor-pointer"
+              className="w-full h-[30px] flex items-center gap-[12px] px-[12px] rounded-[4px] bg-[#FACC14] hover:bg-[#E2B007] transition-colors text-left border-none cursor-pointer"
             >
               <img src={deleteIcon} alt="Видалити" className="w-[16px] h-[16px]" />
-              <span className="font-inter font-semibold text-[12px] leading-[18.2px] text-[#173B33]">
+              <span className="font-inter font-semibold text-[12px] leading-[18.2px] text-[#111A17]">
                 Видалити
               </span>
             </button>
-
+ 
           </div>
         )}
       </div>
