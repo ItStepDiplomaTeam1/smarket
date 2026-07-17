@@ -246,4 +246,32 @@ export const useResetPassword = () => {
     });
 };
 
+export interface ChangePasswordRequest {
+    old_password: string;
+    new_password: string;
+}
+
+export interface ChangePasswordResponse {
+    message: string;
+}
+
+export const useChangePassword = () => {
+    return useMutation<ChangePasswordResponse, Error, ChangePasswordRequest>({
+        mutationFn: async ({ old_password, new_password }) => {
+            try {
+                const response = await apiClient.patch<ChangePasswordResponse>('/api/v1/auth/password', {
+                    old_password,
+                    new_password,
+                });
+                return response.data;
+            } catch (error) {
+                if (axios.isAxiosError(error) && error.response?.data?.detail) {
+                    throw new Error(error.response.data.detail, { cause: error });
+                }
+                throw new Error('Не вдалося змінити пароль. Спробуйте ще раз.', { cause: error });
+            }
+        },
+    });
+};
+
 

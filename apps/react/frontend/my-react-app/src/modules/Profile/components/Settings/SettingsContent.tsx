@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react';
 import { apiClient } from '@/shared/api/apiClient';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
-import { useFetchMe } from '@/hooks/api/useAuthApi';
+import { useFetchMe, useChangePassword } from '@/hooks/api/useAuthApi';
 import toast from 'react-hot-toast';
+import { Check } from 'lucide-react';
+import { PASSWORD_RULES, validatePassword } from '@/shared/utils/password';
 
 const UKRAINIAN_CITIES = [
   'Київ', 'Харків', 'Одеса', 'Дніпро', 'Львів', 'Запоріжжя', 'Кривий Ріг', 
@@ -103,13 +105,21 @@ export function SettingsContent() {
     }
   };
 
+  const changePasswordMutation = useChangePassword();
+
   const handlePasswordChange = async () => {
     if (!oldPassword || !newPassword) {
       toast.error('Будь ласка, заповніть усі поля');
       return;
     }
+    
+    if (!validatePassword(newPassword)) {
+      toast.error('Новий пароль не відповідає всім вимогам безпеки.');
+      return;
+    }
+
     try {
-      await apiClient.patch('/api/v1/auth/password', {
+      await changePasswordMutation.mutateAsync({
         old_password: oldPassword,
         new_password: newPassword,
       });
@@ -122,8 +132,7 @@ export function SettingsContent() {
       logout();
       navigate('/login');
     } catch (error: any) {
-      const errMsg = error?.response?.data?.detail || 'Не вдалося змінити пароль';
-      toast.error(errMsg);
+      toast.error(error.message || 'Не вдалося змінити пароль');
     }
   };
 
@@ -612,6 +621,23 @@ export function SettingsContent() {
                 onKeyDown={(e) => { if (e.key === 'Enter') handlePasswordChange(); }}
                 className="h-[40px] w-full border border-[#E5E7EB] dark:border-[#265447]/30 rounded-[8px] px-[12px] bg-white dark:bg-[#173B33] text-[#173B33] dark:text-white font-inter text-[13px] outline-none focus:border-[#173B33] dark:focus:border-[#4ADE80] transition-colors"
               />
+              {newPassword && (
+                <div className="mt-[6px] flex flex-col gap-[2px] mb-[4px]">
+                  {PASSWORD_RULES.map((rule, idx) => {
+                    const isValid = rule.check(newPassword);
+                    return (
+                      <div key={idx} className={`flex items-center gap-[6px] text-[11px] font-medium transition-colors duration-300 ${isValid ? 'text-[#265447] dark:text-[#3DAE8B]' : 'text-gray-400 dark:text-[#6D8279]'}`}>
+                        {isValid ? (
+                          <Check className="w-[12px] h-[12px] shrink-0" strokeWidth={3} />
+                        ) : (
+                          <div className="w-[12px] h-[12px] shrink-0 rounded-full border border-gray-300 dark:border-[#265447] flex items-center justify-center" />
+                        )}
+                        <span>{rule.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             <div className="flex gap-[12px] justify-end pt-[4px]">
