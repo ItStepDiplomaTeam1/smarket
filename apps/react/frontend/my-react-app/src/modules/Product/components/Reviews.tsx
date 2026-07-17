@@ -56,10 +56,10 @@ export function Reviews({ productId }: ReviewsProps) {
     };
 
     return (
-        <section className="w-full bg-[#F6FAF8] font-inter">
+        <section className="w-full bg-[#F6FAF8] dark:bg-[#111A17] font-inter transition-colors">
             <div className="w-full max-w-[1180px] mx-auto pt-[32px] pb-[40px] px-[24px]">
 
-                <h2 className="font-manrope font-[200] text-[24px] leading-[31.2px] text-[#173B33] m-0 mb-[24px]">
+                <h2 className="font-manrope font-[200] text-[24px] leading-[31.2px] text-[#173B33] dark:text-white m-0 mb-[24px]">
                     Відгуки покупців
                 </h2>
 
@@ -70,19 +70,19 @@ export function Reviews({ productId }: ReviewsProps) {
                             <circle cx="12" cy="12" r="10" stroke="rgba(38,84,71,0.2)" strokeWidth="3" />
                             <path d="M12 2a10 10 0 0 1 10 10" stroke="#265447" strokeWidth="3" strokeLinecap="round" />
                         </svg>
-                        <span className="text-[14px] text-[#6D8279]">Завантаження відгуків...</span>
+                        <span className="text-[14px] text-[#6D8279] dark:text-[#A9B6B0]">Завантаження відгуків...</span>
                     </div>
                 )}
 
                 {/* Помилка завантаження */}
                 {isError && (
-                    <div className="flex items-center gap-[8px] bg-[#FEF2F2] border border-[#FECACA] rounded-[12px] px-[20px] py-[16px] mb-[24px]">
+                    <div className="flex items-center gap-[8px] bg-[#FEF2F2] dark:bg-[#FEF2F2]/10 border border-[#FECACA] dark:border-[#FECACA]/30 rounded-[12px] px-[20px] py-[16px] mb-[24px]">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <circle cx="12" cy="12" r="10" />
                             <line x1="12" y1="8" x2="12" y2="12" />
                             <line x1="12" y1="16" x2="12.01" y2="16" />
                         </svg>
-                        <span className="text-[14px] text-[#991B1B]">Не вдалося завантажити відгуки. Спробуйте оновити сторінку.</span>
+                        <span className="text-[14px] text-[#991B1B] dark:text-red-400">Не вдалося завантажити відгуки. Спробуйте оновити сторінку.</span>
                     </div>
                 )}
 
@@ -91,18 +91,18 @@ export function Reviews({ productId }: ReviewsProps) {
                     <>
                         {/* Картка загального рейтингу */}
                         {reviews.length > 0 && (
-                            <div className="flex items-center bg-white border border-[rgba(38,84,71,0.08)] rounded-[16px] p-[24px] mb-[24px]">
-                                <div className="font-manrope font-[200] text-[32px] leading-[48px] text-[#265447] mr-[16px]">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center bg-white dark:bg-[#1D2A25] border border-[rgba(38,84,71,0.08)] dark:border-[#265447]/30 rounded-[16px] p-[24px] mb-[24px] shadow-sm gap-[16px] sm:gap-0 transition-colors">
+                                <div className="font-manrope font-[200] text-[32px] leading-[48px] text-[#265447] dark:text-[#3DAE8B] mr-[16px]">
                                     {avgRatingDisplay}
                                 </div>
                                 <div className="flex flex-col gap-[4px]">
                                     <ReviewStars filled={filledStarsAvg} size={16} />
-                                    <div className="font-inter font-normal text-[14px] leading-[21px] text-[#6D8279]">
+                                    <div className="font-inter font-normal text-[14px] leading-[21px] text-[#6D8279] dark:text-[#A9B6B0]">
                                         На основі {reviews.length} {reviews.length === 1 ? 'відгуку' : reviews.length < 5 ? 'відгуків' : 'відгуків'}
                                     </div>
                                 </div>
                                 {avgRating >= 4.0 && (
-                                    <span className="inline-flex items-center justify-center h-[26px] px-[12px] bg-[#EAF7F2] rounded-[16px] ml-[32px] font-inter font-semibold text-[12px] leading-[18px] text-[#265447]">
+                                    <span className="inline-flex items-center justify-center h-[26px] px-[12px] bg-[#EAF7F2] dark:bg-[#EAF7F2]/10 rounded-[16px] sm:ml-[32px] font-inter font-semibold text-[12px] leading-[18px] text-[#265447] dark:text-[#3DAE8B]">
                                         Покупці рекомендують цей товар
                                     </span>
                                 )}
@@ -111,14 +111,14 @@ export function Reviews({ productId }: ReviewsProps) {
 
                         {/* Пустий стан */}
                         {reviews.length === 0 && (
-                            <div className="flex flex-col items-center justify-center bg-white border border-[rgba(38,84,71,0.08)] rounded-[16px] p-[40px] mb-[24px]">
+                            <div className="flex flex-col items-center justify-center bg-white dark:bg-[#1D2A25] border border-[rgba(38,84,71,0.08)] dark:border-[#265447]/30 rounded-[16px] p-[40px] mb-[24px] shadow-sm transition-colors">
                                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="mb-[16px]">
                                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                                 </svg>
-                                <p className="font-manrope font-semibold text-[16px] text-[#265447] m-0 mb-[4px]">
+                                <p className="font-manrope font-semibold text-[16px] text-[#265447] dark:text-[#3DAE8B] m-0 mb-[4px]">
                                     Ще немає відгуків
                                 </p>
-                                <p className="font-inter text-[14px] text-[#6D8279] m-0">
+                                <p className="font-inter text-[14px] text-[#6D8279] dark:text-[#A9B6B0] m-0">
                                     Будьте першим, хто залишить відгук про цей товар!
                                 </p>
                             </div>
@@ -130,26 +130,26 @@ export function Reviews({ productId }: ReviewsProps) {
                                 {reviews.map((review) => (
                                     <div
                                         key={review.id}
-                                        className="border border-[rgba(38,84,71,0.08)] rounded-[16px] p-[24px] bg-white
-                                                   transition-shadow duration-200 hover:shadow-[0_2px_12px_rgba(23,59,51,0.06)]"
+                                        className="border border-[rgba(38,84,71,0.08)] dark:border-[#265447]/30 rounded-[16px] p-[24px] bg-white dark:bg-[#1D2A25]
+                                                   transition-all duration-200 hover:shadow-[0_2px_12px_rgba(23,59,51,0.06)] shadow-sm"
                                     >
-                                        <div className="flex justify-between items-start mb-[12px]">
+                                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-[12px] gap-[8px] sm:gap-0">
                                             <div className="flex flex-col gap-[4px]">
                                                 <div className="flex items-center gap-[8px]">
-                                                    <span className="font-inter font-semibold text-[16px] leading-[24px] text-[#265447] m-0">
+                                                    <span className="font-inter font-semibold text-[16px] leading-[24px] text-[#265447] dark:text-[#3DAE8B] m-0">
                                                         {review.user_name}
                                                     </span>
                                                     {/* Позначка, якщо це відгук поточного користувача */}
                                                     {user && user.id === review.user_id && (
-                                                        <span className="inline-flex items-center h-[20px] px-[8px] bg-[#EAF7F2] rounded-[10px] font-inter font-semibold text-[10px] text-[#265447]">
+                                                        <span className="inline-flex items-center h-[20px] px-[8px] bg-[#EAF7F2] dark:bg-[#EAF7F2]/10 rounded-[10px] font-inter font-semibold text-[10px] text-[#265447] dark:text-[#3DAE8B]">
                                                             Ваш відгук
                                                         </span>
                                                     )}
                                                 </div>
                                                 <ReviewStars filled={review.rating} />
                                             </div>
-                                            <div className="flex items-center gap-[12px]">
-                                                <span className="font-inter font-normal text-[13px] leading-[19.5px] text-[#6D8279]">
+                                            <div className="flex items-center justify-between sm:justify-end gap-[12px]">
+                                                <span className="font-inter font-normal text-[13px] leading-[19.5px] text-[#6D8279] dark:text-[#A9B6B0]">
                                                     {formatDate(review.created_at)}
                                                 </span>
                                                 {/* Кнопка видалення (тільки для власних відгуків) */}
@@ -160,7 +160,7 @@ export function Reviews({ productId }: ReviewsProps) {
                                                         disabled={deleteReview.isPending}
                                                         className="w-[28px] h-[28px] flex items-center justify-center bg-transparent border-none cursor-pointer
                                                                    rounded-full text-[#9CA3AF] transition-colors duration-200
-                                                                   hover:bg-[#FEF2F2] hover:text-[#EF4444]
+                                                                   hover:bg-[#FEF2F2] dark:hover:bg-[#FEF2F2]/10 hover:text-[#EF4444]
                                                                    disabled:opacity-50 disabled:cursor-not-allowed"
                                                         aria-label="Видалити відгук"
                                                     >
@@ -173,7 +173,7 @@ export function Reviews({ productId }: ReviewsProps) {
                                             </div>
                                         </div>
                                         {review.text && (
-                                            <p className="font-inter font-normal text-[16px] leading-[24px] text-[#6D8279] m-0">
+                                            <p className="font-inter font-normal text-[16px] leading-[24px] text-[#6D8279] dark:text-[#EAF7F2] m-0">
                                                 {review.text}
                                             </p>
                                         )}
@@ -193,10 +193,10 @@ export function Reviews({ productId }: ReviewsProps) {
                                     }
                                 }}
                                 className={`w-[181px] h-[46px] flex justify-center items-center rounded-[10px] border
-                                           font-inter font-semibold text-[14px] cursor-pointer transition-all duration-200
+                                           font-inter font-semibold text-[14px] cursor-pointer transition-all duration-200 shadow-sm
                                            ${isAuthenticated
-                                               ? 'bg-[#265447] text-white border-[#265447] hover:bg-[#1A3E2F]'
-                                               : 'bg-white text-[#265447] border-[rgba(38,84,71,0.16)] opacity-60 cursor-not-allowed'
+                                               ? 'bg-[#265447] dark:bg-[#3DAE8B] text-white dark:text-[#111A17] border-[#265447] dark:border-[#3DAE8B] hover:bg-[#1A3E2F] dark:hover:bg-[#2C9E7C]'
+                                               : 'bg-white dark:bg-[#111A17] text-[#265447] dark:text-[#3DAE8B] border-[rgba(38,84,71,0.16)] dark:border-[#265447]/30 opacity-60 cursor-not-allowed'
                                            }`}
                                 disabled={!isAuthenticated}
                             >

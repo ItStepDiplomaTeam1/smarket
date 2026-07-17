@@ -25,35 +25,35 @@ export function About({ product }: AboutProps) {
   ];
 
   return (
-    <section className="w-full pb-[40px] bg-[#F6FAF8] font-inter">
+    <section className="w-full pb-[40px] bg-[#F6FAF8] dark:bg-[#111A17] font-inter transition-colors">
       <div className="w-full max-w-[1180px] mx-auto px-[20px]">
         <div>
           {/* Заголовок секції */}
-          <h2 className="font-manrope text-[24px] font-bold text-[#173B33] mb-[24px] m-0">Про товар</h2>
+          <h2 className="font-manrope text-[24px] font-bold text-[#173B33] dark:text-[#EAF7F2] mb-[24px] m-0">Про товар</h2>
 
           {/* Description */}
-          <div className="bg-white border border-[rgba(38,84,71,0.08)] rounded-[16px] p-[24px] mb-[16px]">
-            <h3 className="font-manrope text-[24px] font-[200] leading-[31.2px] text-[#173B33] m-0 mb-[16px]">Опис товару</h3>
-            <p className="font-inter text-[16px] text-[#173B33] leading-[24px] m-0">
+          <div className="bg-white dark:bg-[#1D2A25] border border-[rgba(38,84,71,0.08)] dark:border-[#265447]/30 rounded-[16px] p-[24px] mb-[16px] shadow-sm transition-colors">
+            <h3 className="font-manrope text-[24px] font-[200] leading-[31.2px] text-[#173B33] dark:text-white m-0 mb-[16px]">Опис товару</h3>
+            <p className="font-inter text-[16px] text-[#173B33] dark:text-[#EAF7F2] leading-[24px] m-0">
               {generatedDescription}
             </p>
           </div>
 
           {/* General info */}
-          <div className="bg-white border border-[rgba(38,84,71,0.08)] rounded-[16px] p-[24px] mb-[16px]">
-            <h3 className="font-manrope text-[24px] font-[200] leading-[31.2px] text-[#173B33] m-0 mb-[16px]">Загальна інформація</h3>
+          <div className="bg-white dark:bg-[#1D2A25] border border-[rgba(38,84,71,0.08)] dark:border-[#265447]/30 rounded-[16px] p-[24px] mb-[16px] shadow-sm transition-colors">
+            <h3 className="font-manrope text-[24px] font-[200] leading-[31.2px] text-[#173B33] dark:text-white m-0 mb-[16px]">Загальна інформація</h3>
             <div className="flex flex-col">
               {infoRows.map((row, ri) => (
-                <div key={ri} className="grid grid-cols-4 gap-x-[24px]">
+                <div key={ri} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-[24px]">
                   {row.map(({ label, val }, ci) => (
                     <div
                       key={ci}
-                      className={`flex justify-between items-start gap-[12px] py-[16px] ${ri < infoRows.length - 1 ? 'border-b border-[rgba(38,84,71,0.08)]' : ''}`}
+                      className="flex justify-between items-start gap-[12px] py-[16px] border-b border-[rgba(38,84,71,0.08)] dark:border-[#265447]/20"
                     >
                       {label && (
                         <>
-                          <span className="font-inter text-[13px] text-[#6D8279] font-normal shrink-0">{label}</span>
-                          <span className="font-inter text-[13px] font-semibold text-[#265447] text-right">{val}</span>
+                          <span className="font-inter text-[13px] text-[#6D8279] dark:text-[#A9B6B0] font-normal shrink-0">{label}</span>
+                          <span className="font-inter text-[13px] font-semibold text-[#265447] dark:text-[#3DAE8B] text-right">{val}</span>
                         </>
                       )}
                     </div>

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom'; 
-import { apiClient } from '../../../shared/api/apiClient';
+import { apiClient } from '@/shared/api/apiClient';
 import { type Product } from '../type';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { useFetchCarts, useUpdateCartItem } from '@/hooks/api/useCartApi';
@@ -84,12 +84,11 @@ const SmCard = ({ product }: { product: Product }) => {
         }
     };
 
-    // ОБГОРНУТО В LINK ЗАМІСТЬ DIV
     return (
         <Link 
             to={`/product/${product.id}-${generateSlug(product.title)}`}
             viewTransition
-            className="w-[271px] h-[489px] shrink-0 bg-white border border-[rgba(38,84,71,0.08)] rounded-[16px] p-[16px] flex flex-col box-border cursor-pointer transition-shadow hover:shadow-[0_4px_12px_rgba(38,84,71,0.08)] no-underline text-inherit block relative"
+            className="w-[271px] h-[489px] shrink-0 bg-white dark:bg-[#1D2A25] border border-[rgba(38,84,71,0.08)] dark:border-[#265447]/30 rounded-[16px] p-[16px] flex flex-col box-border cursor-pointer transition-shadow hover:shadow-[0_4px_12px_rgba(38,84,71,0.08)] no-underline text-inherit block relative shadow-sm"
         >
             <button
                 onClick={(e) => {
@@ -118,7 +117,7 @@ const SmCard = ({ product }: { product: Product }) => {
                     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
                 </svg>
             </button>
-            <div className="w-full h-[339px] rounded-[10px] flex justify-center items-center mb-[16px] overflow-hidden">
+            <div className="w-full h-[339px] rounded-[10px] flex justify-center items-center mb-[16px] overflow-hidden bg-white dark:bg-[#111A17] p-2">
                 <img 
                     src={product.image_url || zagluska} 
                     alt={product.title} 
@@ -127,22 +126,22 @@ const SmCard = ({ product }: { product: Product }) => {
                 />
             </div>
             <h3 
-                className="font-manrope text-[14px] font-[200] text-[#173B33] leading-[1.4] m-0 mb-[8px] overflow-hidden"
+                className="font-manrope text-[14px] font-[200] text-[#173B33] dark:text-[#EAF7F2] leading-[1.4] m-0 mb-[8px] overflow-hidden"
                 style={{ display: '-webkit-box', WebkitBoxOrient: 'vertical', WebkitLineClamp: 2 }}
             >
                 {product.title}
             </h3>
-            <span className="font-inter text-[12px] text-[#6D8279] font-normal mb-[16px]">
+            <span className="font-inter text-[12px] text-[#6D8279] dark:text-[#A9B6B0] font-normal mb-[16px]">
                 {displayWeight}
             </span>
             <div className="mt-auto flex justify-between items-center">
-                <span className="font-manrope text-[16px] font-[200] text-[#265447]">
+                <span className="font-manrope text-[16px] font-[200] text-[#265447] dark:text-[#3DAE8B]">
                     {minPrice ? `${minPrice} ₴` : 'Немає'}
                 </span>
                 <button 
                     onClick={handleAddToCart}
                     disabled={isAdding || !minPrice}
-                    className="w-[92px] h-[26px] rounded-[10px] bg-white border border-[rgba(38,84,71,0.16)] flex justify-center items-center cursor-pointer font-inter text-[13px] font-semibold text-[#265447] transition-colors duration-200 hover:bg-[#F6FAF8] disabled:opacity-50"
+                    className="w-[92px] h-[26px] rounded-[10px] bg-white dark:bg-[#111A17] border border-[rgba(38,84,71,0.16)] dark:border-[#265447]/30 flex justify-center items-center cursor-pointer font-inter text-[13px] font-semibold text-[#265447] dark:text-[#3DAE8B] transition-colors duration-200 hover:bg-[#F6FAF8] dark:hover:bg-[#1C2723] disabled:opacity-50"
                 >
                     {isAdding ? 'Додаємо...' : 'До кошика'}
                 </button>
@@ -159,7 +158,7 @@ export function SMProduct({ currentProduct }: SMProductProps) {
     const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
 
-    useEffect(() => {
+    React.useEffect(() => {
         if (!currentProduct?.category && currentProduct?.canonical_category_id == null) {
             setIsLoading(false);
             return;
@@ -206,12 +205,12 @@ export function SMProduct({ currentProduct }: SMProductProps) {
     if (isLoading || similarProducts.length === 0) return null;
 
     return (
-        <section className="w-full pb-[40px] bg-[#F6FAF8]">
+        <section className="w-full pb-[40px] bg-[#F6FAF8] dark:bg-[#111A17] transition-colors">
             <div className="w-full max-w-[1228px] mx-auto px-[24px]">
-                <h2 className="font-manrope text-[24px] font-[200] text-[#173B33] leading-[31.2px] m-0 mb-[24px]">
+                <h2 className="font-manrope text-[24px] font-[200] text-[#173B33] dark:text-white leading-[31.2px] m-0 mb-[24px]">
                     Схожі товари
                 </h2>
-                <div className="flex gap-[24px] overflow-x-auto pb-[16px]">
+                <div className="flex gap-[24px] overflow-x-auto pb-[16px] scrollbar-thin">
                     {similarProducts.map((prod) => (
                         <SmCard key={prod.id} product={prod} />
                     ))}

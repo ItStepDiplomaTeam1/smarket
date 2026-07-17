@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { generateSlug } from '@/shared/utils/url';
 import zagluska from '@/shared/assets/products-zaglushka.svg';
-import { apiClient } from '../../../shared/api/apiClient';
+import { apiClient } from '@/shared/api/apiClient';
 import { type Product } from '../type';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { useFetchCarts, useUpdateCartItem } from '@/hooks/api/useCartApi';
@@ -85,7 +85,7 @@ const RecentlyViewedCard = ({ product }: { product: Product }) => {
     return (
         <Link 
             to={`/product/${product.id}-${generateSlug(product.title)}`}
-            className="w-[175px] h-[296px] shrink-0 bg-white border border-[rgba(38,84,71,0.08)] rounded-[16px] p-[16px] flex flex-col box-border relative cursor-pointer no-underline text-inherit block"
+            className="w-[175px] h-[296px] shrink-0 bg-white dark:bg-[#1D2A25] border border-[rgba(38,84,71,0.08)] dark:border-[#265447]/30 rounded-[16px] p-[16px] flex flex-col box-border relative cursor-pointer no-underline text-inherit block shadow-sm"
         >
             <button
                 onClick={(e) => {
@@ -114,15 +114,15 @@ const RecentlyViewedCard = ({ product }: { product: Product }) => {
                     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
                 </svg>
             </button>
-            <div className="w-full h-[141px] rounded-[10px] flex justify-center items-center mb-[16px]">
+            <div className="w-full h-[141px] rounded-[10px] flex justify-center items-center mb-[16px] bg-white dark:bg-[#111A17] p-2">
                 <img 
                     src={product.image_url || zagluska} 
                     alt={product.title} 
-                    className="w-full h-full object-contain rounded-[8px]" 
+                    className="max-w-full max-h-full object-contain rounded-[8px]" 
                 />
             </div>
             <h3 
-                className="font-manrope text-[14px] font-normal text-[#173B33] leading-[1.4] m-0 mb-[4px] h-[40px] overflow-y-auto"
+                className="font-manrope text-[14px] font-normal text-[#173B33] dark:text-[#EAF7F2] leading-[1.4] m-0 mb-[4px] h-[40px] overflow-y-auto"
                 style={{
                     scrollbarWidth: 'thin',
                     scrollbarColor: 'rgba(38, 84, 71, 0.2) transparent'
@@ -130,24 +130,24 @@ const RecentlyViewedCard = ({ product }: { product: Product }) => {
             >
                 {product.title}
             </h3>
-            <span className="font-inter text-[12px] text-[#6D8279] font-normal mb-[16px]">
+            <span className="font-inter text-[12px] text-[#6D8279] dark:text-[#A9B6B0] font-normal mb-[16px]">
                 {displayWeight}
             </span>
             <div className="mt-auto flex justify-between items-center">
-                <span className="font-manrope text-[16px] font-[200] leading-[24px] text-[#265447]">
+                <span className="font-manrope text-[16px] font-[200] leading-[24px] text-[#265447] dark:text-[#3DAE8B]">
                     {minPrice ? `${minPrice} ₴` : 'Немає'}
                 </span>
                 <button
                     onClick={handleAddToCart}
                     disabled={isAdding || !minPrice}
-                    className="w-[32px] h-[32px] rounded-[6px] bg-[#EAF7F2] border-none flex justify-center items-center cursor-pointer transition-colors duration-200 hover:bg-[#F6FAF8] disabled:opacity-50"
+                    className="w-[32px] h-[32px] rounded-[6px] bg-[#EAF7F2] dark:bg-[#3DAE8B]/10 border-none flex justify-center items-center cursor-pointer transition-colors duration-200 hover:bg-[#F6FAF8] dark:hover:bg-[#1C2723] disabled:opacity-50"
                 >
                     {isAdding ? (
-                        <span className="text-[10px] text-[#265447]">...</span>
+                        <span className="text-[10px] text-[#265447] dark:text-[#3DAE8B]">...</span>
                     ) : (
                         <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M8 3.33331V12.6666" stroke="#265447" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                            <path d="M3.33337 8H12.6667" stroke="#265447" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            <path d="M8 3.33331V12.6666" stroke="currentColor" className="text-[#265447] dark:text-[#3DAE8B]" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                            <path d="M3.33337 8H12.6667" stroke="currentColor" className="text-[#265447] dark:text-[#3DAE8B]" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                         </svg>
                     )}
                 </button>
@@ -168,7 +168,7 @@ export function RecentlyViewed({
     const [products, setProducts] = useState<Product[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
 
-    useEffect(() => {
+    React.useEffect(() => {
         const fetchRecentlyViewed = async () => {
             try {
                 setIsLoading(true);
@@ -218,12 +218,12 @@ export function RecentlyViewed({
     if (isLoading || products.length === 0) return null;
 
     return (
-        <section className="w-full pb-[40px] bg-[#F6FAF8]">
+        <section className="w-full pb-[40px] bg-[#F6FAF8] dark:bg-[#111A17] transition-colors">
             <div className="w-full max-w-[1228px] mx-auto px-[24px]">
-                <h2 className="font-manrope text-[24px] font-[200] leading-[31.2px] text-[#173B33] m-0 mb-[24px]">
+                <h2 className="font-manrope text-[24px] font-[200] leading-[31.2px] text-[#173B33] dark:text-white m-0 mb-[24px]">
                     {title}
                 </h2>
-                <div className="flex gap-[24px] overflow-x-auto pb-[16px]">
+                <div className="flex gap-[24px] overflow-x-auto pb-[16px] scrollbar-thin">
                     {products.map((product) => (
                         <RecentlyViewedCard key={product.id} product={product} />
                     ))}

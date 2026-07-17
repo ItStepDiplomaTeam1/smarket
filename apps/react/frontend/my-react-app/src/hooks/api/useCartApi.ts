@@ -268,8 +268,10 @@ export const useCompleteCart = () => {
       const { data } = await apiClient.post(`/api/v1/cart/${cartId}/complete`);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data, cartId) => {
       queryClient.invalidateQueries({ queryKey: ['my-receipts'] });
+      queryClient.invalidateQueries({ queryKey: ['carts'] });
+      queryClient.invalidateQueries({ queryKey: ['cart', cartId] });
     },
   });
 };
@@ -305,6 +307,7 @@ export const useDeleteReceipt = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['my-receipts'] });
+      queryClient.invalidateQueries({ queryKey: ['carts'] });
     },
   });
 };

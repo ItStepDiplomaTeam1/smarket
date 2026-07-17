@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.database.session import get_db
-from app.database.models import Receipt
+from app.database.models import Receipt, Cart
 from app.shared.schemas import ReceiptResponse, ReceiptListItem
 
 router = APIRouter(prefix="/cart/receipts", tags=["Receipts"])
@@ -74,6 +74,13 @@ async def delete_user_receipt(
     if not receipt:
         raise HTTPException(status_code=404, detail="Чек не знайдено")
         
+    if receipt.cart_id:
+        cart_stmt = select(Cart).where(Cart.id == receipt.cart_id, Cart.user_id == user_id)
+        cart_result = await db.execute(cart_stmt)
+        cart = cart_result.scalar_one_or_none()
+        if cart:
+            await db.delete(cart)
+
     await db.delete(receipt)
     await db.commit()
     return {"status": "success", "message": "Чек успішно видалено"}

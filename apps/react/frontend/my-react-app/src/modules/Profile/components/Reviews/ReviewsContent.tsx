@@ -77,28 +77,28 @@ export function ReviewsContent() {
       <div className="w-full">
         
         {/* Хлібні крихти */}
-        <div className="flex items-center gap-[4px] font-inter text-[13px] text-[#6D8279] mb-[12px]">
-          <span className="cursor-pointer hover:text-[#265447] transition-colors" onClick={() => navigate('/')}>Головна</span>
-          <img src={rightVector} alt=">" className="w-[10px] h-[10px] object-contain mx-[2px]" />
-          <span className="cursor-pointer hover:text-[#265447] transition-colors" onClick={() => navigate('/profile')}>Особистий кабінет</span>
-          <img src={rightVector} alt=">" className="w-[10px] h-[10px] object-contain mx-[2px]" />
-          <span className="text-[#265447] font-semibold">Відгуки</span>
+        <div className="flex items-center gap-[4px] font-inter text-[13px] text-[#6D8279] dark:text-[#A9B6B0] mb-[12px]">
+          <span className="cursor-pointer hover:text-[#265447] dark:hover:text-[#3DAE8B] transition-colors" onClick={() => navigate('/')}>Головна</span>
+          <img src={rightVector} alt=">" className="w-[10px] h-[10px] object-contain mx-[2px] dark:brightness-200" />
+          <span className="cursor-pointer hover:text-[#265447] dark:hover:text-[#3DAE8B] transition-colors" onClick={() => navigate('/profile')}>Особистий кабінет</span>
+          <img src={rightVector} alt=">" className="w-[10px] h-[10px] object-contain mx-[2px] dark:brightness-200" />
+          <span className="text-[#265447] dark:text-[#EAF7F2] font-semibold">Відгуки</span>
         </div>
 
         {/* Заголовок */}
-        <h1 className="font-manrope text-[24px] font-[250] leading-[31.2px] text-[#173B33] m-0 mb-[24px]">
+        <h1 className="font-manrope text-[24px] font-[250] leading-[31.2px] text-[#173B33] dark:text-white m-0 mb-[24px]">
           Мої відгуки
         </h1>
 
         <div className="flex gap-[16px] mb-[24px]">
           <div 
-            className="h-[30px] border border-[#265447]/[0.16] rounded-[6px] px-[12px] flex items-center justify-between cursor-pointer bg-white gap-[8px]"
+            className="h-[30px] border border-[#265447]/[0.16] dark:border-[#265447]/30 rounded-[6px] px-[12px] flex items-center justify-between cursor-pointer bg-white dark:bg-[#1D2A25] gap-[8px]"
             onClick={() => setSortOrder(sortOrder === 'newest' ? 'oldest' : 'newest')}
           >
-            <span className="font-inter text-[10px] font-normal text-[#6D8279] whitespace-nowrap">
+            <span className="font-inter text-[10px] font-normal text-[#6D8279] dark:text-[#A9B6B0] whitespace-nowrap">
               {sortOrder === 'newest' ? 'Сортування: нові спочатку' : 'Сортування: старі спочатку'}
             </span>
-            <img src={rightVector} alt="v" className="w-[10px] h-[10px] object-contain rotate-90" />
+            <img src={rightVector} alt="v" className="w-[10px] h-[10px] object-contain rotate-90 dark:brightness-200" />
           </div>
         </div>
 
@@ -112,19 +112,19 @@ export function ReviewsContent() {
                 <circle cx="12" cy="12" r="10" stroke="rgba(38,84,71,0.2)" strokeWidth="3" />
                 <path d="M12 2a10 10 0 0 1 10 10" stroke="#265447" strokeWidth="3" strokeLinecap="round" />
               </svg>
-              <span className="font-inter text-[14px] text-[#6D8279]">Завантаження відгуків...</span>
+              <span className="font-inter text-[14px] text-[#6D8279] dark:text-[#A9B6B0]">Завантаження відгуків...</span>
             </div>
           )}
 
           {/* Помилка */}
           {isError && (
-            <div className="flex items-center gap-[8px] bg-[#FEF2F2] border border-[#FECACA] rounded-[12px] px-[20px] py-[16px]">
+            <div className="flex items-center gap-[8px] bg-[#FEF2F2] dark:bg-[#FEF2F2]/10 border border-[#FECACA] dark:border-[#FECACA]/30 rounded-[12px] px-[20px] py-[16px]">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
                 <line x1="12" y1="8" x2="12" y2="12" />
                 <line x1="12" y1="16" x2="12.01" y2="16" />
               </svg>
-              <span className="font-inter text-[14px] text-[#991B1B]">Не вдалося завантажити відгуки. Спробуйте оновити сторінку.</span>
+              <span className="font-inter text-[14px] text-[#991B1B] dark:text-red-400">Не вдалося завантажити відгуки. Спробуйте оновити сторінку.</span>
             </div>
           )}
 
@@ -153,19 +153,19 @@ export function ReviewsContent() {
 
               {/* Пагінація */}
               {totalReviews > 0 && (
-                <div className="flex items-center justify-between mt-[24px]">
-                  <span className="font-inter font-normal text-[14px] leading-[21.45px] text-[#6D8279]">
+                <div className="flex flex-col sm:flex-row items-center justify-between mt-[24px] gap-4 sm:gap-0">
+                  <span className="font-inter font-normal text-[14px] leading-[21.45px] text-[#6D8279] dark:text-[#A9B6B0]">
                     {startIndex + 1}-{endIndex} з {totalReviews} відгуків
                   </span>
                   <div className="flex items-center gap-[13px]">
                     <button
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
-                      className={`w-[30px] h-[30px] bg-white rounded-[6px] border border-[#265447]/[0.08] flex items-center justify-center transition-colors cursor-pointer ${
-                        currentPage === 1 ? 'opacity-30 cursor-default' : 'hover:bg-[#F6FAF8]'
+                      className={`w-[30px] h-[30px] bg-white dark:bg-[#1D2A25] rounded-[6px] border border-[#265447]/[0.08] dark:border-[#265447]/30 flex items-center justify-center transition-colors cursor-pointer ${
+                        currentPage === 1 ? 'opacity-30 cursor-default' : 'hover:bg-[#F6FAF8] dark:hover:bg-[#1C2723]'
                       }`}
                     >
-                      <img src={leftVector} alt="Попередня" />
+                      <img src={leftVector} alt="Попередня" className="dark:brightness-200" />
                     </button>
 
                     {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
@@ -174,12 +174,12 @@ export function ReviewsContent() {
                         onClick={() => setCurrentPage(page)}
                         className={`w-[30px] h-[30px] rounded-[6px] flex items-center justify-center border-none cursor-pointer ${
                           page === currentPage
-                            ? 'bg-[#6FE3C2] shadow-[0_4px_12px_rgba(23,59,51,0.06)]'
-                            : 'bg-white border border-[#265447]/[0.08] hover:bg-[#F6FAF8]'
+                            ? 'bg-[#6FE3C2] dark:bg-[#3DAE8B] shadow-[0_4px_12px_rgba(23,59,51,0.06)]'
+                            : 'bg-white dark:bg-[#1D2A25] border border-[#265447]/[0.08] dark:border-[#265447]/30 hover:bg-[#F6FAF8] dark:hover:bg-[#1C2723]'
                         }`}
                       >
                         <span className={`font-manrope font-[800] text-[10px] ${
-                          page === currentPage ? 'text-white' : 'text-[#265447]'
+                          page === currentPage ? 'text-white dark:text-[#111A17]' : 'text-[#265447] dark:text-[#EAF7F2]'
                         }`}>
                           {page}
                         </span>
@@ -189,11 +189,11 @@ export function ReviewsContent() {
                     <button
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
-                      className={`w-[30px] h-[30px] bg-white rounded-[6px] border border-[#265447]/[0.08] flex items-center justify-center transition-colors cursor-pointer ${
-                        currentPage === totalPages ? 'opacity-30 cursor-default' : 'hover:bg-[#F6FAF8]'
+                      className={`w-[30px] h-[30px] bg-white dark:bg-[#1D2A25] rounded-[6px] border border-[#265447]/[0.08] dark:border-[#265447]/30 flex items-center justify-center transition-colors cursor-pointer ${
+                        currentPage === totalPages ? 'opacity-30 cursor-default' : 'hover:bg-[#F6FAF8] dark:hover:bg-[#1C2723]'
                       }`}
                     >
-                      <img src={rightVector} alt="Наступна" />
+                      <img src={rightVector} alt="Наступна" className="dark:brightness-200" />
                     </button>
                   </div>
                 </div>

@@ -194,25 +194,25 @@ export function ProductHero({ product }: ProductHeroProps) {
         : (product.unit === 'kg' ? '1 кг' : `1 ${product.unit || 'шт'}`);
 
     return (
-        <section className="w-full bg-[#F6FAF8] font-inter pt-[32px] pb-[32px]">
+        <section className="w-full bg-[#F6FAF8] dark:bg-[#111A17] font-inter pt-[32px] pb-[32px] transition-colors">
             <div className="w-full max-w-[1228px] mx-auto px-[24px] flex flex-col gap-[32px]">
 
                 {/* Хлібні крихти */}
                 <nav className="flex items-center gap-[8px] min-h-[24px] text-[13px] -mb-[16px]">
-                    <a href="/" className="text-[#6D8279] no-underline font-medium transition-colors duration-200 hover:text-[#265447]">Головна</a>
-                    <span className="text-[#D1D5DB] text-[12px]">/</span>
-                    <a href="/catalog" className="text-[#6D8279] no-underline font-medium transition-colors duration-200 hover:text-[#265447]">Каталог</a>
-                    <span className="text-[#D1D5DB] text-[12px]">/</span>
-                    <span className="text-[#111827] font-semibold">{product.title}</span>
+                    <a href="/" className="text-[#6D8279] dark:text-[#A9B6B0] no-underline font-medium transition-colors duration-200 hover:text-[#265447] dark:hover:text-[#3DAE8B]">Головна</a>
+                    <span className="text-[#D1D5DB] dark:text-[#2B4236] text-[12px]">/</span>
+                    <a href="/catalog" className="text-[#6D8279] dark:text-[#A9B6B0] no-underline font-medium transition-colors duration-200 hover:text-[#265447] dark:hover:text-[#3DAE8B]">Каталог</a>
+                    <span className="text-[#D1D5DB] dark:text-[#2B4236] text-[12px]">/</span>
+                    <span className="text-[#111827] dark:text-[#EAF7F2] font-semibold">{product.title}</span>
                 </nav>
 
                 {/* Основний контент товару */}
-                <div className="flex justify-between items-start gap-[40px]">
+                <div className="flex flex-col lg:flex-row justify-between items-start gap-[32px] lg:gap-[40px]">
 
                     {/* ЛІВА ПАНЕЛЬ */}
-                    <div className="w-[453px] shrink-0 flex flex-col gap-[16px]">
+                    <div className="w-full lg:w-[453px] shrink-0 flex flex-col gap-[16px]">
                         {/* Галерея */}
-                        <div className="relative w-[453px] h-[453px] rounded-[24px] bg-white border border-[rgba(38,84,71,0.08)] flex justify-center items-center p-[24px]">
+                        <div className="relative w-full max-w-[453px] aspect-square rounded-[24px] bg-white dark:bg-[#1D2A25] border border-[rgba(38,84,71,0.08)] dark:border-[#265447]/30 flex justify-center items-center p-[24px] mx-auto shadow-sm">
                             {/* Бейджі */}
                             <div className="absolute top-[21px] left-[21px] flex flex-col items-start gap-[8px] z-[2]">
                                 {activePriceObj?.old_price && (
@@ -220,7 +220,7 @@ export function ProductHero({ product }: ProductHeroProps) {
                                         Акція
                                     </span>
                                 )}
-                                <span className="inline-flex items-center gap-[4px] h-[28px] px-[12px] rounded-[16px] bg-white border border-[#265447] text-[#265447] font-inter text-[12px] font-semibold leading-[18px]">
+                                <span className="inline-flex items-center gap-[4px] h-[28px] px-[12px] rounded-[16px] bg-white dark:bg-[#1C2723] border border-[#265447] dark:border-[#3DAE8B] text-[#265447] dark:text-[#3DAE8B] font-inter text-[12px] font-semibold leading-[18px]">
                                     <img src={staricongreen} alt="star" className="w-[12px] h-[12px]" /> Рекомендовано
                                 </span>
                             </div>
@@ -236,22 +236,22 @@ export function ProductHero({ product }: ProductHeroProps) {
                         </div>
 
                         {/* Мініатюри */}
-                        <div className="flex flex-row justify-between w-full gap-[12px]">
-                            <div className="w-[143px] h-[143px] rounded-[16px] bg-[#F6FAF8] border border-[rgba(38,84,71,0.08)] flex justify-center items-center cursor-pointer shrink-0 p-[12px]">
+                        <div className="flex flex-row justify-center lg:justify-between w-full gap-[12px]">
+                            <div className="w-[100px] h-[100px] sm:w-[143px] sm:h-[143px] rounded-[16px] bg-[#F6FAF8] dark:bg-[#1D2A25] border border-[rgba(38,84,71,0.08)] dark:border-[#265447]/30 flex justify-center items-center cursor-pointer shrink-0 p-[12px] shadow-sm">
                                 <img src={product.image_url || mainMilk} alt="thumb" className="max-w-full max-h-full object-contain opacity-70" />
                             </div>
                         </div>
                     </div>
 
                     {/* ПРАВА ПАНЕЛЬ */}
-                    <div className="w-[623px] shrink-0 flex flex-col">
+                    <div className="w-full lg:w-[623px] lg:shrink-0 flex flex-col">
 
                         {/* Заголовок та інфо */}
                         <div className="flex flex-col gap-[12px] mb-[32px]">
-                            <h1 className="m-0 font-manrope text-[26px] font-[200] leading-[31.2px] text-[#173B33]">
+                            <h1 className="m-0 font-manrope text-[24px] sm:text-[26px] font-[200] leading-[31.2px] text-[#173B33] dark:text-[#EAF7F2]">
                                 {product.title}
                             </h1>
-                            <span className="font-inter text-[13px] font-normal leading-[19.5px] text-[#6D8279]">
+                            <span className="font-inter text-[13px] font-normal leading-[19.5px] text-[#6D8279] dark:text-[#A9B6B0]">
                                 Вага/об'єм: {displayWeight}
                             </span>
                             <div className="flex items-center gap-[8px] font-inter">
@@ -265,8 +265,8 @@ export function ProductHero({ product }: ProductHeroProps) {
                                         />
                                     ))}
                                 </div>
-                                <span className="text-[13px] font-normal leading-[19.5px] text-[#6D8279]">
-                                    <strong className="font-semibold text-[#265447]">{avgRatingDisplay}</strong> · {reviewsCount} {getReviewsWord(reviewsCount)}
+                                <span className="text-[13px] font-normal leading-[19.5px] text-[#6D8279] dark:text-[#A9B6B0]">
+                                    <strong className="font-semibold text-[#265447] dark:text-[#3DAE8B]">{avgRatingDisplay}</strong> · {reviewsCount} {getReviewsWord(reviewsCount)}
                                 </span>
                             </div>
                         </div>
@@ -274,46 +274,46 @@ export function ProductHero({ product }: ProductHeroProps) {
                         {/* Блок ціни */}
                         <div className="flex flex-col items-start gap-[8px] mb-[32px]">
                             <div className="flex items-baseline gap-[12px]">
-                                <div className="font-manrope text-[30px] font-[200] leading-[45px] text-[#173B33]">
+                                <div className="font-manrope text-[28px] sm:text-[30px] font-[200] leading-[45px] text-[#173B33] dark:text-[#EAF7F2]">
                                     {activePriceObj ? `${activePriceObj.price.toFixed(2)} ₴` : 'Немає в наявності'}
                                 </div>
                                 {activePriceObj?.old_price && (
-                                    <div className="font-inter text-[18px] line-through text-[#9CA3AF]">
+                                    <div className="font-inter text-[18px] line-through text-[#9CA3AF] dark:text-[#6D8279]">
                                         {activePriceObj.old_price.toFixed(2)} ₴
                                     </div>
                                 )}
                             </div>
                             {activePriceObj && (
-                                <div className="font-inter text-[13px] font-medium leading-[19.5px] text-[#6D8279]">
+                                <div className="font-inter text-[13px] font-medium leading-[19.5px] text-[#6D8279] dark:text-[#A9B6B0]">
                                     {activePriceObj === cheapestPriceObj
-                                        ? <>Найкраща ціна в <strong className="font-bold text-[13px] leading-[19.5px] text-[#173B33]">{activePriceObj.store.name}</strong></>
-                                        : <>Ціна в <strong className="font-bold text-[13px] leading-[19.5px] text-[#173B33]">{activePriceObj.store.name}</strong></>
+                                        ? <>Найкраща ціна в <strong className="font-bold text-[13px] leading-[19.5px] text-[#173B33] dark:text-[#EAF7F2]">{activePriceObj.store.name}</strong></>
+                                        : <>Ціна в <strong className="font-bold text-[13px] leading-[19.5px] text-[#173B33] dark:text-[#EAF7F2]">{activePriceObj.store.name}</strong></>
                                     }
                                 </div>
                             )}
-                            <div className={`px-[10px] py-[4px] rounded-[6px] font-inter text-[13px] font-semibold leading-[19.5px] ${activePriceObj?.in_stock ? 'bg-[#EAF7F2] text-[#265447]' : 'bg-[#FFF2F1] text-[#D94841]'
+                            <div className={`px-[10px] py-[4px] rounded-[6px] font-inter text-[13px] font-semibold leading-[19.5px] ${activePriceObj?.in_stock ? 'bg-[#EAF7F2] dark:bg-[#EAF7F2]/10 text-[#265447] dark:text-[#3DAE8B]' : 'bg-[#FFF2F1] dark:bg-[#FFF2F1]/10 text-[#D94841] dark:text-[#EF4444]'
                                 }`}>
                                 {activePriceObj?.in_stock ? 'В наявності' : 'Немає в наявності'}
                             </div>
                         </div>
 
                         {/* Кнопки дій */}
-                        <div className="flex items-center gap-[12px] mb-[12px]">
-                            <div className="flex items-center h-[44px] px-[8px] rounded-[10px] border border-[rgba(38,84,71,0.16)]">
+                        <div className="flex flex-wrap items-center gap-[12px] mb-[12px]">
+                            <div className="flex items-center h-[44px] px-[8px] rounded-[10px] border border-[rgba(38,84,71,0.16)] dark:border-[#265447]/30 bg-white dark:bg-[#1D2A25] shadow-sm">
                                 <button
                                     onClick={handleDecrease}
                                     disabled={quantity <= 1 || !activePriceObj?.in_stock}
-                                    className="w-[36px] h-full bg-transparent border-none text-[20px] text-[#4B5563] cursor-pointer disabled:opacity-30 transition-opacity"
+                                    className="w-[36px] h-full bg-transparent border-none text-[20px] text-[#4B5563] dark:text-[#A9B6B0] cursor-pointer disabled:opacity-30 transition-opacity"
                                 >
                                     -
                                 </button>
-                                <span className="w-[32px] text-center font-inter text-[16px] font-semibold text-[#111827]">
+                                <span className="w-[32px] text-center font-inter text-[16px] font-semibold text-[#111827] dark:text-[#EAF7F2]">
                                     {quantity}
                                 </span>
                                 <button
                                     onClick={handleIncrease}
                                     disabled={!activePriceObj?.in_stock}
-                                    className="w-[36px] h-full bg-transparent border-none text-[20px] text-[#4B5563] cursor-pointer hover:text-[#173B33] transition-colors disabled:opacity-30"
+                                    className="w-[36px] h-full bg-transparent border-none text-[20px] text-[#4B5563] dark:text-[#A9B6B0] cursor-pointer hover:text-[#173B33] dark:hover:text-white transition-colors disabled:opacity-30"
                                 >
                                     +
                                 </button>
@@ -323,7 +323,7 @@ export function ProductHero({ product }: ProductHeroProps) {
                             <button
                                 onClick={handleAddToCart}
                                 disabled={isAdding || !activePriceObj?.in_stock || (isAuthenticated && carts && carts.length > 1 && !selectedCart)}
-                                className="h-[44px] px-[24px] rounded-[10px] border-none bg-[#265447] font-inter text-[13px] font-semibold text-white whitespace-nowrap cursor-pointer transition-colors duration-200 hover:bg-[#1A3E2F] disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="h-[44px] px-[24px] rounded-[10px] border-none bg-[#265447] dark:bg-[#3DAE8B] font-inter text-[13px] font-semibold text-white dark:text-[#111A17] whitespace-nowrap cursor-pointer transition-colors duration-200 hover:bg-[#1A3E2F] dark:hover:bg-[#2C9E7C] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                             >
                                 {isAdding ? 'Додаємо...' : 'Додати до кошика'}
                             </button>
@@ -346,8 +346,8 @@ export function ProductHero({ product }: ProductHeroProps) {
                                 }}
                                 className={`h-[44px] px-[24px] rounded-[10px] border flex items-center justify-center gap-2 font-inter text-[13px] font-semibold whitespace-nowrap cursor-pointer transition-colors duration-200 ${
                                     isFavorite(product.id)
-                                        ? 'border-[#E11D48] text-[#E11D48] bg-red-50 hover:bg-red-100'
-                                        : 'border-[rgba(38,84,71,0.16)] text-[#265447] bg-white hover:bg-[#F9FAFB]'
+                                        ? 'border-[#E11D48] text-[#E11D48] bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/40'
+                                        : 'border-[rgba(38,84,71,0.16)] dark:border-[#265447]/30 text-[#265447] dark:text-[#3DAE8B] bg-white dark:bg-[#1D2A25] hover:bg-[#F9FAFB] dark:hover:bg-[#1C2723]'
                                 }`}
                             >
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill={isFavorite(product.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -357,18 +357,18 @@ export function ProductHero({ product }: ProductHeroProps) {
                             </button>
                         </div>
 
-                        <p className="max-w-[480px] m-0 mb-[16px] font-inter text-[12px] leading-[18px] text-[#6D8279]">
+                        <p className="max-w-[480px] m-0 mb-[16px] font-inter text-[12px] leading-[18px] text-[#6D8279] dark:text-[#A9B6B0]">
                             Ціни можуть відрізнятися залежно від магазину та часу оновлення.
                         </p>
 
                         {/* Блок вибору кошика (якщо кошиків більше одного) */}
                         {isAuthenticated && carts && carts.length > 1 && (
                             <div className="flex flex-col gap-[8px] mb-[32px] max-w-[320px]">
-                                <label className="font-inter text-[13px] font-semibold text-[#173B33]">
+                                <label className="font-inter text-[13px] font-semibold text-[#173B33] dark:text-[#EAF7F2]">
                                     Оберіть кошик для додавання:
                                 </label>
                                 <select
-                                    className="h-[44px] px-[16px] rounded-[10px] border border-[rgba(38,84,71,0.16)] bg-white font-inter text-[13px] text-[#173B33] outline-none"
+                                    className="h-[44px] px-[16px] rounded-[10px] border border-[rgba(38,84,71,0.16)] dark:border-[#265447]/30 bg-white dark:bg-[#1D2A25] font-inter text-[13px] text-[#173B33] dark:text-[#EAF7F2] outline-none"
                                     value={selectedCart || ''}
                                     onChange={(e) => setSelectedCart(e.target.value)}
                                 >
@@ -384,9 +384,9 @@ export function ProductHero({ product }: ProductHeroProps) {
                             <div className="mb-[32px]"></div>
                         )}
                         {/* Віджет порівняння цін */}
-                        <div className="flex flex-col gap-[16px] p-[24px] rounded-[16px] border border-[rgba(38,84,71,0.08)] bg-white">
+                        <div className="flex flex-col gap-[16px] p-[24px] rounded-[16px] border border-[rgba(38,84,71,0.08)] dark:border-[#265447]/30 bg-white dark:bg-[#1D2A25] shadow-sm">
                             <div className="flex justify-between items-center">
-                                <h3 className="m-0 font-manrope text-[18px] font-[200] leading-[25.2px] text-[#173B33]">Де дешевше?</h3>
+                                <h3 className="m-0 font-manrope text-[18px] font-[200] leading-[25.2px] text-[#173B33] dark:text-white">Де дешевше?</h3>
                                 {savings > 0 && (
                                     <span className="px-[12px] py-[4px] rounded-[24px] bg-[#FACC14] font-inter text-[13px] font-bold leading-[19.5px] text-[#173B33]">
                                         Можна зекономити {savings.toFixed(2)} ₴
@@ -394,9 +394,9 @@ export function ProductHero({ product }: ProductHeroProps) {
                                 )}
                             </div>
 
-                            <div className="flex flex-col gap-[8px] max-h-[166px] overflow-y-auto">
+                            <div className="flex flex-col gap-[8px] max-h-[220px] overflow-y-auto">
                                 {sortedPrices.length === 0 ? (
-                                    <div className="font-inter text-[14px] text-[#6D8279] text-center py-4">
+                                    <div className="font-inter text-[14px] text-[#6D8279] dark:text-[#A9B6B0] text-center py-4">
                                         Дані про ціни в інших магазинах відсутні.
                                     </div>
                                 ) : (
@@ -409,33 +409,33 @@ export function ProductHero({ product }: ProductHeroProps) {
                                             <div
                                                 key={priceObj.id}
                                                 onClick={() => handleSelectStore(priceObj.store_id)}
-                                                className={`shrink-0 flex justify-between items-center h-[50px] px-[16px] rounded-[10px] cursor-pointer transition-all duration-200 ${isSelected
-                                                        ? 'bg-[#EAF7F2] border-[2px] border-[#265447] shadow-[0_0_0_1px_rgba(38,84,71,0.12)]'
+                                                className={`shrink-0 flex justify-between items-center h-auto py-3 sm:h-[50px] px-[16px] rounded-[10px] cursor-pointer transition-all duration-200 ${isSelected
+                                                        ? 'bg-[#EAF7F2] dark:bg-[#265447]/30 border-[2px] border-[#265447] dark:border-[#3DAE8B] shadow-[0_0_0_1px_rgba(38,84,71,0.12)]'
                                                         : isCheapest
-                                                            ? 'bg-[#EAF7F2] border border-[#6FE3C2] hover:border-[#265447] hover:shadow-[0_2px_8px_rgba(38,84,71,0.1)]'
-                                                            : 'bg-white border border-[rgba(38,84,71,0.08)] hover:border-[#6FE3C2] hover:shadow-[0_2px_8px_rgba(38,84,71,0.1)]'
+                                                            ? 'bg-[#EAF7F2] dark:bg-[#265447]/20 border border-[#6FE3C2] dark:border-[#3DAE8B]/40 hover:border-[#265447] dark:hover:border-[#3DAE8B] hover:shadow-[0_2px_8px_rgba(38,84,71,0.1)]'
+                                                            : 'bg-white dark:bg-[#1D2A25] border border-[rgba(38,84,71,0.08)] dark:border-[#265447]/30 hover:border-[#6FE3C2] dark:hover:border-[#3DAE8B]/60 hover:shadow-[0_2px_8px_rgba(38,84,71,0.1)]'
                                                     }`}
                                             >
-                                                <div className="flex items-center gap-[12px]">
-                                                    <span className="font-inter text-[14px] font-semibold leading-[21px] text-[#265447]">
+                                                <div className="flex items-center gap-[12px] flex-wrap">
+                                                    <span className="font-inter text-[14px] font-semibold leading-[21px] text-[#265447] dark:text-[#3DAE8B]">
                                                         {formatRetailChainName(priceObj.store.retail_chain)}
                                                     </span>
-                                                    <span className="font-inter text-[12px] text-[#6D8279] max-w-[200px] truncate">
+                                                    <span className="font-inter text-[12px] text-[#6D8279] dark:text-[#A9B6B0] max-w-[200px] truncate">
                                                         ({priceObj.store.name})
                                                     </span>
                                                     {isCheapest && (
-                                                        <span className="font-inter text-[11px] font-semibold leading-[16px] text-[#265447] bg-[#6FE3C2]/20 px-[8px] py-[2px] rounded-[12px]">
+                                                        <span className="font-inter text-[11px] font-semibold leading-[16px] text-[#265447] dark:text-[#3DAE8B] bg-[#6FE3C2]/20 dark:bg-[#3DAE8B]/20 px-[8px] py-[2px] rounded-[12px]">
                                                             Найкраща ціна
                                                         </span>
                                                     )}
                                                 </div>
                                                 <div className="flex items-center gap-[8px]">
                                                     {priceObj.old_price && (
-                                                        <span className="font-inter text-[13px] line-through text-[#9CA3AF]">
+                                                        <span className="font-inter text-[13px] line-through text-[#9CA3AF] dark:text-[#6D8279]">
                                                             {priceObj.old_price.toFixed(2)} ₴
                                                         </span>
                                                     )}
-                                                    <div className="font-manrope text-[16px] font-[200] leading-[24px] text-[#265447]">
+                                                    <div className="font-manrope text-[16px] font-[200] leading-[24px] text-[#265447] dark:text-[#EAF7F2]">
                                                         {priceObj.price.toFixed(2)} ₴
                                                     </div>
                                                 </div>

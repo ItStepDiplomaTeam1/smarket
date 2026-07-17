@@ -107,7 +107,7 @@ export const MyReceiptsModal: React.FC<MyReceiptsModalProps> = ({ isOpen, onClos
                             deleteReceipt(receipt.id);
                           }
                         }}
-                        className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-gray-100 dark:hover:bg-[#1D2A25] transition-all cursor-pointer border-none bg-transparent z-10"
+                        className="absolute top-4 right-4 sm:opacity-0 sm:group-hover:opacity-100 p-1.5 rounded-lg text-gray-400 dark:text-gray-500 hover:text-red-500 hover:bg-gray-100 dark:hover:bg-[#1D2A25] transition-all cursor-pointer border-none bg-transparent z-10"
                         title="Видалити чек"
                       >
                         <Trash2 className="w-4 h-4" />
