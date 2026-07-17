@@ -51,6 +51,7 @@ if "https://smarket-admin.pages.dev" not in origins:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"https://smarket-7go\.pages\.dev|https://.*\.smarket-7go\.pages\.dev|https://smarket-admin\.pages\.dev|https://.*\.smarket-admin\.pages\.dev|http://localhost:\d+|http://127.0.0.1:\d+|http://157\.180\.74\.21(:\d+)?",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "Accept", "X-User-Id"],
