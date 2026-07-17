@@ -947,7 +947,7 @@ export function MainContent() {
                             </span>
                           </div>
                           
-                          {oldPrice && (
+                          {oldPrice && oldPrice > currentPrice && (
                             <div className="flex flex-col items-end gap-[4px]">
                               {discountAmount > 0 && (
                                 <span className="text-[11px] text-[#9CA3AF] dark:text-[#7E968C] line-through leading-none">
@@ -965,7 +965,7 @@ export function MainContent() {
                         
                         <button onClick={() => navigate(`/product/${product.id}`)}
                           className={`w-full py-[8px] rounded-[6px] font-bold text-[13px] border cursor-pointer transition-colors ${
-                            oldPrice 
+                            oldPrice && oldPrice > currentPrice
                               ? 'bg-[#265447] text-white border-[#265447] hover:bg-[#1A3E2F] dark:bg-[#3CD27D] dark:text-[#0B120F] dark:border-transparent dark:hover:bg-[#34B86D]' 
                               : 'bg-white text-[#265447] border-[#E5E7EB] hover:border-[#265447] dark:bg-[#3CD27D] dark:text-[#0B120F] dark:border-transparent dark:hover:bg-[#34B86D]'
                           }`}

@@ -215,7 +215,7 @@ export function ProductHero({ product }: ProductHeroProps) {
                         <div className="relative w-full max-w-[453px] aspect-square rounded-[24px] bg-white dark:bg-[#1D2A25] border border-[rgba(38,84,71,0.08)] dark:border-[#265447]/30 flex justify-center items-center p-[24px] mx-auto shadow-sm">
                             {/* Бейджі */}
                             <div className="absolute top-[21px] left-[21px] flex flex-col items-start gap-[8px] z-[2]">
-                                {activePriceObj?.old_price && (
+                                {activePriceObj?.old_price && activePriceObj.old_price > activePriceObj.price && (
                                     <span className="inline-flex items-center gap-[4px] h-[26px] px-[12px] rounded-[16px] bg-[#FACC14] text-[#173B33] font-inter text-[12px] font-semibold leading-[18px]">
                                         Акція
                                     </span>
@@ -277,7 +277,7 @@ export function ProductHero({ product }: ProductHeroProps) {
                                 <div className="font-manrope text-[28px] sm:text-[30px] font-[200] leading-[45px] text-[#173B33] dark:text-[#EAF7F2]">
                                     {activePriceObj ? `${activePriceObj.price.toFixed(2)} ₴` : 'Немає в наявності'}
                                 </div>
-                                {activePriceObj?.old_price && (
+                                {activePriceObj?.old_price && activePriceObj.old_price > activePriceObj.price && (
                                     <div className="font-inter text-[18px] line-through text-[#9CA3AF] dark:text-[#6D8279]">
                                         {activePriceObj.old_price.toFixed(2)} ₴
                                     </div>
@@ -430,11 +430,11 @@ export function ProductHero({ product }: ProductHeroProps) {
                                                     )}
                                                 </div>
                                                 <div className="flex items-center gap-[8px]">
-                                                    {priceObj.old_price && (
-                                                        <span className="font-inter text-[13px] line-through text-[#9CA3AF] dark:text-[#6D8279]">
-                                                            {priceObj.old_price.toFixed(2)} ₴
-                                                        </span>
-                                                    )}
+                                                    {priceObj.old_price && priceObj.old_price > priceObj.price && (
+                                                         <span className="font-inter text-[13px] line-through text-[#9CA3AF] dark:text-[#6D8279]">
+                                                             {priceObj.old_price.toFixed(2)} ₴
+                                                         </span>
+                                                     )}
                                                     <div className="font-manrope text-[16px] font-[200] leading-[24px] text-[#265447] dark:text-[#EAF7F2]">
                                                         {priceObj.price.toFixed(2)} ₴
                                                     </div>
