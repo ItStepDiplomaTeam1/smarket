@@ -6,6 +6,10 @@ import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { apiClient } from '@/shared/api/apiClient';
 import { ThemeToggle } from '@/shared/components/ThemeToggle';
 import { useFavoritesStore } from '@/shared/context/favoritesStore';
+import { useQuery } from '@tanstack/react-query';
+import { type ReceiptListItem } from '@/hooks/api/useCartApi';
+import { ReceiptsDropdown } from './ReceiptsDropdown';
+import { ReceiptText } from 'lucide-react';
 
 // ================= ICONS =================
 const HeartIcon = ({ filled = false }: { filled?: boolean }) => (
@@ -66,12 +70,24 @@ export function Header() {
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [favoritesOpen, setFavoritesOpen] = useState(false);
+    const [receiptsOpen, setReceiptsOpen] = useState(false);
 
     const dropdownRef = useRef<HTMLDivElement>(null);
     const favoritesRef = useRef<HTMLDivElement>(null);
+    const receiptsRef = useRef<HTMLDivElement>(null);
 
     // Favorites store
     const { items: favorites, isLoaded, load: loadFavorites, remove: removeFavorite } = useFavoritesStore();
+
+    // Fetch receipts list for count badge
+    const { data: receipts } = useQuery<ReceiptListItem[]>({
+        queryKey: ['my-receipts'],
+        queryFn: async () => {
+            const { data } = await apiClient.get('/api/v1/cart/receipts');
+            return data;
+        },
+        enabled: isAuthenticated,
+    });
 
     // Load favorites when user is authenticated
     useEffect(() => {
@@ -88,6 +104,9 @@ export function Header() {
             }
             if (favoritesRef.current && !favoritesRef.current.contains(e.target as Node)) {
                 setFavoritesOpen(false);
+            }
+            if (receiptsRef.current && !receiptsRef.current.contains(e.target as Node)) {
+                setReceiptsOpen(false);
             }
         };
         document.addEventListener('mousedown', handler);
@@ -274,6 +293,32 @@ export function Header() {
                             )}
                         </div>
                     </div>
+
+                    {/* ================= ЧЕКИ / RECEIPTS DROPDOWN ================= */}
+                    {isAuthenticated && (
+                        <div className="relative" ref={receiptsRef}>
+                            <button
+                                id="receipts-toggle-btn"
+                                onClick={() => {
+                                    setReceiptsOpen((v) => !v);
+                                }}
+                                className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0 relative text-[#173B33] dark:text-white hover:text-[#265447] dark:hover:text-[#3DAE8B] transition-colors"
+                                title="Мої чеки"
+                            >
+                                <ReceiptText className="w-4.5 h-4.5" />
+                                {receipts && receipts.length > 0 && (
+                                    <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-[16px] bg-[#265447] dark:bg-[#3DAE8B] text-white dark:text-[#111A17] text-[9px] font-bold rounded-full flex items-center justify-center px-[3px] leading-none">
+                                        {receipts.length > 9 ? '9+' : receipts.length}
+                                    </span>
+                                )}
+                            </button>
+
+                            <ReceiptsDropdown 
+                                isOpen={receiptsOpen} 
+                                onClose={() => setReceiptsOpen(false)} 
+                            />
+                        </div>
+                    )}
 
                     {/* Бургер меню для мобільних */}
                     <button className="md:hidden flex items-center justify-center bg-transparent border-none cursor-pointer text-[#173B33] dark:text-white" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
