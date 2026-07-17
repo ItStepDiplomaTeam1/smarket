@@ -461,11 +461,11 @@ export function SettingsContent() {
 
               {/* Дії з акаунтом */}
               <div className="flex-1 flex flex-col gap-[6px] w-full border-t lg:border-t-0 border-[#E5E7EB] dark:border-[#265447]/10 pt-[16px] lg:pt-0 lg:items-end">
-                <label className="text-[14px] font-normal font-inter text-[#173B33] dark:text-white leading-[21.5px] text-left lg:text-right w-full">Дії з акаунтом</label>
-                <div className="flex gap-[16px] w-full lg:justify-end">
+                <div className="flex flex-col items-center gap-[6px] w-full lg:w-[135px]">
+                  <label className="text-[14px] font-normal font-inter text-[#173B33] dark:text-white leading-[21.5px] text-center w-full whitespace-nowrap">Дії з акаунтом</label>
                   <button 
                     onClick={handleLogoutClick}
-                    className="h-[36px] w-full md:w-[135px] flex items-center justify-center rounded-[8px] font-inter text-[13px] font-semibold cursor-pointer transition-all border border-[#255848] bg-transparent text-[#111A17] hover:bg-[#265447]/5 dark:bg-[#3DAE8B] dark:border-transparent dark:text-[#111A17] dark:hover:bg-[#329677] whitespace-nowrap shrink-0"
+                    className="h-[36px] w-full flex items-center justify-center rounded-[8px] font-inter text-[13px] font-semibold cursor-pointer transition-all border border-[#255848] bg-transparent text-[#111A17] hover:bg-[#265447]/5 dark:bg-[#3DAE8B] dark:border-transparent dark:text-[#111A17] dark:hover:bg-[#329677] whitespace-nowrap shrink-0"
                   >
                     Вийти з акаунту
                   </button>
