@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { generateSlug } from '@/shared/utils/url';
 import zagluska from '@/shared/assets/products-zaglushka.svg';
 import { apiClient } from '../../../shared/api/apiClient';
@@ -8,6 +8,7 @@ import { type Product } from '../type';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { useFetchCarts, useUpdateCartItem } from '@/hooks/api/useCartApi';
 import { useCartStore } from '@/modules/Cart/store/useCartStore';
+import { useFavoritesStore } from '@/shared/context/favoritesStore';
 import plusIcon from '@/shared/assets/plusforblack.svg';
 
 const RecentlyViewedCard = ({ product }: { product: Product }) => {
@@ -15,6 +16,8 @@ const RecentlyViewedCard = ({ product }: { product: Product }) => {
     const { data: carts } = useFetchCarts();
     const { mutateAsync: updateCartItem } = useUpdateCartItem();
     const { activeCartId } = useCartStore();
+    const navigate = useNavigate();
+    const { add: addFavorite, remove: removeFavorite, isFavorite } = useFavoritesStore();
 
     const [isAdding, setIsAdding] = useState<boolean>(false);
     const userId = user?.id;
