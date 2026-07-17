@@ -6,7 +6,9 @@ import { useFetchMe, useChangePassword, useChangeEmail } from '@/hooks/api/useAu
 import toast from 'react-hot-toast';
 import { Check } from 'lucide-react';
 import { PASSWORD_RULES, validatePassword } from '@/shared/utils/password';
-
+import osobustidaniLight from '@/shared/assets/osobustidani_light.svg';
+import locaionLight from '@/shared/assets/locaion_light.svg';
+import saveteLight from '@/shared/assets/savete_light.svg';
 const UKRAINIAN_CITIES = [
   'Київ', 'Харків', 'Одеса', 'Дніпро', 'Львів', 'Запоріжжя', 'Кривий Ріг', 
   'Миколаїв', 'Маріуполь', 'Вінниця', 'Херсон', 'Полтава', 'Чернігів', 
@@ -249,7 +251,10 @@ export function SettingsContent() {
           {/* Блок 1: Особисті дані */}
           <div className="bg-white dark:bg-[#1C2723] border border-[#265447]/8 dark:border-[#265447]/30 rounded-[16px] p-[24px] flex flex-col gap-[20px] shadow-[0_4px_20px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
             <div className="flex items-center gap-[8px]">
-              <div className="w-[28px] h-[28px] rounded-full bg-[#173B33]/5 dark:bg-[#4ADE80]/10 flex items-center justify-center text-[#173B33] dark:text-[#4ADE80]">
+              {/* Світла іконка з файлу */}
+              <img src={osobustidaniLight} alt="user icon" className="w-[28px] h-[28px] block dark:hidden shrink-0" />
+              {/* Темна інлайнова іконка */}
+              <div className="w-[28px] h-[28px] rounded-full bg-[#4ADE80]/10 items-center justify-center text-[#4ADE80] shrink-0 hidden dark:flex">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" />
                   <circle cx="12" cy="7" r="4" />
@@ -314,7 +319,10 @@ export function SettingsContent() {
           {/* Блок 2: Локація та магазини */}
           <div className="bg-white dark:bg-[#1C2723] border border-[#265447]/8 dark:border-[#265447]/30 rounded-[16px] p-[24px] flex flex-col gap-[20px] shadow-[0_4px_20px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
             <div className="flex items-center gap-[8px]">
-              <div className="w-[28px] h-[28px] rounded-full bg-[#173B33]/5 dark:bg-[#4ADE80]/10 flex items-center justify-center text-[#173B33] dark:text-[#4ADE80]">
+              {/* Світла іконка з файлу */}
+              <img src={locaionLight} alt="location icon" className="w-[28px] h-[28px] block dark:hidden shrink-0" />
+              {/* Темна інлайнова іконка */}
+              <div className="w-[28px] h-[28px] rounded-full bg-[#4ADE80]/10 items-center justify-center text-[#4ADE80] shrink-0 hidden dark:flex">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                   <circle cx="12" cy="10" r="3" />
@@ -425,7 +433,10 @@ export function SettingsContent() {
           {/* Блок 4: Безпека акаунту */}
           <div className="bg-white dark:bg-[#1C2723] border border-[#265447]/8 dark:border-[#265447]/30 rounded-[16px] p-[24px] flex flex-col gap-[20px] shadow-[0_4px_20px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
             <div className="flex items-center gap-[8px]">
-              <div className="w-[28px] h-[28px] rounded-full bg-[#173B33]/5 dark:bg-[#4ADE80]/10 flex items-center justify-center text-[#173B33] dark:text-[#4ADE80]">
+              {/* Світла іконка з файлу */}
+              <img src={saveteLight} alt="security icon" className="w-[28px] h-[28px] block dark:hidden shrink-0" />
+              {/* Темна інлайнова іконка */}
+              <div className="w-[28px] h-[28px] rounded-full bg-[#4ADE80]/10 items-center justify-center text-[#4ADE80] shrink-0 hidden dark:flex">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 </svg>
