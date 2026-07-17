@@ -170,7 +170,7 @@ export function SMProduct({ currentProduct }: SMProductProps) {
                 setIsLoading(true);
                 const categoryId = currentProduct.canonical_category_id ?? currentProduct.category?.id;
                 const response = await apiClient.get('/api/v1/products', {
-                    params: { category_id: categoryId }
+                    params: { category: categoryId }
                 });
                 
                 let allProducts: Product[] = response.data?.items || response.data || [];

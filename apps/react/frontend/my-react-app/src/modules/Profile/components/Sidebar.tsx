@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { useFetchMe } from '@/hooks/api/useAuthApi';
 import { apiClient } from '@/shared/api/apiClient';
@@ -29,8 +29,19 @@ function stringToHsl(str: string): string {
   return `hsl(${hue}, 50%, 38%)`;
 }
 
+/** Пункти навігації профілю */
+const navItems = [
+  { path: '/profile',           label: 'Особистий кабінет', icon: profileHome,    exact: true },
+  { path: '/cart',   label: 'Ваші кошики',       icon: profileCart,     exact: false },
+  { path: '/profile/favorites', label: 'Обрані товари',      icon: profileLike,    exact: false },
+  { path: '/profile/reviews',   label: 'Відгуки',           icon: profileReviews,  exact: false },
+];
+
+const settingsItem = { path: '/profile/settings', label: 'Налаштування', icon: settingsProfile, exact: false };
+
 export const Sidebar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const { data: meData } = useFetchMe();
@@ -50,6 +61,34 @@ export const Sidebar = () => {
     }
     logout();
     navigate('/');
+  };
+
+  /** Перевірка чи поточний роут активний */
+  const isActive = (path: string, exact: boolean) => {
+    if (exact) return location.pathname === path;
+    return location.pathname.startsWith(path);
+  };
+
+  /** Рендер навігаційного пункту */
+  const renderNavItem = (item: { path: string; label: string; icon: string; exact: boolean }) => {
+    const active = isActive(item.path, item.exact);
+    return (
+      <li key={item.path}>
+        <button
+          onClick={() => navigate(item.path)}
+          className={`flex items-center w-full h-[44px] px-[12px] gap-[12px] rounded-[10px] border transition-all text-left cursor-pointer ${
+            active
+              ? 'bg-[#EAF7F2] border-[#6FE3C2] text-[#265447]'
+              : 'bg-transparent border-transparent text-[#265447] hover:bg-[#EAF7F2] hover:border-[#6FE3C2]'
+          }`}
+        >
+          <img src={item.icon} alt={item.label} className="w-[20px] h-[20px] flex-shrink-0" />
+          <span className={`text-[14px] leading-none mt-[2px] ${active ? 'font-semibold' : 'font-normal'}`}>
+            {item.label}
+          </span>
+        </button>
+      </li>
+    );
   };
 
   return (
@@ -82,41 +121,13 @@ export const Sidebar = () => {
       {/* Блок навігації */}
       <nav className="w-full flex justify-center">
         <ul className="flex flex-col gap-1 w-[202px]">
-          <li>
-            <a href="#" className="flex items-center w-full h-[44px] px-[12px] gap-[12px] rounded-[10px] bg-[#EAF7F2] border border-[#6FE3C2] text-[#265447] transition-all">
-              <img src={profileHome} alt="Home" className="w-[20px] h-[20px] flex-shrink-0" />
-              <span className="text-[14px] font-semibold leading-none mt-[2px]">Особистий кабінет</span>
-            </a>
-          </li>
-          <li>
-            <a href="#" className="flex items-center w-full h-[44px] px-[12px] gap-[12px] rounded-[10px] bg-transparent border border-transparent text-[#265447] hover:bg-[#EAF7F2] hover:border-[#6FE3C2] transition-all">
-              <img src={profileCart} alt="Cart" className="w-[20px] h-[20px] flex-shrink-0" />
-              <span className="text-[14px] font-normal leading-none mt-[2px]">Ваші кошики</span>
-            </a>
-          </li>
-          <li>
-            <a href="#" className="flex items-center w-full h-[44px] px-[12px] gap-[12px] rounded-[10px] bg-transparent border border-transparent text-[#265447] hover:bg-[#EAF7F2] hover:border-[#6FE3C2] transition-all">
-              <img src={profileLike} alt="Like" className="w-[20px] h-[20px] flex-shrink-0" />
-              <span className="text-[14px] font-normal leading-none mt-[2px]">Обрані товари</span>
-            </a>
-          </li>
-          <li>
-            <a href="#" className="flex items-center w-full h-[44px] px-[12px] gap-[12px] rounded-[10px] bg-transparent border border-transparent text-[#265447] hover:bg-[#EAF7F2] hover:border-[#6FE3C2] transition-all">
-              <img src={profileReviews} alt="Reviews" className="w-[20px] h-[20px] flex-shrink-0" />
-              <span className="text-[14px] font-normal leading-none mt-[2px]">Відгуки</span>
-            </a>
-          </li>
+          {navItems.map(renderNavItem)}
 
           <div className="py-2">
              <hr className="w-full border-t border-[#6FE3C2]" />
           </div>
 
-          <li>
-            <a href="#" className="flex items-center w-full h-[44px] px-[12px] gap-[12px] rounded-[10px] bg-transparent border border-transparent text-[#265447] hover:bg-[#EAF7F2] hover:border-[#6FE3C2] transition-all">
-              <img src={settingsProfile} alt="Settings" className="w-[20px] h-[20px] flex-shrink-0" />
-              <span className="text-[14px] font-normal leading-none mt-[2px]">Налаштування</span>
-            </a>
-          </li>
+          {renderNavItem(settingsItem)}
           <li>
             <button
               onClick={handleLogout}

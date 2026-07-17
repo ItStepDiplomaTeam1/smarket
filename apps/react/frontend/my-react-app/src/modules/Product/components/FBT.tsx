@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { Link } from 'react-router-dom';
+import { generateSlug } from '@/shared/utils/url';
 import zagluska from '@/shared/assets/products-zaglushka.svg';
 import { apiClient } from '../../../shared/api/apiClient';
 import { type Product } from '../type';
@@ -147,7 +149,7 @@ const RecentlyViewedCard = ({ product }: { product: Product }) => {
                     )}
                 </button>
             </div>
-        </div>
+        </Link>
     );
 };
 

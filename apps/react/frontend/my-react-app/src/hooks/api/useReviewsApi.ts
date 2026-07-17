@@ -75,7 +75,7 @@ export const useCreateReview = () => {
 };
 
 
-export const useDeleteReview = (productId: number) => {
+export const useDeleteReview = () => {
   const queryClient = useQueryClient();
 
   return useMutation<void, Error, string>({
@@ -83,7 +83,32 @@ export const useDeleteReview = (productId: number) => {
       await apiClient.delete(`/api/v1/reviews/${reviewId}`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['reviews', productId] });
+      // Інвалідуємо всі кеші відгуків (і по продукту, і по користувачу)
+      queryClient.invalidateQueries({ queryKey: ['reviews'] });
+    },
+  });
+};
+
+
+export interface ReviewUpdatePayload {
+  reviewId: string;
+  rating: number;
+  text?: string | null;
+}
+
+export const useUpdateReview = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<Review, Error, ReviewUpdatePayload>({
+    mutationFn: async ({ reviewId, rating, text }) => {
+      const response = await apiClient.put<Review>(
+        `/api/v1/reviews/${reviewId}`,
+        { rating, text: text || null }
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['reviews'] });
     },
   });
 };

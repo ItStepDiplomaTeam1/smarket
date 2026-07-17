@@ -1,2 +1,8 @@
 export { Sidebar } from './components/Sidebar'
 export { MainContent } from './components/MainContent'
+export { ReviewCard } from './components/Reviews/ReviewCard'
+export { EmptyState } from './components/Reviews/EmptyState'
+export { ReviewsContent } from './components/Reviews/ReviewsContent'
+export { BasketsContent } from './components/Baskets/BasketsContent'
+export { FavoritesContent } from './components/Favorites/FavoritesContent'
+export { SettingsContent } from './components/Settings/SettingsContent'

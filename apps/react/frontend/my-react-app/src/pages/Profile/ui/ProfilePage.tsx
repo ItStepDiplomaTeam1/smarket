@@ -1,4 +1,5 @@
-import { Sidebar, MainContent } from '@/modules/Profile'
+import { Outlet } from 'react-router-dom';
+import { Sidebar } from '@/modules/Profile';
 
 export default function ProfilePage() {
   return (
@@ -7,8 +8,9 @@ export default function ProfilePage() {
       <div className="flex items-start gap-6 max-w-[1200px] mx-auto w-full pt-8 pb-12 px-4">
         
         <Sidebar />
+        
         <div className="flex-1 min-w-0">
-          <MainContent />
+          <Outlet />
         </div>
 
       </div>

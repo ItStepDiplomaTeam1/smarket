@@ -5,7 +5,6 @@ import { useFetchCarts } from '@/hooks/api/useCartApi';
 import { useFetchUserReviews } from '@/hooks/api/useReviewsApi';
 import { useFavoritesStore } from '@/shared/context/favoritesStore';
 
-/** Форматує ISO-дату у зручний вигляд, напр. "01 червня 2026" */
 function formatDate(iso: string): string {
   const months = [
     'січня', 'лютого', 'березня', 'квітня', 'травня', 'червня',
@@ -215,7 +214,7 @@ export function MainContent() {
           )}
 
           {/* Пустий стан */}
-          {!reviewsLoading && !reviewsError && userReviews.length === 0 && (
+          {!reviewsLoading && !reviewsError && latestReviews.length === 0 && (
             <div className="flex flex-col items-center justify-center py-[32px]">
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className="mb-[12px]">
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
@@ -226,32 +225,46 @@ export function MainContent() {
           )}
 
           {/* Список відгуків */}
-          {!reviewsLoading && !reviewsError && userReviews.length > 0 && (
+          {!reviewsLoading && !reviewsError && latestReviews.length > 0 && (
             <>
               <div className="flex flex-col gap-[24px] mb-[24px]">
-                {userReviews.map((review) => (
-                  <div key={review.id} className="flex items-start gap-[24px]">
-                    <div className="w-[44px] h-[56px] rounded-[5px] shrink-0 border border-[#265447]/[0.08] bg-[#F6FAF8] flex items-center justify-center">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6D8279" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
-                        <path d="m3.3 7 8.7 5 8.7-5" />
-                        <path d="M12 22V12" />
-                      </svg>
+                {latestReviews.map((review) => {
+                  const productInfo = productsMap[review.product_id];
+                  const productTitle = productInfo?.title || `Товар #${review.product_id}`;
+                  const productImage = productInfo?.image_url;
+
+                  return (
+                    <div key={review.id} className="flex items-start gap-[24px]">
+                      {productImage ? (
+                        <img
+                          src={productImage}
+                          alt={productTitle}
+                          className="w-[44px] h-[56px] rounded-[5px] object-cover shrink-0 border border-[#265447]/[0.08]"
+                        />
+                      ) : (
+                        <div className="w-[44px] h-[56px] rounded-[5px] shrink-0 border border-[#265447]/[0.08] bg-[#F6FAF8] flex items-center justify-center">
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6D8279" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                            <path d="m3.3 7 8.7 5 8.7-5" />
+                            <path d="M12 22V12" />
+                          </svg>
+                        </div>
+                      )}
+                      <h4 className="w-[153px] font-inter text-[13px] font-medium text-[#173B33] leading-[18px] m-0 shrink-0">{productTitle}</h4>
+                      <div className="flex shrink-0">
+                        {[1, 2, 3, 4, 5].map((star) => <StarIcon key={star} filled={star <= review.rating} />)}
+                      </div>
+                      <p className="flex-1 min-w-0 font-inter text-[13px] text-[#6D8279] leading-[20px] m-0 pr-[16px]">{review.text || 'Без коментаря'}</p>
+                      <span className="w-[110px] shrink-0 font-inter text-[13px] text-[#6D8279] text-right whitespace-nowrap">{formatDate(review.created_at)}</span>
                     </div>
-                    <h4 className="w-[153px] font-inter text-[13px] font-medium text-[#173B33] leading-[18px] m-0 shrink-0">Товар #{review.product_id}</h4>
-                    <div className="flex shrink-0">
-                      {[1, 2, 3, 4, 5].map((star) => <StarIcon key={star} filled={star <= review.rating} />)}
-                    </div>
-                    <p className="flex-1 min-w-0 font-inter text-[13px] text-[#6D8279] leading-[20px] m-0 pr-[16px]">{review.text || 'Без коментаря'}</p>
-                    <span className="w-[110px] shrink-0 font-inter text-[13px] text-[#6D8279] text-right whitespace-nowrap">{formatDate(review.created_at)}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
-              <a href="#" className="flex items-center gap-[2px] font-inter text-[14px] font-semibold text-[#6D8279] mt-auto hover:text-[#265447] transition-colors w-full">
+              <Link to="/profile/reviews" className="flex items-center gap-[2px] font-inter text-[14px] font-semibold text-[#6D8279] mt-auto hover:text-[#265447] transition-colors w-full">
                 Переглянути всі відгуки
                 <ArrowRightIcon />
-              </a>
+              </Link>
             </>
           )}
         </div>
