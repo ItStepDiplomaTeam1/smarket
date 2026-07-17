@@ -73,6 +73,10 @@ export const Sidebar = () => {
   const exitIcon = isDark ? profileExitDark : profileExitLight;
 
   // Відображуване ім'я: ім'я зі стору або з /me
+  const email = user?.email;
+  const userCity = (email ? localStorage.getItem(`smarket_user_city_${email}`) : null) || meData?.settings?.city || 'Київ';
+  const locationLabel = `${userCity}, Україна`;
+
   const displayName = user?.name || meData?.username || user?.email || 'Користувач';
   const initials = getInitials(user?.name, user?.email);
   const avatarColor = stringToHsl(user?.email ?? user?.name ?? 'user');
@@ -87,8 +91,6 @@ export const Sidebar = () => {
       const DEFAULT_CITY  = 'Київ';
       const DEFAULT_STORE = 'Всі магазини';
       
-      const email = user.email;
-      const name = user.name;
       const phone = localStorage.getItem(`smarket_user_phone_${email}`);
       const city = localStorage.getItem(`smarket_user_city_${email}`);
       const favoriteStore = localStorage.getItem(`smarket_user_favorite_store_${email}`);
@@ -96,7 +98,7 @@ export const Sidebar = () => {
       let count = 0;
       
       // 1. Ім'я
-      if (name && name.trim().length > 0 && name.trim() !== 'Марина Добра') {
+      if (user.name && user.name.trim().length > 0 && user.name.trim() !== 'Марина Добра') {
         count += 1;
       }
       // 2. Email
@@ -129,7 +131,7 @@ export const Sidebar = () => {
     return () => {
       window.removeEventListener('profile-updated', updateProgress);
     };
-  }, [user]);
+  }, [user, email]);
 
   const handleLogout = async () => {
     try {
@@ -186,12 +188,12 @@ export const Sidebar = () => {
         </div>
         <div className="flex flex-col w-[202px] gap-[6px]">
           <h2 className="text-[14px] font-semibold text-[#173B33] dark:text-white leading-none truncate">{displayName}</h2>
-          <p className="text-[12px] font-normal text-[#6D8279] dark:text-white leading-none truncate">Галактика SMARKET</p>
+          <p className="text-[12px] font-normal text-[#6D8279] dark:text-white/70 leading-none truncate">{locationLabel}</p>
         </div>
         <div className="flex flex-col w-full gap-[12px]">
-          <span className="text-[12px] font-normal text-[#6D8279] dark:text-white leading-none">Профіль заповнено на {progress}%</span>
+          <span className="text-[12px] font-semibold text-[#265447] dark:text-white leading-none">Профіль заповнено на {progress}%</span>
           <div className="w-full h-[7px] bg-[#F0F5F3] dark:bg-[#173B33] rounded-[20px] overflow-hidden">
-            <div className="h-full bg-[#173B33] dark:bg-[#4ADE80] rounded-[20px] transition-all duration-500 ease-out" style={{ width: `${progress}%` }}></div>
+            <div className="h-full bg-[#265447] dark:bg-[#4ADE80] rounded-[20px] transition-all duration-500 ease-out" style={{ width: `${progress}%` }}></div>
           </div>
         </div>
       </div>
