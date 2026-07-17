@@ -2,8 +2,8 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQueries } from '@tanstack/react-query';
 import { apiClient } from '@/shared/api/apiClient';
-import { type ReceiptResponse, useGetMyReceipts } from '@/hooks/api/useCartApi';
-import { X, Calendar, ShoppingBag, AlertCircle, RefreshCw, ReceiptText } from 'lucide-react';
+import { type ReceiptResponse, useGetMyReceipts, useDeleteReceipt } from '@/hooks/api/useCartApi';
+import { X, Calendar, ShoppingBag, AlertCircle, RefreshCw, ReceiptText, Trash2 } from 'lucide-react';
 
 interface MyReceiptsModalProps {
   isOpen: boolean;
@@ -12,6 +12,7 @@ interface MyReceiptsModalProps {
 
 export const MyReceiptsModal: React.FC<MyReceiptsModalProps> = ({ isOpen, onClose }) => {
   const navigate = useNavigate();
+  const { mutate: deleteReceipt } = useDeleteReceipt();
   const { data: receipts, isLoading, isError, error, refetch } = useGetMyReceipts();
   const receiptDetails = useQueries({
     queries: (receipts ?? []).map((receipt) => ({
@@ -93,18 +94,31 @@ export const MyReceiptsModal: React.FC<MyReceiptsModalProps> = ({ isOpen, onClos
                 const snapshot = detail?.snapshot[0];
                 const items = snapshot?.items ?? [];
                 return (
-                  <button
+                  <div
                     key={receipt.id}
                     onClick={() => handleReceiptClick(receipt.share_token)}
-                    className="w-full overflow-hidden rounded-xl bg-[#fffef8] dark:bg-[#18231f] border border-dashed border-[#265447]/35 dark:border-[#3DAE8B]/35 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all text-left font-mono"
+                    className="relative group w-full overflow-hidden rounded-xl bg-[#fffef8] dark:bg-[#18231f] border border-dashed border-[#265447]/35 dark:border-[#3DAE8B]/35 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all text-left font-mono cursor-pointer"
                   >
                     <div className="p-4">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (window.confirm("Ви впевнені, що хочете видалити цей чек?")) {
+                            deleteReceipt(receipt.id);
+                          }
+                        }}
+                        className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-gray-100 dark:hover:bg-[#1D2A25] transition-all cursor-pointer border-none bg-transparent z-10"
+                        title="Видалити чек"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+
                       <div className="flex items-start justify-between gap-2 border-b border-dashed border-[#265447]/25 dark:border-[#3DAE8B]/25 pb-3">
-                        <div className="min-w-0">
+                        <div className="min-w-0 pr-8">
                           <p className="font-bold text-sm text-[#173B33] dark:text-white truncate uppercase">{receipt.store_name}</p>
                           <p className="mt-1 text-[10px] text-[#6D8279] dark:text-[#A9B6B0] flex items-center gap-1"><Calendar className="w-3 h-3" /> {date}</p>
                         </div>
-                        <ReceiptText className="w-5 h-5 shrink-0 text-[#265447] dark:text-[#3DAE8B]" />
+                        <ReceiptText className="w-5 h-5 shrink-0 text-[#265447] dark:text-[#3DAE8B] group-hover:opacity-0 transition-opacity" />
                       </div>
 
                       <div className="py-3 space-y-1.5 text-[11px] text-[#40564d] dark:text-[#c2d0ca]">
@@ -129,7 +143,7 @@ export const MyReceiptsModal: React.FC<MyReceiptsModalProps> = ({ isOpen, onClos
                       </div>
                       {receipt.savings_amount > 0 && <p className="mt-2 text-[10px] font-sans font-semibold text-green-700 dark:text-green-400">Економія: {Number(receipt.savings_amount).toFixed(2)} ₴</p>}
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>

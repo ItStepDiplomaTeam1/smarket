@@ -295,6 +295,20 @@ export const useGetMyReceipts = () => {
   });
 };
 
+export const useDeleteReceipt = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ status: string; message: string }, Error, string>({
+    mutationFn: async (receiptId: string) => {
+      const { data } = await apiClient.delete(`/api/v1/cart/receipts/${receiptId}`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-receipts'] });
+    },
+  });
+};
+
 export const useImportCart = () => {
   const queryClient = useQueryClient();
 

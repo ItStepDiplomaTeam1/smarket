@@ -58,3 +58,22 @@ async def get_receipt_by_token(
         raise HTTPException(status_code=404, detail="Чек не знайдено")
         
     return receipt
+
+
+@router.delete("/{receipt_id}")
+async def delete_user_receipt(
+    receipt_id: uuid.UUID,
+    user_id: uuid.UUID = Depends(get_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """Видалити чек користувача"""
+    stmt = select(Receipt).where(Receipt.id == receipt_id, Receipt.user_id == user_id)
+    result = await db.execute(stmt)
+    receipt = result.scalar_one_or_none()
+    
+    if not receipt:
+        raise HTTPException(status_code=404, detail="Чек не знайдено")
+        
+    await db.delete(receipt)
+    await db.commit()
+    return {"status": "success", "message": "Чек успішно видалено"}
