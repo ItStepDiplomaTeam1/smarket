@@ -103,9 +103,9 @@ export const ReceiptsDropdown: React.FC<ReceiptsDropdownProps> = ({ isOpen, onCl
                             <li 
                                 key={receipt.id} 
                                 onClick={() => handleReceiptClick(receipt.share_token)}
-                                className="px-4 py-3 hover:bg-[#F6FAF8] dark:hover:bg-[#1A2E25] transition-colors cursor-pointer group flex items-start gap-3"
+                                className="relative px-4 py-3 hover:bg-[#F6FAF8] dark:hover:bg-[#1A2E25] transition-colors cursor-pointer group flex items-start gap-3"
                             >
-                                <div className="flex-1 min-w-0">
+                                <div className="flex-1 min-w-0 pr-6 sm:pr-0">
                                     <div className="flex justify-between items-start gap-2">
                                         <div className="min-w-0">
                                             <p className="text-[13px] font-bold text-[#111827] dark:text-white truncate m-0 uppercase leading-snug">
@@ -126,7 +126,7 @@ export const ReceiptsDropdown: React.FC<ReceiptsDropdownProps> = ({ isOpen, onCl
                                             )}
                                         </div>
                                     </div>
-
+ 
                                     {/* Items mini list preview */}
                                     <div className="mt-2 text-[11px] text-[#40564d] dark:text-[#c2d0ca] font-mono space-y-0.5">
                                         {isDetailPending ? (
@@ -150,7 +150,7 @@ export const ReceiptsDropdown: React.FC<ReceiptsDropdownProps> = ({ isOpen, onCl
                                         )}
                                     </div>
                                 </div>
-
+ 
                                 {/* Delete button */}
                                 <button
                                     onClick={(e) => {
@@ -159,7 +159,7 @@ export const ReceiptsDropdown: React.FC<ReceiptsDropdownProps> = ({ isOpen, onCl
                                             deleteReceipt(receipt.id);
                                         }
                                     }}
-                                    className="opacity-0 group-hover:opacity-100 p-1.5 rounded-[6px] hover:bg-red-50 dark:hover:bg-red-950/30 text-[#9CA3AF] hover:text-[#E11D48] transition-all cursor-pointer bg-transparent border-none shrink-0 self-center"
+                                    className="absolute right-2 top-3 sm:relative sm:top-auto sm:right-auto sm:opacity-0 sm:group-hover:opacity-100 p-1.5 rounded-[6px] hover:bg-red-50 dark:hover:bg-red-950/30 text-[#9CA3AF] hover:text-[#E11D48] transition-all cursor-pointer bg-transparent border-none shrink-0 self-center z-10"
                                     title="Видалити чек"
                                 >
                                     <Trash2 className="w-4 h-4" />

@@ -57,7 +57,7 @@ export default function ProductDetail() {
 
   if (isLoading) {
     return (
-      <div className="w-full h-screen flex justify-center items-center bg-[#F6FAF8] text-[#265447] font-semibold">
+      <div className="w-full h-screen flex justify-center items-center bg-[#F6FAF8] dark:bg-[#111A17] text-[#265447] dark:text-[#3DAE8B] font-semibold">
         Завантаження товару...
       </div>
     );
@@ -65,13 +65,13 @@ export default function ProductDetail() {
 
   if (notFound || !product) {
     return (
-      <div className="w-full h-screen flex flex-col justify-center items-center bg-[#F6FAF8] gap-[16px]">
+      <div className="w-full h-screen flex flex-col justify-center items-center bg-[#F6FAF8] dark:bg-[#111A17] gap-[16px]">
         <span className="text-[48px]">😔</span>
-        <h1 className="font-manrope text-[24px] font-[200] text-[#173B33] m-0">Товар не знайдено</h1>
-        <p className="font-inter text-[14px] text-[#6D8279] m-0">Перевірте посилання або поверніться до каталогу</p>
+        <h1 className="font-manrope text-[24px] font-[200] text-[#173B33] dark:text-white m-0">Товар не знайдено</h1>
+        <p className="font-inter text-[14px] text-[#6D8279] dark:text-[#A9B6B0] m-0">Перевірте посилання або поверніться до каталогу</p>
         <a
           href="/catalog"
-          className="mt-[8px] px-[24px] py-[10px] rounded-[10px] bg-[#265447] text-white font-inter text-[14px] font-semibold no-underline transition-colors hover:bg-[#1A3E2F]"
+          className="mt-[8px] px-[24px] py-[10px] rounded-[10px] bg-[#265447] dark:bg-[#3DAE8B] text-white dark:text-[#111A17] font-inter text-[14px] font-semibold no-underline transition-colors hover:bg-[#1A3E2F] dark:hover:bg-[#2C9E7C]"
         >
           До каталогу
         </a>

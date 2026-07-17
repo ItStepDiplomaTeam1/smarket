@@ -453,6 +453,7 @@ async def complete_cart(
         snapshot=[snapshot_store]
     )
     db.add(receipt)
+    await db.delete(cart)
     await db.commit()
     await db.refresh(receipt)
 
