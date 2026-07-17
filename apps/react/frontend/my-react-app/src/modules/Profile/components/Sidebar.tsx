@@ -175,7 +175,7 @@ export const Sidebar = () => {
     <aside className="hidden lg:flex flex-col w-full lg:w-[235px] shrink-0 py-[24px] px-[16px] border border-[#E5E7EB] dark:border-[#265447]/30 rounded-[16px] gap-[36px] bg-white dark:bg-[#1C2723] shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.4)] font-inter">
       
       {/* Блок профілю */}
-      <div className="flex flex-col w-[202px] gap-[12px] items-start mx-auto">
+      <div className="flex flex-col w-[202px] gap-[12px] items-center mx-auto text-center">
         <div
           className="w-[100px] h-[100px] rounded-full overflow-hidden shrink-0 flex items-center justify-center text-white text-[32px] font-bold select-none"
           style={{ backgroundColor: avatarColor }}
@@ -186,12 +186,12 @@ export const Sidebar = () => {
             initials
           )}
         </div>
-        <div className="flex flex-col w-[202px] gap-[6px]">
-          <h2 className="text-[14px] font-semibold text-[#265447] dark:text-white leading-none truncate">{displayName}</h2>
-          <p className="text-[12px] font-normal text-[#265447]/75 dark:text-white/70 leading-none truncate">{locationLabel}</p>
+        <div className="flex flex-col w-[202px] gap-[6px] items-center">
+          <h2 className="text-[14px] font-semibold text-[#265447] dark:text-white leading-none truncate text-center w-full">{displayName}</h2>
+          <p className="text-[12px] font-normal text-[#265447] dark:text-white leading-none truncate text-center w-full">{locationLabel}</p>
         </div>
-        <div className="flex flex-col w-full gap-[12px]">
-          <span className="text-[12px] font-semibold text-[#265447] dark:text-white leading-none">Профіль заповнено на {progress}%</span>
+        <div className="flex flex-col w-full gap-[12px] items-center">
+          <span className="text-[12px] font-semibold text-[#265447] dark:text-white leading-none text-center w-full">Профіль заповнено на {progress}%</span>
           <div className="w-full h-[7px] bg-[#F0F5F3] dark:bg-[#173B33] rounded-[20px] overflow-hidden">
             <div className="h-full bg-[#265447] dark:bg-[#4ADE80] rounded-[20px] transition-all duration-500 ease-out" style={{ width: `${progress}%` }}></div>
           </div>
