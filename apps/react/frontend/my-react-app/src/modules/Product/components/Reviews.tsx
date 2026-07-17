@@ -44,7 +44,7 @@ export function Reviews({ productId }: ReviewsProps) {
     }, []);
 
     const { data: reviews = [], isLoading, isError } = useFetchProductReviews(productId);
-    const deleteReview = useDeleteReview(productId);
+    const deleteReview = useDeleteReview();
     const { user, isAuthenticated } = useAuthStore();
 
     const avgRating = reviews.length > 0

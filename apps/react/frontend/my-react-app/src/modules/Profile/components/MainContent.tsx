@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { useFetchCarts } from '@/hooks/api/useCartApi';
 import { useFetchUserReviews } from '@/hooks/api/useReviewsApi';
 import { apiClient } from '@/shared/api/apiClient';
+import { useFavoritesStore } from '@/shared/context/favoritesStore';
 import milkIcon from '@/shared/assets/milk.svg';
 import bottleIcon from '@/shared/assets/bottle.svg';
 
@@ -21,6 +22,14 @@ export function MainContent() {
   const user = useAuthStore((s) => s.user);
   const { data: carts } = useFetchCarts();
   const { data: userReviews = [], isLoading: reviewsLoading, isError: reviewsError } = useFetchUserReviews(user?.id);
+  const navigate = useNavigate();
+  const { items: favorites, load: loadFavorites, isLoaded } = useFavoritesStore();
+
+  useEffect(() => {
+    if (!isLoaded) {
+      loadFavorites();
+    }
+  }, [isLoaded, loadFavorites]);
 
 
   const latestReviews = useMemo(() => {
