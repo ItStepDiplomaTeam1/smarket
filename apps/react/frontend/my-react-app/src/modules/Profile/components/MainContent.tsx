@@ -1,9 +1,10 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState, useMemo } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { useFetchCarts } from '@/hooks/api/useCartApi';
-import { useFetchUserReviews } from '@/hooks/api/useReviewsApi';
+import { useFetchUserReviews, type Review } from '@/hooks/api/useReviewsApi';
 import { useFavoritesStore } from '@/shared/context/favoritesStore';
+import { apiClient } from '@/shared/api/apiClient';
 
 function formatDate(iso: string): string {
   const months = [
@@ -31,6 +32,47 @@ export function MainContent() {
 
   // Відображуване ім'я для привітання: якщо є name — ім'я, інакше email
   const userName = user?.name || user?.email || 'Користувачу';
+
+  const latestReviews = useMemo(() => {
+    return [...userReviews]
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 3);
+  }, [userReviews]);
+
+  const [productsMap, setProductsMap] = useState<Record<number, { title: string; image_url: string | null }>>({});
+
+  useEffect(() => {
+    if (latestReviews.length === 0) return;
+
+    const productIds = [...new Set(latestReviews.map((r) => r.product_id))];
+    const idsToFetch = productIds.filter((id) => !productsMap[id]);
+    if (idsToFetch.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      const results: Record<number, { title: string; image_url: string | null }> = {};
+      await Promise.all(
+        idsToFetch.map(async (id) => {
+          try {
+            const { data, status } = await apiClient.get(`/api/v1/products/${id}`, {
+              validateStatus: (s) => s === 200 || s === 404,
+            });
+            if (status === 200 && data?.title) {
+              results[id] = { title: data.title, image_url: data.image_url };
+            } else {
+              results[id] = { title: `Товар #${id}`, image_url: null };
+            }
+          } catch (err) {
+            results[id] = { title: `Товар #${id}`, image_url: null };
+          }
+        })
+      );
+      if (!cancelled) {
+        setProductsMap((prev) => ({ ...prev, ...results }));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [latestReviews]);
 
 
   const StarIcon = ({ filled }: { filled: boolean }) => (
@@ -228,7 +270,7 @@ export function MainContent() {
           {!reviewsLoading && !reviewsError && latestReviews.length > 0 && (
             <>
               <div className="flex flex-col gap-[24px] mb-[24px]">
-                {latestReviews.map((review) => {
+                {latestReviews.map((review: Review) => {
                   const productInfo = productsMap[review.product_id];
                   const productTitle = productInfo?.title || `Товар #${review.product_id}`;
                   const productImage = productInfo?.image_url;

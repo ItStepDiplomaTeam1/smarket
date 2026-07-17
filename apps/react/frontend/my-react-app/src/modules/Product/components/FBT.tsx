@@ -83,7 +83,10 @@ const RecentlyViewedCard = ({ product }: { product: Product }) => {
     };
 
     return (
-        <div className="w-[175px] h-[296px] shrink-0 bg-white border border-[rgba(38,84,71,0.08)] rounded-[16px] p-[16px] flex flex-col box-border relative">
+        <Link 
+            to={`/product/${product.id}-${generateSlug(product.title)}`}
+            className="w-[175px] h-[296px] shrink-0 bg-white border border-[rgba(38,84,71,0.08)] rounded-[16px] p-[16px] flex flex-col box-border relative cursor-pointer no-underline text-inherit block"
+        >
             <button
                 onClick={(e) => {
                     e.preventDefault();

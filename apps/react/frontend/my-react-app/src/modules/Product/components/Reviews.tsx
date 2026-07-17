@@ -39,7 +39,7 @@ export function Reviews({ productId }: ReviewsProps) {
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     const { data: reviews = [], isLoading, isError } = useFetchProductReviews(productId);
-    const deleteReview = useDeleteReview(productId);
+    const deleteReview = useDeleteReview();
 
     const { user, isAuthenticated } = useAuthStore();
 
