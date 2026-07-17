@@ -54,12 +54,38 @@ const RecentlyViewedCard = ({ product }: { product: Product }) => {
             setIsAdding(false);
         }
     };
-
     return (
         <Link
             to={`/product/${product.id}-${generateSlug(product.title)}`}
-            className="recently-viewed-card w-[155px] sm:w-[175px] h-auto min-h-[260px] sm:h-[296px] shrink-0 bg-[#1C2723] border border-[#265447]/8 rounded-[16px] p-[14px] sm:p-[16px] flex flex-col box-border cursor-pointer transition-all duration-200 hover:border-[#265447]/40 hover:shadow-[0_4px_16px_rgba(0,0,0,0.4)] no-underline text-inherit block active:scale-[0.98]"
+            className="recently-viewed-card w-[155px] sm:w-[175px] h-auto min-h-[260px] sm:h-[296px] shrink-0 bg-[#1C2723] border border-[#265447]/8 rounded-[16px] p-[14px] sm:p-[16px] flex flex-col box-border relative cursor-pointer transition-all duration-200 hover:border-[#265447]/40 hover:shadow-[0_4px_16px_rgba(0,0,0,0.4)] no-underline text-inherit block active:scale-[0.98]"
         >
+            <button
+                onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (!isAuthenticated) { navigate('/auth'); return; }
+                    if (isFavorite(product.id)) {
+                        removeFavorite(product.id);
+                    } else {
+                        addFavorite({
+                            product_id: product.id,
+                            product_title: product.title,
+                            product_image_url: product.image_url ?? undefined,
+                            product_price: Number(minPrice) || undefined,
+                        });
+                    }
+                }}
+                className={`absolute top-3 right-3 p-1 border-none bg-transparent cursor-pointer transition-all hover:scale-110 z-10 ${
+                    isFavorite(product.id)
+                        ? 'text-[#E11D48]'
+                        : 'text-[#D1D5DB] hover:text-[#E11D48]'
+                }`}
+                title="Додати до улюблених"
+            >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill={isFavorite(product.id) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                </svg>
+            </button>
             <div className="w-full h-[141px] rounded-[10px] bg-white p-[8px] flex justify-center items-center mb-[16px] overflow-hidden">
                 <img src={product.image_url || zagluska} alt={product.title} className="max-w-full max-h-full object-contain" />
             </div>

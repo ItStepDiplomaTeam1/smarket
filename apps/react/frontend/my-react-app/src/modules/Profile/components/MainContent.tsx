@@ -1,12 +1,10 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState, useMemo } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { useFetchCarts } from '@/hooks/api/useCartApi';
-import { useFetchUserReviews } from '@/hooks/api/useReviewsApi';
-import { apiClient } from '@/shared/api/apiClient';
+import { useFetchUserReviews, type Review } from '@/hooks/api/useReviewsApi';
 import { useFavoritesStore } from '@/shared/context/favoritesStore';
-import milkIcon from '@/shared/assets/milk.svg';
-import bottleIcon from '@/shared/assets/bottle.svg';
+import { apiClient } from '@/shared/api/apiClient';
 
 function formatDate(iso: string): string {
   const months = [
@@ -31,7 +29,6 @@ export function MainContent() {
     }
   }, [isLoaded, loadFavorites]);
 
-
   const latestReviews = useMemo(() => {
     return [...userReviews]
       .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
@@ -39,7 +36,7 @@ export function MainContent() {
   }, [userReviews]);
 
   // Завантажуємо інформацію про товари для відгуків (назва, фото)
-  const [productsMap, setProductsMap] = useState<Record<number, { title: string; image_url: string | null }>>({}); 
+  const [productsMap, setProductsMap] = useState<Record<number, { title: string; image_url: string | null }>>({});
 
   useEffect(() => {
     if (latestReviews.length === 0) return;
@@ -53,12 +50,16 @@ export function MainContent() {
       const results: Record<number, { title: string; image_url: string | null }> = {};
       await Promise.all(
         idsToFetch.map(async (id) => {
-          const { data, status } = await apiClient.get(`/api/v1/products/${id}`, {
-            validateStatus: (s) => s === 200 || s === 404,
-          });
-          if (status === 200 && data?.title) {
-            results[id] = { title: data.title, image_url: data.image_url };
-          } else {
+          try {
+            const { data, status } = await apiClient.get(`/api/v1/products/${id}`, {
+              validateStatus: (s) => s === 200 || s === 404,
+            });
+            if (status === 200 && data?.title) {
+              results[id] = { title: data.title, image_url: data.image_url };
+            } else {
+              results[id] = { title: `Товар #${id}`, image_url: null };
+            }
+          } catch (err) {
             results[id] = { title: `Товар #${id}`, image_url: null };
           }
         })
@@ -73,28 +74,9 @@ export function MainContent() {
   // Відображуване ім'я для привітання: якщо є name — ім'я, інакше email
   const userName = user?.name || user?.email || 'Користувачу';
 
-  const favoriteProducts = [
-    { title: 'Молоко Яготинське пастеризоване 2,6%', category: 'Молочні продукти', price: '54.49 - 61.91 грн', rating: 4.8, views: 400, image: milkIcon },
-    { title: 'Вино Marlborough Sun Sauvignon Blanc', category: 'Алкоголь', price: '469.00 - 585.00 грн', rating: 4.9, views: 340, image: bottleIcon },
-    { title: 'Напій кокосовий Vega Milk', category: 'Молочні продукти', price: '85.49 - 118.00 грн', rating: 4.7, views: 259, image: milkIcon },
-    { title: 'Віскі Monkey Shoulder, 40%, 0.7 л', category: 'Алкоголь', price: '999.00 - 1559.00 грн', rating: 4.8, views: 129, image: bottleIcon },
-  ];
-
   const StarIcon = ({ filled }: { filled: boolean }) => (
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill={filled ? "#FFB800" : "currentColor"} className="shrink-0">
       <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
-    </svg>
-  );
-
-  const SmallStarIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="#FFB800" className="shrink-0">
-      <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
-    </svg>
-  );
-
-  const EyeIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#6FE3C2" className="shrink-0">
-      <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
     </svg>
   );
 
@@ -268,14 +250,14 @@ export function MainContent() {
                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
               </svg>
               <p className="font-manrope font-semibold text-[15px] text-[#3DAE8B] m-0 mb-[4px]">Ще немає відгуків</p>
-              <p className="font-inter text-[13px] text-[#94A3B8] m-0">Ваші відгуки на товары з'являться тут.</p>
+              <p className="font-inter text-[13px] text-[#94A3B8] m-0">Ваші відгуки на товари з'являться тут.</p>
             </div>
           )}
 
           {/* Список відгуків */}
           {!reviewsLoading && !reviewsError && latestReviews.length > 0 && (
             <div className="flex flex-col gap-[12px] mb-[24px] flex-grow">
-              {latestReviews.map((review) => {
+              {latestReviews.map((review: Review) => {
                 const productInfo = productsMap[review.product_id];
                 const productTitle = productInfo?.title || `Товар #${review.product_id}`;
                 const productImage = productInfo?.image_url;
