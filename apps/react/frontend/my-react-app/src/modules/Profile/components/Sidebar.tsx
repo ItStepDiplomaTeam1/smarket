@@ -6,16 +6,12 @@ import { apiClient } from '@/shared/api/apiClient';
 
 // Light theme icons
 import profileHomeLight from '@/shared/assets/profile-home.svg';
-import profileCartLight from '@/shared/assets/profile-cart.svg';
-import profileLikeLight from '@/shared/assets/profile-like.svg';
 import profileReviewsLight from '@/shared/assets/profile-reviews.svg';
 import settingsProfileLight from '@/shared/assets/settings-profile.svg';
 import profileExitLight from '@/shared/assets/profile-exit.svg';
 
 // Dark theme icons
 import profileHomeDark from '@/shared/assets/homegreen.svg';
-import profileCartDark from '@/shared/assets/green_basket.svg';
-import profileLikeDark from '@/shared/assets/obrani_green.svg';
 import profileReviewsDark from '@/shared/assets/reviews_green.svg';
 import settingsProfileDark from '@/shared/assets/settings_green.svg';
 import profileExitDark from '@/shared/assets/left_green.svg';
@@ -64,12 +60,9 @@ export const Sidebar = () => {
   // Навігаційні асети в залежності від теми
   const navItems = [
     { path: '/profile',           label: 'Особистий кабінет', icon: isDark ? profileHomeDark : profileHomeLight,    exact: true },
-    { path: '/cart',              label: 'Ваші кошики',       icon: isDark ? profileCartDark : profileCartLight,    exact: false },
-    { path: '/profile/favorites', label: 'Обрані товари',      icon: isDark ? profileLikeDark : profileLikeLight,    exact: false },
     { path: '/profile/reviews',   label: 'Відгуки',           icon: isDark ? profileReviewsDark : profileReviewsLight,  exact: false },
+    { path: '/profile/settings',  label: 'Налаштування',      icon: isDark ? settingsProfileDark : settingsProfileLight, exact: false },
   ];
-
-  const settingsItem = { path: '/profile/settings', label: 'Налаштування', icon: isDark ? settingsProfileDark : settingsProfileLight, exact: false };
   const exitIcon = isDark ? profileExitDark : profileExitLight;
 
   // Відображуване ім'я: ім'я зі стору або з /me
@@ -172,7 +165,7 @@ export const Sidebar = () => {
   };
 
   return (
-    <aside className="hidden lg:flex flex-col w-full lg:w-[235px] lg:h-[597px] shrink-0 py-[24px] px-[16px] border border-[#265447]/8 dark:border-[#265447]/30 rounded-[16px] gap-[36px] bg-white dark:bg-[#1C2723] shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.4)] font-inter">
+    <aside className="hidden lg:flex flex-col w-full lg:w-[235px] lg:h-[493px] shrink-0 py-[24px] px-[16px] border border-[#265447]/8 dark:border-[#265447]/30 rounded-[16px] gap-[36px] bg-white dark:bg-[#1C2723] shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.4)] font-inter">
       
       {/* Блок профілю */}
       <div className="flex flex-col w-[202px] gap-[12px] items-start mx-auto text-left">
@@ -206,8 +199,6 @@ export const Sidebar = () => {
           <div className="py-[4px]">
              <hr className="w-full border-t border-[#6FE3C2] dark:border-[#6FE3C2]/50" />
           </div>
-
-          {renderNavItem(settingsItem)}
           <li>
             <button
               onClick={handleLogout}

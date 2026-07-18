@@ -112,9 +112,9 @@ export function MainContent() {
         {/* Хлібні крихти та Заголовок */}
         <div className="mb-[24px]">
           <div className="flex items-center gap-[4px] font-inter text-[13px] text-[#6D8279] dark:text-[#A9B6B0] mb-[12px]">
-            <span className="cursor-pointer hover:text-[#265447] dark:hover:text-[#3DAE8B] transition-colors">Головна</span>
+            <span className="cursor-pointer hover:text-[#265447] dark:hover:text-[#3DAE8B] transition-colors" onClick={() => navigate('/')}>Головна</span>
             <BreadcrumbChevron />
-            <span className="text-[#265447] dark:text-[#EAF7F2] font-semibold">Особистий кабінет</span>
+            <span className="text-[#265447] dark:text-[#94A3B8] font-semibold">Особистий кабінет</span>
           </div>
           <h1 className="font-manrope text-[24px] font-[250] leading-[31.2px] text-[#173B33] dark:text-white m-0">Особистий кабінет</h1>
         </div>
