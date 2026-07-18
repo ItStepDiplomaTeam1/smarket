@@ -7,6 +7,29 @@
 @theme {
   --font-inter: 'Inter', sans-serif;
   --font-manrope: 'Manrope', sans-serif;
+
+  --animate-page-enter: page-enter 0.25s cubic-bezier(0.215, 0.61, 0.355, 1) forwards;
+  --animate-shimmer: shimmer 2s infinite linear;
+
+  @keyframes page-enter {
+    from {
+      opacity: 0;
+      transform: scale(0.995) translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
 }
 
 @keyframes chatIn {
@@ -367,3 +390,46 @@
 .dark .profile-scrollbar::-webkit-scrollbar-thumb {
   background-color: #265447;
 }
+
+/* Shimmer effect for skeleton screens */
+.shimmer-bg {
+  background: linear-gradient(
+    90deg,
+    rgba(243, 244, 246, 1) 0%,
+    rgba(229, 231, 235, 1) 35%,
+    rgba(243, 244, 246, 1) 70%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s infinite linear;
+}
+
+.dark .shimmer-bg {
+  background: linear-gradient(
+    90deg,
+    rgba(27, 38, 34, 1) 0%,
+    rgba(38, 54, 49, 1) 35%,
+    rgba(27, 38, 34, 1) 70%
+  );
+  background-size: 200% 100%;
+}
+
+/* Smooth hover scale and shadow lift for cards */
+.hover-lift {
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.22s ease, border-color 0.22s ease;
+  will-change: transform;
+}
+.hover-lift:hover {
+  transform: translateY(-4px) scale(1.015);
+  box-shadow: 0 12px 24px -10px rgba(9, 30, 21, 0.15);
+}
+
+/* Smooth micro-interactions for buttons and inputs */
+.btn-smooth {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.btn-smooth:hover {
+  transform: translateY(-1px);
+}
+.btn-smooth:active {
+  transform: translateY(1px) scale(0.98);
+}

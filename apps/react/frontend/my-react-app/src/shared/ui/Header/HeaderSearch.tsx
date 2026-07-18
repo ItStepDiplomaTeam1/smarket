@@ -51,6 +51,7 @@ export function HeaderSearch({ isOpen, onClose }: HeaderSearchProps) {
 
     if (isOpen) {
       document.body.style.overflow = 'hidden';
+      setAnimState('opening');
       const rafId = requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           setAnimState('open');
@@ -62,12 +63,13 @@ export function HeaderSearch({ isOpen, onClose }: HeaderSearchProps) {
         document.body.style.overflow = '';
       };
     } else {
+      setAnimState((prev) => (prev === 'closed' ? 'closed' : 'closing'));
       const timerId = window.setTimeout(() => {
         setAnimState('closed');
         setQuery('');
         setDebouncedQuery('');
         document.body.style.overflow = '';
-      }, 250);
+      }, 300);
       animTimerRef.current = timerId;
       return () => {
         window.clearTimeout(timerId);
@@ -132,32 +134,51 @@ export function HeaderSearch({ isOpen, onClose }: HeaderSearchProps) {
     if (delta > 0) {
       touchDeltaY.current = delta;
       if (sectionRef.current) {
-        sectionRef.current.style.transform = `translateY(${Math.min(delta * 0.5, 150)}px)`;
-        sectionRef.current.style.opacity = `${1 - delta / 400}`;
+        sectionRef.current.style.transition = 'none';
+        sectionRef.current.style.transform = `translate3d(0, ${delta * 0.45}px, 0)`;
+        sectionRef.current.style.opacity = `${Math.max(0.2, 1 - delta / 480)}`;
       }
     }
   };
 
   const handleTouchEnd = () => {
-    if (sectionRef.current) {
-      sectionRef.current.style.transform = '';
-      sectionRef.current.style.opacity = '';
-    }
     if (touchDeltaY.current > 80) {
+      if (sectionRef.current) {
+        sectionRef.current.style.transition = 'transform 0.25s cubic-bezier(0.32, 0.94, 0.6, 1), opacity 0.25s ease-out';
+        sectionRef.current.style.transform = 'translate3d(0, 100%, 0)';
+        sectionRef.current.style.opacity = '0';
+      }
       onClose();
+    } else {
+      if (sectionRef.current) {
+        // Snap back to zero with spring easing
+        sectionRef.current.style.transition = 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease-out';
+        sectionRef.current.style.transform = 'translate3d(0, 0, 0)';
+        sectionRef.current.style.opacity = '1';
+        
+        // Let transition finish, then clean up inline styles
+        const currentDelta = touchDeltaY.current;
+        setTimeout(() => {
+          if (sectionRef.current && touchDeltaY.current === 0) {
+            sectionRef.current.style.transition = '';
+            sectionRef.current.style.transform = '';
+            sectionRef.current.style.opacity = '';
+          }
+        }, 300);
+      }
     }
     touchDeltaY.current = 0;
   };
 
   if (animState === 'closed') return null;
 
-  const isAnimating = animState === 'opening' || animState === 'open';
+  const isTransitionActive = animState === 'open';
 
   const products = data?.hits?.slice(0, 7) ?? [];
 
   return (
     <div
-      className={`fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-[#0B1813]/25 px-0 sm:px-4 pt-0 sm:pt-20 backdrop-blur-md dark:bg-black/45 sm:pt-28 transition-all duration-250 ease-out ${isAnimating ? 'opacity-100' : 'opacity-0'}`}
+      className={`fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-[#0B1813]/25 px-0 sm:px-4 pt-0 sm:pt-20 backdrop-blur-md dark:bg-black/45 sm:pt-28 transition-all duration-300 ease-out ${isTransitionActive ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -169,7 +190,7 @@ export function HeaderSearch({ isOpen, onClose }: HeaderSearchProps) {
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
-        className={`h-[85vh] sm:h-fit w-full sm:max-w-2xl overflow-hidden rounded-t-3xl sm:rounded-3xl border border-white/55 bg-white/70 shadow-[0_-8px_40px_rgba(9,30,21,0.28)] sm:shadow-[0_24px_80px_rgba(9,30,21,0.28)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#14221E]/75 transition-all duration-250 ease-out ${isAnimating ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full sm:translate-y-4 sm:scale-95'}`}
+        className={`h-[85vh] sm:h-fit w-full sm:max-w-2xl overflow-hidden rounded-t-3xl sm:rounded-3xl border border-white/55 bg-white/70 shadow-[0_-8px_40px_rgba(9,30,21,0.28)] sm:shadow-[0_24px_80px_rgba(9,30,21,0.28)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#14221E]/75 transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1) ${isTransitionActive ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-full sm:translate-y-8 sm:scale-95'}`}
       >
         <div className="flex items-center gap-3 border-b border-[#265447]/10 px-4 py-3 sm:px-5 sm:py-4 dark:border-white/10">
           <div className="hidden sm:flex items-center">
