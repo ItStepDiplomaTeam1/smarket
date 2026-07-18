@@ -112,9 +112,9 @@ export function MainContent() {
         {/* Хлібні крихти та Заголовок */}
         <div className="mb-[24px]">
           <div className="flex items-center gap-[4px] font-inter text-[13px] text-[#6D8279] dark:text-[#A9B6B0] mb-[12px]">
-            <span className="cursor-pointer hover:text-[#265447] dark:hover:text-[#3DAE8B] transition-colors">Головна</span>
+            <span className="cursor-pointer hover:text-[#265447] dark:hover:text-[#3DAE8B] transition-colors" onClick={() => navigate('/')}>Головна</span>
             <BreadcrumbChevron />
-            <span className="text-[#265447] dark:text-[#EAF7F2] font-semibold">Особистий кабінет</span>
+            <span className="text-[#265447] dark:text-[#94A3B8] font-semibold">Особистий кабінет</span>
           </div>
           <h1 className="font-manrope text-[24px] font-[250] leading-[31.2px] text-[#173B33] dark:text-white m-0">Особистий кабінет</h1>
         </div>
@@ -129,48 +129,61 @@ export function MainContent() {
               Ми допоможемо вам економити час і гроші, знаходячи <br /> найкращі ціни в улюблених магазинах швидко і зручно.
             </p>
           </div>
-          <button className="bg-[#265447] dark:bg-[#3DAE8B] text-white dark:text-[#111A17] font-inter text-[13px] font-bold px-[19px] h-[36px] w-fit flex items-center justify-center rounded-[10px] hover:bg-[#173B33] dark:hover:bg-[#2C9E7C] transition-colors leading-none shadow-sm">
+          <button 
+            onClick={() => navigate('/profile/settings')}
+            className="bg-[#265447] dark:bg-[#3DAE8B] text-white dark:text-[#111A17] font-inter text-[13px] font-bold px-[19px] h-[36px] w-fit flex items-center justify-center rounded-[10px] hover:bg-[#173B33] dark:hover:bg-[#2C9E7C] transition-colors leading-none shadow-sm cursor-pointer"
+          >
             Редагувати профіль
           </button>
         </div>
 
         {/* Секція Збережені кошики та Обрані товари */}
-        <div className={`grid grid-cols-1 ${carts && carts.length > 0 ? 'xl:grid-cols-2' : ''} gap-[24px] mb-[24px] items-stretch`}>
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-[24px] mb-[24px] items-stretch">
           
-          {/* Блок: Збережені кошики — тільки якщо є хоча б 1 кошик */}
-          {carts && carts.length > 0 && (
-            <div className="bg-white dark:bg-[#1D2A25] border border-[#265447]/[0.08] dark:border-[#265447]/30 shadow-[0_4px_12px_rgba(23,59,51,0.06)] rounded-[16px] py-[24px] px-[24px] flex flex-col h-full transition-colors">
-              <h3 className="font-manrope text-[18px] font-bold text-[#173B33] dark:text-white m-0 mb-[8px]">Збережені кошики</h3>
-              <p className="font-inter text-[12px] text-[#6D8279] dark:text-[#A9B6B0] m-0 mb-[24px]">
-                Оберіть кошик, щоб переглянути товари та порівняти магазини.
-              </p>
-              
-              <div className={`flex flex-col gap-[16px] mb-[24px] ${carts.length > 2 ? 'max-h-[254px] overflow-y-auto pr-[4px]' : ''}`}
-                style={carts.length > 2 ? { scrollbarWidth: 'thin', scrollbarColor: '#265447 transparent' } : undefined}
-              >
-                {carts.map((cart) => (
-                  <div key={cart.id} className="flex justify-between border border-[#265447]/[0.08] dark:border-[#265447]/20 rounded-[10px] p-[12px] h-[111px] shrink-0 bg-[#fff] dark:bg-[#111A17]/20">
-                    <div className="flex flex-col justify-between h-full w-[203px] min-w-0">
-                      <h4 className="font-manrope text-[15px] font-bold text-[#173B33] dark:text-white m-0 truncate">{cart.title}</h4>
-                      <div className="my-auto truncate"><span className="font-inter text-[12px] text-[#6D8279] dark:text-[#A9B6B0]">{cart.itemsCount} товарів · {formatDate(cart.updatedAt)}</span></div>
-                      <span className="font-inter text-[12px] font-semibold text-[#173B33] dark:text-[#3DAE8B] truncate">{cart.bestStore}</span>
-                    </div>
-                    <div className="flex flex-col justify-between items-end h-full shrink-0">
-                      <div className="h-[22px] px-[8px] bg-[#FACC14] rounded-[6px] flex items-center justify-center shrink-0">
-                        <span className="font-inter text-[11px] font-bold text-[#173B33] dark:text-[#111A17] leading-none">Економія {Math.round(cart.potentialSavings)} ₴</span>
-                      </div>
-                      <span className="font-manrope text-[16px] font-bold text-[#173B33] dark:text-[#EAF7F2]">{Math.round(cart.bestPrice)} грн</span>
-                    </div>
-                  </div>
-                ))}
+          {/* Блок: Збережені кошики */}
+          <div className="bg-white dark:bg-[#1D2A25] border border-[#265447]/[0.08] dark:border-[#265447]/30 shadow-[0_4px_12px_rgba(23,59,51,0.06)] rounded-[16px] py-[24px] px-[24px] flex flex-col h-full transition-colors">
+            <h3 className="font-manrope text-[18px] font-bold text-[#173B33] dark:text-white m-0 mb-[8px]">Збережені кошики</h3>
+            
+            {!carts || carts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-[32px] flex-1">
+                <svg className="w-8 h-8 text-[#9CA3AF] mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 00-16.536-1.84M7.5 14.25L5.106 5.272M6 20.25a.75.75 0 11-1.5 0 .75.75 0 011.5 0zm12.75 0a.75.75 0 11-1.5 0 .75.75 0 011.5 0z" />
+                </svg>
+                <p className="font-manrope font-semibold text-[14px] text-[#265447] dark:text-[#3DAE8B] m-0 mb-1">Немає збережених кошиків</p>
+                <p className="font-inter text-[12px] text-[#6D8279] dark:text-[#A9B6B0] m-0">Створіть перший кошик на сторінці кошиків.</p>
               </div>
+            ) : (
+              <>
+                <p className="font-inter text-[12px] text-[#6D8279] dark:text-[#A9B6B0] m-0 mb-[24px]">
+                  Оберіть кошик, щоб переглянути товари та порівняти магазини.
+                </p>
+                
+                <div className={`flex flex-col gap-[16px] mb-[24px] profile-scrollbar ${carts.length > 2 ? 'max-h-[254px] overflow-y-auto pr-[4px]' : ''}`}>
+                  {carts.map((cart) => (
+                    <div key={cart.id} className="flex justify-between border border-[#265447]/[0.08] dark:border-[#265447]/20 rounded-[10px] p-[12px] h-[111px] shrink-0 bg-[#fff] dark:bg-[#111A17]/20">
+                      <div className="flex flex-col justify-between h-full w-[203px] min-w-0">
+                        <h4 className="font-manrope text-[15px] font-bold text-[#173B33] dark:text-white m-0 truncate">{cart.title}</h4>
+                        <div className="my-auto truncate"><span className="font-inter text-[12px] text-[#6D8279] dark:text-[#A9B6B0]">{cart.itemsCount} товарів · {formatDate(cart.updatedAt)}</span></div>
+                        <span className="font-inter text-[12px] font-semibold text-[#173B33] dark:text-[#3DAE8B] truncate">{cart.bestStore}</span>
+                      </div>
+                      <div className="flex flex-col justify-between items-end h-full shrink-0">
+                        <div className="h-[22px] px-[8px] bg-[#FACC14] rounded-[6px] flex items-center justify-center shrink-0">
+                          <span className="font-inter text-[11px] font-bold text-[#173B33] dark:text-[#111A17] leading-none">Економія {Math.round(cart.potentialSavings)} ₴</span>
+                        </div>
+                        <span className="font-manrope text-[16px] font-bold text-[#173B33] dark:text-[#EAF7F2]">{Math.round(cart.bestPrice)} грн</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
 
-              <a href="/cart" className="flex items-center gap-[2px] font-inter text-[14px] font-semibold text-[#6D8279] dark:text-[#A9B6B0] mt-auto hover:text-[#265447] dark:hover:text-[#3DAE8B] transition-colors w-full">
-                Переглянути всі кошики
-                <ArrowRightIcon />
-              </a>
-            </div>
-          )}
+              </>
+            )}
+
+            <Link to="/cart" className="flex items-center gap-[2px] font-inter text-[14px] font-semibold text-[#6D8279] dark:text-[#94A3B8] mt-auto hover:text-[#265447] dark:hover:text-white transition-colors w-full">
+              Переглянути всі кошики
+              <ArrowRightIcon />
+            </Link>
+          </div>
 
           {/* Блок: Обрані товари */}
           <div className="bg-white dark:bg-[#1D2A25] border border-[#265447]/[0.08] dark:border-[#265447]/30 shadow-[0_4px_12px_rgba(23,59,51,0.06)] rounded-[16px] py-[24px] px-[24px] flex flex-col h-full transition-colors">
@@ -217,14 +230,10 @@ export function MainContent() {
               </div>
             )}
 
-            <a 
-              href="#" 
-              onClick={(e) => { e.preventDefault(); navigate('/catalog'); }}
-              className="flex items-center gap-[2px] font-inter text-[14px] font-semibold text-[#6D8279] dark:text-[#A9B6B0] mt-auto hover:text-[#265447] dark:hover:text-[#3DAE8B] transition-colors w-full"
-            >
+            <Link to="/catalog" className="flex items-center gap-[2px] font-inter text-[14px] font-semibold text-[#6D8279] dark:text-[#94A3B8] mt-auto hover:text-[#265447] dark:hover:text-white transition-colors w-full">
               Перейти до каталогу
               <ArrowRightIcon />
-            </a>
+            </Link>
           </div>
         </div>
 
@@ -268,47 +277,45 @@ export function MainContent() {
 
           {/* Список відгуків */}
           {!reviewsLoading && !reviewsError && latestReviews.length > 0 && (
-            <>
-              <div className="flex flex-col gap-[24px] mb-[24px]">
-                {latestReviews.map((review: Review) => {
-                  const productInfo = productsMap[review.product_id];
-                  const productTitle = productInfo?.title || `Товар #${review.product_id}`;
-                  const productImage = productInfo?.image_url;
+            <div className="flex flex-col gap-[24px] mb-[24px]">
+              {latestReviews.map((review: Review) => {
+                const productInfo = productsMap[review.product_id];
+                const productTitle = productInfo?.title || `Товар #${review.product_id}`;
+                const productImage = productInfo?.image_url;
 
-                  return (
-                    <div key={review.id} className="flex flex-col sm:flex-row items-start gap-4 sm:gap-[24px] border-b border-[#265447]/[0.08] dark:border-[#265447]/20 pb-4 last:border-0 last:pb-0">
-                      {productImage ? (
-                        <img
-                          src={productImage}
-                          alt={productTitle}
-                          className="w-[44px] h-[56px] rounded-[5px] object-contain shrink-0 border border-[#265447]/[0.08] bg-white dark:bg-[#111A17] p-1"
-                        />
-                      ) : (
-                        <div className="w-[44px] h-[56px] rounded-[5px] shrink-0 border border-[#265447]/[0.08] dark:border-[#265447]/20 bg-[#F6FAF8] dark:bg-[#111A17] flex items-center justify-center">
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-[#6D8279] dark:text-[#A9B6B0]">
-                            <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
-                            <path d="m3.3 7 8.7 5 8.7-5" />
-                            <path d="M12 22V12" />
-                          </svg>
-                        </div>
-                      )}
-                      <h4 className="w-full sm:w-[153px] font-inter text-[13px] font-medium text-[#173B33] dark:text-white leading-[18px] m-0 shrink-0 truncate sm:whitespace-normal">{productTitle}</h4>
-                      <div className="flex shrink-0">
-                        {[1, 2, 3, 4, 5].map((star) => <StarIcon key={star} filled={star <= review.rating} />)}
+                return (
+                  <div key={review.id} className="flex flex-col sm:flex-row items-start gap-4 sm:gap-[24px] border-b border-[#265447]/[0.08] dark:border-[#265447]/20 pb-4 last:border-0 last:pb-0">
+                    {productImage ? (
+                      <img
+                        src={productImage}
+                        alt={productTitle}
+                        className="w-[44px] h-[56px] rounded-[5px] object-contain shrink-0 border border-[#265447]/[0.08] bg-white dark:bg-[#111A17] p-1"
+                      />
+                    ) : (
+                      <div className="w-[44px] h-[56px] rounded-[5px] shrink-0 border border-[#265447]/[0.08] dark:border-[#265447]/20 bg-[#F6FAF8] dark:bg-[#111A17] flex items-center justify-center">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-[#6D8279] dark:text-[#A9B6B0]">
+                          <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+                          <path d="m3.3 7 8.7 5 8.7-5" />
+                          <path d="M12 22V12" />
+                        </svg>
                       </div>
-                      <p className="flex-1 min-w-0 font-inter text-[13px] text-[#6D8279] dark:text-[#EAF7F2] leading-[20px] m-0 pr-[16px]">{review.text || 'Без коментаря'}</p>
-                      <span className="w-auto sm:w-[110px] shrink-0 font-inter text-[12px] sm:text-[13px] text-[#6D8279] dark:text-[#A9B6B0] sm:text-right whitespace-nowrap mt-1 sm:mt-0">{formatDate(review.created_at)}</span>
+                    )}
+                    <h4 className="w-full sm:w-[153px] font-inter text-[13px] font-medium text-[#173B33] dark:text-white leading-[18px] m-0 shrink-0 truncate sm:whitespace-normal">{productTitle}</h4>
+                    <div className="flex shrink-0">
+                      {[1, 2, 3, 4, 5].map((star) => <StarIcon key={star} filled={star <= review.rating} />)}
                     </div>
-                  );
-                })}
-              </div>
-
-              <Link to="/profile/reviews" className="flex items-center gap-[2px] font-inter text-[14px] font-semibold text-[#6D8279] mt-auto hover:text-[#265447] transition-colors w-full">
-                Переглянути всі відгуки
-                <ArrowRightIcon />
-              </Link>
-            </>
+                    <p className="flex-1 min-w-0 font-inter text-[13px] text-[#6D8279] dark:text-[#EAF7F2] leading-[20px] m-0 pr-[16px]">{review.text || 'Без коментаря'}</p>
+                    <span className="w-auto sm:w-[110px] shrink-0 font-inter text-[12px] sm:text-[13px] text-[#6D8279] dark:text-[#A9B6B0] sm:text-right whitespace-nowrap mt-1 sm:mt-0">{formatDate(review.created_at)}</span>
+                  </div>
+                );
+              })}
+            </div>
           )}
+
+          <Link to="/profile/reviews" className="flex items-center gap-[2px] font-inter text-[14px] font-semibold text-[#6D8279] dark:text-[#94A3B8] mt-auto hover:text-[#265447] dark:hover:text-white transition-colors w-full">
+            Переглянути всі відгуки
+            <ArrowRightIcon />
+          </Link>
         </div>
       </div>
     </section>

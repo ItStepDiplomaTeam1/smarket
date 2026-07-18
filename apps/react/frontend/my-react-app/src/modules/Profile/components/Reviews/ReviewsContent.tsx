@@ -82,7 +82,7 @@ export function ReviewsContent() {
           <img src={rightVector} alt=">" className="w-[10px] h-[10px] object-contain mx-[2px] dark:brightness-200" />
           <span className="cursor-pointer hover:text-[#265447] dark:hover:text-[#3DAE8B] transition-colors" onClick={() => navigate('/profile')}>Особистий кабінет</span>
           <img src={rightVector} alt=">" className="w-[10px] h-[10px] object-contain mx-[2px] dark:brightness-200" />
-          <span className="text-[#265447] dark:text-[#EAF7F2] font-semibold">Відгуки</span>
+          <span className="text-[#265447] dark:text-[#94A3B8] font-semibold">Відгуки</span>
         </div>
 
         {/* Заголовок */}

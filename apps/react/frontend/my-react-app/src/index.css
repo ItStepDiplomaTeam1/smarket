@@ -343,3 +343,28 @@
   h1 { font-size: 20px !important; }
   h2 { font-size: 18px !important; }
 }
+
+/* Custom scrollbar for saved carts in profile */
+.profile-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #D1D5DB transparent;
+}
+
+.dark .profile-scrollbar {
+  scrollbar-color: #265447 transparent;
+}
+
+.profile-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.profile-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.profile-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #D1D5DB;
+  border-radius: 10px;
+}
+.dark .profile-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #265447;
+}
+}

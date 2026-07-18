@@ -215,16 +215,16 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 const Button: React.FC<ButtonProps> = ({ variant = 'save', children, className = '', ...props }) => {
   let colorClasses = '';
   if (variant === 'save') {
-    colorClasses = 'border-[#6FE3C2] text-[#255848] hover:bg-[#6FE3C2]/5 dark:text-[#6FE3C2] dark:border-[#6FE3C2]/40';
+    colorClasses = 'bg-transparent border-[#6FE3C2] text-[#255848] hover:bg-[#6FE3C2]/5 dark:bg-[#3DAE8B] dark:text-[#111A17] dark:hover:bg-[#3DAE8B]/90 dark:border-transparent';
   } else if (variant === 'security') {
-    colorClasses = 'border-[#00B15E] text-[#00B15E] hover:bg-[#00B15E]/5 dark:text-[#00B15E] dark:border-[#00B15E]/40';
+    colorClasses = 'bg-transparent border-[#00B15E] text-[#00B15E] hover:bg-[#00B15E]/5 dark:bg-[#4ADE80] dark:text-[#111A17] dark:hover:bg-[#4ADE80]/90 dark:border-transparent';
   } else if (variant === 'logout') {
-    colorClasses = 'border-[#6D8279] text-[#255848] hover:bg-[#6D8279]/5 dark:text-white/70 dark:border-white/20';
+    colorClasses = 'bg-transparent border-[#6D8279] text-[#255848] hover:bg-[#6D8279]/5 dark:bg-[#3DAE8B] dark:text-[#111A17] dark:hover:bg-[#3DAE8B]/90 dark:border-transparent';
   }
 
   return (
     <button
-      className={`h-[36px] px-[19px] py-[10px] rounded-[10px] bg-transparent border text-[13px] font-bold font-inter cursor-pointer transition-all flex items-center justify-center whitespace-nowrap active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${colorClasses} ${className}`}
+      className={`h-[36px] px-[19px] py-[10px] rounded-[10px] border text-[13px] font-bold font-inter cursor-pointer transition-all flex items-center justify-center whitespace-nowrap active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${colorClasses} ${className}`}
       {...props}
     >
       {children}
@@ -248,7 +248,7 @@ const Button: React.FC<ButtonProps> = ({ variant = 'save', children, className =
           <BreadcrumbChevron />
           <span className="cursor-pointer hover:text-[#173B33] dark:hover:text-[#3DAE8B] transition-colors" onClick={() => navigate('/profile')}>Особистий кабінет</span>
           <BreadcrumbChevron />
-          <span className="text-[#265447] dark:text-[#4ADE80] font-semibold">Налаштування</span>
+          <span className="text-[#265447] dark:text-[#94A3B8] font-semibold">Налаштування</span>
         </div>
 
         {/* Заголовок */}
@@ -308,9 +308,8 @@ const Button: React.FC<ButtonProps> = ({ variant = 'save', children, className =
                     type="email"
                     value={email}
                     readOnly
-                    onClick={() => setShowEmailModal(true)}
-                    title="Натисніть для зміни E-mail"
-                    className="h-[36px] w-full border border-[#6D8279]/24 dark:border-[#265447]/30 rounded-[10px] px-[12px] py-[5px] bg-white dark:bg-[#173B33] text-[#173633] dark:text-white font-inter text-[13px] outline-none cursor-pointer hover:border-[#173B33] dark:hover:border-[#4ADE80] transition-colors"
+                    disabled
+                    className="h-[36px] w-full border border-[#6D8279]/24 dark:border-[#265447]/30 rounded-[10px] px-[12px] py-[5px] bg-[#F3F4F6] dark:bg-[#173B33] text-[#6D8279] dark:text-[#94A3B8] font-inter text-[13px] outline-none cursor-not-allowed opacity-75"
                   />
                 </div>
 
@@ -475,28 +474,30 @@ const Button: React.FC<ButtonProps> = ({ variant = 'save', children, className =
             </div>
 
             <div className="flex flex-col lg:flex-row gap-[20px] items-end w-full justify-between">
-              {/* Пароль */}
-              <div className="w-full lg:w-[264px] flex flex-col gap-[6px] shrink-0">
-                <label className="text-[14px] font-normal font-inter text-[#173633] dark:text-white leading-[21.5px] text-left">Пароль</label>
-                <input 
-                  type="password" 
-                  value={password} 
-                  disabled
-                  className="h-[36px] w-full border border-[#6D8279]/24 dark:border-[#265447]/30 rounded-[10px] px-[12px] py-[5px] bg-white dark:bg-[#173B33] text-[#173633] dark:text-white font-inter text-[13px] outline-none opacity-80"
-                />
+              {/* Ліва частина: Пароль + Кнопка */}
+              <div className="flex flex-col sm:flex-row gap-[16px] items-end w-full lg:w-auto">
+                <div className="w-full sm:w-[264px] flex flex-col gap-[6px] shrink-0">
+                  <label className="text-[14px] font-normal font-inter text-[#173633] dark:text-white leading-[21.5px] text-left">Пароль</label>
+                  <input 
+                    type="password" 
+                    value={password} 
+                    disabled
+                    className="h-[36px] w-full border border-[#6D8279]/24 dark:border-[#265447]/30 rounded-[10px] px-[12px] py-[5px] bg-white dark:bg-[#173B33] text-[#173633] dark:text-white font-inter text-[13px] outline-none opacity-80"
+                  />
+                </div>
+
+                {/* Кнопка Змінити пароль */}
+                <Button 
+                  variant="security"
+                  onClick={() => setShowPasswordModal(true)}
+                  className="w-full sm:w-[135px] shrink-0"
+                >
+                  Змінити пароль
+                </Button>
               </div>
 
-              {/* Кнопка Змінити пароль */}
-              <Button 
-                variant="security"
-                onClick={() => setShowPasswordModal(true)}
-                className="w-full lg:w-[135px] shrink-0"
-              >
-                Змінити пароль
-              </Button>
-
               {/* Вертикальний роздільник строго по центру між кнопками */}
-              <div className="hidden lg:block w-[1px] h-[61px] bg-[#265447]/8 shrink-0 self-end mb-[2px]" />
+              <div className="hidden lg:block w-[1px] h-[61px] bg-[#265447]/8 dark:bg-[#265447]/30 shrink-0 self-end mb-[2px]" />
 
               {/* Дії з акаунтом */}
               <div className="flex flex-col gap-[6px] w-full lg:w-[135px] shrink-0 items-center">
@@ -604,7 +605,7 @@ const Button: React.FC<ButtonProps> = ({ variant = 'save', children, className =
                 id="btn-confirm-email-change"
                 onClick={handleEmailChange}
                 disabled={changeEmailMutation.isPending || !newEmail.trim() || !emailPassword}
-                className="h-[36px] px-[20px] rounded-[8px] bg-[#173B33] dark:bg-[#4ADE80] border-none text-white dark:text-[#111A17] font-semibold text-[13px] cursor-pointer hover:bg-[#265447] dark:hover:bg-[#3ce076] disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-[6px]"
+                className="h-[36px] px-[20px] rounded-[8px] bg-[#173B33] dark:bg-[#3DAE8B] border-none text-white dark:text-[#111A17] font-semibold text-[13px] cursor-pointer hover:bg-[#265447] dark:hover:bg-[#3DAE8B]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-[6px]"
               >
                 {changeEmailMutation.isPending && (
                   <svg className="animate-spin" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -677,7 +678,7 @@ const Button: React.FC<ButtonProps> = ({ variant = 'save', children, className =
               </button>
               <button 
                 onClick={handlePasswordChange}
-                className="h-[36px] px-[20px] rounded-[8px] bg-[#173B33] dark:bg-[#4ADE80] border-none text-white dark:text-[#111A17] font-semibold text-[13px] cursor-pointer hover:bg-[#265447] dark:hover:bg-[#3ce076] transition-colors"
+                className="h-[36px] px-[20px] rounded-[8px] bg-[#173B33] dark:bg-[#3DAE8B] border-none text-white dark:text-[#111A17] font-semibold text-[13px] cursor-pointer hover:bg-[#265447] dark:hover:bg-[#3DAE8B]/90 transition-colors"
               >
                 Зберегти
               </button>
