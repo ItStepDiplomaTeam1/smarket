@@ -73,6 +73,10 @@ export const Sidebar = () => {
   const exitIcon = isDark ? profileExitDark : profileExitLight;
 
   // Відображуване ім'я: ім'я зі стору або з /me
+  const email = user?.email;
+  const userCity = (email ? localStorage.getItem(`smarket_user_city_${email}`) : null) || meData?.settings?.city || 'Київ';
+  const locationLabel = `${userCity}, Україна`;
+
   const displayName = user?.name || meData?.username || user?.email || 'Користувач';
   const initials = getInitials(user?.name, user?.email);
   const avatarColor = stringToHsl(user?.email ?? user?.name ?? 'user');
@@ -87,8 +91,6 @@ export const Sidebar = () => {
       const DEFAULT_CITY  = 'Київ';
       const DEFAULT_STORE = 'Всі магазини';
       
-      const email = user.email;
-      const name = user.name;
       const phone = localStorage.getItem(`smarket_user_phone_${email}`);
       const city = localStorage.getItem(`smarket_user_city_${email}`);
       const favoriteStore = localStorage.getItem(`smarket_user_favorite_store_${email}`);
@@ -96,7 +98,7 @@ export const Sidebar = () => {
       let count = 0;
       
       // 1. Ім'я
-      if (name && name.trim().length > 0 && name.trim() !== 'Марина Добра') {
+      if (user.name && user.name.trim().length > 0 && user.name.trim() !== 'Марина Добра') {
         count += 1;
       }
       // 2. Email
@@ -129,7 +131,7 @@ export const Sidebar = () => {
     return () => {
       window.removeEventListener('profile-updated', updateProgress);
     };
-  }, [user]);
+  }, [user, email]);
 
   const handleLogout = async () => {
     try {
@@ -154,14 +156,14 @@ export const Sidebar = () => {
       <li key={item.path}>
         <button
           onClick={() => navigate(item.path)}
-          className={`flex items-center w-full h-[44px] px-[12px] gap-[12px] rounded-[10px] border transition-all text-left cursor-pointer transition-colors duration-200 ${
+          className={`flex items-center w-[202px] h-[36px] px-[10px] gap-[12px] rounded-[8px] border transition-all text-left cursor-pointer transition-colors duration-200 ${
             active
-              ? 'bg-[#F6FAF8] border-[#173B33] text-[#173B33] dark:bg-transparent dark:border-[#4ADE80] dark:text-[#4ADE80]'
-              : 'bg-transparent border-transparent text-[#6D8279] dark:text-[#4ADE80] hover:bg-[#F6FAF8] dark:hover:bg-[#173B33]'
+              ? 'bg-[#EAF7F2] border-[#6FE3C2] text-[#265447] dark:bg-transparent dark:border-[#4ADE80] dark:text-[#4ADE80]'
+              : 'bg-transparent border-transparent text-[#265447] dark:text-[#4ADE80] hover:bg-[#EAF7F2]/50 dark:hover:bg-[#173B33]'
           }`}
         >
           <img src={item.icon} alt={item.label} className="w-[20px] h-[20px] flex-shrink-0" />
-          <span className={`text-[14px] leading-none mt-[2px] ${active ? 'font-semibold' : 'font-normal'}`}>
+          <span className={`text-[14px] font-inter leading-none mt-[2px] ${active ? 'font-semibold' : 'font-normal'}`}>
             {item.label}
           </span>
         </button>
@@ -170,10 +172,10 @@ export const Sidebar = () => {
   };
 
   return (
-    <aside className="hidden lg:flex flex-col w-full lg:w-[235px] shrink-0 py-[24px] px-[16px] border border-[#E5E7EB] dark:border-[#265447]/30 rounded-[16px] gap-[36px] bg-white dark:bg-[#1C2723] shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.4)] font-inter">
+    <aside className="hidden lg:flex flex-col w-full lg:w-[235px] lg:h-[597px] shrink-0 py-[24px] px-[16px] border border-[#265447]/8 dark:border-[#265447]/30 rounded-[16px] gap-[36px] bg-white dark:bg-[#1C2723] shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.4)] font-inter">
       
       {/* Блок профілю */}
-      <div className="flex flex-col w-[202px] gap-[12px] items-start mx-auto">
+      <div className="flex flex-col w-[202px] gap-[12px] items-start mx-auto text-left">
         <div
           className="w-[100px] h-[100px] rounded-full overflow-hidden shrink-0 flex items-center justify-center text-white text-[32px] font-bold select-none"
           style={{ backgroundColor: avatarColor }}
@@ -184,35 +186,35 @@ export const Sidebar = () => {
             initials
           )}
         </div>
-        <div className="flex flex-col w-[202px] gap-[6px]">
-          <h2 className="text-[14px] font-semibold text-[#173B33] dark:text-white leading-none truncate">{displayName}</h2>
-          <p className="text-[12px] font-normal text-[#6D8279] dark:text-white leading-none truncate">Галактика SMARKET</p>
+        <div className="flex flex-col w-[202px] gap-[6px] items-start">
+          <h2 className="text-[14px] font-semibold text-[#265447] dark:text-white leading-none truncate text-left w-full">{displayName}</h2>
+          <p className="text-[12px] font-normal text-[#265447] dark:text-white leading-none truncate text-left w-full">{locationLabel}</p>
         </div>
-        <div className="flex flex-col w-full gap-[12px]">
-          <span className="text-[12px] font-normal text-[#6D8279] dark:text-white leading-none">Профіль заповнено на {progress}%</span>
-          <div className="w-full h-[7px] bg-[#F0F5F3] dark:bg-[#173B33] rounded-[20px] overflow-hidden">
-            <div className="h-full bg-[#173B33] dark:bg-[#4ADE80] rounded-[20px] transition-all duration-500 ease-out" style={{ width: `${progress}%` }}></div>
+        <div className="flex flex-col w-[166px] gap-[12px] items-start">
+          <span className="text-[12px] font-semibold text-[#265447] dark:text-white leading-none text-left w-full">Профіль заповнено на {progress}%</span>
+          <div className="w-[166px] h-[7px] bg-[#F0F5F3] dark:bg-[#173B33] rounded-[20px] overflow-hidden">
+            <div className="h-full bg-[#265447] dark:bg-[#4ADE80] rounded-[20px] transition-all duration-500 ease-out" style={{ width: `${progress}%` }}></div>
           </div>
         </div>
       </div>
 
       {/* Блок навігації */}
       <nav className="w-full flex justify-center">
-        <ul className="flex flex-col gap-1 w-[202px]">
+        <ul className="flex flex-col gap-[8px] w-[202px]">
           {navItems.map(renderNavItem)}
 
-          <div className="py-2">
-             <hr className="w-full border-t border-[#E5E7EB] dark:border-[#265447]" />
+          <div className="py-[4px]">
+             <hr className="w-full border-t border-[#6FE3C2] dark:border-[#6FE3C2]/50" />
           </div>
 
           {renderNavItem(settingsItem)}
           <li>
             <button
               onClick={handleLogout}
-              className="flex items-center w-full h-[44px] px-[12px] gap-[12px] rounded-[10px] bg-transparent border border-transparent text-[#6D8279] dark:text-[#4ADE80] hover:bg-[#F6FAF8] dark:hover:bg-[#173B33] transition-all text-left cursor-pointer transition-colors duration-200"
+              className="flex items-center w-[202px] h-[36px] px-[10px] gap-[12px] rounded-[8px] bg-transparent border border-transparent text-[#265447] dark:text-[#4ADE80] hover:bg-[#EAF7F2]/50 dark:hover:bg-[#173B33] transition-all text-left cursor-pointer transition-colors duration-200"
             >
               <img src={exitIcon} alt="Exit" className="w-[20px] h-[20px] flex-shrink-0" />
-              <span className="text-[14px] font-normal leading-none mt-[2px]">Вийти</span>
+              <span className="text-[14px] font-normal font-inter leading-none mt-[2px]">Вийти</span>
             </button>
           </li>
         </ul>

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -24,12 +25,13 @@ export interface MeResponse {
     username: string;
     role: string;
     photo_url?: string;
+    settings?: Record<string, any>;
 }
 
 export const useFetchMe = () => {
     const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
-    return useQuery<MeResponse>({
+    const query = useQuery<MeResponse>({
         queryKey: ['me'],
         queryFn: async () => {
             const { data } = await apiClient.get<MeResponse>('/api/v1/auth/me');
@@ -38,6 +40,23 @@ export const useFetchMe = () => {
         enabled: isAuthenticated,
         staleTime: 5 * 60 * 1000,
     });
+
+    useEffect(() => {
+        if (query.data && isAuthenticated) {
+            useAuthStore.setState((state) => {
+                if (!state.user) return state;
+                return {
+                    user: {
+                        ...state.user,
+                        name: query.data.username || state.user.name,
+                        photoUrl: query.data.photo_url || state.user.photoUrl,
+                    }
+                };
+            });
+        }
+    }, [query.data, isAuthenticated]);
+
+    return query;
 };
 
 export const useGoogleOAuth = () => {
@@ -223,6 +242,62 @@ export const useResetPassword = () => {
         onSuccess: () => {
             toast.success('Пароль успішно оновлено. Тепер ви можете увійти.');
             navigate('/auth');
+        },
+    });
+};
+
+export interface ChangePasswordRequest {
+    old_password: string;
+    new_password: string;
+}
+
+export interface ChangePasswordResponse {
+    message: string;
+}
+
+export const useChangePassword = () => {
+    return useMutation<ChangePasswordResponse, Error, ChangePasswordRequest>({
+        mutationFn: async ({ old_password, new_password }) => {
+            try {
+                const response = await apiClient.patch<ChangePasswordResponse>('/api/v1/auth/password', {
+                    old_password,
+                    new_password,
+                });
+                return response.data;
+            } catch (error) {
+                if (axios.isAxiosError(error) && error.response?.data?.detail) {
+                    throw new Error(error.response.data.detail, { cause: error });
+                }
+                throw new Error('Не вдалося змінити пароль. Спробуйте ще раз.', { cause: error });
+            }
+        },
+    });
+};
+
+export interface ChangeEmailRequest {
+    new_email: string;
+    current_password: string;
+}
+
+export interface ChangeEmailResponse {
+    message: string;
+}
+
+export const useChangeEmail = () => {
+    return useMutation<ChangeEmailResponse, Error, ChangeEmailRequest>({
+        mutationFn: async ({ new_email, current_password }) => {
+            try {
+                const response = await apiClient.patch<ChangeEmailResponse>('/api/v1/auth/email', {
+                    new_email,
+                    current_password,
+                });
+                return response.data;
+            } catch (error) {
+                if (axios.isAxiosError(error) && error.response?.data?.detail) {
+                    throw new Error(error.response.data.detail, { cause: error });
+                }
+                throw new Error('Не вдалося змінити email. Спробуйте ще раз.', { cause: error });
+            }
         },
     });
 };

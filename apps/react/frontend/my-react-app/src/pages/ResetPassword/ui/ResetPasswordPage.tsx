@@ -2,24 +2,17 @@ import { useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { useResetPassword } from '@/hooks/api/useAuthApi';
 import { Loader2, Check } from 'lucide-react';
+import { PASSWORD_RULES, validatePassword } from '@/shared/utils/password';
 import eyeIcon from '@/shared/assets/ButtonEye.svg';
 import logo from '@/shared/assets/logo.svg';
 
 const PasswordChecklist = ({ password }: { password: string }) => {
-    const rules = [
-        { label: 'Мінімум 8 символів', check: () => password.length >= 8 },
-        { label: 'Велика літера', check: () => /[A-Z]/.test(password) },
-        { label: 'Мала літера', check: () => /[a-z]/.test(password) },
-        { label: 'Цифра', check: () => /\d/.test(password) },
-        { label: 'Спецсимвол (!@#$%^&*)', check: () => /[!@#$%^&*()\-_=+[\]{}|;:,.<>?/~`]/.test(password) },
-    ];
-
     if (!password) return null;
 
     return (
         <div className="mt-[6px] flex flex-col gap-[2px] mb-[12px]">
-            {rules.map((rule, idx) => {
-                const isValid = rule.check();
+            {PASSWORD_RULES.map((rule, idx) => {
+                const isValid = rule.check(password);
                 return (
                     <div key={idx} className={`flex items-center gap-[6px] text-[11px] font-medium transition-colors duration-300 ${isValid ? 'text-[#265447] dark:text-[#3DAE8B]' : 'text-gray-400 dark:text-[#6D8279]'}`}>
                         {isValid ? (
@@ -47,15 +40,6 @@ export default function ResetPasswordPage() {
     const [clientError, setClientError] = useState('');
 
     const resetPasswordMutation = useResetPassword();
-
-    const validatePassword = (val: string) => {
-        if (val.length < 8) return false;
-        if (!/[A-Z]/.test(val)) return false;
-        if (!/[a-z]/.test(val)) return false;
-        if (!/\d/.test(val)) return false;
-        if (!/[!@#$%^&*()\-_=+[\]{}|;:,.<>?/~`]/.test(val)) return false;
-        return true;
-    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
