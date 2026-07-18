@@ -9,6 +9,7 @@ import { useFavoritesStore } from '@/shared/context/favoritesStore';
 import { useQuery } from '@tanstack/react-query';
 import { type ReceiptListItem } from '@/hooks/api/useCartApi';
 import { ReceiptsDropdown } from './ReceiptsDropdown';
+import { HeaderSearch } from '@/shared/ui/Header/HeaderSearch';
 import { ReceiptText } from 'lucide-react';
 
 // ================= ICONS =================
@@ -71,6 +72,7 @@ export function Header() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [favoritesOpen, setFavoritesOpen] = useState(false);
     const [receiptsOpen, setReceiptsOpen] = useState(false);
+    const [searchOpen, setSearchOpen] = useState(false);
 
     const dropdownRef = useRef<HTMLDivElement>(null);
     const favoritesRef = useRef<HTMLDivElement>(null);
@@ -148,7 +150,12 @@ export function Header() {
                     <ThemeToggle />
 
                     {/* ЛУПА */}
-                    <button className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0 w-6 h-6 group">
+                    <button
+                        type="button"
+                        onClick={() => setSearchOpen(true)}
+                        className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0 w-6 h-6 group"
+                        aria-label="Відкрити пошук"
+                    >
                         <img src={lupa} alt="Search" className="w-6 h-6 block dark:brightness-0 dark:invert transition-transform group-hover:scale-110" />
                     </button>
 
@@ -326,6 +333,7 @@ export function Header() {
                     </button>
                 </div>
             </div>
+            <HeaderSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
         </header>
     );
 }
