@@ -156,7 +156,7 @@ export const Sidebar = () => {
           }`}
         >
           <img src={item.icon} alt={item.label} className="w-[20px] h-[20px] flex-shrink-0" />
-          <span className={`text-[14px] font-inter leading-none mt-[2px] ${active ? 'font-semibold' : 'font-normal'}`}>
+          <span className="text-[14px] font-inter leading-none mt-[2px] font-normal">
             {item.label}
           </span>
         </button>
@@ -184,7 +184,7 @@ export const Sidebar = () => {
           <p className="text-[12px] font-normal text-[#265447] dark:text-white leading-none truncate text-left w-full">{locationLabel}</p>
         </div>
         <div className="flex flex-col w-[166px] gap-[12px] items-start">
-          <span className="text-[12px] font-semibold text-[#265447] dark:text-white leading-none text-left w-full">Профіль заповнено на {progress}%</span>
+          <span className="text-[12px] font-normal text-[#265447] dark:text-white leading-none text-left w-full">Профіль заповнено на {progress}%</span>
           <div className="w-[166px] h-[7px] bg-[#F0F5F3] dark:bg-[#173B33] rounded-[20px] overflow-hidden">
             <div className="h-full bg-[#265447] dark:bg-[#4ADE80] rounded-[20px] transition-all duration-500 ease-out" style={{ width: `${progress}%` }}></div>
           </div>

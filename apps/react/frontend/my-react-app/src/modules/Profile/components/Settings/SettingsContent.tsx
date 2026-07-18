@@ -217,9 +217,9 @@ const Button: React.FC<ButtonProps> = ({ variant = 'save', children, className =
   if (variant === 'save') {
     colorClasses = 'bg-transparent border-[#6FE3C2] text-[#255848] hover:bg-[#6FE3C2]/5 dark:bg-[#3DAE8B] dark:text-[#111A17] dark:hover:bg-[#3DAE8B]/90 dark:border-transparent';
   } else if (variant === 'security') {
-    colorClasses = 'bg-[#22C55E] text-white hover:bg-[#22C55E]/90 border-transparent dark:bg-[#3DAE8B] dark:text-[#111A17] dark:hover:bg-[#3DAE8B]/90';
+    colorClasses = 'bg-transparent border-[#00B15E] text-[#00B15E] hover:bg-[#00B15E]/5 dark:bg-[#4ADE80] dark:text-[#111A17] dark:hover:bg-[#4ADE80]/90 dark:border-transparent';
   } else if (variant === 'logout') {
-    colorClasses = 'bg-[#265447] text-white hover:bg-[#265447]/90 border-transparent dark:bg-[#3DAE8B] dark:text-[#111A17] dark:hover:bg-[#3DAE8B]/90';
+    colorClasses = 'bg-transparent border-[#6D8279] text-[#255848] hover:bg-[#6D8279]/5 dark:bg-[#3DAE8B] dark:text-[#111A17] dark:hover:bg-[#3DAE8B]/90 dark:border-transparent';
   }
 
   return (
@@ -307,8 +307,9 @@ const Button: React.FC<ButtonProps> = ({ variant = 'save', children, className =
                   <input
                     type="email"
                     value={email}
+                    readOnly
                     disabled
-                    className="h-[36px] w-full border border-[#6D8279]/24 dark:border-[#265447]/30 rounded-[10px] px-[12px] py-[5px] bg-white dark:bg-[#173B33] text-[#173633] dark:text-white font-inter text-[13px] outline-none opacity-80"
+                    className="h-[36px] w-full border border-[#6D8279]/24 dark:border-[#265447]/30 rounded-[10px] px-[12px] py-[5px] bg-[#F3F4F6] dark:bg-[#173B33] text-[#6D8279] dark:text-[#94A3B8] font-inter text-[13px] outline-none cursor-not-allowed opacity-75"
                   />
                 </div>
 
