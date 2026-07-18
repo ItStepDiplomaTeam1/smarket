@@ -4,6 +4,27 @@
 
 @variant dark (&:where(.dark, .dark *));
 
+/* Базовий фон — запобігає чорному спалаху між переходами сторінок */
+@layer base {
+  html {
+    background-color: #F4F6F5;
+  }
+
+  html.dark {
+    background-color: #111A17;
+  }
+
+  body {
+    background-color: inherit;
+    min-height: 100dvh;
+  }
+
+  #root {
+    background-color: inherit;
+    min-height: 100dvh;
+  }
+}
+
 @theme {
   --font-inter: 'Inter', sans-serif;
   --font-manrope: 'Manrope', sans-serif;
