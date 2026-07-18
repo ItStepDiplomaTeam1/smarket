@@ -2,7 +2,6 @@ import uuid
 from fastapi import APIRouter, Depends, Header, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete
-from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.database.session import get_db
 from app.database.models import Favorite
