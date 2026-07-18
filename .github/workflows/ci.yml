@@ -377,10 +377,14 @@ jobs:
           DATABASE_URL: "postgresql+asyncpg://test:test@localhost/test"
           REDIS_URL: "redis://localhost:6379"
           SECRET_KEY: "cafebabe00000000000000000000000000000000000000000000000000000000"
+          JWT_SECRET_KEY: "cafebabe00000000000000000000000000000000000000000000000000000000"
+          RABBITMQ_URL: "amqp://guest:guest@localhost:5672//"
+          RESEND_API_KEY: "dummy-resend-api-key"
           APP_HOST: "0.0.0.0"
           APP_PORT: "8000"
           APP_WORKERS: "1"
           DEBUG: "False"
+
         run: |
           if find tests/ -name "test_*.py" 2>/dev/null | grep -q .; then
             .venv/bin/pytest --cov=. --cov-report=xml --cov-report=term-missing -v --tb=short
