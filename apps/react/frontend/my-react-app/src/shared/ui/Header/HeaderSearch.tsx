@@ -38,30 +38,41 @@ const getLowestPrice = (offers?: StoreOffer[]) => {
 export function HeaderSearch({ isOpen, onClose }: HeaderSearchProps) {
   const navigate = useNavigate();
   const inputRef = useRef<HTMLInputElement>(null);
+  const sectionRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [animState, setAnimState] = useState<'closed' | 'opening' | 'open' | 'closing'>('closed');
   const animTimerRef = useRef<number>(undefined);
+  const touchStartY = useRef(0);
+  const touchDeltaY = useRef(0);
 
   useEffect(() => {
     window.clearTimeout(animTimerRef.current);
 
     if (isOpen) {
+      document.body.style.overflow = 'hidden';
       const rafId = requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           setAnimState('open');
         });
       });
       animTimerRef.current = rafId as unknown as number;
-      return () => cancelAnimationFrame(rafId);
+      return () => {
+        cancelAnimationFrame(rafId);
+        document.body.style.overflow = '';
+      };
     } else {
       const timerId = window.setTimeout(() => {
         setAnimState('closed');
         setQuery('');
         setDebouncedQuery('');
-      }, 200);
+        document.body.style.overflow = '';
+      }, 250);
       animTimerRef.current = timerId;
-      return () => window.clearTimeout(timerId);
+      return () => {
+        window.clearTimeout(timerId);
+        document.body.style.overflow = '';
+      };
     }
   }, [isOpen]);
 
@@ -111,6 +122,33 @@ export function HeaderSearch({ isOpen, onClose }: HeaderSearchProps) {
     navigate(`/product/${productId}`);
   };
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY;
+    touchDeltaY.current = 0;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    const delta = e.touches[0].clientY - touchStartY.current;
+    if (delta > 0) {
+      touchDeltaY.current = delta;
+      if (sectionRef.current) {
+        sectionRef.current.style.transform = `translateY(${Math.min(delta * 0.5, 150)}px)`;
+        sectionRef.current.style.opacity = `${1 - delta / 400}`;
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (sectionRef.current) {
+      sectionRef.current.style.transform = '';
+      sectionRef.current.style.opacity = '';
+    }
+    if (touchDeltaY.current > 80) {
+      onClose();
+    }
+    touchDeltaY.current = 0;
+  };
+
   if (animState === 'closed') return null;
 
   const isAnimating = animState === 'opening' || animState === 'open';
@@ -119,18 +157,27 @@ export function HeaderSearch({ isOpen, onClose }: HeaderSearchProps) {
 
   return (
     <div
-      className={`fixed inset-0 z-[60] flex justify-center bg-[#0B1813]/25 px-4 pt-20 backdrop-blur-md dark:bg-black/45 sm:pt-28 transition-all duration-200 ease-out ${isAnimating ? 'opacity-100' : 'opacity-0'}`}
+      className={`fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-[#0B1813]/25 px-0 sm:px-4 pt-0 sm:pt-20 backdrop-blur-md dark:bg-black/45 sm:pt-28 transition-all duration-250 ease-out ${isAnimating ? 'opacity-100' : 'opacity-0'}`}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
       role="presentation"
     >
       <section
+        ref={sectionRef}
         aria-label="Швидкий пошук товарів"
-        className={`h-fit w-full max-w-2xl overflow-hidden rounded-3xl border border-white/55 bg-white/70 shadow-[0_24px_80px_rgba(9,30,21,0.28)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#14221E]/75 transition-all duration-200 ease-out ${isAnimating ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-4'}`}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+        className={`h-[85vh] sm:h-fit w-full sm:max-w-2xl overflow-hidden rounded-t-3xl sm:rounded-3xl border border-white/55 bg-white/70 shadow-[0_-8px_40px_rgba(9,30,21,0.28)] sm:shadow-[0_24px_80px_rgba(9,30,21,0.28)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#14221E]/75 transition-all duration-250 ease-out ${isAnimating ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full sm:translate-y-4 sm:scale-95'}`}
       >
-        <div className="flex items-center gap-3 border-b border-[#265447]/10 px-5 py-4 dark:border-white/10">
-          <Search className="h-5 w-5 shrink-0 text-[#265447] dark:text-[#3CD27D]" />
+        <div className="flex items-center gap-3 border-b border-[#265447]/10 px-4 py-3 sm:px-5 sm:py-4 dark:border-white/10">
+          <div className="hidden sm:flex items-center">
+            <Search className="h-5 w-5 shrink-0 text-[#265447] dark:text-[#3CD27D]" />
+          </div>
+          <div className="sm:hidden w-full flex justify-center pt-1 pb-2">
+            <div className="w-10 h-1 rounded-full bg-[#D1D5DB] dark:bg-[#4A5D54]" />
+          </div>
           <input
             ref={inputRef}
             value={query}
@@ -141,60 +188,72 @@ export function HeaderSearch({ isOpen, onClose }: HeaderSearchProps) {
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-[#265447]/10 bg-white/45 p-1.5 text-[#6D8279] transition-colors hover:bg-white hover:text-[#173B33] dark:border-white/10 dark:bg-white/5 dark:text-[#A4B3AF] dark:hover:bg-white/10 dark:hover:text-white"
+            className="rounded-lg border border-[#265447]/10 bg-white/45 p-2 text-[#6D8279] transition-colors hover:bg-white hover:text-[#173B33] dark:border-white/10 dark:bg-white/5 dark:text-[#A4B3AF] dark:hover:bg-white/10 dark:hover:text-white sm:p-1.5"
             aria-label="Закрити пошук"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5 sm:h-4 sm:w-4" />
           </button>
         </div>
 
-        <div className="max-h-[min(55vh,480px)] overflow-y-auto p-2">
+        <div className="flex-1 overflow-y-auto p-2 sm:max-h-[min(55vh,480px)]">
           {query.trim().length < 2 ? (
-            <p className="px-4 py-10 text-center text-sm text-[#6D8279] dark:text-[#A4B3AF]">
-              Введіть щонайменше 2 символи, щоб знайти товар.
-            </p>
+            <div className="flex flex-col items-center justify-center py-12 sm:py-10 px-4">
+              <Search className="h-10 w-10 text-[#D1D5DB] dark:text-[#2B4236] mb-3 sm:hidden" />
+              <p className="text-center text-sm text-[#6D8279] dark:text-[#A4B3AF]">
+                Введіть щонайменше 2 символи, щоб знайти товар.
+              </p>
+            </div>
           ) : isFetching ? (
-            <p className="px-4 py-10 text-center text-sm text-[#6D8279] dark:text-[#A4B3AF]">Шукаємо товари…</p>
+            <div className="flex flex-col items-center justify-center py-12 sm:py-10 px-4">
+              <div className="w-8 h-8 border-2 border-[#265447]/20 border-t-[#265447] dark:border-[#3CD27D]/20 dark:border-t-[#3CD27D] rounded-full animate-spin mb-3" />
+              <p className="text-sm text-[#6D8279] dark:text-[#A4B3AF]">Шукаємо товари…</p>
+            </div>
           ) : products.length === 0 ? (
-            <p className="px-4 py-10 text-center text-sm text-[#6D8279] dark:text-[#A4B3AF]">
-              За цим запитом нічого не знайдено.
-            </p>
+            <div className="flex flex-col items-center justify-center py-12 sm:py-10 px-4">
+              <Package className="h-10 w-10 text-[#D1D5DB] dark:text-[#2B4236] mb-3" />
+              <p className="text-center text-sm text-[#6D8279] dark:text-[#A4B3AF]">
+                За цим запитом нічого не знайдено.
+              </p>
+            </div>
           ) : (
-            products.map((product) => {
-              const lowestPrice = getLowestPrice(product.offers);
+            <ul className="space-y-1">
+              {products.map((product) => {
+                const lowestPrice = getLowestPrice(product.offers);
 
-              return (
-                <button
-                  key={product.id}
-                  type="button"
-                  onClick={() => openProduct(product.id)}
-                  className="flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors hover:bg-white/65 dark:hover:bg-white/8"
-                >
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white/70 dark:bg-black/15">
-                    {product.image_url ? (
-                      <img src={product.image_url} alt="" className="h-full w-full object-contain p-1 mix-blend-multiply dark:mix-blend-normal" />
-                    ) : (
-                      <Package className="h-5 w-5 text-[#6D8279] dark:text-[#A4B3AF]" />
-                    )}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-[#173B33] dark:text-white">{product.title}</p>
-                    {product.brand && <p className="truncate text-xs text-[#6D8279] dark:text-[#A4B3AF]">{product.brand}</p>}
-                  </div>
-                  {lowestPrice !== null && (
-                    <span className="shrink-0 text-sm font-bold text-[#265447] dark:text-[#3CD27D]">від {lowestPrice.toFixed(2)} ₴</span>
-                  )}
-                </button>
-              );
-            })
+                return (
+                  <li key={product.id}>
+                    <button
+                      type="button"
+                      onClick={() => openProduct(product.id)}
+                      className="flex w-full items-center gap-3 rounded-2xl px-3 py-3 sm:py-2.5 text-left transition-colors hover:bg-white/65 dark:hover:bg-white/8 active:bg-white/80 dark:active:bg-white/12"
+                    >
+                      <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white/70 dark:bg-black/15">
+                        {product.image_url ? (
+                          <img src={product.image_url} alt="" className="h-full w-full object-contain p-1 mix-blend-multiply dark:mix-blend-normal" />
+                        ) : (
+                          <Package className="h-5 w-5 text-[#6D8279] dark:text-[#A4B3AF]" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold text-[#173B33] dark:text-white">{product.title}</p>
+                        {product.brand && <p className="truncate text-xs text-[#6D8279] dark:text-[#A4B3AF]">{product.brand}</p>}
+                      </div>
+                      {lowestPrice !== null && (
+                        <span className="shrink-0 text-sm font-bold text-[#265447] dark:text-[#3CD27D]">від {lowestPrice.toFixed(2)} ₴</span>
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           )}
         </div>
 
-        <div className="border-t border-[#265447]/10 p-2 dark:border-white/10">
+        <div className="border-t border-[#265447]/10 p-2 dark:border-white/10 shrink-0 safe-area-bottom">
           <button
             type="button"
             onClick={openCatalog}
-            className="flex w-full items-center justify-between rounded-2xl px-4 py-3 text-sm font-semibold text-[#265447] transition-colors hover:bg-white/65 dark:text-[#3CD27D] dark:hover:bg-white/8"
+            className="flex w-full items-center justify-between rounded-2xl px-4 py-3.5 sm:py-3 text-sm font-semibold text-[#265447] transition-colors hover:bg-white/65 dark:text-[#3CD27D] dark:hover:bg-white/8 active:bg-white/80 dark:active:bg-white/12"
           >
             <span>Перейти до повного пошуку</span>
             <ArrowRight className="h-4 w-4" />
