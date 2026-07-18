@@ -34,32 +34,32 @@ const ReceiptPage: React.FC = () => {
 
   const snapshotStore = receipt.snapshot[0];
 
-  // Будуємо URL для Google Maps.
-  // Найнадійніший метод — пін за точними координатами (maps.google.com?q=lat,lng).
-  // Якщо координат немає — шукаємо за назвою та адресою.
+  // Адреса зі знімка чека є першоджерелом: координати від постачальника
+  // можуть належати іншій торговій точці або бути застарілими.
   const buildMapUrl = () => {
     if (!snapshotStore) return '';
     const { lat, lng, store_name, address } = snapshotStore;
 
-    if (lat && lng) {
-      // Пін точно на координатах + назва як мітка
-      const label = encodeURIComponent(store_name || address || 'Магазин');
-      return `https://maps.google.com/?q=${lat},${lng}&z=17&label=${label}`;
-    }
-
-    if (store_name && address) {
-      const query = encodeURIComponent(`${store_name}, ${address}`);
+    if (address) {
+      const query = encodeURIComponent(
+        [store_name, address, 'Україна'].filter(Boolean).join(', '),
+      );
       return `https://www.google.com/maps/search/?api=1&query=${query}`;
     }
 
+    // Для старих чеків без адреси залишаємо координати як резервний варіант.
+    if (lat !== undefined && lng !== undefined) {
+      return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+    }
+
     if (store_name) {
-      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(store_name)}`;
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${store_name}, Україна`)}`;
     }
 
     return '';
   };
 
-  const hasCoordinates = snapshotStore?.lat && snapshotStore?.lng;
+  const hasCoordinates = snapshotStore?.lat !== undefined && snapshotStore?.lng !== undefined;
   const hasAddress = snapshotStore?.address;
   const canNavigate = hasCoordinates || hasAddress || !!snapshotStore?.store_name;
   const mapUrl = buildMapUrl();
