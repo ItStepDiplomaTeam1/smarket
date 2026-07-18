@@ -86,6 +86,23 @@ def build_model(provider: str, model_name: str | None = None) -> Model:
     raise ValueError(f"Unknown provider: {provider}")
 
 
+async def probe_provider_health(provider: str, timeout_seconds: float = 3.0) -> bool:
+    """Probes the health of a provider by sending a lightweight query."""
+    import asyncio
+    try:
+        model = build_model(provider)
+        # Use a very basic agent with a simple system prompt that returns "ok"
+        probe_agent = Agent(model, system_prompt="Just reply 'ok'")
+        result = await asyncio.wait_for(
+            probe_agent.run("ping"),
+            timeout=timeout_seconds
+        )
+        return bool(result.data and len(result.data.strip()) > 0)
+    except Exception:
+        # Any exception (e.g. invalid API key, timeout, connection error) means unhealthy
+        return False
+
+
 def get_default_model() -> Model:
     """Модель для инициализации Agent(...) при импорте модуля. Реальный выбор
     провайдера на запрос происходит в main.py через build_model()."""

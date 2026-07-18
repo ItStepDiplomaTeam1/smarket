@@ -1,6 +1,6 @@
 # 🛒 Smarket — Карта монорепозиторію для AI-агентів
 
-> **Цей файл призначений для читання AI-кодувальниками (Claude Code, OpenSpec-агенти, Cursor, Copilot тощо).**  
+> **Цей файл призначений для читання AI-кодувальниками (Claude Code, OpenSpec-агенти, Cursor, Gemini, Copilot тощо).**  
 > Він містить вичерпний опис архітектури, взаємозв'язків, специфікацій та конвенцій монорепозиторію Smarket. AI-агент повинен дотримуватися цих правил для забезпечення високої якості коду та запобігання порушення цілісності системи.
 
 ---
@@ -9,7 +9,9 @@
 
 1. **Ізоляція змін**: AI-агент може вносити зміни **виключно** у межах сервісу, над яким його безпосередньо попросили працювати (`services/<name>/`), або у відповідному застосунку (`apps/<name>/`).
 2. **Крос-сервісні зміни**: Якщо задача вимагає модифікації спільних контрактів (наприклад, схеми БД, API Gateway проксі, RabbitMQ повідомлень), агент **зобов'язаний зупинитися** та запросити підтвердження у розробника перед внесенням крос-сервісних змін.
-3. **DDL та міграції**: Будь-які зміни схем баз даних повинні виконуватися виключно через систему міграцій відповідного сервісу (Alembic для Python, Go DDL скрипти в `products_etl`).
+3. **DDL та міграції**: Будь-які зміни схем баз даних повинні виконуватися виключно через систему міграцій відповідного сервісу (Alembic для Python-сервісів, Go DDL скрипти в `products_etl`).
+4. **Секрети**: Заборонено хардкодити паролі, токени, API-ключі. Використовуйте `.env` або Doppler для передачі секретів через змінні оточення.
+5. **Лінтери та форматування**: Python-сервіси повинні відповідати конвенціям `ruff` та `mypy`. Go-сервіси мають форматуватися через `gofmt`. Код повинен проходити лінтинг перед фіналізацією завдання.
 
 ---
 
@@ -18,9 +20,15 @@
 Smarket — це агрегатор цін на продукти харчування (дані з Zakaz.ua) з мікросервісною архітектурою.
 
 ```text
-                                Клієнт (React / Vite, apps/react)
-                                                │
-                                                ▼  :8080 (публічний порт)
+                                     Клієнт (React / Vite)
+                        ┌──────────────────────┴──────────────────────┐
+                        │                                             │
+                        ▼ apps/react (:5173 / CDN)                    ▼ apps/admin (:5174 / CDN)
+                (Магазин покупця)                               (Панель адміністратора)
+                        │                                             │
+                        └──────────────────────┬──────────────────────┘
+                                               │
+                                               ▼ :8080 (публічний порт)
                         ┌────────────────────────────────────────────────────────┐
                         │                     gateway_service                    │
                         │    (Проксіює всі запити до внутрішніх мікросервісів)    │
@@ -33,24 +41,36 @@ Smarket — це агрегатор цін на продукти харчува�
 │  (Auth & JWT)   │             │(Read Catalog)││service ││service ││(AI Promin Agent)│     │  (Search Proxy) │
 └────────┬────────┘             └───────┬──────┘└────┬───┘└────┬───┘└───────┬────────┘      └────────┬────────┘
          │                              │            │         │            │                        │
-         │   ┌──────────────────────────┘            │         │            │                        │
-         ▼   ▼                                       ▼         ▼            ▼                        ▼
-┌─────────────────┐                            ┌─────────────────┐  ┌────────────────┐      ┌─────────────────┐
-│   PostgreSQL    │                            │   PostgreSQL    │  │ product_service│      │   Meilisearch   │
-│ (shared catalog)│                            │ (private schemas│  │  cart_service  │      │     (:7700)     │
-└────────▲────────┘                            └─────────────────┘  └────────────────┘      └─────────────────┘
-         │                                               ▲
-         │ (Bulk Upsert)                                 │ (Publish Events)
-┌────────┴────────┐                                      │
-│  products_etl   │ ─── (Consume tasks) ───> RabbitMQ ───┘
-│   (Go Parser)   │                          (:5672)
-└────────┬────────┘
-         │ (Store Raw Pages)
-         ▼
- ┌───────────────┐
- │    MongoDB    │
- │  (Datalake)   │
- └───────────────┘
+         │ (Events via smarket_events)  │            │         │            │                        │
+         ▼                              ▼            ▼         ▼            ▼                        ▼
+     RabbitMQ (:5672) ─────────> [ audit_queue ] ─────────────────────────> ┌──────────────────────────┐
+         │                                                                  │      audit_service       │
+         │ (Events via email_queue)                                         │  (Збір логів системи)    │
+         ▼                                                                  └────────────┬─────────────┘
+     [ email_queue ] ──────────> ┌──────────────────────────┐                            │
+                                 │       email_worker       │                            │
+                                 │ (Відправка Email-листів) │                            │
+                                 └──────────────────────────┘                            │
+                                                                                         ▼
+┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                    База даних PostgreSQL                                       │
+│                                (shared / private schemas)                                      │
+│  ┌───────────────────────┬───────────────────────┬──────────────────────┬───────────────────┐  │
+│  │   схема shared_cat    │   схема auth_service  │  схема cart_service  │ схема audit_logs  │  │
+│  │ (products/stores/etc) │     (User table)      │  (carts, items, etc) │   (audit_logs)    │  │
+│  └───────────────────────┴───────────────────────┴──────────────────────┴───────────────────┘  │
+└───────────────────────────▲────────────────────────────────────────────────────────────────────┘
+                            │ (Bulk Upsert)
+                    ┌───────┴───────┐ (Store Raw Pages) ┌───────────────┐
+                    │ products_etl  │ ────────────────> │    MongoDB    │
+                    │  (Go Parser)  │                   │  (Datalake)   │
+                    └────────┬──────┘                   └───────────────┘
+                             │ (Index Updates)
+                             ▼
+                     ┌───────────────┐
+                     │  Meilisearch  │
+                     │    (:7700)    │
+                     └───────────────┘
 ```
 
 ---
@@ -63,6 +83,7 @@ Smarket — це агрегатор цін на продукти харчува�
 *   **Порт**: `8080` (зовнішній)
 *   **Вхідна точка**: `services/gateway/app/main.py`
 *   **Роль**: Єдина точка входу. Перевіряє JWT токени користувачів та проксіює HTTP-запити на внутрішні сервіси за допомогою `httpx.AsyncClient`. Збагачує проксі-запити заголовками `X-User-Id` та `X-User-Role`.
+*   **Специфіка**: Перевіряє JWT токени доступу адміністраторів для захищених роутів `/api/v1/admin/*`, проксіює адмін-дії до `auth_service` та `audit_service`. Проксіює улюблені товари (`/api/v1/favorites/*`) до `cart_service` на роути `/favorites/*`.
 *   **Секрети**: `.env` (`CORS_ORIGINS`, `AUTH_SERVICE_URL`, `PRODUCT_SERVICE_URL`, etc.).
 
 ### 2. `auth_service` (Авторизація)
@@ -70,8 +91,8 @@ Smarket — це агрегатор цін на продукти харчува�
 *   **Стек**: Python, FastAPI, SQLAlchemy async, asyncpg, Granian
 *   **Порт**: `8001` (внутрішній)
 *   **Вхідна точка**: `services/auth_service/main.py`
-*   **Роль**: Реєстрація, авторизація, JWT-токени (access + refresh), Google OAuth. Rate limiting через SlowAPI + Redis (префікс `rl:auth`).
-*   **БД схема**: Власна ізольована схема в PostgreSQL (таблиця `User`). Міграції: `alembic upgrade head`.
+*   **Роль**: Реєстрація, авторизація, JWT-токени (access + refresh), Google OAuth, Telegram Login/OAuth. Rate limiting через SlowAPI + Redis (префікс `rl:auth`).
+*   **БД схема**: Власна схема в PostgreSQL (таблиця `User` з UUID PK, email unique, hashed_password, role, is_active, telegram_id unique, created_at, settings JSONB, updated_at). Міграції: `alembic upgrade head`.
 
 ### 3. `product_service` (Каталог продуктів — Read)
 *   **Директорія**: `services/product_service/`
@@ -79,17 +100,17 @@ Smarket — це агрегатор цін на продукти харчува�
 *   **Порт**: `8000` (внутрішній)
 *   **Вхідна точка**: `services/product_service/app/main.py`
 *   **Роль**: Публічний Read-only каталог товарів, категорій, цін та магазинів.
-*   **Специфіка**: Слухає канал `pg_notify` (`LISTEN products_updated` в `listeners/pg_listener.py`) для реактивної інвалідації кешу.
+*   **Специфіка**: Слухає канал `pg_notify` (`LISTEN products_updated` в `listeners/pg_listener.py`) для реактивної інвалідації кешу. Надає приватний ендпоінт `/api/v1/internal/dashboard-stats` для збору метрик панелі адміністратора.
 *   **БД схема**: Працює в режимі Read-only зі спільною PostgreSQL-схемою, яку наповнює `products_etl`.
 
-### 4. `cart_service` (Кошик покупця)
+### 4. `cart_service` (Кошик покупок, Улюблені та Чеки)
 *   **Директорія**: `services/cart_service/`
 *   **Стек**: Python, FastAPI, SQLAlchemy async, Granian
 *   **Порт**: `8002` (внутрішній)
 *   **Вхідна точка**: `services/cart_service/app/main.py`
-*   **Роль**: Управління кошиками (`carts`, `cart_items`) та розрахунок вартості товарів.
-*   **Специфіка**: Публікує події чекауту та замовлень в RabbitMQ для `email_worker`.
-*   **БД схема**: Власна ізольована схема в PostgreSQL.
+*   **Роль**: Управління кошиками (`carts`, `cart_items`), збереження списку улюблених товарів (`favorites`), а також збереження і видалення публічних чеків користувача (`receipts` зі знімком цін товарів та описом від ШІ).
+*   **Специфіка**: Публікує події чекауту та замовлень в RabbitMQ для `email_worker` через чергу `email_queue`.
+*   **БД схема**: Власна ізольована схема в PostgreSQL з таблицями `carts`, `cart_items`, `favorites`, `receipts`.
 
 ### 5. `reviews_service` (Відгуки на товари)
 *   **Директорія**: `services/reviews_service/`
@@ -97,14 +118,15 @@ Smarket — це агрегатор цін на продукти харчува�
 *   **Порт**: `8004` (внутрішній)
 *   **Вхідна точка**: `services/reviews_service/app/main.py`
 *   **Роль**: Створення, видалення та агрегація відгуків і рейтингів товарів.
-*   **БД схема**: Власна ізольована схема в PostgreSQL.
+*   **БД схема**: Власна ізольована схема в PostgreSQL (таблиця `reviews`).
 
 ### 6. `search_service` (Пошуковий проксі)
 *   **Директорія**: `services/search_service/`
 *   **Стек**: Rust, Axum, Meilisearch SDK
 *   **Порт**: `8083` (внутрішній)
 *   **Вхідна точка**: `services/search_service/src/main.rs`
-*   **Роль**: Тонкий проксі-шар над Meilisearch. Оптимізує та розширює пошукові запити (наприклад, розгортає підкатегорії під мережеві суфікси) та кешує результати.
+*   **Роль**: Тонкий проксі-шар над Meilisearch. Оптимізує та розширює пошукові запити (наприклад, розгортає підкатегорії під мережеві суфіксы) та кешує результати.
+*   **Специфіка**: Налаштовує індекс `products` при запуску (задає searchable, filterable та sortable атрибути).
 
 ### 7. `zephyros_agent` (ШІ-асистент "Promin")
 *   **Директорія**: `services/zephyros_agent/`
@@ -112,7 +134,16 @@ Smarket — це агрегатор цін на продукти харчува�
 *   **Порт**: `8005` (внутрішній)
 *   **Вхідна точка**: `services/zephyros_agent/app/main.py`
 *   **Роль**: Інтерактивний чат-асистент покупця.
-*   **Специфіка**: Працює за схемою UI-блоків (`ZephyrosResponse`). Викликає внутрішні інструменти (`search_catalog`, `compare_product_offers`, `get_user_cart`, `add_product_to_cart`). Підтримує ланцюжок відкатості моделей (OpenRouter -> Gemini -> Groq -> Cerebras).
+*   **Специфіка**: Працює за схемою UI-блоків (`ZephyrosResponse`). Підтримує ланцюжок відкатості моделей з механізмом Circuit Breaker (`groq` -> `gemini` -> `openrouter` -> `cerebras`).
+*   **Інструменти (Tools)**:
+    - `search_and_compare_offers` (пошук та порівняння цін)
+    - `get_user_cart` (отримання кошика)
+    - `add_product_to_cart` (додавання товару, вимагає підтвердження користувача)
+    - `clear_user_cart` (очищення кошика)
+    - `remove_item_from_cart` (видалення товару з кошика)
+    - `compare_cart_stores` (порівняння повної вартості кошика по супермаркетах)
+    - `get_product_reviews` (отримання відгуків)
+    - `create_product_review` (створення відгуку)
 
 ### 8. `products_etl` (Go ETL Воркер)
 *   **Директорія**: `services/products_etl/`
@@ -120,31 +151,70 @@ Smarket — це агрегатор цін на продукти харчува�
 *   **Порт**: `8082` (внутрішній)
 *   **Вхідна точка**: `services/products_etl/main.go`
 *   **Роль**: Періодичний парсинг Zakaz.ua, збереження сирих даних у MongoDB, трансформація, масовий Upsert в Postgres та Meilisearch.
+*   **Ендпоінти**:
+    - `GET /health` (перевірка стану планувальника та з'єднань з БД)
+    - `POST /admin/etl/control` (керування станом планувальника: `start`/`stop`)
+    - `POST /backfill` (запуск повного переіндексування товарів у Meilisearch у фоні)
+    - `GET /product/get` (отримання товарів напряму з Zakaz API)
 
 ### 9. `email_worker` (Email Воркер)
 *   **Директорія**: `services/email_worker/`
 *   **Стек**: Python, FastStream, Jinja2
 *   **Порт**: `8085` (тільки healthcheck)
 *   **Вхідна точка**: `services/email_worker/src/main.py`
-*   **Роль**: Consumer черги `email_queue` (RabbitMQ). Відправляє транзакційні листи користувачам.
+*   **Роль**: Consumer черги `email_queue` (RabbitMQ). Відправляє транзакційні листи користувачам. При збоях перенаправляє листи до DLQ (`email_dead_letter_queue`).
+
+### 10. `audit_service` (Сервіс логів аудіювання)
+*   **Директорія**: `services/audit_service/`
+*   **Стек**: Python, FastAPI, SQLAlchemy async, FastStream, Granian (ASGI)
+*   **Порт**: `8006` (внутрішній)
+*   **Вхідна точка**: `services/audit_service/main.py`
+*   **Роль**: Збір та агрегація логів і подій системи через RabbitMQ.
+*   **Специфіка**: Слухає топік `smarket_events` в RabbitMQ (`audit_queue`) для запису логів у базу даних PostgreSQL. Надає адміністративний ендпоінт `/admin/audit` для отримання логів з пагінацією та пошуком.
+*   **БД схема**: Власна ізольована схема `audit_logs` у PostgreSQL (таблиця `audit_logs`).
+
+### 11. `apps/react` (Магазин покупця)
+*   **Директорія**: `apps/react/frontend/my-react-app/`
+*   **Стек**: React, Vite, TS, Tailwind CSS v4, `@cloudflare/vite-plugin`
+*   **Порт**: `5173` (локальний dev)
+*   **Роль**: Основний клієнтський веб-застосунок покупця. Хоститься на Cloudflare Pages, розгортання виконується через Wrangler.
+
+### 12. `apps/admin` (Панель адміністратора)
+*   **Директорія**: `apps/admin/`
+*   **Стек**: React, Vite, TS, Tailwind CSS v3, Recharts
+*   **Порт**: `5174` (локальний dev)
+*   **Роль**: Панель адміністратора для перегляду метрик, списків товарів, логів аудиту системи, користувачів та налаштувань.
 
 ---
 
 ## 🗄️ 4. Бази даних, міграції та кешування
 
 ### 🐘 PostgreSQL
-Вся реляційна структура живе в єдиному інстансі PostgreSQL (наприклад, NeonDB у проді), але логічно розбита на схеми.
-Кожен сервіс на Python має свою папку `migrations/` та файл `alembic.ini`.
+Вся реляційна структура живе в єдиному інстансі PostgreSQL, але логічно розбита на схеми:
+*   `public` або спільна схема (таблиці `stores`, `categories`, `products`, `store_products`, `prices`) — наповнюється ETL-воркером.
+*   `auth_service` (таблиця `User`).
+*   `cart_service` (таблиці `carts`, `cart_items`, `favorites`, `receipts`).
+*   `reviews_service` (таблиця `reviews`).
+*   `audit_service` (таблиця `audit_logs`).
+
+Кожен сервіс на Python має свою папку міграцій та файл `alembic.ini`.
 
 **Виконання міграцій вручну:**
 ```bash
 # Для auth_service
-cd services/auth_service
-alembic upgrade head
+cd services/auth_service && alembic upgrade head
 
 # Для product_service
-cd services/product_service
-alembic upgrade head
+cd services/product_service && alembic upgrade head
+
+# Для cart_service
+cd services/cart_service && alembic upgrade head
+
+# Для reviews_service
+cd services/reviews_service && alembic upgrade head
+
+# Для audit_service
+cd services/audit_service && alembic upgrade head
 ```
 
 ### 🍃 MongoDB Datalake
@@ -153,7 +223,7 @@ alembic upgrade head
 
 ### ⚡ Redis & RabbitMQ
 *   **Redis** (порт `6379`) — лімітування запитів, спільний кеш.
-*   **RabbitMQ** (порт `5672`) — обмін повідомленнями. Черги: `email_queue`, `etl_queue`.
+*   **RabbitMQ** (порт `5672`) — обмін повідомленнями. Черги: `email_queue` (з DLQ `email_dead_letter_queue`), `etl_queue`, а також обмінник `smarket_events` (topic) з чергою `audit_queue`.
 
 ---
 
@@ -181,12 +251,13 @@ alembic upgrade head
 
 Meilisearch індексує документи товарів.
 *   **Пошук (`searchable`)**: `title`, `brand`, `category_name`, `canonical_ean`.
-*   **Фільтрація (`filterable`)**: `category_id`, `category_slug`, `store_id`, `retail_chain`, `price`, `in_stock`, `is_hidden`.
+*   **Фільтрація (`filterable`)**: `category_id`, `category_slug`, `store_id`, `retail_chain`, `price`, `in_stock`, `is_hidden`, `main_category_id`, `old_price`, `created_at_ts`, `discount_percent`.
+*   **Сортування (`sortable`)**: `price`, `title`, `discount_percent`.
 
 При отриманні запиту `GET /api/v1/search/search` Rust-сервіс:
 1.  Мапить спрощені слаги категорій фронтенду (наприклад, `drinks`, `zoo`) на `main_category_id`.
 2.  Розгортає підкатегорії (наприклад, `molochni-produkty` перетворює на масив `["molochni-produkty", "molochni-produkty-novus", "molochni-produkty-silpo", ...]`).
-3.  Формує гнучкий фільтр Meilisearch та повертає структуровану відповідь із масивом активних пропозицій (`offers`) з різних магазинів.
+3.  Формує гнучкий фільтр Meilisearch та повертає structured відповідь із масивом активних пропозицій (`offers`) з різних магазинів.
 
 ---
 
@@ -210,23 +281,26 @@ Zephyros (Promin) зобов'язаний відповідати виключн�
 
 ### Доступні типи блоків (`type`):
 *   `text`: Простий текст.
-*   `table`: Таблиця порівняння цін. Найдешевша пропозиція обов'язково підсвічується (`highlight_row`).
+*   `table`: Таблиця порівняння цін (для продуктів: `["Назва", "Магазин", "Ціна", "Наявність"]`; для кошика: `["Супермаркет", "Сума кошика", "Знайдено товарів", "Статус"]`). Найдешевша пропозиція обов'язково підсвічується (`highlight_row`).
 *   `product_card`: Картка рекомендованого товару з ціною та посиланням.
-*   `tabs`: Групування результатів по табах (наприклад, по супермаркетах).
+*   `tabs`: Групування результатів по табах (наприклад, по супермаркетах чи категоріях).
 *   `clarification`: Уточнюючі запитання з фіксованими варіантами відповіді (2–4 варіанти).
-*   `action_button`: Кнопка дії (наприклад, пропозиція додати товар у кошик).
+*   `action_button`: Кнопка дії.
+    - `"add_to_cart"`: payload `{ "product_id": <int>, "quantity": <int>, "store_id": "<string>" }` (пропозиція додати товар у кошик).
+    - `"navigate"`: payload `{ "route": "<string>" }` (навігація до `/cart`, `/shops/metro`, `/products/123`, тощо).
+    - `"apply_filters"`: payload `{ "retail_chain": "<string|null>", "query": "<string|null>", "category_slug": "<string|null>", "price_min": <float|null>, "price_max": <float|null> }`
 *   `badge`: Кольорова плашка (`savings`, `best_price`, `warning`, `info`).
 *   `fallback`: Повідомлення про помилку чи відсутність результатів.
 *   `divider`: Візуальний розділювач.
 
 ---
 
-## 💻 8. Стандарти розробки Фронтенду (`apps/react`)
+## 💻 8. Стандарти розробки Фронтенду (`apps/react` та `apps/admin`)
 
 *   **Абсолютні імпорти**: Тільки через аліас `@/` (наприклад, `import { useAuth } from '@/store/auth'`). Відносні імпорти (`../../`) суворо заборонені.
-*   **Глобальний стан**: Zustand, стори розташовані в `src/store/`.
-*   **Фетчінг**: TanStack Query (React Query). Запити винесені у кастомні хуки в `src/hooks/api/`.
-*   **Стилізація**: Tailwind CSS. Використовуються виключно утилітарні класи.
+*   **Глобальний стан**: Zustand, стори розташовані в `src/store/` або `src/store/useAuthStore.ts`.
+*   **Фетчінг**: TanStack Query (React Query). Запити винесені у кастомні хуки в `src/hooks/api/` або `src/hooks/`.
+*   **Стилізація**: Tailwind CSS (Tailwind CSS v4 у `apps/react`, Tailwind CSS v3 у `apps/admin`). Використовуються виключно утилітарні класи.
 *   **Lazy Loading**: Веб-сторінки та великі модальні вікна повинні завантажуватися через `React.lazy()` та обгортатися в `Suspense`.
 
 ---
@@ -234,17 +308,37 @@ Zephyros (Promin) зобов'язаний відповідати виключн�
 ## 🛠️ 9. Корисні команди для розробки та дебагу
 
 ### Запуск інфраструктури локально:
-```bash
-cd infra
-docker compose up --build
-```
+*   **Повний стейк (Production emulation)**:
+    ```bash
+    cd infra
+    docker compose up --build
+    ```
+*   **Локальна розробка (з мапінгом портів та використанням Neon DB)**:
+    ```bash
+    cd infra
+    docker compose -f docker-compose.local.yml up --build
+    ```
 
-### Створення міграції Alembic (на прикладі auth_service):
+### Робота з міграціями Alembic (на прикладі auth_service):
 ```bash
 cd services/auth_service
 alembic revision --autogenerate -m "опис змін"
 alembic upgrade head
 ```
+
+### Запуск фронтенду локально:
+*   **Клієнтський застосунок**:
+    ```bash
+    cd apps/react/frontend/my-react-app
+    npm install
+    npm run dev
+    ```
+*   **Панель адміністратора**:
+    ```bash
+    cd apps/admin
+    npm install
+    npm run dev
+    ```
 
 ### Windows/PowerShell обхід політики виконання скриптів (якщо npx або скрипти не запускаються):
 ```powershell

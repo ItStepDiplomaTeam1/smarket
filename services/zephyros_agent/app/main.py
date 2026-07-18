@@ -17,7 +17,7 @@ from pydantic import BaseModel, ValidationError
 from pydantic_ai.exceptions import ModelHTTPError
 import pydantic_ai.messages as pydantic_ai_msgs
 
-from app.agent.zephyros import agent, available_provider_chain, build_model
+from app.agent.zephyros import agent, available_provider_chain, build_model, probe_provider_health
 from app.config import settings
 from app.deps import AgentDeps
 from app.logging import setup_logging
@@ -66,6 +66,17 @@ async def lifespan(app: FastAPI):
     try:
         chain = available_provider_chain()
         logger.bind(provider_candidates=chain).info("Resolved available provider candidates")
+        
+        async def probe_and_handle(prov: str):
+            logger.info(f"Probing provider health on startup: {prov}")
+            is_healthy = await probe_provider_health(prov, timeout_seconds=3.0)
+            if not is_healthy:
+                logger.warning(f"Provider {prov} failed startup health probe. Placing in initial cooldown.")
+                _mark_down(prov, settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS)
+            else:
+                logger.info(f"Provider {prov} passed startup health probe.")
+
+        await asyncio.gather(*(probe_and_handle(p) for p in chain), return_exceptions=True)
     except Exception:
         logger.exception("Error checking available providers on startup")
     yield
@@ -132,7 +143,29 @@ class ChatRequest(BaseModel):
 
 @app.get("/health", tags=["System"])
 async def health_check():
-    return {"status": "ok", "service": "zephyros_agent"}
+    import time
+    from app.agent.zephyros import PROVIDER_CHAIN, _provider_available
+    
+    provider_states = {}
+    now = time.monotonic()
+    
+    for prov in PROVIDER_CHAIN:
+        configured = _provider_available(prov)
+        cooldown_until = _provider_down_until.get(prov, 0.0)
+        cooldown_remaining = max(0.0, cooldown_until - now)
+        is_blocked = cooldown_remaining > 0.0
+        
+        provider_states[prov] = {
+            "configured": configured,
+            "blocked": is_blocked,
+            "cooldown_remaining_seconds": round(cooldown_remaining, 1) if is_blocked else 0.0
+        }
+        
+    return {
+        "status": "ok",
+        "service": "zephyros_agent",
+        "providers": provider_states
+    }
 
 
 class SummarizePlanRequest(BaseModel):
@@ -186,16 +219,18 @@ async def summarize_plan(
             return {"text": result.data.strip()}
             
         except asyncio.TimeoutError as e:
+            _mark_down(provider, settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS)
             logger.warning(f"Provider {provider} timed out during summarize-plan")
             last_error = e
             continue
         except ModelHTTPError as e:
-            if e.status_code in (401, 429):
+            if e.status_code in (401, 429) or e.status_code >= 500:
                 _mark_down(provider, settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS)
             logger.warning(f"Provider {provider} returned HTTP error {e.status_code} during summarize-plan")
             last_error = e
             continue
         except Exception as e:
+            _mark_down(provider, settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS)
             logger.exception(f"Unexpected error with provider {provider} during summarize-plan")
             last_error = e
             continue
@@ -329,6 +364,14 @@ async def chat(
                 last_error = e
                 continue
 
+            if e.status_code >= 500:
+                _mark_down(provider, settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS)
+                provider_log.bind(status_code=e.status_code, body=_truncate(str(e.body))).warning(
+                    "Provider returned 5xx error",
+                )
+                last_error = e
+                continue
+
             provider_log.bind(
                 status_code=e.status_code,
                 body=_truncate(str(e.body)),
@@ -342,6 +385,7 @@ async def chat(
             continue
 
         except Exception as e:
+            _mark_down(provider, settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS)
             provider_log.exception("Unexpected error while running provider")
             last_error = e
             continue
@@ -484,7 +528,27 @@ async def chat_stream(
 
                 success = True
                 break
+            except ModelHTTPError as e:
+                if e.status_code == 401:
+                    _mark_down(provider, settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS)
+                elif e.status_code == 429:
+                    retry_after = None
+                    headers = getattr(e, "headers", None) or {}
+                    if headers.get("retry-after"):
+                        try:
+                            retry_after = float(headers["retry-after"])
+                        except ValueError:
+                            retry_after = None
+                    cooldown = retry_after or settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS
+                    _mark_down(provider, cooldown)
+                elif e.status_code >= 500:
+                    _mark_down(provider, settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS)
+                
+                provider_log.exception("Model HTTP error during agent streaming")
+                last_error = e
+                continue
             except Exception as e:
+                _mark_down(provider, settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS)
                 provider_log.exception("Error during agent streaming")
                 last_error = e
                 continue
