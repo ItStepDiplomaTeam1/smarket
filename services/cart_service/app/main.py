@@ -37,7 +37,7 @@ async def lifespan(app: FastAPI):
             exchange=smarket_events_exchange,
             routing_key="service.lifecycle"
         )
-    except Exception as e:
+    except Exception:
         pass
     yield
     await app.state.http_client.aclose()

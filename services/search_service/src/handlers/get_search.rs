@@ -238,36 +238,11 @@ pub async fn search_handler(
     let mut use_category_slug_filter = true;
 
     if let Some(ref cat_slug) = filters.category_slug {
-        match cat_slug.as_str() {
-            "drinks" => {
-                mapped_main_category_id = Some(2);
-                use_category_slug_filter = false;
-            }
-            "baby" => {
-                mapped_main_category_id = Some(8);
-                use_category_slug_filter = false;
-            }
-            "chemistry" => {
-                mapped_main_category_id = Some(9);
-                use_category_slug_filter = false;
-            }
-            "beauty" => {
-                mapped_main_category_id = Some(6);
-                use_category_slug_filter = false;
-            }
-            "home" => {
-                mapped_main_category_id = Some(5);
-                use_category_slug_filter = false;
-            }
-            "zoo" => {
-                mapped_main_category_id = Some(7);
-                use_category_slug_filter = false;
-            }
-            "products" => {
-                // "products" is the default/all category sentinel on the frontend
-                use_category_slug_filter = false;
-            }
-            _ => {}
+        if let Some(main_id) = map_slug_to_main_id(cat_slug) {
+            mapped_main_category_id = Some(main_id);
+            use_category_slug_filter = false;
+        } else if cat_slug == "products" {
+            use_category_slug_filter = false;
         }
     }
 
@@ -307,22 +282,13 @@ pub async fn search_handler(
     // offer_type filter: promo/save => old_price IS NOT NULL; new => created_at_ts >= 14d ago
     if !filters.offer_types.is_empty() {
         let mut offer_parts: Vec<String> = Vec::new();
-        let has_promo = filters.offer_types.iter().any(|t| t == "promo" || t == "save");
-        let has_new   = filters.offer_types.iter().any(|t| t == "new");
-
-        if has_promo {
-            offer_parts.push("old_price IS NOT NULL".to_string());
+        for t in &filters.offer_types {
+            if let Some(part) = build_offer_type_filter(t) {
+                if !offer_parts.contains(&part) {
+                    offer_parts.push(part);
+                }
+            }
         }
-        if has_new {
-            let fourteen_days_secs: i64 = 14 * 24 * 60 * 60;
-            let now_unix = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_secs() as i64;
-            let cutoff = now_unix - fourteen_days_secs;
-            offer_parts.push(format!("created_at_ts >= {}", cutoff));
-        }
-
         if offer_parts.len() == 1 {
             filter_conditions.push(offer_parts[0].clone());
         } else if offer_parts.len() > 1 {
@@ -334,12 +300,8 @@ pub async fn search_handler(
     if !payload.discount_range.is_empty() {
         let mut discount_parts: Vec<String> = Vec::new();
         for dr in &payload.discount_range {
-            match dr.as_str() {
-                "10" => discount_parts.push("discount_percent <= 10".to_string()),
-                "10-20" => discount_parts.push("(discount_percent >= 10 AND discount_percent <= 20)".to_string()),
-                "20-30" => discount_parts.push("(discount_percent >= 20 AND discount_percent <= 30)".to_string()),
-                "30+" => discount_parts.push("discount_percent >= 30".to_string()),
-                _ => {}
+            if let Some(filter_str) = build_discount_range_filter(dr) {
+                discount_parts.push(filter_str);
             }
         }
         if discount_parts.len() == 1 {
@@ -356,75 +318,9 @@ pub async fn search_handler(
 
     // Subcategory prefix expansion and filter condition using IN operator
     if !filters.subcategory_slugs.is_empty() {
-        let suffixes = [
-            "",
-            "-silpo",
-            "-novus",
-            "-eko-market",
-            "-ekomarket",
-            "-metro",
-            "-chudomarket",
-            "-megamarket",
-            "-ultramarket",
-            "-tavriav",
-            "-cosmos",
-            "-vostorg",
-            "-kharkiv",
-            "-epicentr",
-            "-zaraz",
-            "-torba",
-            "-grono",
-            "-winetime",
-            "-ideal",
-            "-onde",
-        ];
-
-        let get_subcategory_prefixes = |sub: &str| -> Vec<String> {
-            match sub {
-                "molochni-produkty" => vec![
-                    "dairy-and-eggs".to_string(),
-                    "molochni-produkty".to_string(),
-                    "milk-cheese-eggs".to_string(),
-                ],
-                "myaso-ta-ptytsya" => vec![
-                    "meat-fish-poultry".to_string(),
-                    "meat-and-sausages".to_string(),
-                    "myaso-ta-ptytsya".to_string(),
-                ],
-                "hlib-ta-vypichka" => vec!["bakery".to_string()],
-                "vegetables" => vec![
-                    "fruits-and-vegetables".to_string(),
-                    "vegetables-and-fruits".to_string(),
-                ],
-                "fish" => vec!["fish-and-seafood".to_string()],
-                "grains" => vec![
-                    "grocery".to_string(),
-                    "grocery-and-sweets".to_string(),
-                    "packets-cereals".to_string(),
-                    "pulses-and-grain".to_string(),
-                    "pasta".to_string(),
-                ],
-                "frozen" => vec![
-                    "frozen".to_string(),
-                    "frozen-food".to_string(),
-                ],
-                "cans" => vec![
-                    "canned-food".to_string(),
-                    "tins-jars-cooking".to_string(),
-                    "canned-food-oil-vinegar".to_string(),
-                ],
-                other => vec![other.to_string()],
-            }
-        };
-
         let mut expanded_slugs: Vec<String> = Vec::new();
         for sub_slug in &filters.subcategory_slugs {
-            let prefixes = get_subcategory_prefixes(sub_slug);
-            for prefix in &prefixes {
-                for suffix in &suffixes {
-                    expanded_slugs.push(format!("{}{}", prefix, suffix));
-                }
-            }
+            expanded_slugs.extend(expand_subcategory_prefixes(sub_slug));
         }
 
         if !expanded_slugs.is_empty() {
@@ -518,5 +414,175 @@ pub async fn search_handler(
     }
 }
 
+pub fn map_slug_to_main_id(slug: &str) -> Option<i32> {
+    match slug {
+        "drinks" => Some(2),
+        "baby" => Some(8),
+        "chemistry" => Some(9),
+        "beauty" => Some(6),
+        "home" => Some(5),
+        "zoo" => Some(7),
+        _ => None,
+    }
+}
 
-// Force rebuild
+pub fn expand_subcategory_prefixes(sub_slug: &str) -> Vec<String> {
+    let suffixes = [
+        "",
+        "-silpo",
+        "-novus",
+        "-eko-market",
+        "-ekomarket",
+        "-metro",
+        "-chudomarket",
+        "-megamarket",
+        "-ultramarket",
+        "-tavriav",
+        "-cosmos",
+        "-vostorg",
+        "-kharkiv",
+        "-epicentr",
+        "-zaraz",
+        "-torba",
+        "-grono",
+        "-winetime",
+        "-ideal",
+        "-onde",
+    ];
+
+    let prefixes = match sub_slug {
+        "molochni-produkty" => vec![
+            "dairy-and-eggs".to_string(),
+            "molochni-produkty".to_string(),
+            "milk-cheese-eggs".to_string(),
+        ],
+        "myaso-ta-ptytsya" => vec![
+            "meat-fish-poultry".to_string(),
+            "meat-and-sausages".to_string(),
+            "myaso-ta-ptytsya".to_string(),
+        ],
+        "hlib-ta-vypichka" => vec!["bakery".to_string()],
+        "vegetables" => vec![
+            "fruits-and-vegetables".to_string(),
+            "vegetables-and-fruits".to_string(),
+        ],
+        "fish" => vec!["fish-and-seafood".to_string()],
+        "grains" => vec![
+            "grocery".to_string(),
+            "grocery-and-sweets".to_string(),
+            "packets-cereals".to_string(),
+            "pulses-and-grain".to_string(),
+            "pasta".to_string(),
+        ],
+        "frozen" => vec![
+            "frozen".to_string(),
+            "frozen-food".to_string(),
+        ],
+        "cans" => vec![
+            "canned-food".to_string(),
+            "tins-jars-cooking".to_string(),
+            "canned-food-oil-vinegar".to_string(),
+        ],
+        other => vec![other.to_string()],
+    };
+
+    let mut expanded = Vec::new();
+    for prefix in &prefixes {
+        for suffix in &suffixes {
+            expanded.push(format!("{}{}", prefix, suffix));
+        }
+    }
+    expanded
+}
+
+pub fn build_discount_range_filter(range: &str) -> Option<String> {
+    match range {
+        "10" => Some("discount_percent <= 10".to_string()),
+        "10-20" => Some("(discount_percent >= 10 AND discount_percent <= 20)".to_string()),
+        "20-30" => Some("(discount_percent >= 20 AND discount_percent <= 30)".to_string()),
+        "30+" => Some("discount_percent >= 30".to_string()),
+        _ => None,
+    }
+}
+
+pub fn build_offer_type_filter(offer: &str) -> Option<String> {
+    match offer {
+        "promo" | "save" => Some("old_price IS NOT NULL".to_string()),
+        "new" => {
+            let fourteen_days_secs: i64 = 14 * 24 * 60 * 60;
+            let now_unix = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs() as i64;
+            let cutoff = now_unix - fourteen_days_secs;
+            Some(format!("created_at_ts >= {}", cutoff))
+        }
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_map_slug_to_main_id() {
+        assert_eq!(map_slug_to_main_id("drinks"), Some(2));
+        assert_eq!(map_slug_to_main_id("baby"), Some(8));
+        assert_eq!(map_slug_to_main_id("chemistry"), Some(9));
+        assert_eq!(map_slug_to_main_id("beauty"), Some(6));
+        assert_eq!(map_slug_to_main_id("home"), Some(5));
+        assert_eq!(map_slug_to_main_id("zoo"), Some(7));
+        assert_eq!(map_slug_to_main_id("unknown"), None);
+        assert_eq!(map_slug_to_main_id("products"), None);
+    }
+
+    #[test]
+    fn test_expand_subcategory_prefixes() {
+        let expanded = expand_subcategory_prefixes("molochni-produkty");
+        assert!(expanded.len() >= 21);
+        assert!(expanded.contains(&"dairy-and-eggs".to_string()));
+        assert!(expanded.contains(&"molochni-produkty-novus".to_string()));
+        assert!(expanded.contains(&"milk-cheese-eggs-silpo".to_string()));
+    }
+
+    #[test]
+    fn test_build_discount_range_filter() {
+        assert_eq!(
+            build_discount_range_filter("10"),
+            Some("discount_percent <= 10".to_string())
+        );
+        assert_eq!(
+            build_discount_range_filter("10-20"),
+            Some("(discount_percent >= 10 AND discount_percent <= 20)".to_string())
+        );
+        assert_eq!(
+            build_discount_range_filter("20-30"),
+            Some("(discount_percent >= 20 AND discount_percent <= 30)".to_string())
+        );
+        assert_eq!(
+            build_discount_range_filter("30+"),
+            Some("discount_percent >= 30".to_string())
+        );
+        assert_eq!(build_discount_range_filter("other"), None);
+    }
+
+    #[test]
+    fn test_build_offer_type_filter() {
+        assert_eq!(
+            build_offer_type_filter("promo"),
+            Some("old_price IS NOT NULL".to_string())
+        );
+        assert_eq!(
+            build_offer_type_filter("save"),
+            Some("old_price IS NOT NULL".to_string())
+        );
+        
+        let new_filter = build_offer_type_filter("new");
+        assert!(new_filter.is_some());
+        let new_filter_str = new_filter.unwrap();
+        assert!(new_filter_str.starts_with("created_at_ts >= "));
+        
+        assert_eq!(build_offer_type_filter("invalid"), None);
+    }
+}

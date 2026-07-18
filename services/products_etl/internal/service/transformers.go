@@ -359,6 +359,12 @@ func cleanEAN(ean string) string {
 	return ean
 }
 
+// priceKopecksToUAH конвертує ціну з копійок у гривні.
+// Zakaz.ua API повертає ціни у копійках (10890 = 108.90 грн).
+func priceKopecksToUAH(kopecks float64) float64 {
+	return kopecks / 100.0
+}
+
 // isValidEAN13 перевіряє, чи є рядок валідним штрих-кодом EAN-13
 func isValidEAN13(ean string) bool {
 	if len(ean) != 13 {
@@ -555,10 +561,10 @@ func batchUpsertPage(
 		}
 
 		// Конвертація цін з копійок у гривні (API повертає 10890 = 108.90 грн)
-		priceUAH := p.Price / 100.0
+		priceUAH := priceKopecksToUAH(p.Price)
 		var oldPriceUAH *float64
 		if resolved := p.resolvedOldPrice(); resolved != nil {
-			v := *resolved / 100.0
+			v := priceKopecksToUAH(*resolved)
 			oldPriceUAH = &v
 		}
 

@@ -18,8 +18,6 @@ from app.shared.schemas import (
 )
 from app import crud
 from app.external_api import (
-    fetch_product_details, 
-    fetch_product_offers,
     fetch_products_batch_details,
     fetch_products_batch_offers,
 )

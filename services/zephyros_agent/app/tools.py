@@ -137,18 +137,34 @@ async def get_user_cart(ctx: RunContext[AgentDeps]) -> dict:
         ).warning("cart_service returned error")
         return {"error": "cart_service_error", "status_code": e.response.status_code}
 
-
 async def add_product_to_cart(
     ctx: RunContext[AgentDeps],
     product_id: int,
     quantity: int = 1,
+    store_id: str | None = None,
+    confirm: bool = False,
 ) -> dict:
     """Add a specific product by its ID to the authenticated user's shopping cart.
 
     Args:
         product_id: The unique integer ID of the product.
         quantity: The quantity of the product to add (default 1).
+        store_id: Optional supermarket ID.
+        confirm: Confirmation flag to bypass interactive check.
     """
+    if not confirm:
+        return {
+            "action_button": {
+                "label": "Додати до кошика",
+                "action": "add_to_cart",
+                "payload": {
+                    "product_id": product_id,
+                    "quantity": quantity,
+                    "store_id": store_id
+                }
+            }
+        }
+
     if not ctx.deps.user_id:
         logger.bind(tool="add_product_to_cart").warning("Missing user_id in agent context")
         return {"error": "User is not authenticated. Cannot modify cart."}
@@ -271,7 +287,14 @@ async def search_and_compare_offers(
 
     hits = search_data.get("hits", [])
     if not hits:
-        return {"hits": [], "match_percentage": 0}
+        return {
+            "hits": [],
+            "match_percentage": 0,
+            "fallback": {
+                "message": f"Не знайдено жодної пропозиції за запитом '{query}'",
+                "suggestion": "Спробуйте змінити пошуковий запит або прибрати фільтри"
+            }
+        }
 
     # 3. Fetch offers for top 3 matching products in parallel
     top_hits = hits[:3]
@@ -299,9 +322,21 @@ async def search_and_compare_offers(
         else:
             offers_data = offers_res
 
+        detailed_offers = offers_data.get("prices", []) or offers_data.get("offers", [])
+        
+        # Deep copy/re-construct the list to avoid modifying cached shared objects
+        processed_offers = []
+        for o in detailed_offers:
+            processed_offers.append(dict(o))
+            
+        if processed_offers:
+            cheapest = min(processed_offers, key=lambda o: float(o.get("price", 999999)))
+            for o in processed_offers:
+                o["highlighted"] = (o == cheapest)
+
         combined_hits.append({
             "product_info": hit,
-            "detailed_offers": offers_data.get("prices", []) or offers_data.get("offers", [])
+            "detailed_offers": processed_offers
         })
 
     # Simple match percentage rule

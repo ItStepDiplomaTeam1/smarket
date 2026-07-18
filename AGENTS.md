@@ -344,3 +344,62 @@ alembic upgrade head
 ```powershell
 powershell -ExecutionPolicy Bypass -Command "<команда>"
 ```
+
+### Тестування сервісів та Pre-commit хук:
+Для забезпечення стабільності та якості коду в репозиторії налаштовано автоматичне тестування та pre-commit хук.
+
+*   **Pre-commit хук**:
+    При кожному комміті (`git commit`) автоматично запускається скрипт `scripts/run_service_tests.py`, який виявляє змінені сервіси у папці `services/` та запускає відповідні unit-тести за допомогою `pytest`. Якщо хоча б один тест падає, комміт блокується.
+    Якщо зміни не стосуються коду сервісів (наприклад, документація), крок тестування автоматично пропускається.
+
+*   **Команди для локального запуску тестів**:
+    *   **Cart Service**:
+        ```bash
+        cd services/cart_service
+        uv run pytest
+        ```
+    *   **Gateway Service**:
+        ```bash
+        cd services/gateway
+        uv run pytest
+        ```
+    *   **Product Service**:
+        ```bash
+        cd services/product_service
+        uv run pytest
+        ```
+    *   **Zephyros Agent**:
+        ```bash
+        cd services/zephyros_agent
+        uv run pytest
+        ```
+    *   **Auth Service**:
+        ```powershell
+        cd services/auth_service
+        $env:PYTHONPATH="../.."; uv run pytest
+        ```
+    *   **Reviews Service**:
+        ```bash
+        cd services/reviews_service
+        uv run pytest
+        ```
+    *   **Audit Service**:
+        ```powershell
+        cd services/audit_service
+        $env:DATABASE_URL="postgresql+asyncpg://test:test@localhost/test"; $env:RABBITMQ_URL="amqp://guest:guest@localhost:5672//"; uv run pytest
+        ```
+    *   **Email Worker**:
+        ```powershell
+        cd services/email_worker
+        $env:RESEND_API_KEY="dummy-key"; uv run pytest
+        ```
+    *   **Products ETL (Go)**:
+        ```bash
+        cd services/products_etl
+        go test -v ./...
+        ```
+    *   **Search Service (Rust)**:
+        ```bash
+        cd services/search_service
+        cargo test
+        ```
