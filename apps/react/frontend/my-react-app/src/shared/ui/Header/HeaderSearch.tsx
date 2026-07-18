@@ -40,6 +40,30 @@ export function HeaderSearch({ isOpen, onClose }: HeaderSearchProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [animState, setAnimState] = useState<'closed' | 'opening' | 'open' | 'closing'>('closed');
+  const animTimerRef = useRef<number>(undefined);
+
+  useEffect(() => {
+    window.clearTimeout(animTimerRef.current);
+
+    if (isOpen) {
+      const rafId = requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setAnimState('open');
+        });
+      });
+      animTimerRef.current = rafId as unknown as number;
+      return () => cancelAnimationFrame(rafId);
+    } else {
+      const timerId = window.setTimeout(() => {
+        setAnimState('closed');
+        setQuery('');
+        setDebouncedQuery('');
+      }, 200);
+      animTimerRef.current = timerId;
+      return () => window.clearTimeout(timerId);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -87,13 +111,15 @@ export function HeaderSearch({ isOpen, onClose }: HeaderSearchProps) {
     navigate(`/product/${productId}`);
   };
 
-  if (!isOpen) return null;
+  if (animState === 'closed') return null;
+
+  const isAnimating = animState === 'opening' || animState === 'open';
 
   const products = data?.hits?.slice(0, 7) ?? [];
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex justify-center bg-[#0B1813]/25 px-4 pt-20 backdrop-blur-md dark:bg-black/45 sm:pt-28"
+      className={`fixed inset-0 z-[60] flex justify-center bg-[#0B1813]/25 px-4 pt-20 backdrop-blur-md dark:bg-black/45 sm:pt-28 transition-all duration-200 ease-out ${isAnimating ? 'opacity-100' : 'opacity-0'}`}
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -101,7 +127,7 @@ export function HeaderSearch({ isOpen, onClose }: HeaderSearchProps) {
     >
       <section
         aria-label="Швидкий пошук товарів"
-        className="h-fit w-full max-w-2xl overflow-hidden rounded-3xl border border-white/55 bg-white/70 shadow-[0_24px_80px_rgba(9,30,21,0.28)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#14221E]/75"
+        className={`h-fit w-full max-w-2xl overflow-hidden rounded-3xl border border-white/55 bg-white/70 shadow-[0_24px_80px_rgba(9,30,21,0.28)] backdrop-blur-2xl dark:border-white/10 dark:bg-[#14221E]/75 transition-all duration-200 ease-out ${isAnimating ? 'opacity-100 scale-100 translate-y-0' : 'opacity-0 scale-95 -translate-y-4'}`}
       >
         <div className="flex items-center gap-3 border-b border-[#265447]/10 px-5 py-4 dark:border-white/10">
           <Search className="h-5 w-5 shrink-0 text-[#265447] dark:text-[#3CD27D]" />

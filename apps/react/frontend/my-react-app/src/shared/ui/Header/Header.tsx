@@ -153,10 +153,10 @@ export function Header() {
                     <button
                         type="button"
                         onClick={() => setSearchOpen(true)}
-                        className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0 w-6 h-6 group"
+                        className="bg-transparent border-none cursor-pointer flex items-center justify-center p-0 w-8 h-8 group"
                         aria-label="Відкрити пошук"
                     >
-                        <img src={lupa} alt="Search" className="w-6 h-6 block dark:brightness-0 dark:invert transition-transform group-hover:scale-110" />
+                        <img src={lupa} alt="Search" className="w-7 h-7 block dark:brightness-0 dark:invert transition-transform group-hover:scale-110" />
                     </button>
 
                     {/* ПРОФІЛЬ */}
