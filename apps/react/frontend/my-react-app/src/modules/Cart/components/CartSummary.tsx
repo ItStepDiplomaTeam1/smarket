@@ -107,12 +107,15 @@ export const CartSummary: React.FC = () => {
       </div>
       
       <button 
-        className="w-full py-3 bg-[#265447] dark:bg-[#3DAE8B] text-white dark:text-[#111A17] rounded-xl font-medium font-['Inter'] hover:bg-[#1A3E2F] dark:hover:bg-[#2C9E7C] transition-colors mb-3 min-h-[44px] flex items-center justify-center gap-2"
+        className="w-full py-3 bg-[#265447] dark:bg-[#3DAE8B] text-white dark:text-[#111A17] rounded-xl font-medium font-['Inter'] hover:bg-[#1A3E2F] dark:hover:bg-[#2C9E7C] transition-colors mb-3 min-h-[44px] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         onClick={handleComplete}
-        disabled={completeMutation.isPending}
+        disabled={completeMutation.isPending || (activeCart.summary.totalItems === 0)}
+        title={activeCart.summary.totalItems === 0 ? 'Додайте товари до кошика' : undefined}
       >
         {completeMutation.isPending ? (
           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white dark:border-[#111A17]"></div>
+        ) : activeCart.summary.totalItems === 0 ? (
+          'Кошик порожній'
         ) : (
           'Створити список покупок'
         )}

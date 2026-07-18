@@ -40,7 +40,8 @@ export default function ProductDetail() {
 
   // Зберігаємо переглянутий товар в localStorage
   useEffect(() => {
-    if (!productId || isNaN(productId)) return;
+    // Ігноруємо mock-ID (>=999000) — вони не існують в базі
+    if (!productId || isNaN(productId) || productId >= 999000) return;
     try {
       const key = 'recently_viewed_products';
       const stored = localStorage.getItem(key);

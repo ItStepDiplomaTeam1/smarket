@@ -181,6 +181,9 @@ export function RecentlyViewed({
 
                 let viewedIds: string[] = JSON.parse(stored);
 
+                // Фільтруємо mock-ID (>=999000) — вони не існують в API
+                viewedIds = viewedIds.filter(id => Number(id) < 999000);
+
                 if (currentProductId) {
                     viewedIds = viewedIds.filter(id => id !== String(currentProductId));
                 }
