@@ -165,7 +165,7 @@ export const Sidebar = () => {
   };
 
   return (
-    <aside className="hidden lg:flex flex-col w-full lg:w-[235px] lg:h-[493px] shrink-0 py-[24px] px-[16px] border border-[#265447]/8 dark:border-[#265447]/30 rounded-[16px] gap-[36px] bg-white dark:bg-[#1C2723] shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.4)] font-inter">
+    <aside className="flex flex-col w-full lg:w-[235px] h-auto lg:h-[493px] shrink-0 py-[24px] px-[16px] border border-[#265447]/8 dark:border-[#265447]/30 rounded-[16px] gap-[36px] bg-white dark:bg-[#1C2723] shadow-[0_4px_20px_rgba(0,0,0,0.05)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.4)] font-inter">
       
       {/* Блок профілю */}
       <div className="flex flex-col w-[202px] gap-[12px] items-start mx-auto text-left">
