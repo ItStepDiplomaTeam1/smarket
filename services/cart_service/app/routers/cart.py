@@ -345,6 +345,49 @@ async def _build_stores_comparison(
 
     result_list = list(stores_comparison.values())
     result_list.sort(key=lambda x: (x["missing_items_count"], x["total_price"]))
+
+    # Якщо фільтр по місту дав порожній результат — fallback на всі міста
+    if not result_list and mapped_city:
+        logger.warning(
+            f"Товари у кошику не знайдено у місті '{mapped_city}', використовую всі міста як fallback"
+        )
+        stores_comparison_all = {}
+        for item in cart.items:
+            offers_data = offers_data_map.get(item.product_id, {})
+            offers = offers_data.get("offers", [])
+            for offer in offers:
+                store = offer.get("store")
+                if not store:
+                    continue
+                store_id = store.get("external_id")
+                price = offer.get("price", 0.0)
+                in_stock = offer.get("in_stock", False)
+                if store_id not in stores_comparison_all:
+                    stores_comparison_all[store_id] = {
+                        "store_id": store_id,
+                        "store_name": store.get("name"),
+                        "retail_chain": store.get("retail_chain"),
+                        "city": store.get("city"),
+                        "address": store.get("address"),
+                        "lat": store.get("lat"),
+                        "lng": store.get("lng"),
+                        "total_price": 0.0,
+                        "found_items_count": 0,
+                        "missing_items_count": total_items_in_cart,
+                        "is_complete": False,
+                    }
+                if in_stock:
+                    stores_comparison_all[store_id]["total_price"] += price * item.quantity
+                    stores_comparison_all[store_id]["found_items_count"] += 1
+                    stores_comparison_all[store_id]["missing_items_count"] -= 1
+
+        for store_id, comp in stores_comparison_all.items():
+            if comp["found_items_count"] == total_items_in_cart:
+                comp["is_complete"] = True
+
+        result_list = list(stores_comparison_all.values())
+        result_list.sort(key=lambda x: (x["missing_items_count"], x["total_price"]))
+
     return result_list, offers_data_map
 
 
