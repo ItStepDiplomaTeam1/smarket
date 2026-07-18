@@ -33,10 +33,36 @@ const ReceiptPage: React.FC = () => {
   }
 
   const snapshotStore = receipt.snapshot[0];
+
+  // Будуємо URL для Google Maps.
+  // Найнадійніший метод — пін за точними координатами (maps.google.com?q=lat,lng).
+  // Якщо координат немає — шукаємо за назвою та адресою.
+  const buildMapUrl = () => {
+    if (!snapshotStore) return '';
+    const { lat, lng, store_name, address } = snapshotStore;
+
+    if (lat && lng) {
+      // Пін точно на координатах + назва як мітка
+      const label = encodeURIComponent(store_name || address || 'Магазин');
+      return `https://maps.google.com/?q=${lat},${lng}&z=17&label=${label}`;
+    }
+
+    if (store_name && address) {
+      const query = encodeURIComponent(`${store_name}, ${address}`);
+      return `https://www.google.com/maps/search/?api=1&query=${query}`;
+    }
+
+    if (store_name) {
+      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(store_name)}`;
+    }
+
+    return '';
+  };
+
   const hasCoordinates = snapshotStore?.lat && snapshotStore?.lng;
-  const mapUrl = hasCoordinates
-    ? `https://www.google.com/maps/dir/?api=1&destination=${snapshotStore.lat},${snapshotStore.lng}`
-    : '';
+  const hasAddress = snapshotStore?.address;
+  const canNavigate = hasCoordinates || hasAddress || !!snapshotStore?.store_name;
+  const mapUrl = buildMapUrl();
 
   const handleShare = async () => {
     try {
@@ -119,7 +145,7 @@ const ReceiptPage: React.FC = () => {
                 )}
               </div>
               
-              {hasCoordinates && (
+              {canNavigate && (
                 <a
                   href={mapUrl}
                   target="_blank"
