@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/shared/api/apiClient';
 import type { CartListItem, CartDetailResponse } from '@/mocks/cartData';
+import { useAuthStore } from '@/modules/Auth/store/authStore';
 
 // We map the backend responses to the frontend types.
 // The backend now returns:
@@ -68,10 +69,16 @@ export const useFetchCartDetails = (cartId: string | null) => {
 };
 
 export const useFetchCartComparison = (cartId: string | null) => {
+  const user = useAuthStore((state) => state.user);
+  const email = user?.email;
+  const userCity = (email ? localStorage.getItem(`smarket_user_city_${email}`) : null) || 'Київ';
+
   return useQuery({
-    queryKey: ['cart-compare', cartId],
+    queryKey: ['cart-compare', cartId, userCity],
     queryFn: async () => {
-      const { data } = await apiClient.get(`/api/v1/cart/${cartId}/compare`);
+      const { data } = await apiClient.get(`/api/v1/cart/${cartId}/compare`, {
+        params: { city: userCity }
+      });
       return data.map((c: { store_name: string; total_price: number; is_complete: boolean }) => ({
         storeName: c.store_name,
         totalPrice: c.total_price,
@@ -262,10 +269,15 @@ export interface ReceiptListItem {
 
 export const useCompleteCart = () => {
   const queryClient = useQueryClient();
+  const user = useAuthStore((state) => state.user);
+  const email = user?.email;
+  const userCity = (email ? localStorage.getItem(`smarket_user_city_${email}`) : null) || 'Київ';
 
   return useMutation<ReceiptResponse, Error, string>({
     mutationFn: async (cartId: string) => {
-      const { data } = await apiClient.post(`/api/v1/cart/${cartId}/complete`);
+      const { data } = await apiClient.post(`/api/v1/cart/${cartId}/complete`, null, {
+        params: { city: userCity }
+      });
       return data;
     },
     onSuccess: (data, cartId) => {

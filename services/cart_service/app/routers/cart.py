@@ -1,6 +1,7 @@
+from typing import Optional
 import uuid
 import secrets
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, BackgroundTasks
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, BackgroundTasks, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 import httpx
 from loguru import logger
@@ -255,9 +256,41 @@ async def clear_cart_items(
     return {"message": "Кошик очищено від товарів"}
 
 
-async def _build_stores_comparison(cart, http_client: httpx.AsyncClient) -> tuple[list[dict], dict]:
+CITY_MAPPING = {
+    "київ": "kiev",
+    "kyiv": "kiev",
+    "kiev": "kiev",
+    "харків": "kharkiv",
+    "kharkiv": "kharkiv",
+    "одеса": "odesa",
+    "odesa": "odesa",
+    "odessa": "odesa",
+    "дніпро": "dnipro",
+    "dnipro": "dnipro",
+    "львів": "lviv",
+    "lviv": "lviv",
+    "запоріжжя": "zaporizhzhia",
+    "zaporizhzhia": "zaporizhzhia",
+    "житомир": "zhytomyr",
+    "zhytomyr": "zhytomyr",
+    "вінниця": "vinnytsia",
+    "vinnytsia": "vinnytsia",
+}
+
+
+async def _build_stores_comparison(
+    cart,
+    http_client: httpx.AsyncClient,
+    city: Optional[str] = None,
+) -> tuple[list[dict], dict]:
     if not cart or not cart.items:
         return [], {}
+    
+    mapped_city = None
+    if city:
+        mapped_city = CITY_MAPPING.get(city.lower().strip())
+        if not mapped_city:
+            mapped_city = city.lower().strip()
     
     # Fetch offers for all items in batch
     product_ids = list(set(item.product_id for item in cart.items))
@@ -277,6 +310,13 @@ async def _build_stores_comparison(cart, http_client: httpx.AsyncClient) -> tupl
             store = offer.get("store")
             if not store:
                 continue
+
+            # Filter by city if provided
+            if mapped_city:
+                store_city = store.get("city")
+                if store_city and store_city.lower().strip() != mapped_city:
+                    continue
+
             store_id = store.get("external_id")
             price = offer.get("price", 0.0)
             in_stock = offer.get("in_stock", False)
@@ -311,12 +351,13 @@ async def _build_stores_comparison(cart, http_client: httpx.AsyncClient) -> tupl
 @router.get("/{cart_id}/compare", response_model=list[CartStoreComparison])
 async def compare_cart_prices(
     cart_id: uuid.UUID,
+    city: Optional[str] = Query(None, description="Фільтр по місту користувача"),
     user_id: uuid.UUID = Depends(get_user_id),
     db: AsyncSession = Depends(get_db),
     http_client: httpx.AsyncClient = Depends(get_http_client),
 ):
     cart = await crud.get_cart(db, user_id, cart_id)
-    result_list, _ = await _build_stores_comparison(cart, http_client)
+    result_list, _ = await _build_stores_comparison(cart, http_client, city=city)
     return result_list
 
 
@@ -363,6 +404,7 @@ async def _generate_ai_description(
 async def complete_cart(
     cart_id: uuid.UUID,
     background_tasks: BackgroundTasks,
+    city: Optional[str] = Query(None, description="Фільтр по місту користувача"),
     user_id: uuid.UUID = Depends(get_user_id),
     db: AsyncSession = Depends(get_db),
     http_client: httpx.AsyncClient = Depends(get_http_client),
@@ -373,7 +415,7 @@ async def complete_cart(
     if not cart.items:
         raise HTTPException(status_code=422, detail="Кошик порожній")
 
-    result_list, offers_data_map = await _build_stores_comparison(cart, http_client)
+    result_list, offers_data_map = await _build_stores_comparison(cart, http_client, city=city)
     if not result_list:
         raise HTTPException(status_code=422, detail="Не знайдено пропозицій для товарів у кошику")
 
