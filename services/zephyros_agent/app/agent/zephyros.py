@@ -29,7 +29,7 @@ if settings.GEMINI_API_KEY:
     os.environ["GOOGLE_API_KEY"] = settings.GEMINI_API_KEY
 
 # Порядок провайдеров для автоматического перебора, если явный provider не передан
-PROVIDER_CHAIN = ["groq", "gemini", "openrouter", "cerebras"]
+PROVIDER_CHAIN = ["gemini", "groq", "openrouter", "cerebras"]
 
 
 def _provider_available(prov: str) -> bool:
