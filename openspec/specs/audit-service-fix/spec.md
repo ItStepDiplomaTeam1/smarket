@@ -14,3 +14,7 @@ The system SHALL start `audit_service` successfully in both local and production
 - **WHEN** the `audit_service` container starts in production
 - **THEN** it imports `orjson` and runs without missing dependency errors
 
+#### Scenario: ETL lifecycle events are consumed
+- **WHEN** the `audit_service` is running and receives ETL lifecycle events (`etl_started`, `etl_stopped`, `etl_resumed`, `etl_cycle_started`, `etl_cycle_completed`, `etl_cycle_failed`) from the `smarket_events` exchange
+- **THEN** the events are stored in the `audit_logs` table with the correct `actor`, `event_type`, `message`, and `severity` fields
+
