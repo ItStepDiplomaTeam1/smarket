@@ -132,7 +132,7 @@ def test_build_model_translates_deprecated_gemini_model(monkeypatch):
     google_model.assert_called_once_with("gemini-3.5-flash")
 
 
-def test_build_model_translates_deprecated_groq_and_cerebras_models(monkeypatch):
+def test_build_model_keeps_gpt_oss_20b_and_translates_deprecated_cerebras_model(monkeypatch):
     openai_model = MagicMock()
     cerebras_model = MagicMock()
     monkeypatch.setattr(settings, "GROQ_API_KEY", "test-key")
@@ -143,7 +143,7 @@ def test_build_model_translates_deprecated_groq_and_cerebras_models(monkeypatch)
     zephyros.build_model("groq", "openai/gpt-oss-20b")
     zephyros.build_model("cerebras", "qwen3")
 
-    assert openai_model.call_args.kwargs["model_name"] == "llama-3.3-70b-versatile"
+    assert openai_model.call_args.kwargs["model_name"] == "openai/gpt-oss-20b"
     assert cerebras_model.call_args.kwargs["model_name"] == "gpt-oss-120b"
 
 @pytest.mark.asyncio

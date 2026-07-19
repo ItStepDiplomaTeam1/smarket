@@ -1,15 +1,16 @@
 ## MODIFIED Requirements
 
 ### Requirement: Prioritized Provider Chain Default Order
-The system SHALL order the automatic fallback candidates chain such that Groq with Llama 3.3 is tried first, followed by Gemini 3.5 Flash, followed by Cerebras with a valid production model, and lastly OpenRouter.
+The system SHALL order the automatic fallback candidates chain such that Groq with GPT OSS 20B is tried first, followed by Groq with Llama 3.3, Gemini 3.5 Flash, Cerebras with a valid production model, and lastly OpenRouter.
 
 #### Scenario: Default provider chain ordering
 - **WHEN** a client request does not specify a pinned provider (or when the pinned provider fails)
 - **THEN** the system SHALL attempt providers in the following order:
-  1. `groq-llama` (Groq with `llama-3.3-70b-versatile` or `llama3-70b`)
-  2. `gemini` (Google with `gemini-3.5-flash`)
-  3. `cerebras` (Cerebras with `gpt-oss-120b`)
-  4. `openrouter` (OpenRouter with free tier model)
+  1. `groq-gpt-oss` (Groq with `openai/gpt-oss-20b`)
+  2. `groq-llama` (Groq with `llama-3.3-70b-versatile` or `llama3-70b`)
+  3. `gemini` (Google with `gemini-3.5-flash`)
+  4. `cerebras` (Cerebras with `gpt-oss-120b`)
+  5. `openrouter` (OpenRouter with free tier model)
 
 ## ADDED Requirements
 

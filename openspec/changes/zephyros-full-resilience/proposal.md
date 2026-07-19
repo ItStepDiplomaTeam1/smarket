@@ -6,7 +6,7 @@ This change ensures the AI agent is fully resilient against provider deprecation
 
 ## What Changes
 
-- **Automatic Model Translation (Backend)**: Add a mapping/fallback layer in the backend to automatically translate deprecated model names (e.g., `gemini-2.5-flash`) to their current active replacements (e.g., `gemini-3.5-flash`).
+- **Automatic Model Translation (Backend)**: Add a mapping/fallback layer in the backend to automatically translate deprecated model names (e.g., `gemini-2.5-flash`) to their current active replacements (e.g., `gemini-3.5-flash`), while retaining GPT OSS 20B as the default Groq model.
 - **Local Storage Model Migration (Frontend)**: Update the frontend Zustand store configuration to validate model names and automatically fall back to supported defaults if a stored model is no longer available.
 - **Robust Startup Probes**: Increase startup health probe timeout from 3s to 10s and update default model identifiers to valid, active ones.
 - **Search-Hit Fallback (Backend Tools)**: Modify the search tool to fall back to search hit metadata (price, store, stock status) if `product_service` fails to return detailed offers or returns a 404, preventing empty offer lists in the UI.
@@ -21,7 +21,7 @@ This change ensures the AI agent is fully resilient against provider deprecation
 
 ## Impact
 
-- `services/zephyros_agent/app/agent/zephyros.py` — Auto-mapping of deprecated models and fallback tools.
+- `services/zephyros_agent/app/agent/zephyros.py` — Auto-mapping of deprecated models, GPT OSS 20B Groq default, and fallback tools.
 - `services/zephyros_agent/app/main.py` — Increase startup health probe timeout and update configurations.
 - `services/zephyros_agent/app/tools.py` — Synthesize fallback offers using search hit metadata on product_service errors.
 - `apps/react/frontend/my-react-app/src/modules/AiChat/store/useAiChatStore.ts` — Migrate and validate stored model name on load.

@@ -38,11 +38,13 @@ export const PROVIDER_MODELS: Record<AiProvider, { value: string; label: string 
     { value: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash (рекомендовано)' },
   ],
   groq: [
-    { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (рекомендовано)' },
+    { value: 'openai/gpt-oss-20b', label: 'GPT OSS 20B (рекомендовано)' },
+    { value: 'openai/gpt-oss-120b', label: 'GPT OSS 120B' },
+    { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B' },
   ],
 };
 
-const DEFAULT_PROVIDER: AiProvider = 'gemini';
+const DEFAULT_PROVIDER: AiProvider = 'groq';
 
 function isAiProvider(provider: unknown): provider is AiProvider {
   return typeof provider === 'string' && provider in PROVIDER_MODELS;

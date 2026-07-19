@@ -29,11 +29,10 @@ if settings.GEMINI_API_KEY:
     os.environ["GOOGLE_API_KEY"] = settings.GEMINI_API_KEY
 
 # Порядок провайдеров для автоматического перебора, если явный provider не передан
-PROVIDER_CHAIN = ["groq-llama", "gemini", "cerebras", "openrouter"]
+PROVIDER_CHAIN = ["groq-gpt-oss", "groq-llama", "gemini", "cerebras", "openrouter"]
 
 DEPRECATED_MODEL_MAP: dict[str, str] = {
     "gemini-2.5-flash": "gemini-3.5-flash",
-    "openai/gpt-oss-20b": "llama-3.3-70b-versatile",
     "qwen3": "gpt-oss-120b",
 }
 
@@ -63,7 +62,7 @@ def build_model(provider: str, model_name: str | None = None) -> Model:
 
     if provider == "groq-gpt-oss":
         actual_provider = "groq"
-        resolved_model_name = resolved_model_name or "llama-3.3-70b-versatile"
+        resolved_model_name = resolved_model_name or "openai/gpt-oss-20b"
     elif provider == "groq-llama":
         actual_provider = "groq"
         resolved_model_name = model_name or "llama-3.3-70b-versatile"
