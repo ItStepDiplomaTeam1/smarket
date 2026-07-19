@@ -580,7 +580,7 @@ const PROVIDER_LABELS: Record<string, string> = {
 
 const PROVIDER_MODELS = {
   cerebras: [
-    { value: 'gpt-oss-120b', label: 'GPT OSS 120B (рекомендовано)' },
+    { value: 'qwen3', label: 'Qwen 3 (рекомендовано)' },
   ],
   openrouter: [
     { value: 'openai/gpt-oss-120b:free', label: 'GPT OSS 120B Free (рекомендовано)' },
@@ -591,7 +591,8 @@ const PROVIDER_MODELS = {
     { value: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash (рекомендовано)' },
   ],
   groq: [
-    { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (рекомендовано)' },
+    { value: 'openai/gpt-oss-20b', label: 'GPT OSS 20B (рекомендовано)' },
+    { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B' },
   ],
 };
 

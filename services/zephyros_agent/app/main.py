@@ -50,9 +50,14 @@ def _mark_down(provider: str, seconds: float) -> None:
 
 def _is_down(provider: str) -> bool:
     until = _provider_down_until.get(provider)
-    # TODO: If SMARKET_AGENT_WORKERS is ever set to > 1, this in-memory structure
-    # must be moved to a shared Redis store. For single worker process, in-memory is sufficient.
-    return until is not None and time.monotonic() < until
+    if until is not None and time.monotonic() < until:
+        return True
+    if "-" in provider:
+        base = provider.split("-")[0]
+        base_until = _provider_down_until.get(base)
+        if base_until is not None and time.monotonic() < base_until:
+            return True
+    return False
 
 
 @asynccontextmanager
@@ -300,14 +305,13 @@ async def chat(
 
     run_history = message_history if message_history else None
 
-    # Explicit provider in request -> try that one first, then fall back to others if it fails.
+    # Explicit provider in request -> try that one first (and its models), then fall back to others if it fails.
     if request.provider:
         primary = request.provider.lower()
         configured = available_provider_chain()
-        if primary in configured:
-            candidates = [primary] + [p for p in configured if p != primary]
-        else:
-            candidates = configured
+        primary_candidates = [p for p in configured if p.startswith(primary)]
+        other_candidates = [p for p in configured if not p.startswith(primary)]
+        candidates = primary_candidates + other_candidates
     else:
         candidates = available_provider_chain()
 
@@ -495,14 +499,13 @@ async def chat_stream(
 
     run_history = message_history if message_history else None
 
-    # Explicit provider in request -> try that one first, then fall back to others if it fails.
+    # Explicit provider in request -> try that one first (and its models), then fall back to others if it fails.
     if request.provider:
         primary = request.provider.lower()
         configured = available_provider_chain()
-        if primary in configured:
-            candidates = [primary] + [p for p in configured if p != primary]
-        else:
-            candidates = configured
+        primary_candidates = [p for p in configured if p.startswith(primary)]
+        other_candidates = [p for p in configured if not p.startswith(primary)]
+        candidates = primary_candidates + other_candidates
     else:
         candidates = available_provider_chain()
 

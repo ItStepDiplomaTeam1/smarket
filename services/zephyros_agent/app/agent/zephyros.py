@@ -29,16 +29,17 @@ if settings.GEMINI_API_KEY:
     os.environ["GOOGLE_API_KEY"] = settings.GEMINI_API_KEY
 
 # Порядок провайдеров для автоматического перебора, если явный provider не передан
-PROVIDER_CHAIN = ["gemini", "groq", "openrouter", "cerebras"]
+PROVIDER_CHAIN = ["groq-gpt-oss", "groq-llama", "gemini", "cerebras", "openrouter"]
 
 
 def _provider_available(prov: str) -> bool:
+    base = prov.split("-")[0]
     return {
         "openrouter": bool(settings.OPENROUTER_API_KEY),
         "gemini": bool(settings.GEMINI_API_KEY),
         "groq": bool(settings.GROQ_API_KEY),
         "cerebras": bool(settings.CEREBRAS_API_KEY),
-    }.get(prov, False)
+    }.get(base, False)
 
 
 def available_provider_chain() -> list[str]:
@@ -48,38 +49,48 @@ def available_provider_chain() -> list[str]:
 
 def build_model(provider: str, model_name: str | None = None) -> Model:
     """Собрать Model для конкретного провайдера. Бросает ValueError, если ключа нет."""
-    if provider == "openrouter":
+    actual_provider = provider
+    resolved_model_name = model_name
+
+    if provider == "groq-gpt-oss":
+        actual_provider = "groq"
+        resolved_model_name = model_name or "openai/gpt-oss-20b"
+    elif provider == "groq-llama":
+        actual_provider = "groq"
+        resolved_model_name = model_name or "llama-3.3-70b-versatile"
+
+    if actual_provider == "openrouter":
         if not settings.OPENROUTER_API_KEY:
             raise ValueError("OPENROUTER_API_KEY is not configured")
         return OpenAIChatModel(
-            model_name=model_name or settings.OPENROUTER_MODEL,
+            model_name=resolved_model_name or settings.OPENROUTER_MODEL,
             provider=OpenAIProvider(
                 base_url="https://openrouter.ai/api/v1",
                 api_key=settings.OPENROUTER_API_KEY,
             ),
         )
 
-    if provider == "gemini":
+    if actual_provider == "gemini":
         if not settings.GEMINI_API_KEY:
             raise ValueError("GEMINI_API_KEY is not configured")
-        return GoogleModel(model_name or settings.GEMINI_MODEL)
+        return GoogleModel(resolved_model_name or settings.GEMINI_MODEL)
 
-    if provider == "groq":
+    if actual_provider == "groq":
         if not settings.GROQ_API_KEY:
             raise ValueError("GROQ_API_KEY is not configured")
         return OpenAIChatModel(
-            model_name=model_name or settings.GROQ_MODEL,
+            model_name=resolved_model_name or settings.GROQ_MODEL,
             provider=OpenAIProvider(
                 base_url="https://api.groq.com/openai/v1",
                 api_key=settings.GROQ_API_KEY,
             ),
         )
 
-    if provider == "cerebras":
+    if actual_provider == "cerebras":
         if not settings.CEREBRAS_API_KEY:
             raise ValueError("CEREBRAS_API_KEY is not configured")
         return CerebrasModel(
-            model_name=model_name or settings.CEREBRAS_MODEL,
+            model_name=resolved_model_name or settings.CEREBRAS_MODEL,
             provider=CerebrasProvider(api_key=settings.CEREBRAS_API_KEY),
         )
 
