@@ -588,7 +588,6 @@ const PROVIDER_MODELS = {
   ],
   gemini: [
     { value: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash (рекомендовано)' },
-    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
   ],
   groq: [
     { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (рекомендовано)' },
