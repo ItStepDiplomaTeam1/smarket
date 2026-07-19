@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+import uuid
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -14,7 +15,15 @@ from app.deps import AgentDeps
 from app.schemas import ZephyrosResponse
 
 
-ContextIntent = Literal["none", "catalog_search", "cart_view", "cart_comparison"]
+ContextIntent = Literal[
+    "none",
+    "catalog_search",
+    "cart_view",
+    "cart_comparison",
+    "cart_add",
+    "cart_remove",
+    "cart_clear",
+]
 
 
 @dataclass(frozen=True)
@@ -61,6 +70,18 @@ _MUTATION_WORDS = (
     "add ",
     "clear",
 )
+_ADD_WORDS = ("додай", "додати", "добав", "поклади", "положи", "add ")
+_REMOVE_WORDS = ("видали", "видалити", "удали", "убери", "remove")
+_CLEAR_WORDS = ("очисти", "очистити", "очисть", "clear")
+_BROADEN_MESSAGES = (
+    "показати всі магазини",
+    "показать все магазины",
+    "всі магазини",
+    "все магазины",
+    "прибрати бренд",
+    "убрать бренд",
+)
+_AFFIRMATIONS = ("так", "да", "ага", "звісно", "конечно")
 _NON_SEARCH_MESSAGES = (
     "привіт",
     "привет",
@@ -76,6 +97,12 @@ _NON_SEARCH_MESSAGES = (
 
 def classify_intent(message: str) -> ContextIntent:
     normalized = " ".join(message.casefold().split())
+    if any(word in normalized for word in _CLEAR_WORDS):
+        return "cart_clear"
+    if any(word in normalized for word in _REMOVE_WORDS):
+        return "cart_remove"
+    if any(word in normalized for word in _ADD_WORDS):
+        return "cart_add"
     has_cart = any(word in normalized for word in _CART_WORDS)
     if has_cart and any(word in normalized for word in _COMPARE_WORDS):
         return "cart_comparison"
@@ -83,7 +110,88 @@ def classify_intent(message: str) -> ContextIntent:
         return "cart_view"
     if any(phrase in normalized for phrase in _NON_SEARCH_MESSAGES):
         return "none"
+    if normalized in _AFFIRMATIONS:
+        return "none"
     return "catalog_search"
+
+
+def _history_entries(history: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    return [entry for entry in history or [] if isinstance(entry, dict)]
+
+
+def _previous_user_query(history: list[dict[str, Any]] | None) -> str | None:
+    for entry in reversed(_history_entries(history)):
+        if entry.get("role") != "user" or not isinstance(entry.get("content"), str):
+            continue
+        content = " ".join(entry["content"].split())
+        if content and classify_intent(content) in {"catalog_search", "cart_add"}:
+            return content
+    return None
+
+
+def _history_products(history: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    """Return recent structured product references, newest first."""
+
+    products: list[dict[str, Any]] = []
+    seen: set[int] = set()
+    for entry in reversed(_history_entries(history)):
+        if entry.get("role") != "assistant":
+            continue
+        content = entry.get("content")
+        if not isinstance(content, dict):
+            continue
+        blocks = content.get("blocks")
+        if not isinstance(blocks, list):
+            continue
+        for block in reversed(blocks):
+            if not isinstance(block, dict) or block.get("type") != "product_card":
+                continue
+            raw_product_id = block.get("product_id")
+            if raw_product_id is None:
+                continue
+            try:
+                product_id = int(raw_product_id)
+            except (TypeError, ValueError):
+                continue
+            if product_id in seen:
+                continue
+            seen.add(product_id)
+            products.append(block)
+    return products
+
+
+def _select_history_product(
+    message: str,
+    history: list[dict[str, Any]] | None,
+) -> dict[str, Any] | None:
+    products = _history_products(history)
+    if not products:
+        return None
+    normalized = message.casefold()
+    ignored = {
+        "додай", "додати", "добав", "добавь", "поклади", "положи", "це", "цей",
+        "цю", "этот", "это", "эту", "його", "его", "її", "ее", "до", "в", "у",
+        "кошик", "кошика", "корзину", "корзины", "товар", "продукт", "будь", "ласка",
+    }
+    tokens = {
+        token
+        for token in re.findall(r"[a-zа-яіїєґ0-9]+", normalized)
+        if len(token) > 2 and token not in ignored
+    }
+    if tokens:
+        ranked = sorted(
+            products,
+            key=lambda product: sum(
+                token in str(product.get("name") or "").casefold() for token in tokens
+            ),
+            reverse=True,
+        )
+        best_score = sum(
+            token in str(ranked[0].get("name") or "").casefold() for token in tokens
+        )
+        if best_score:
+            return ranked[0]
+    return products[0]
 
 
 async def _get_json(
@@ -559,6 +667,77 @@ def _compact_search_hit(hit: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _catalog_product_response(
+    query: str,
+    hits: list[dict[str, Any]],
+    *,
+    add_requested: bool = False,
+) -> ZephyrosResponse:
+    """Render catalog facts deterministically and pair every product with a cart action."""
+
+    blocks: list[dict[str, Any]] = [
+        {
+            "type": "text",
+            "content": (
+                "Знайшов товар. Підтвердьте додавання кнопкою нижче."
+                if add_requested and len(hits) == 1
+                else f"Знайшов актуальні пропозиції за запитом «{query[:120]}»."
+            ),
+        }
+    ]
+    for product in hits[:5]:
+        offers = [
+            offer
+            for offer in product.get("offers") or []
+            if isinstance(offer, dict) and offer.get("in_stock", False)
+        ]
+        def offer_sort_key(offer: dict[str, Any]) -> float:
+            raw_offer_price = offer.get("price")
+            if raw_offer_price is None:
+                return float("inf")
+            try:
+                return float(raw_offer_price)
+            except (TypeError, ValueError):
+                return float("inf")
+
+        offers.sort(key=offer_sort_key)
+        offer = offers[0] if offers else {}
+        raw_price = offer.get("price", product.get("price"))
+        if raw_price is None:
+            price = 0.0
+        else:
+            try:
+                price = float(raw_price)
+            except (TypeError, ValueError):
+                price = 0.0
+        product_id = int(product["id"])
+        name = str(product.get("title") or "Товар")
+        store = str(offer.get("store") or product.get("store") or "Магазин не вказано")
+        blocks.extend(
+            [
+                {
+                    "type": "product_card",
+                    "product_id": product_id,
+                    "name": name,
+                    "store": store,
+                    "price": f"{price:.2f} ₴" if price > 0 else "Ціна уточнюється",
+                    "in_stock": bool(offer.get("in_stock", product.get("in_stock", True))),
+                },
+                {
+                    "type": "action_button",
+                    "label": f"Додати «{name[:48]}» до кошика",
+                    "action": "add_to_cart",
+                    "payload": {
+                        "product_id": product_id,
+                        "quantity": 1,
+                        "store_id": offer.get("store_id"),
+                    },
+                },
+            ]
+        )
+    return ZephyrosResponse.model_validate({"blocks": blocks})
+
+
 def _catalog_degraded_response(
     query: str,
     hits: list[dict[str, Any]],
@@ -631,19 +810,40 @@ def _catalog_degraded_response(
     )
 
 
-async def _prepare_catalog(message: str, deps: AgentDeps, request_id: str) -> PreparedReadContext:
+def _catalog_query(message: str) -> str:
+    normalized = message.casefold()
+    query = re.sub(
+        r"\b(знайди|знайти|найди|найти|покажи|показати|показать|порівняй|порівняти|"
+        r"сравни|сравнить|ціни?\s+на|цены?\s+на|найдешевший|найдешевше|дешевший|"
+        r"дешевше|додай|додати|добавь?|добавить|поклади|положи)\b",
+        " ",
+        normalized,
+        flags=re.IGNORECASE,
+    )
+    query = re.sub(
+        r"\b(це|цей|цю|это|этот|эту|товар|продукт|до\s+кошика|в\s+корзину|у\s+кошик)\b",
+        " ",
+        query,
+        flags=re.IGNORECASE,
+    )
+    return " ".join(query.split()) or message.strip()
+
+
+async def _prepare_catalog(
+    message: str,
+    deps: AgentDeps,
+    request_id: str,
+    *,
+    add_requested: bool = False,
+    preferred_product_id: int | None = None,
+) -> PreparedReadContext:
+    intent: ContextIntent = "cart_add" if add_requested else "catalog_search"
     normalized = message.casefold()
     deals_request = any(
         phrase in normalized
         for phrase in ("вигідні пропозиції", "акційні", "акции", "акції", "знижки", "скидки")
     )
-    query = re.sub(
-        r"\b(знайди|знайти|найди|найти|покажи|показати|показать|порівняй|порівняти|сравни|сравнить|ціни?\s+на|цены?\s+на|дешевший|дешевше)\b",
-        " ",
-        normalized,
-        flags=re.IGNORECASE,
-    )
-    query = " ".join(query.split()) or message.strip()
+    query = _catalog_query(message)
     search_params: dict[str, Any] = {
         "q": "" if deals_request else query,
         "in_stock": "true",
@@ -680,7 +880,7 @@ async def _prepare_catalog(message: str, deps: AgentDeps, request_id: str) -> Pr
             }
         )
         return PreparedReadContext(
-            intent="catalog_search",
+            intent=intent,
             direct_response=fallback,
             degraded_response=fallback,
         )
@@ -708,6 +908,10 @@ async def _prepare_catalog(message: str, deps: AgentDeps, request_id: str) -> Pr
         if len(hits) >= settings.CHAT_CONTEXT_MAX_PRODUCTS:
             break
 
+    if preferred_product_id is not None:
+        hits = [product for product in hits if product.get("id") == preferred_product_id]
+        allowed_ids = {preferred_product_id} if hits else set()
+
     data = {"query": query, "products": hits, "total": search_mapping.get("total_hits")}
     if not hits:
         direct = ZephyrosResponse.model_validate(
@@ -725,14 +929,224 @@ async def _prepare_catalog(message: str, deps: AgentDeps, request_id: str) -> Pr
                 ]
             }
         )
-        return PreparedReadContext(intent="catalog_search", data=data, direct_response=direct)
+        return PreparedReadContext(intent=intent, data=data, direct_response=direct)
 
+    direct = _catalog_product_response(query, hits, add_requested=add_requested)
     return PreparedReadContext(
-        intent="catalog_search",
+        intent=intent,
         data=data,
+        direct_response=direct,
         allowed_product_ids=frozenset(allowed_ids),
         degraded_response=_catalog_degraded_response(query, hits),
     )
+
+
+async def _prepare_add_to_cart(
+    message: str,
+    deps: AgentDeps,
+    request_id: str,
+    history: list[dict[str, Any]] | None,
+) -> PreparedReadContext:
+    referenced = _select_history_product(message, history)
+    if referenced is not None:
+        product_id = int(referenced["product_id"])
+        name = str(referenced.get("name") or "Товар")
+        return await _prepare_catalog(
+            name,
+            deps,
+            request_id,
+            add_requested=True,
+            preferred_product_id=product_id,
+        )
+
+    query = _catalog_query(message)
+    generic_queries = {"додай", "добавь", "додати", "добав", "у кошик", "в корзину"}
+    if query.casefold() in generic_queries or len(query) < 2:
+        response = ZephyrosResponse.model_validate(
+            {
+                "blocks": [
+                    {
+                        "type": "clarification",
+                        "question": "Який саме товар додати до кошика?",
+                        "options": ["Знайти молоко", "Знайти хліб"],
+                    }
+                ]
+            }
+        )
+        return PreparedReadContext(intent="cart_add", direct_response=response)
+    return await _prepare_catalog(
+        query,
+        deps,
+        request_id,
+        add_requested=True,
+    )
+
+
+async def _prepare_cart_mutation(
+    message: str,
+    deps: AgentDeps,
+    *,
+    clear: bool,
+    request_id: str,
+    history: list[dict[str, Any]] | None,
+) -> PreparedReadContext:
+    intent: ContextIntent = "cart_clear" if clear else "cart_remove"
+    if not deps.user_id:
+        response = ZephyrosResponse.model_validate(
+            {
+                "blocks": [
+                    {
+                        "type": "fallback",
+                        "message": "Увійдіть в акаунт, щоб змінювати кошик.",
+                        "suggestion": "Після входу повторіть дію.",
+                    }
+                ]
+            }
+        )
+        return PreparedReadContext(intent=intent, direct_response=response)
+
+    try:
+        carts = await _get_json(
+            deps.http_client,
+            f"{settings.CART_SERVICE_URL}/",
+            headers={"X-User-Id": str(deps.user_id)},
+            timeout=settings.INTERNAL_READ_TIMEOUT_SECONDS,
+        )
+    except (httpx.RequestError, httpx.HTTPStatusError, ValueError) as error:
+        logger.bind(request_id=request_id, intent=intent, error=type(error).__name__).warning(
+            "Cart mutation context read failed"
+        )
+        response = ZephyrosResponse.model_validate(
+            {
+                "blocks": [
+                    {
+                        "type": "fallback",
+                        "message": "Не вдалося завантажити кошик для цієї дії.",
+                        "suggestion": "Спробуйте ще раз за кілька секунд.",
+                    }
+                ]
+            }
+        )
+        return PreparedReadContext(intent=intent, direct_response=response)
+
+    valid_carts = [cart for cart in carts or [] if isinstance(cart, dict)]
+    cart = next((value for value in valid_carts if value.get("items")), None)
+    if cart is None:
+        response = ZephyrosResponse.model_validate(
+            {"blocks": [{"type": "text", "content": "Ваш кошик уже порожній."}]}
+        )
+        return PreparedReadContext(intent=intent, direct_response=response)
+
+    try:
+        cart_id = str(uuid.UUID(str(cart.get("id"))))
+    except (TypeError, ValueError, AttributeError):
+        response = ZephyrosResponse.model_validate(
+            {
+                "blocks": [
+                    {
+                        "type": "fallback",
+                        "message": "Кошик повернув некоректний ідентифікатор.",
+                        "suggestion": "Відкрийте кошик вручну та повторіть дію пізніше.",
+                    }
+                ]
+            }
+        )
+        return PreparedReadContext(intent=intent, direct_response=response)
+    if clear:
+        response = ZephyrosResponse.model_validate(
+            {
+                "blocks": [
+                    {
+                        "type": "text",
+                        "content": f"У кошику {len(cart.get('items') or [])} позицій. Очищення потребує підтвердження.",
+                    },
+                    {
+                        "type": "action_button",
+                        "label": "Очистити кошик",
+                        "action": "clear_cart",
+                        "payload": {"cart_id": cart_id},
+                    },
+                ]
+            }
+        )
+        return PreparedReadContext(intent=intent, data={"cart_id": cart_id}, direct_response=response)
+
+    items = [item for item in cart.get("items") or [] if isinstance(item, dict)]
+    referenced = _select_history_product(message, history)
+    referenced_id = int(referenced["product_id"]) if referenced is not None else None
+    ignored = {
+        "видали", "видалити", "удали", "убери", "remove", "це", "цей", "этот", "это",
+        "товар", "продукт", "з", "із", "из", "кошика", "корзины", "корзину", "кошик",
+    }
+    tokens = {
+        token
+        for token in re.findall(r"[a-zа-яіїєґ0-9]+", message.casefold())
+        if len(token) > 2 and token not in ignored
+    }
+
+    def item_score(item: dict[str, Any]) -> int:
+        name = str(item.get("product_name") or "").casefold()
+        score = sum(token in name for token in tokens)
+        if referenced_id is not None and item.get("product_id") == referenced_id:
+            score += 10
+        return score
+
+    ranked = sorted(items, key=item_score, reverse=True)
+    selected = ranked[0] if ranked and (item_score(ranked[0]) > 0 or len(ranked) == 1) else None
+    if selected is None:
+        options = [
+            f"Видали {str(item.get('product_name') or 'товар')} з кошика"
+            for item in items[:4]
+        ]
+        if len(options) < 2:
+            options.append("Відкрити мій кошик")
+        response = ZephyrosResponse.model_validate(
+            {
+                "blocks": [
+                    {
+                        "type": "clarification",
+                        "question": "Яку позицію видалити?",
+                        "options": options,
+                    }
+                ]
+            }
+        )
+        return PreparedReadContext(intent=intent, data={"cart_id": cart_id}, direct_response=response)
+
+    name = str(selected.get("product_name") or "Товар")
+    try:
+        item_id = str(uuid.UUID(str(selected.get("id"))))
+    except (TypeError, ValueError, AttributeError):
+        response = ZephyrosResponse.model_validate(
+            {
+                "blocks": [
+                    {
+                        "type": "fallback",
+                        "message": "Позиція кошика має некоректний ідентифікатор.",
+                        "suggestion": "Відкрийте кошик і видаліть товар вручну.",
+                    }
+                ]
+            }
+        )
+        return PreparedReadContext(intent=intent, direct_response=response)
+    response = ZephyrosResponse.model_validate(
+        {
+            "blocks": [
+                {"type": "text", "content": f"Готовий видалити «{name}» з кошика."},
+                {
+                    "type": "action_button",
+                    "label": f"Видалити «{name[:48]}»",
+                    "action": "remove_from_cart",
+                    "payload": {
+                        "cart_id": cart_id,
+                        "item_id": item_id,
+                        "product_id": selected.get("product_id"),
+                    },
+                },
+            ]
+        }
+    )
+    return PreparedReadContext(intent=intent, data={"cart_id": cart_id}, direct_response=response)
 
 
 async def build_read_context(
@@ -740,12 +1154,51 @@ async def build_read_context(
     deps: AgentDeps,
     *,
     request_id: str,
+    history: list[dict[str, Any]] | None = None,
 ) -> PreparedReadContext:
+    normalized = " ".join(message.casefold().split())
+    if normalized in _BROADEN_MESSAGES or normalized in _AFFIRMATIONS:
+        previous = _previous_user_query(history)
+        if previous:
+            message = _catalog_query(previous)
+        elif normalized in _BROADEN_MESSAGES:
+            response = ZephyrosResponse.model_validate(
+                {
+                    "blocks": [
+                        {"type": "text", "content": "Відкриваю список усіх магазинів."},
+                        {
+                            "type": "action_button",
+                            "label": "Показати всі магазини",
+                            "action": "navigate",
+                            "payload": {"route": "/shops"},
+                        },
+                    ]
+                }
+            )
+            return PreparedReadContext(intent="none", direct_response=response)
     intent = classify_intent(message)
     if intent == "cart_comparison":
         return await _prepare_cart(deps, compare=True, request_id=request_id)
     if intent == "cart_view":
         return await _prepare_cart(deps, compare=False, request_id=request_id)
+    if intent == "cart_add":
+        return await _prepare_add_to_cart(message, deps, request_id, history)
+    if intent == "cart_remove":
+        return await _prepare_cart_mutation(
+            message,
+            deps,
+            clear=False,
+            request_id=request_id,
+            history=history,
+        )
+    if intent == "cart_clear":
+        return await _prepare_cart_mutation(
+            message,
+            deps,
+            clear=True,
+            request_id=request_id,
+            history=history,
+        )
     if intent == "catalog_search":
         return await _prepare_catalog(message, deps, request_id)
     return PreparedReadContext(intent="none")

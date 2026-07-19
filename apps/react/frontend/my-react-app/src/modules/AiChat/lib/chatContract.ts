@@ -25,5 +25,10 @@ export function hasFallback(response: ZephyrosResponse): boolean {
 export function isMutationAction(
   action: Extract<UIBlock, { type: 'action_button' }>['action'],
 ): boolean {
-  return action === 'add_to_cart' || action === 'create_review';
+  return (
+    action === 'add_to_cart' ||
+    action === 'remove_from_cart' ||
+    action === 'clear_cart' ||
+    action === 'create_review'
+  );
 }

@@ -427,7 +427,8 @@ def _response_cacheable(response: ZephyrosResponse) -> bool:
         getattr(block, "type", None) == "fallback"
         or (
             getattr(block, "type", None) == "action_button"
-            and getattr(block, "action", None) in {"add_to_cart", "create_review"}
+            and getattr(block, "action", None)
+            in {"add_to_cart", "remove_from_cart", "clear_cart", "create_review"}
         )
         for block in _all_response_blocks(response)
     )
@@ -441,7 +442,8 @@ async def _issue_action_tokens(response: ZephyrosResponse, user_id: uuid.UUID | 
     for block in _all_response_blocks(response):
         if (
             getattr(block, "type", None) != "action_button"
-            or getattr(block, "action", None) not in {"add_to_cart", "create_review"}
+            or getattr(block, "action", None)
+            not in {"add_to_cart", "remove_from_cart", "clear_cart", "create_review"}
         ):
             continue
         payload = dict(block.payload)
@@ -494,7 +496,12 @@ async def execute_action(
         await metrics.increment("action_executions_total", labels={"outcome": "invalid_token"})
         raise HTTPException(status_code=403, detail="Action token is invalid") from error
     action_name = action.get("action")
-    if action.get("user_id") != x_user_id or action_name not in {"add_to_cart", "create_review"}:
+    if action.get("user_id") != x_user_id or action_name not in {
+        "add_to_cart",
+        "remove_from_cart",
+        "clear_cart",
+        "create_review",
+    }:
         await metrics.increment("action_executions_total", labels={"outcome": "forbidden"})
         raise HTTPException(status_code=403, detail="Action token is not valid for this user")
     payload = action["payload"]
@@ -528,6 +535,18 @@ async def execute_action(
                 headers=headers,
                 timeout=settings.INTERNAL_READ_TIMEOUT_SECONDS,
             )
+        elif action_name == "remove_from_cart":
+            mutated = await http_client.delete(
+                f"{settings.CART_SERVICE_URL}/{payload['cart_id']}/items/{payload['item_id']}",
+                headers=headers,
+                timeout=settings.INTERNAL_READ_TIMEOUT_SECONDS,
+            )
+        elif action_name == "clear_cart":
+            mutated = await http_client.delete(
+                f"{settings.CART_SERVICE_URL}/{payload['cart_id']}",
+                headers=headers,
+                timeout=settings.INTERNAL_READ_TIMEOUT_SECONDS,
+            )
         else:
             mutated = await http_client.post(
                 f"{settings.REVIEWS_SERVICE_URL}/",
@@ -551,11 +570,12 @@ async def execute_action(
             action=action_name,
             error_type=type(error).__name__,
         ).warning("Confirmed action failed")
-        detail = (
-            "Не вдалося додати товар до кошика"
-            if action_name == "add_to_cart"
-            else "Не вдалося опублікувати відгук"
-        )
+        detail = {
+            "add_to_cart": "Не вдалося додати товар до кошика",
+            "remove_from_cart": "Не вдалося видалити товар з кошика",
+            "clear_cart": "Не вдалося очистити кошик",
+            "create_review": "Не вдалося опублікувати відгук",
+        }.get(str(action_name), "Не вдалося виконати дію")
         raise HTTPException(status_code=502, detail=detail) from error
 
     store: ResponseStore = getattr(app.state, "response_store", ResponseStore(redis_client))
@@ -571,9 +591,14 @@ async def execute_action(
         event_type="zephyros.action.completed",
         user_id=x_user_id,
         action=action_name,
-        product_id=payload["product_id"],
+        product_id=payload.get("product_id"),
     ).info("Confirmed action completed")
-    message = "Товар додано до кошика." if action_name == "add_to_cart" else "Відгук опубліковано."
+    message = {
+        "add_to_cart": "Товар додано до кошика.",
+        "remove_from_cart": "Товар видалено з кошика.",
+        "clear_cart": "Кошик очищено.",
+        "create_review": "Відгук опубліковано.",
+    }[action_name]
     return {"status": "success", "message": message}
 
 
@@ -684,7 +709,12 @@ async def chat(
             )
             return distributed_result
 
-        prepared = await build_read_context(request.message, deps, request_id=request_id)
+        prepared = await build_read_context(
+            request.message,
+            deps,
+            request_id=request_id,
+            history=[message.model_dump() for message in request.history or []],
+        )
         chat_log = chat_log.bind(
             intent=prepared.intent,
             context_bytes=len(json.dumps(prepared.data, ensure_ascii=False)),

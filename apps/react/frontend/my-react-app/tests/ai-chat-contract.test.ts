@@ -56,6 +56,8 @@ test('typed fallback responses remain retryable even with HTTP 200', () => {
 
 test('only server-confirmed mutations require action tokens', () => {
   assert.equal(isMutationAction('add_to_cart'), true);
+  assert.equal(isMutationAction('remove_from_cart'), true);
+  assert.equal(isMutationAction('clear_cart'), true);
   assert.equal(isMutationAction('create_review'), true);
   assert.equal(isMutationAction('navigate'), false);
   assert.equal(isMutationAction('apply_filters'), false);
