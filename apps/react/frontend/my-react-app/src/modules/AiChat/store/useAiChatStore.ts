@@ -42,8 +42,8 @@ export const useAiChatStore = create<AiChatState>()(
     (set) => ({
       isOpen: false,
       messages: [],
-      provider: null,
-      modelName: null,
+      provider: 'gemini',
+      modelName: 'gemini-3.5-flash',
       open: () => set({ isOpen: true }),
       close: () => set({ isOpen: false }),
       toggle: () => set((s) => ({ isOpen: !s.isOpen })),

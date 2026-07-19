@@ -903,10 +903,10 @@ function ChatWindow({ isMobile }: { isMobile: boolean }) {
                     }}
                     className="w-full text-[14px] md:text-[13px] border border-[rgba(38,84,71,0.15)] dark:border-[rgba(38,84,71,0.2)] rounded-lg px-3 py-2.5 md:px-2.5 md:py-1.5 bg-white dark:bg-[#1D2A25] text-[#173B33] dark:text-[#EAF7F2] focus:border-[#265447] dark:focus:border-[#3DAE8B] focus:outline-none transition-colors duration-300"
                 >
-                  <option value="cerebras">Cerebras (за замовчуванням)</option>
+                  <option value="gemini">Google Gemini (за замовчуванням)</option>
                   <option value="auto">Автовибір</option>
                   <option value="openrouter">OpenRouter</option>
-                  <option value="gemini">Google Gemini</option>
+                  <option value="cerebras">Cerebras</option>
                   <option value="groq">Groq</option>
                 </select>
               </div>
@@ -935,16 +935,16 @@ function ChatWindow({ isMobile }: { isMobile: boolean }) {
 
               <dl className="mt-auto pt-3 border-t border-[rgba(38,84,71,0.08)] dark:border-t-[rgba(38,84,71,0.2)] flex flex-col gap-2 text-[11px] leading-relaxed transition-colors">
                 <div className="flex gap-2">
+                  <dt className="font-semibold text-[#173B33] dark:text-white w-[76px] shrink-0 transition-colors">Gemini</dt>
+                  <dd className="text-[#6D8279] dark:text-[#A9B6B0] transition-colors">розумні відповіді, підтримує детальні порівняння цін, використовується за замовчуванням.</dd>
+                </div>
+                <div className="flex gap-2">
                   <dt className="font-semibold text-[#173B33] dark:text-white w-[76px] shrink-0 transition-colors">Cerebras</dt>
-                  <dd className="text-[#6D8279] dark:text-[#A9B6B0] transition-colors">найшвидші відповіді, використовується за замовчуванням.</dd>
+                  <dd className="text-[#6D8279] dark:text-[#A9B6B0] transition-colors">найшвидші відповіді, додатковий провайдер.</dd>
                 </div>
                 <div className="flex gap-2">
                   <dt className="font-semibold text-[#173B33] dark:text-white w-[76px] shrink-0 transition-colors">OpenRouter</dt>
                   <dd className="text-[#6D8279] dark:text-[#A9B6B0] transition-colors">доступ до кількох безкоштовних моделей одразу.</dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="font-semibold text-[#173B33] dark:text-white w-[76px] shrink-0 transition-colors">Gemini</dt>
-                  <dd className="text-[#6D8279] dark:text-[#A9B6B0] transition-colors">великий контекст — підходить для довгих списків товарів.</dd>
                 </div>
                 <div className="flex gap-2">
                   <dt className="font-semibold text-[#173B33] dark:text-white w-[76px] shrink-0 transition-colors">Groq</dt>
