@@ -43,6 +43,19 @@ def test_cart_comparison_intent_is_language_tolerant(message):
     assert classify_intent(message) == "cart_comparison"
 
 
+@pytest.mark.parametrize(
+    ("message", "intent"),
+    [
+        ("Додай це морозиво до кошика", "cart_add"),
+        ("Удали молоко из корзины", "cart_remove"),
+        ("Очисти мою корзину", "cart_clear"),
+        ("Привіт, що ти вмієш?", "none"),
+    ],
+)
+def test_action_intents_do_not_fall_through_to_catalog_search(message, intent):
+    assert classify_intent(message) == intent
+
+
 async def test_cart_comparison_is_prepared_once_without_a_model():
     cart = {
         "id": "cart-1",
@@ -259,6 +272,114 @@ async def test_deals_prompt_uses_discount_search_instead_of_literal_phrase():
     assert params["sort"] == "discount_percent:desc"
 
 
+async def test_catalog_products_always_include_add_to_cart_buttons():
+    client = MagicMock(
+        get=AsyncMock(
+            return_value=response_with_json(
+                {
+                    "hits": [
+                        {
+                            "id": 42,
+                            "title": "Молоко 2,5%",
+                            "offers": [
+                                {
+                                    "price": 39.5,
+                                    "in_stock": True,
+                                    "store": {"external_id": "novus-1", "name": "Novus"},
+                                }
+                            ],
+                        }
+                    ]
+                }
+            )
+        )
+    )
+
+    prepared = await build_read_context(
+        "Порівняти ціни на молоко",
+        AgentDeps(http_client=client, user_id=USER_ID),
+        request_id="catalog-actions",
+    )
+
+    assert prepared.direct_response is not None
+    assert [block.type for block in prepared.direct_response.blocks] == [
+        "text",
+        "product_card",
+        "action_button",
+    ]
+    action = prepared.direct_response.blocks[-1]
+    assert action.action == "add_to_cart"
+    assert action.payload["product_id"] == 42
+
+
+async def test_add_this_resolves_and_revalidates_product_from_structured_history():
+    client = MagicMock(
+        get=AsyncMock(
+            return_value=response_with_json(
+                {
+                    "hits": [
+                        {
+                            "id": 42,
+                            "title": "Морозиво Три Ведмеді",
+                            "offers": [
+                                {
+                                    "price": 52.8,
+                                    "in_stock": True,
+                                    "store": {"external_id": "novus-1", "name": "Novus"},
+                                }
+                            ],
+                        }
+                    ]
+                }
+            )
+        )
+    )
+    history = [
+        {
+            "role": "assistant",
+            "content": {
+                "blocks": [
+                    {
+                        "type": "product_card",
+                        "product_id": 42,
+                        "name": "Морозиво Три Ведмеді",
+                        "store": "Novus",
+                        "price": "52.80 ₴",
+                        "in_stock": True,
+                    }
+                ]
+            },
+        }
+    ]
+
+    prepared = await build_read_context(
+        "Додай це морозиво до кошика",
+        AgentDeps(http_client=client, user_id=USER_ID),
+        request_id="follow-up-add",
+        history=history,
+    )
+
+    assert prepared.intent == "cart_add"
+    assert prepared.direct_response is not None
+    action = prepared.direct_response.blocks[-1]
+    assert action.action == "add_to_cart"
+    assert action.payload["product_id"] == 42
+    assert client.get.await_count == 1
+
+
+async def test_show_all_stores_reuses_previous_product_query():
+    client = MagicMock(get=AsyncMock(return_value=response_with_json({"hits": []})))
+
+    await build_read_context(
+        "Показати всі магазини",
+        AgentDeps(http_client=client, user_id=USER_ID),
+        request_id="follow-up-broaden",
+        history=[{"role": "user", "content": "Знайти найдешевший хліб"}],
+    )
+
+    assert client.get.await_args.kwargs["params"]["q"] == "хліб"
+
+
 def test_action_product_must_exist_in_prepared_context():
     response = ZephyrosResponse.model_validate(
         {
@@ -376,6 +497,35 @@ def test_confirmed_review_action_is_single_use(monkeypatch):
     assert response.json()["message"] == "Відгук опубліковано."
     assert replay.status_code == 409
     assert http_client.post.await_count == 1
+
+
+def test_confirmed_clear_cart_action_uses_protected_cart_endpoint(monkeypatch):
+    redis = CoordinationRedis()
+    token = "clear-cart-once"
+    cart_id = "4aa14fa7-e52e-43d1-b540-058030eae43d"
+    redis.values[f"zephyros:action:{token}"] = json.dumps(
+        {
+            "user_id": str(USER_ID),
+            "action": "clear_cart",
+            "payload": {"cart_id": cart_id},
+        }
+    )
+    deleted = response_with_json({"message": "ok"})
+    http_client = MagicMock(delete=AsyncMock(return_value=deleted))
+    monkeypatch.setattr(app.state, "redis", redis, raising=False)
+    monkeypatch.setattr(app.state, "http_client", http_client, raising=False)
+    monkeypatch.setattr(app.state, "response_store", ResponseStore(redis), raising=False)
+    client = TestClient(app)
+
+    response = client.post(
+        "/agent/actions/execute",
+        json={"action_token": token},
+        headers={"X-User-Id": str(USER_ID)},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["message"] == "Кошик очищено."
+    assert http_client.delete.await_args.args[0].endswith(f"/cart/{cart_id}")
 
 
 def test_operator_diagnostics_are_protected_and_do_not_expose_models(monkeypatch):

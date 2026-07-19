@@ -490,6 +490,10 @@ def valid_response(
                     raise InvalidResponseError("review text exceeds configured size")
                 if not allowed_product_ids or product_id not in allowed_product_ids:
                     raise InvalidResponseError("review product is absent from prepared context")
+            elif block.action == "remove_from_cart":
+                raise InvalidResponseError("remove cart actions must be prepared by the server")
+            elif block.action == "clear_cart":
+                raise InvalidResponseError("clear cart actions must be prepared by the server")
             elif block.action == "navigate":
                 route = payload.get("route")
                 if not isinstance(route, str) or not route.startswith("/") or route.startswith("//"):

@@ -50,6 +50,33 @@ const isMac =
   typeof navigator !== 'undefined' &&
   /Mac|iPhone|iPad/i.test(navigator.platform || navigator.userAgent);
 const SHORTCUT_HINT = isMac ? '⌘J' : 'Ctrl+J';
+const ZEPHYROS_MOTION_CSS = `
+  @keyframes chatIn {
+    from { opacity: 0; transform: scale(.96) translateY(14px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  @keyframes zephyrosMessageIn {
+    from { opacity: 0; transform: translate3d(-8px, 8px, 0); }
+    to { opacity: 1; transform: translate3d(0, 0, 0); }
+  }
+  @keyframes zephyrosUserMessageIn {
+    from { opacity: 0; transform: translate3d(8px, 8px, 0); }
+    to { opacity: 1; transform: translate3d(0, 0, 0); }
+  }
+  @keyframes zephyrosFadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes zephyrosDialogIn {
+    from { opacity: 0; transform: scale(.96) translateY(8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  @keyframes zephyrosProgress {
+    0% { transform: translateX(-130%); }
+    50% { transform: translateX(130%); }
+    100% { transform: translateX(430%); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    [data-zephyros-motion] * { animation: none !important; scroll-behavior: auto !important; }
+  }
+`;
 
 
 function generateId() {
@@ -306,7 +333,8 @@ function ConfirmationDialog({
 
   return (
     <div
-      className="absolute inset-0 z-50 grid place-items-center bg-[#0B1D17]/45 p-5 backdrop-blur-[2px]"
+      className="absolute inset-0 z-50 grid place-items-center bg-[#0B1D17]/45 p-5 backdrop-blur-[2px] motion-reduce:animate-none"
+      style={{ animation: 'zephyrosFadeIn 180ms ease-out both' }}
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !pending) onCancel();
@@ -316,11 +344,16 @@ function ConfirmationDialog({
         role="alertdialog"
         aria-modal="true"
         aria-labelledby="zephyros-confirm-title"
-        className="w-full max-w-sm rounded-2xl border border-[#DDE8E3] bg-white p-5 shadow-2xl dark:border-[#315345] dark:bg-[#15221D]"
+        className="w-full max-w-sm rounded-2xl border border-[#DDE8E3] bg-white p-5 shadow-2xl dark:border-[#315345] dark:bg-[#15221D] motion-reduce:animate-none"
+        style={{ animation: 'zephyrosDialogIn 240ms cubic-bezier(0.16,1,0.3,1) both' }}
       >
         <div className="flex items-start gap-3">
           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#EEF5F1] text-[#265447] dark:bg-[#1D3028] dark:text-[#3DAE8B]">
-            <ShoppingCart className="h-5 w-5" />
+            {label.toLocaleLowerCase().includes('видал') || label.toLocaleLowerCase().includes('очист') ? (
+              <Trash2 className="h-5 w-5" />
+            ) : (
+              <ShoppingCart className="h-5 w-5" />
+            )}
           </div>
           <div>
             <h3 id="zephyros-confirm-title" className="text-base font-extrabold text-[#173B33] dark:text-white">
@@ -377,14 +410,19 @@ function ActionButtonView({
       await apiClient.post('/api/v1/agent/actions/execute', { action_token: token });
       setCompleted(true);
       setConfirming(false);
+      const successMessages: Partial<
+        Record<Extract<UIBlock, { type: 'action_button' }>['action'], string>
+      > = {
+        add_to_cart: 'Готово — товар додано до кошика.',
+        remove_from_cart: 'Готово — товар видалено з кошика.',
+        clear_cart: 'Готово — кошик очищено.',
+        create_review: 'Готово — відгук опубліковано.',
+      };
       onFeedback({
         blocks: [
           {
             type: 'text',
-            content:
-              block.action === 'add_to_cart'
-                ? 'Готово — товар додано до кошика.'
-                : 'Готово — відгук опубліковано.',
+            content: successMessages[block.action] ?? 'Готово — дію виконано.',
           },
         ],
       });
@@ -428,9 +466,9 @@ function ActionButtonView({
         onClick={handleClick}
         disabled={unavailable || pending || completed}
         title={unavailable ? 'Дія застаріла — повторіть запит' : undefined}
-        className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-0 bg-[#265447] px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-[#1B4438] disabled:cursor-not-allowed disabled:bg-[#A9BAB3] dark:bg-[#3DAE8B] dark:text-[#0B110F] dark:hover:bg-[#55C49F] dark:disabled:bg-[#405D52] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3DAE8B] focus-visible:ring-offset-2"
+        className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-0 bg-[#265447] px-4 py-2.5 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#1B4438] hover:shadow-md active:translate-y-0 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-[#A9BAB3] disabled:shadow-none dark:bg-[#3DAE8B] dark:text-[#0B110F] dark:hover:bg-[#55C49F] dark:disabled:bg-[#405D52] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3DAE8B] focus-visible:ring-offset-2 motion-reduce:transform-none"
       >
-        {completed ? <CheckCircle2 className="h-4 w-4" /> : block.action === 'add_to_cart' ? <ShoppingCart className="h-4 w-4" /> : block.action === 'create_review' ? <Star className="h-4 w-4" /> : <ExternalLink className="h-4 w-4" />}
+        {completed ? <CheckCircle2 className="h-4 w-4" /> : block.action === 'add_to_cart' ? <ShoppingCart className="h-4 w-4" /> : block.action === 'remove_from_cart' || block.action === 'clear_cart' ? <Trash2 className="h-4 w-4" /> : block.action === 'create_review' ? <Star className="h-4 w-4" /> : <ExternalLink className="h-4 w-4" />}
         {completed ? 'Виконано' : unavailable ? 'Оновіть пропозицію' : block.label}
       </button>
       {confirming && (
@@ -575,7 +613,11 @@ function AssistantMessage({
   const response = message.content as ZephyrosResponse;
   const blocks = Array.isArray(response?.blocks) ? response.blocks : [];
   return (
-    <article className="group flex items-start gap-2.5" aria-label="Відповідь Zephyros">
+    <article
+      className="group flex items-start gap-2.5 motion-reduce:animate-none"
+      style={{ animation: 'zephyrosMessageIn 300ms cubic-bezier(0.16,1,0.3,1) both' }}
+      aria-label="Відповідь Zephyros"
+    >
       <ZephyrosMark size={28} />
       <div className="min-w-0 flex-1 rounded-2xl rounded-tl-md border border-[#E2EBE7] bg-white p-3.5 shadow-[0_2px_8px_rgba(23,59,51,0.04)] dark:border-[#294239] dark:bg-[#14211C]">
         <div className="mb-1 flex h-5 items-center justify-between">
@@ -584,13 +626,21 @@ function AssistantMessage({
         </div>
         <div className="flex flex-col gap-3">
           {blocks.map((block, index) => (
-            <BlockRenderer
+            <div
               key={`${block.type}-${index}`}
-              block={block}
-              onSelect={onSelect}
-              onRetry={onRetry}
-              onFeedback={onFeedback}
-            />
+              className="min-w-0 motion-reduce:animate-none"
+              style={{
+                animation: 'blockSlideIn 320ms cubic-bezier(0.16,1,0.3,1) both',
+                animationDelay: `${Math.min(index * 45, 180)}ms`,
+              }}
+            >
+              <BlockRenderer
+                block={block}
+                onSelect={onSelect}
+                onRetry={onRetry}
+                onFeedback={onFeedback}
+              />
+            </div>
           ))}
         </div>
       </div>
@@ -601,7 +651,11 @@ function AssistantMessage({
 
 function UserMessage({ message }: { message: ChatMessage }) {
   return (
-    <article className="flex justify-end" aria-label="Ваше повідомлення">
+    <article
+      className="flex justify-end motion-reduce:animate-none"
+      style={{ animation: 'zephyrosUserMessageIn 260ms cubic-bezier(0.16,1,0.3,1) both' }}
+      aria-label="Ваше повідомлення"
+    >
       <div className="max-w-[86%] rounded-2xl rounded-tr-md bg-[#265447] px-4 py-3 text-sm leading-5 text-white shadow-[0_3px_12px_rgba(38,84,71,0.16)] dark:bg-[#2B735E]">
         {String(message.content)}
       </div>
@@ -612,13 +666,21 @@ function UserMessage({ message }: { message: ChatMessage }) {
 
 function WorkingMessage({ status }: { status: string }) {
   return (
-    <div className="flex items-start gap-2.5" role="status" aria-live="polite">
+    <div
+      className="flex items-start gap-2.5 motion-reduce:animate-none"
+      style={{ animation: 'statusFade 220ms ease-out both' }}
+      role="status"
+      aria-live="polite"
+    >
       <ZephyrosMark size={28} />
       <div className="flex min-h-12 items-center gap-3 rounded-2xl rounded-tl-md border border-[#E2EBE7] bg-white px-4 py-3 dark:border-[#294239] dark:bg-[#14211C]">
         <LoaderCircle className="h-4 w-4 animate-spin text-[#3A806A] dark:text-[#3DAE8B]" />
-        <div>
+        <div className="min-w-0">
           <p className="text-xs font-bold text-[#31473F] dark:text-[#E4EFEB]">{status}</p>
           <p className="mt-0.5 text-[10px] text-[#82928B] dark:text-[#789087]">Перевіряю дані та готую відповідь</p>
+          <div className="mt-2 h-1 w-36 overflow-hidden rounded-full bg-[#E3ECE8] dark:bg-[#294239]">
+            <span className="block h-full w-1/3 rounded-full bg-[#3DAE8B] motion-reduce:animate-none" style={{ animation: 'zephyrosProgress 1.25s ease-in-out infinite' }} />
+          </div>
         </div>
       </div>
     </div>
@@ -912,15 +974,19 @@ export function AiChatWidget() {
   if (!isAuthenticated) return null;
 
   return (
-    <div className={mobile && isOpen ? 'fixed inset-0 z-50' : 'fixed bottom-4 right-4 z-50 sm:bottom-6 sm:right-6'}>
+    <div
+      data-zephyros-motion
+      className={mobile && isOpen ? 'fixed inset-0 z-50' : 'fixed bottom-4 right-4 z-50 sm:bottom-6 sm:right-6'}
+    >
+      <style>{ZEPHYROS_MOTION_CSS}</style>
       {isOpen ? (
         <div
           className={
             mobile
-              ? 'h-[100dvh] w-screen'
-              : 'h-[min(720px,calc(100vh-80px))] w-[min(460px,calc(100vw-32px))]'
+              ? 'h-[100dvh] w-screen origin-bottom-right motion-reduce:animate-none'
+              : 'h-[min(720px,calc(100vh-80px))] w-[min(460px,calc(100vw-32px))] origin-bottom-right motion-reduce:animate-none'
           }
-          style={{ animation: 'chatIn 180ms cubic-bezier(0.16,1,0.3,1) both' }}
+          style={{ animation: 'chatIn 280ms cubic-bezier(0.16,1,0.3,1) both' }}
         >
           <ChatWindow mobile={mobile} />
         </div>
