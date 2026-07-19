@@ -19,8 +19,9 @@ import {
   Check,
 } from 'lucide-react';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
-import { PROVIDER_MODELS, useAiChatStore, type UIBlock, type ZephyrosResponse, type ChatMessage } from '@/modules/AiChat/store/useAiChatStore';
+import { useAiChatStore, type UIBlock, type ZephyrosResponse, type ChatMessage } from '@/modules/AiChat/store/useAiChatStore';
 import { useSendAiMessage } from '@/hooks/api/useAiChatApi';
+import { apiClient } from '@/shared/api/apiClient';
 
 function generateId() {
   return Math.random().toString(36).slice(2);
@@ -282,9 +283,20 @@ function ActionButtonView({
   const navigate = useNavigate();
   const close = useAiChatStore((s) => s.close);
 
-  const handleClick = () => {
+  const handleClick = async () => {
     if (block.action === 'add_to_cart') {
-      onOptionClick(`Так, додай до кошика`);
+      const token = block.payload?.action_token;
+      if (!token) {
+        onOptionClick('Підтверди додавання товару до кошика');
+        return;
+      }
+      if (!window.confirm('Додати цей товар до кошика?')) return;
+      try {
+        await apiClient.post('/api/v1/agent/actions/execute', { action_token: token });
+        onOptionClick('Товар успішно додано до кошика');
+      } catch {
+        onOptionClick('Не вдалося додати товар до кошика. Спробуй ще раз.');
+      }
     } else if (block.action === 'navigate') {
       if (block.payload?.route) {
         navigate(block.payload.route);
@@ -571,13 +583,6 @@ function EmptyState({ onSend }: { onSend: (text: string) => void }) {
   );
 }
 
-const PROVIDER_LABELS: Record<string, string> = {
-  cerebras: 'Cerebras',
-  openrouter: 'OpenRouter',
-  gemini: 'Gemini',
-  groq: 'Groq',
-};
-
 // ─── Icon button — shared quiet control style ─────────────────────────────────
 function IconButton({
                       onClick,
@@ -680,10 +685,6 @@ function ChatWindow({ isMobile }: { isMobile: boolean }) {
   const messages = useAiChatStore((s) => s.messages);
   const addMessage = useAiChatStore((s) => s.addMessage);
   const clearMessages = useAiChatStore((s) => s.clearMessages);
-  const provider = useAiChatStore((s) => s.provider);
-  const modelName = useAiChatStore((s) => s.modelName);
-  const setProvider = useAiChatStore((s) => s.setProvider);
-  const setModelName = useAiChatStore((s) => s.setModelName);
 
   const { data: productsData } = useQuery<any>({
     queryKey: ['productsCountChat'],
@@ -767,8 +768,6 @@ function ChatWindow({ isMobile }: { isMobile: boolean }) {
         {
           message: messageText,
           history: historyPayload,
-          provider,
-          model_name: modelName,
           onStatusChange: (s) => setPendingStatus(s),
         },
         {
@@ -794,13 +793,7 @@ function ChatWindow({ isMobile }: { isMobile: boolean }) {
               message = detail;
             }
 
-            if (errorType === 'provider_auth_error') {
-              suggestion = 'Зверніться до адміністратора для перевірки ключів провайдера.';
-            } else if (errorType === 'provider_rate_limited') {
-              suggestion = 'Зачекайте хвилину та спробуйте знову.';
-            } else if (errorType === 'provider_http_error') {
-              suggestion = 'Спробуйте інший провайдер або зачекайте.';
-            } else if (errorType === 'response_parse_error') {
+            if (errorType === 'response_parse_error') {
               suggestion = 'Спробуйте переформулювати запит.';
             } else if (errorType === 'no_providers' || errorType === 'all_providers_exhausted') {
               suggestion = 'Сервіс тимчасово недоступний. Спробуйте пізніше.';
@@ -854,10 +847,6 @@ function ChatWindow({ isMobile }: { isMobile: boolean }) {
     }
   };
 
-  const modelCaption = provider
-      ? `${PROVIDER_LABELS[provider]}${modelName ? ` · ${modelName.split('/').pop()}` : ''}`
-      : 'Автовибір провайдера';
-
   return (
       <div
           className={`relative flex flex-col bg-white dark:bg-[#111A17] overflow-hidden transition-all duration-300 ${
@@ -901,65 +890,10 @@ function ChatWindow({ isMobile }: { isMobile: boolean }) {
                 </button>
               </div>
 
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="ai-provider-select" className="text-[11px] font-semibold text-[#6D8279] dark:text-[#A9B6B0] uppercase tracking-wide transition-colors">Провайдер</label>
-                <select
-                    id="ai-provider-select"
-                    value={provider || 'auto'}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setProvider(val === 'auto' ? null : val as 'gemini' | 'groq' | 'cerebras' | 'openrouter');
-                    }}
-                    className="w-full text-[14px] md:text-[13px] border border-[rgba(38,84,71,0.15)] dark:border-[rgba(38,84,71,0.2)] rounded-lg px-3 py-2.5 md:px-2.5 md:py-1.5 bg-white dark:bg-[#1D2A25] text-[#173B33] dark:text-[#EAF7F2] focus:border-[#265447] dark:focus:border-[#3DAE8B] focus:outline-none transition-colors duration-300"
-                >
-                  <option value="gemini">Google Gemini (за замовчуванням)</option>
-                  <option value="auto">Автовибір</option>
-                  <option value="openrouter">OpenRouter</option>
-                  <option value="cerebras">Cerebras</option>
-                  <option value="groq">Groq</option>
-                </select>
+              <div className="rounded-xl bg-[#F6FAF8] dark:bg-[#1D2A25] p-3 text-[12px] leading-relaxed text-[#6D8279] dark:text-[#A9B6B0]">
+                <p className="font-semibold text-[#173B33] dark:text-white mb-1">Промін працює автоматично</p>
+                <p>Помічник сам обирає найнадійніший шлях і повертає першу перевірену відповідь. Вам не потрібно налаштовувати моделі.</p>
               </div>
-
-              <div className="flex flex-col gap-1.5">
-                <label htmlFor="ai-model-select" className="text-[11px] font-semibold text-[#6D8279] dark:text-[#A9B6B0] uppercase tracking-wide transition-colors">Модель</label>
-                <select
-                    id="ai-model-select"
-                    disabled={!provider}
-                    value={modelName || 'default'}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setModelName(val === 'default' ? null : val);
-                    }}
-                    className="w-full text-[14px] md:text-[13px] border border-[rgba(38,84,71,0.15)] dark:border-[rgba(38,84,71,0.2)] rounded-lg px-3 py-2.5 md:px-2.5 md:py-1.5 bg-white dark:bg-[#1D2A25] text-[#173B33] dark:text-[#EAF7F2] disabled:bg-[#FAFAFA] dark:disabled:bg-[#1D2A25]/50 disabled:text-[#A0AEC0] dark:disabled:text-[#6D8279] focus:border-[#265447] dark:focus:border-[#3DAE8B] focus:outline-none transition-colors duration-300"
-                >
-                  <option value="default">За замовчуванням</option>
-                  {provider && PROVIDER_MODELS[provider].map((m) => (
-                      <option key={m.value} value={m.value}>{m.label}</option>
-                  ))}
-                </select>
-                {!provider && (
-                    <p className="text-[10px] text-[#6D8279] dark:text-[#A9B6B0] transition-colors">Оберіть провайдера, щоб задати конкретну модель.</p>
-                )}
-              </div>
-
-              <dl className="mt-auto pt-3 border-t border-[rgba(38,84,71,0.08)] dark:border-t-[rgba(38,84,71,0.2)] flex flex-col gap-2 text-[11px] leading-relaxed transition-colors">
-                <div className="flex gap-2">
-                  <dt className="font-semibold text-[#173B33] dark:text-white w-[76px] shrink-0 transition-colors">Gemini</dt>
-                  <dd className="text-[#6D8279] dark:text-[#A9B6B0] transition-colors">розумні відповіді, підтримує детальні порівняння цін, використовується за замовчуванням.</dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="font-semibold text-[#173B33] dark:text-white w-[76px] shrink-0 transition-colors">Cerebras</dt>
-                  <dd className="text-[#6D8279] dark:text-[#A9B6B0] transition-colors">найшвидші відповіді, додатковий провайдер.</dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="font-semibold text-[#173B33] dark:text-white w-[76px] shrink-0 transition-colors">OpenRouter</dt>
-                  <dd className="text-[#6D8279] dark:text-[#A9B6B0] transition-colors">доступ до кількох безкоштовних моделей одразу.</dd>
-                </div>
-                <div className="flex gap-2">
-                  <dt className="font-semibold text-[#173B33] dark:text-white w-[76px] shrink-0 transition-colors">Groq</dt>
-                  <dd className="text-[#6D8279] dark:text-[#A9B6B0] transition-colors">мінімальна затримка для коротких запитів.</dd>
-                </div>
-              </dl>
             </div>
         )}
 
@@ -1027,7 +961,7 @@ function ChatWindow({ isMobile }: { isMobile: boolean }) {
               <Send className="w-4 h-4 md:w-3.5 md:h-3.5 text-white dark:text-[#111A17]" />
             </button>
           </div>
-          <p className="text-[10px] text-[#A9B6B0] dark:text-[#6D8279] mt-1.5 px-0.5 transition-colors">{modelCaption}</p>
+          <p className="text-[10px] text-[#A9B6B0] dark:text-[#6D8279] mt-1.5 px-0.5 transition-colors">Промін автоматично підбирає надійний спосіб відповіді.</p>
         </div>
       </div>
   );

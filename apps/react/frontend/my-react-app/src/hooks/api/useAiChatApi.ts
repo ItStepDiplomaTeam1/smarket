@@ -10,8 +10,6 @@ interface ChatMessagePayload {
 interface SendMessagePayload {
   message: string;
   history?: ChatMessagePayload[];
-  provider?: string | null;
-  model_name?: string | null;
   onStatusChange?: (status: string) => void;
 }
 
@@ -23,7 +21,7 @@ const STATUS_STEPS = [
 
 export const useSendAiMessage = () => {
   return useMutation<ZephyrosResponse, Error, SendMessagePayload>({
-    mutationFn: async ({ message, history, provider, model_name, onStatusChange }) => {
+    mutationFn: async ({ message, history, onStatusChange }) => {
       let stepIdx = 0;
       const nextStatus = () => {
         if (onStatusChange && stepIdx < STATUS_STEPS.length) {
@@ -36,8 +34,6 @@ export const useSendAiMessage = () => {
         '/api/v1/agent/chat',
         {
           message,
-          provider: provider ?? null,
-          model_name: model_name ?? null,
           history: history ?? null,
         },
         { timeout: 120000 },

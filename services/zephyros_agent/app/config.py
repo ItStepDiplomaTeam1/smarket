@@ -20,6 +20,16 @@ class Settings(BaseSettings):
     CEREBRAS_MODEL: str = "gpt-oss-120b"
 
     CIRCUIT_BREAKER_COOLDOWN_SECONDS: int = 60
+    PROVIDER_TIMEOUT_SECONDS: float = 18.0
+    PROVIDER_CONCURRENCY_LIMIT: int = 8
+    CHAT_REQUEST_BUDGET_SECONDS: float = 22.0
+    CHAT_CACHE_TTL_SECONDS: int = 45
+    CHAT_SINGLEFLIGHT_TTL_SECONDS: int = 30
+    CHAT_HISTORY_MAX_MESSAGES: int = 8
+    CHAT_HISTORY_MAX_CHARS: int = 6000
+    CHAT_MAX_BLOCKS: int = 16
+    CHAT_MAX_TEXT_CHARS: int = 6000
+    ZEPHYROS_ROUTING_MODE: str = "parallel-race"
     LOG_LEVEL: str = "INFO"
     LOG_JSON: bool = False
 

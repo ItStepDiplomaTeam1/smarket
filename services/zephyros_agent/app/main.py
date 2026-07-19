@@ -17,14 +17,17 @@ from pydantic import BaseModel, ValidationError
 from pydantic_ai.exceptions import ModelHTTPError
 import pydantic_ai.messages as pydantic_ai_msgs
 
-from app.agent.zephyros import agent, available_provider_chain, build_model, probe_provider_health
+from app.agent.zephyros import agent, readonly_agent, available_provider_chain, build_model, probe_provider_health
 from app.config import settings
 from app.deps import AgentDeps
 from app.logging import setup_logging
+from app.orchestration import ProviderState, ResponseStore, compact_history, race_first_valid
 from app.schemas import ErrorResponse, ZephyrosResponse
 
 setup_logging(level=settings.LOG_LEVEL, json_logs=settings.LOG_JSON)
 
+# Kept as an emergency in-process guard and for backwards-compatible health
+# diagnostics.  The authoritative circuit state is ProviderState/Redis.
 _provider_down_until: dict[str, float] = {}
 
 
@@ -67,6 +70,8 @@ async def lifespan(app: FastAPI):
         timeout=30.0,
     )
     app.state.redis = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+    app.state.provider_state = ProviderState(app.state.redis)
+    app.state.response_store = ResponseStore(app.state.redis)
     logger.info("Zephyros agent service started")
     try:
         chain = available_provider_chain()
@@ -77,7 +82,9 @@ async def lifespan(app: FastAPI):
             is_healthy = await probe_provider_health(prov, timeout_seconds=10.0)
             if not is_healthy:
                 logger.warning(f"Provider {prov} failed startup health probe. Placing in initial cooldown.")
-                _mark_down(prov, settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS)
+                await app.state.provider_state.mark_failure(
+                    prov, "timeout", settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS
+                )
             else:
                 logger.info(f"Provider {prov} passed startup health probe.")
 
@@ -109,6 +116,7 @@ app.add_middleware(
 @app.middleware("http")
 async def request_logging_middleware(request: Request, call_next):
     request_id = request.headers.get("X-Request-Id") or str(uuid.uuid4())
+    request.state.request_id = request_id
     user_id = request.headers.get("X-User-Id")
     request_log = logger.bind(
         request_id=request_id,
@@ -141,34 +149,29 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
+    # Accepted only for a one-release compatibility window.  Routing ignores it.
     provider: str | None = None
     model_name: str | None = None
     history: list[ChatMessage] | None = None
 
 
+class ActionExecutionRequest(BaseModel):
+    action_token: str
+
+
 @app.get("/health", tags=["System"])
 async def health_check():
-    import time
-    from app.agent.zephyros import PROVIDER_CHAIN, _provider_available
-    
-    provider_states = {}
-    now = time.monotonic()
-    
-    for prov in PROVIDER_CHAIN:
-        configured = _provider_available(prov)
-        cooldown_until = _provider_down_until.get(prov, 0.0)
-        cooldown_remaining = max(0.0, cooldown_until - now)
-        is_blocked = cooldown_remaining > 0.0
-        
-        provider_states[prov] = {
-            "configured": configured,
-            "blocked": is_blocked,
-            "cooldown_remaining_seconds": round(cooldown_remaining, 1) if is_blocked else 0.0
-        }
+    from app.agent.zephyros import PROVIDER_CHAIN, PROVIDER_REGISTRY_VERSION, _provider_available
+    snapshots = await app.state.provider_state.snapshot(PROVIDER_CHAIN)
+    provider_states = {
+        prov: {"configured": _provider_available(prov), **snapshots[prov]}
+        for prov in PROVIDER_CHAIN
+    }
         
     return {
         "status": "ok",
         "service": "zephyros_agent",
+        "registry_version": PROVIDER_REGISTRY_VERSION,
         "providers": provider_states
     }
 
@@ -246,9 +249,104 @@ async def summarize_plan(
     raise HTTPException(status_code=503, detail="Помилка генерації опису чека.")
 
 
+def _to_model_history(history: list[ChatMessage] | None) -> list[Any] | None:
+    if not history:
+        return None
+    model_history: list[Any] = []
+    for msg in history[-settings.CHAT_HISTORY_MAX_MESSAGES :]:
+        utc_now = datetime.now(timezone.utc)
+        content = msg.content if isinstance(msg.content, str) else json.dumps(msg.content, ensure_ascii=False)
+        content = content[: settings.CHAT_HISTORY_MAX_CHARS]
+        if msg.role == "user":
+            model_history.append(pydantic_ai_msgs.ModelRequest(parts=[pydantic_ai_msgs.UserPromptPart(content=content, timestamp=utc_now)]))
+        elif msg.role == "assistant":
+            model_history.append(pydantic_ai_msgs.ModelResponse(parts=[pydantic_ai_msgs.TextPart(content=content)], timestamp=utc_now))
+    return compact_history(model_history)
+
+
+def _response_cacheable(response: ZephyrosResponse) -> bool:
+    return not any(
+        getattr(block, "type", None) == "action_button"
+        and getattr(block, "action", None) == "add_to_cart"
+        for block in response.blocks
+    )
+
+
+async def _issue_action_tokens(response: ZephyrosResponse, user_id: uuid.UUID | None) -> ZephyrosResponse:
+    """Bind proposed cart mutations to one user and one explicit confirmation."""
+    redis_client = getattr(app.state, "redis", None)
+    if not redis_client or not user_id:
+        return response
+    for block in response.blocks:
+        if getattr(block, "type", None) != "action_button" or getattr(block, "action", None) != "add_to_cart":
+            continue
+        payload = dict(block.payload)
+        token = str(uuid.uuid4())
+        try:
+            await redis_client.set(
+                f"zephyros:action:{token}",
+                json.dumps({"user_id": str(user_id), "action": block.action, "payload": payload}),
+                ex=600,
+            )
+            payload["action_token"] = token
+            block.payload = payload
+        except Exception:
+            logger.bind(action="add_to_cart").warning("Could not issue action token; leaving proposal non-executable")
+    return response
+
+
+@app.post("/agent/actions/execute", tags=["Agent"])
+async def execute_action(
+    request: ActionExecutionRequest,
+    x_user_id: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """Execute exactly one confirmed cart action. Redis GETDEL makes replays harmless."""
+    if not x_user_id:
+        raise HTTPException(status_code=401, detail="Authentication is required")
+    redis_client = getattr(app.state, "redis", None)
+    http_client = getattr(app.state, "http_client", None)
+    if not redis_client or not http_client:
+        raise HTTPException(status_code=503, detail="Action service is temporarily unavailable")
+    try:
+        raw = await redis_client.getdel(f"zephyros:action:{request.action_token}")
+    except Exception as error:
+        logger.bind(error=str(error)).warning("Action token store unavailable")
+        raise HTTPException(status_code=503, detail="Action confirmation is temporarily unavailable") from error
+    if not raw:
+        raise HTTPException(status_code=409, detail="This action has expired or was already completed")
+    action = json.loads(raw)
+    if action.get("user_id") != x_user_id or action.get("action") != "add_to_cart":
+        raise HTTPException(status_code=403, detail="Action token is not valid for this user")
+    payload = action["payload"]
+    headers = {"X-User-Id": x_user_id}
+    try:
+        carts_response = await http_client.get(f"{settings.CART_SERVICE_URL}/", headers=headers, timeout=3.0)
+        carts_response.raise_for_status()
+        carts = carts_response.json()
+        if carts:
+            cart_id = carts[0]["id"]
+        else:
+            created = await http_client.post(f"{settings.CART_SERVICE_URL}/", json={"name": "Мій кошик"}, headers=headers, timeout=3.0)
+            created.raise_for_status()
+            cart_id = created.json()["id"]
+        added = await http_client.post(
+            f"{settings.CART_SERVICE_URL}/{cart_id}/items",
+            json={"product_id": payload["product_id"], "quantity": payload.get("quantity", 1)},
+            headers=headers,
+            timeout=3.0,
+        )
+        added.raise_for_status()
+    except (httpx.RequestError, httpx.HTTPStatusError) as error:
+        logger.bind(user_id=x_user_id, error=str(error)).warning("Confirmed cart action failed")
+        raise HTTPException(status_code=502, detail="Не вдалося додати товар до кошика") from error
+    logger.bind(user_id=x_user_id, product_id=payload["product_id"]).info("Confirmed cart action completed")
+    return {"status": "success", "message": "Товар додано до кошика."}
+
+
 @app.post("/agent/chat", response_model=ZephyrosResponse, tags=["Agent"])
 async def chat(
     request: ChatRequest,
+    http_request: Request,
     x_user_id: str | None = Header(default=None),
 ) -> ZephyrosResponse:
     user_id: uuid.UUID | None = None
@@ -258,319 +356,81 @@ async def chat(
         except ValueError:
             raise HTTPException(status_code=400, detail="Invalid X-User-Id format.")
 
+    request_id = getattr(http_request.state, "request_id", str(uuid.uuid4()))
     chat_log = logger.bind(
+        request_id=request_id,
         endpoint="/agent/chat",
         user_id=str(user_id) if user_id else None,
-        requested_provider=request.provider,
-        requested_model=request.model_name,
         message_length=len(request.message),
     )
     chat_log.info("Chat request received")
+    if request.provider or request.model_name:
+        chat_log.bind(legacy_provider=request.provider, legacy_model=request.model_name).info(
+            "Deprecated client provider selection ignored"
+        )
 
     deps = AgentDeps(
-        http_client=app.state.http_client,
+        http_client=getattr(app.state, "http_client", None),
         user_id=user_id,
-        redis_client=app.state.redis,
+        redis_client=getattr(app.state, "redis", None),
     )
 
-    message_history = []
-    if request.history:
-        for msg in request.history:
-            utc_now = datetime.now(timezone.utc)
-            if msg.role == "user":
-                content_str = msg.content if isinstance(msg.content, str) else json.dumps(msg.content, ensure_ascii=False)
-                message_history.append(
-                    pydantic_ai_msgs.ModelRequest(
-                        parts=[pydantic_ai_msgs.UserPromptPart(content=content_str, timestamp=utc_now)]
-                    )
-                )
-            elif msg.role == "assistant":
-                if isinstance(msg.content, str):
-                    content_str = msg.content.strip()
-                    if content_str.startswith("```"):
-                        lines = content_str.splitlines()
-                        if lines[0].startswith("```"):
-                            lines = lines[1:]
-                        if lines and lines[-1].startswith("```"):
-                            lines = lines[:-1]
-                        content_str = "\n".join(lines).strip()
-                else:
-                    content_str = json.dumps(msg.content, ensure_ascii=False)
-                message_history.append(
-                    pydantic_ai_msgs.ModelResponse(
-                        parts=[pydantic_ai_msgs.TextPart(content=content_str)],
-                        timestamp=utc_now,
-                    )
-                )
-
-    run_history = message_history if message_history else None
-
-    # Explicit provider in request -> try that one first (and its models), then fall back to others if it fails.
-    if request.provider:
-        primary = request.provider.lower()
-        configured = available_provider_chain()
-        primary_candidates = [p for p in configured if p.startswith(primary)]
-        other_candidates = [p for p in configured if not p.startswith(primary)]
-        candidates = primary_candidates + other_candidates
-    else:
-        candidates = available_provider_chain()
-
+    candidates = available_provider_chain()
     if not candidates:
         chat_log.error("No AI providers configured")
-        return _error_response(
-            error="no_providers",
-            detail="ШІ-провайдери не налаштовані на сервері.",
-            status_code=503,
+        return ZephyrosResponse.model_validate({"blocks": [{"type": "fallback", "message": "Промін тимчасово недоступний.", "suggestion": "Спробуйте пізніше."}]})
+
+    cacheable = ResponseStore.cacheable(request.message)
+    cache_key = ResponseStore.key(request.message, [m.model_dump() for m in request.history or []], str(user_id) if user_id else None)
+    redis_client = getattr(app.state, "redis", None)
+    store: ResponseStore = getattr(app.state, "response_store", ResponseStore(redis_client))
+    provider_state: ProviderState = getattr(app.state, "provider_state", ProviderState(redis_client))
+    if cacheable:
+        cached = await store.get(cache_key)
+        if cached:
+            chat_log.bind(cache="hit").info("Returning cached structured response")
+            return cached
+    future, leader = await store.join_or_lead(cache_key)
+    if not leader:
+        chat_log.bind(cache="singleflight-join").info("Joining in-flight chat request")
+        return await future
+
+    try:
+        result = await race_first_valid(
+            request_id=request_id,
+            message=request.message,
+            deps=deps,
+            history=_to_model_history(request.history),
+            candidates=candidates,
+            build_model=build_model,
+            run_agent=readonly_agent.run,
+            state=provider_state,
         )
-
-    chat_log.bind(provider_candidates=candidates).info("Provider candidates resolved")
-    last_error: Exception | None = None
-
-    for provider in candidates:
-        provider_log = chat_log.bind(provider=provider)
-        if _is_down(provider):
-            provider_log.warning("Provider is in cooldown, skipping")
-            continue
-
-        started_at = time.perf_counter()
-        try:
-            current_model = build_model(provider, request.model_name)
-            model_name = getattr(current_model, "model_name", request.model_name or "default")
-            provider_log.bind(model_name=model_name).info("Running agent with provider")
-            result = await agent.run(
-                request.message,
-                deps=deps,
-                model=current_model,
-                message_history=run_history,
-            )
-            elapsed_ms = round((time.perf_counter() - started_at) * 1000, 2)
-            provider_log.bind(elapsed_ms=elapsed_ms).info("Provider returned successful response")
-            return result.output
-
-        except ModelHTTPError as e:
-            if e.status_code == 401:
-                _mark_down(provider, settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS)
-                provider_log.bind(status_code=401, body=_truncate(str(e.body))).error(
-                    "Provider authentication error",
-                )
-                last_error = e
-                continue
-
-            if e.status_code == 429:
-                retry_after = None
-                headers = getattr(e, "headers", None) or {}
-                if headers.get("retry-after"):
-                    try:
-                        retry_after = float(headers["retry-after"])
-                    except ValueError:
-                        retry_after = None
-                cooldown = retry_after or settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS
-                _mark_down(provider, cooldown)
-                provider_log.bind(status_code=429, cooldown_seconds=cooldown).warning(
-                    "Provider rate-limited",
-                )
-                last_error = e
-                continue
-
-            if e.status_code >= 500:
-                _mark_down(provider, settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS)
-                provider_log.bind(status_code=e.status_code, body=_truncate(str(e.body))).warning(
-                    "Provider returned 5xx error",
-                )
-                last_error = e
-                continue
-
-            provider_log.bind(
-                status_code=e.status_code,
-                body=_truncate(str(e.body)),
-            ).warning("Provider returned ModelHTTPError")
-            last_error = e
-            continue
-
-        except ValidationError as e:
-            provider_log.bind(error=str(e)).warning("Response validation failed")
-            last_error = e
-            continue
-
-        except Exception as e:
-            _mark_down(provider, settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS)
-            provider_log.exception("Unexpected error while running provider")
-            last_error = e
-            continue
-
-    chat_log.bind(last_error=repr(last_error)).error("All providers exhausted")
-
-    if last_error is None:
-        return _error_response(
-            error="all_providers_exhausted",
-            detail="Усі ШІ-провайдери тимчасово недоступні. Спробуйте за хвилину.",
-            status_code=503,
-        )
-
-    if isinstance(last_error, ModelHTTPError):
-        if last_error.status_code == 401:
-            return _error_response(
-                error="provider_auth_error",
-                detail="Помилка автентифікації ШІ-провайдера. Зверніться до адміністратора.",
-                status_code=502,
-            )
-        if last_error.status_code == 429:
-            return _error_response(
-                error="provider_rate_limited",
-                detail="Забагато запитів до ШІ-провайдера. Спробуйте за хвилину.",
-                status_code=429,
-            )
-        return _error_response(
-            error="provider_http_error",
-            detail="ШІ-провайдер тимчасово недоступний. Спробуйте інший провайдер.",
-            status_code=502,
-        )
-
-    if isinstance(last_error, ValidationError):
-        return _error_response(
-            error="response_parse_error",
-            detail="Агент повернув некоректну відповідь. Спробуйте ще раз.",
-            status_code=502,
-        )
-
-    return _error_response(
-        error="provider_http_error",
-        detail="ШІ-провайдер тимчасово недоступний. Спробуйте інший провайдер.",
-        status_code=502,
-    )
+        result.response = await _issue_action_tokens(result.response, user_id)
+        if cacheable and result.winner and _response_cacheable(result.response):
+            await store.set(cache_key, result.response)
+        chat_log.bind(cache=result.cache, winner=result.winner, candidate_count=len(candidates)).info("Chat orchestration completed")
+        await store.finish(cache_key, future, result.response)
+        return result.response
+    except Exception:
+        fallback = ZephyrosResponse.model_validate({"blocks": [{"type": "fallback", "message": "Не вдалося підготувати відповідь.", "suggestion": "Спробуйте ще раз."}]})
+        await store.finish(cache_key, future, fallback)
+        chat_log.exception("Chat orchestration failed")
+        return fallback
 
 
 @app.post("/agent/chat/stream", tags=["Agent"])
 async def chat_stream(
     request: ChatRequest,
+    http_request: Request,
     x_user_id: str | None = Header(default=None),
 ) -> StreamingResponse:
-    user_id: uuid.UUID | None = None
-    if x_user_id:
-        try:
-            user_id = uuid.UUID(x_user_id)
-        except ValueError:
-            raise HTTPException(status_code=400, detail="Invalid X-User-Id format.")
-
-    chat_log = logger.bind(
-        endpoint="/agent/chat/stream",
-        user_id=str(user_id) if user_id else None,
-        requested_provider=request.provider,
-        requested_model=request.model_name,
-        message_length=len(request.message),
-    )
-    chat_log.info("Chat stream request received")
-
-    deps = AgentDeps(
-        http_client=app.state.http_client,
-        user_id=user_id,
-        redis_client=app.state.redis,
-    )
-
-    message_history = []
-    if request.history:
-        for msg in request.history:
-            utc_now = datetime.now(timezone.utc)
-            if msg.role == "user":
-                content_str = msg.content if isinstance(msg.content, str) else json.dumps(msg.content, ensure_ascii=False)
-                message_history.append(
-                    pydantic_ai_msgs.ModelRequest(
-                        parts=[pydantic_ai_msgs.UserPromptPart(content=content_str, timestamp=utc_now)]
-                    )
-                )
-            elif msg.role == "assistant":
-                if isinstance(msg.content, str):
-                    content_str = msg.content.strip()
-                    if content_str.startswith("```"):
-                        lines = content_str.splitlines()
-                        if lines[0].startswith("```"):
-                            lines = lines[1:]
-                        if lines and lines[-1].startswith("```"):
-                            lines = lines[:-1]
-                        content_str = "\n".join(lines).strip()
-                else:
-                    content_str = json.dumps(msg.content, ensure_ascii=False)
-                message_history.append(
-                    pydantic_ai_msgs.ModelResponse(
-                        parts=[pydantic_ai_msgs.TextPart(content=content_str)],
-                        timestamp=utc_now,
-                    )
-                )
-
-    run_history = message_history if message_history else None
-
-    # Explicit provider in request -> try that one first (and its models), then fall back to others if it fails.
-    if request.provider:
-        primary = request.provider.lower()
-        configured = available_provider_chain()
-        primary_candidates = [p for p in configured if p.startswith(primary)]
-        other_candidates = [p for p in configured if not p.startswith(primary)]
-        candidates = primary_candidates + other_candidates
-    else:
-        candidates = available_provider_chain()
-
-    if not candidates:
-        chat_log.error("No AI providers configured")
-        raise HTTPException(
-            status_code=503,
-            detail="ШІ-провайдери не налаштовані на сервері.",
-        )
+    # Keep the endpoint for compatibility.  Streaming raw model chunks would
+    # bypass validation and make a first-valid race unsafe, so it emits one
+    # validated event once the shared orchestration finishes.
+    response = await chat(request, http_request, x_user_id)
 
     async def event_generator():
-        success = False
-        last_error = None
-        for provider in candidates:
-            provider_log = chat_log.bind(provider=provider)
-            if _is_down(provider):
-                provider_log.warning("Provider is in cooldown, skipping")
-                continue
-
-            try:
-                current_model = build_model(provider, request.model_name)
-                model_name = getattr(current_model, "model_name", request.model_name or "default")
-                provider_log.bind(model_name=model_name).info("Running agent stream with provider")
-
-                async with agent.run_stream(
-                    request.message,
-                    deps=deps,
-                    model=current_model,
-                    message_history=run_history,
-                ) as result:
-                    async for message in result.stream():
-                        yield f"data: {message.model_dump_json()}\n\n"
-
-                success = True
-                break
-            except ModelHTTPError as e:
-                if e.status_code == 401:
-                    _mark_down(provider, settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS)
-                elif e.status_code == 429:
-                    retry_after = None
-                    headers = getattr(e, "headers", None) or {}
-                    if headers.get("retry-after"):
-                        try:
-                            retry_after = float(headers["retry-after"])
-                        except ValueError:
-                            retry_after = None
-                    cooldown = retry_after or settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS
-                    _mark_down(provider, cooldown)
-                elif e.status_code >= 500:
-                    _mark_down(provider, settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS)
-                
-                provider_log.exception("Model HTTP error during agent streaming")
-                last_error = e
-                continue
-            except Exception as e:
-                _mark_down(provider, settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS)
-                provider_log.exception("Error during agent streaming")
-                last_error = e
-                continue
-
-        if not success:
-            err_msg = {
-                "error": "all_providers_exhausted",
-                "detail": f"Усі ШІ-провайдери тимчасово недоступні. Помилка: {str(last_error)}"
-            }
-            yield f"data: {json.dumps(err_msg, ensure_ascii=False)}\n\n"
+        yield f"data: {response.model_dump_json()}\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")

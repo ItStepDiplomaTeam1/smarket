@@ -6,7 +6,7 @@ from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.providers.cerebras import CerebrasProvider
 from pydantic_ai.models.google import GoogleModel
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pydantic_ai.capabilities import PrepareTools
 from pydantic_ai.tools import ToolDefinition, RunContext
 
@@ -28,8 +28,25 @@ if settings.GEMINI_API_KEY:
     os.environ["GEMINI_API_KEY"] = settings.GEMINI_API_KEY
     os.environ["GOOGLE_API_KEY"] = settings.GEMINI_API_KEY
 
-# Порядок провайдеров для автоматического перебора, если явный provider не передан
-PROVIDER_CHAIN = ["groq-gpt-oss", "groq-llama", "gemini", "cerebras", "openrouter"]
+@dataclass(frozen=True)
+class ProviderCandidate:
+    """Server-owned provider policy. Browser input never changes this registry."""
+
+    name: str
+    priority: int
+    timeout_seconds: float
+    concurrency_limit: int
+
+
+PROVIDER_REGISTRY_VERSION = "2026-07-19"
+PROVIDER_REGISTRY = (
+    ProviderCandidate("groq-gpt-oss", 1, settings.PROVIDER_TIMEOUT_SECONDS, settings.PROVIDER_CONCURRENCY_LIMIT),
+    ProviderCandidate("groq-llama", 2, settings.PROVIDER_TIMEOUT_SECONDS, settings.PROVIDER_CONCURRENCY_LIMIT),
+    ProviderCandidate("gemini", 3, settings.PROVIDER_TIMEOUT_SECONDS, settings.PROVIDER_CONCURRENCY_LIMIT),
+    ProviderCandidate("cerebras", 4, settings.PROVIDER_TIMEOUT_SECONDS, settings.PROVIDER_CONCURRENCY_LIMIT),
+    ProviderCandidate("openrouter", 5, settings.PROVIDER_TIMEOUT_SECONDS, settings.PROVIDER_CONCURRENCY_LIMIT),
+)
+PROVIDER_CHAIN = [candidate.name for candidate in PROVIDER_REGISTRY]
 
 DEPRECATED_MODEL_MAP: dict[str, str] = {
     "gemini-2.5-flash": "gemini-3.5-flash",
@@ -246,3 +263,21 @@ agent.tool(remove_item_from_cart)
 agent.tool(compare_cart_stores)
 agent.tool(get_product_reviews)
 agent.tool(create_product_review)
+
+# A raced completion must never mutate customer data.  The public chat endpoint
+# uses this second agent; the legacy full agent remains available only until
+# mutating flows are migrated to explicit, idempotent action endpoints.
+readonly_agent: Agent[AgentDeps, ZephyrosResponse] = Agent(
+    model=default_model,
+    deps_type=AgentDeps,
+    output_type=ZephyrosResponse,
+    system_prompt=SYSTEM_PROMPT
+    + "\n\nSAFETY: You may only read shopping data. Never clear a cart, remove an item, "
+      "or create a review. For any change, return an action_button proposal instead.",
+    retries=1,
+    capabilities=[PrepareTools(normalize_tool_strict)],
+)
+readonly_agent.tool(search_and_compare_offers)
+readonly_agent.tool(get_user_cart)
+readonly_agent.tool(compare_cart_stores)
+readonly_agent.tool(get_product_reviews)

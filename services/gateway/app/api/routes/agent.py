@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Request, Depends, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 import httpx
+import uuid
 
 from app.api.core.config import settings
 from app.api.dependencies import verify_jwt
@@ -24,6 +25,7 @@ async def proxy_summarize_plan(
 
     headers = dict(request.headers)
     headers.pop("host", None)
+    headers.setdefault("X-Request-Id", str(uuid.uuid4()))
 
     try:
         req = client.build_request(
@@ -58,6 +60,7 @@ async def proxy_to_agent(
 
     headers = dict(request.headers)
     headers.pop("host", None)
+    headers.setdefault("X-Request-Id", str(uuid.uuid4()))
 
     headers["X-User-Id"] = str(token_payload.get("sub"))
 
