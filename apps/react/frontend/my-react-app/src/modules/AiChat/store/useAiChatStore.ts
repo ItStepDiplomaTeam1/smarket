@@ -42,7 +42,7 @@ export const useAiChatStore = create<AiChatState>()(
     (set) => ({
       isOpen: false,
       messages: [],
-      provider: 'cerebras',
+      provider: null,
       modelName: null,
       open: () => set({ isOpen: true }),
       close: () => set({ isOpen: false }),

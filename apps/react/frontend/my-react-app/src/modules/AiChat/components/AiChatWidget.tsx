@@ -583,11 +583,12 @@ const PROVIDER_MODELS = {
   ],
   openrouter: [
     { value: 'openai/gpt-oss-120b:free', label: 'GPT OSS 120B Free (рекомендовано)' },
-    { value: 'google/gemini-2.5-flash:free', label: 'Gemini 2.5 Flash Free' },
+    { value: 'google/gemini-3.5-flash:free', label: 'Gemini 3.5 Flash Free' },
     { value: 'meta-llama/llama-3.3-70b-instruct:free', label: 'Llama 3.3 70B Free' },
   ],
   gemini: [
-    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash (рекомендовано)' },
+    { value: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash (рекомендовано)' },
+    { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
   ],
   groq: [
     { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (рекомендовано)' },
