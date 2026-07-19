@@ -1,7 +1,7 @@
 import asyncio
 import re
 import uuid
-from typing import Any, Literal
+from typing import Any
 
 import httpx
 from loguru import logger
@@ -337,6 +337,7 @@ def _compact_search_hit(hit: dict[str, Any]) -> dict[str, Any]:
         "price": hit.get("price"),
         "store": hit.get("store_name") or hit.get("retail_chain"),
         "in_stock": hit.get("in_stock"),
+        "image_url": hit.get("image_url"),
         "offers": compact_offers[:8],
     }
 
@@ -353,7 +354,7 @@ async def _prepare_catalog(
     from app.read_context import (
         PreparedReadContext,
         ContextIntent,
-        _catalog_query,
+        _parse_catalog_query,
         _catalog_product_response,
         _catalog_degraded_response,
     )
@@ -364,14 +365,21 @@ async def _prepare_catalog(
         phrase in normalized
         for phrase in ("вигідні пропозиції", "акційні", "акции", "акції", "знижки", "скидки")
     )
-    query = _catalog_query(message)
+    parsed_query = _parse_catalog_query(message)
+    query = parsed_query.query
     search_params: dict[str, Any] = {
         "q": "" if deals_request else query,
         "in_stock": "true",
         "limit": 8,
     }
+    if parsed_query.price_min is not None:
+        search_params["price_min"] = parsed_query.price_min
+    if parsed_query.price_max is not None:
+        search_params["price_max"] = parsed_query.price_max
     if deals_request:
         search_params.update({"offer_type": "promo", "sort": "discount_percent:desc"})
+    elif parsed_query.sort:
+        search_params["sort"] = parsed_query.sort
     try:
         search_data = await _get_json(
             deps.http_client,
@@ -433,14 +441,21 @@ async def _prepare_catalog(
         hits = [product for product in hits if product.get("id") == preferred_product_id]
         allowed_ids = {preferred_product_id} if hits else set()
 
-    data = {"query": query, "products": hits, "total": search_mapping.get("total_hits")}
+    data = {
+        "query": query,
+        "price_min": parsed_query.price_min,
+        "price_max": parsed_query.price_max,
+        "sort": parsed_query.sort,
+        "products": hits,
+        "total": search_mapping.get("total_hits"),
+    }
     if not hits:
         direct = ZephyrosResponse.model_validate(
             {
                 "blocks": [
                     {
                         "type": "text",
-                        "content": f"За запитом «{query}» актуальних товарів не знайдено.",
+                        "content": f"За запитом «{parsed_query.label}» актуальних товарів не знайдено.",
                     },
                     {
                         "type": "clarification",
@@ -452,7 +467,12 @@ async def _prepare_catalog(
         )
         return PreparedReadContext(intent=intent, data=data, direct_response=direct)
 
-    direct = _catalog_product_response(query, hits, add_requested=add_requested)
+    direct = _catalog_product_response(
+        query,
+        hits,
+        add_requested=add_requested,
+        query_label=parsed_query.label,
+    )
     return PreparedReadContext(
         intent=intent,
         data=data,
@@ -519,7 +539,6 @@ async def _prepare_cart_mutation(
         PreparedReadContext,
         ContextIntent,
         _select_history_product,
-        _cart_snapshot_response,
     )
 
     intent: ContextIntent = "cart_clear" if clear else "cart_remove"

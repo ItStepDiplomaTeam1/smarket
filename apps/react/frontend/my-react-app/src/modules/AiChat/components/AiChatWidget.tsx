@@ -5,7 +5,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
   ArrowDown,
@@ -14,6 +14,8 @@ import {
   ChevronRight,
   Copy,
   ExternalLink,
+  ImageIcon,
+  List,
   LoaderCircle,
   Package,
   RefreshCw,
@@ -37,12 +39,13 @@ import {
   useAiChatStore,
 } from '@/modules/AiChat/store/useAiChatStore';
 import { apiClient } from '@/shared/api/apiClient';
+import productPlaceholder from '@/shared/assets/products-zaglushka.svg';
 
 
 const QUICK_PROMPTS = [
   { icon: Search, label: 'Порівняти ціни на молоко' },
   { icon: ShoppingBasket, label: 'Порівняти мій кошик' },
-  { icon: Package, label: 'Знайти найдешевший хліб' },
+  { icon: Package, label: 'Знайти сир до 50 грн' },
   { icon: Star, label: 'Показати вигідні пропозиції' },
 ];
 
@@ -261,8 +264,50 @@ function TableBlockView({ block }: { block: Extract<UIBlock, { type: 'table' }> 
 
 
 function ProductCardView({ block }: { block: Extract<UIBlock, { type: 'product_card' }> }) {
+  const productView = useAiChatStore((state) => state.productView);
+  const close = useAiChatStore((state) => state.close);
+  const productRoute = `/product/${block.product_id}`;
+
+  if (productView === 'visual') {
+    return (
+      <Link
+        to={productRoute}
+        onClick={close}
+        aria-label={`Відкрити товар ${block.name}`}
+        className="group block overflow-hidden rounded-2xl border border-[#DDE8E3] bg-white text-inherit no-underline transition-all duration-200 hover:-translate-y-0.5 hover:border-[#AFC9BD] hover:shadow-md dark:border-[#294239] dark:bg-[#15221D] dark:hover:border-[#3A6756] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3DAE8B] motion-reduce:transform-none"
+      >
+        <div className="relative flex h-40 items-center justify-center overflow-hidden bg-[#F4F8F6] p-4 dark:bg-[#101B17]">
+          <img
+            src={block.image_url || productPlaceholder}
+            alt={block.name}
+            loading="lazy"
+            className="h-full w-full object-contain transition-transform duration-300 group-hover:scale-[1.03] motion-reduce:transform-none"
+          />
+          <span className="absolute right-3 top-3 rounded-full bg-white/90 px-2 py-1 text-[10px] font-bold text-[#265447] shadow-sm backdrop-blur dark:bg-[#15221D]/90 dark:text-[#3DAE8B]">
+            Відкрити
+          </span>
+        </div>
+        <div className="flex items-end gap-3 p-3.5">
+          <div className="min-w-0 flex-1">
+            <p className="line-clamp-2 text-sm font-bold leading-5 text-[#173B33] dark:text-white">{block.name}</p>
+            <p className="mt-1 truncate text-xs text-[#71827A] dark:text-[#A9B6B0]">{block.store}</p>
+          </div>
+          <div className="shrink-0 text-right">
+            <p className="text-base font-extrabold text-[#173B33] dark:text-[#3DAE8B]">{block.price}</p>
+            {block.savings && <p className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">{block.savings}</p>}
+          </div>
+        </div>
+      </Link>
+    );
+  }
+
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-[#DDE8E3] bg-white p-3.5 dark:border-[#294239] dark:bg-[#15221D]">
+    <Link
+      to={productRoute}
+      onClick={close}
+      aria-label={`Відкрити товар ${block.name}`}
+      className="group flex items-center gap-3 rounded-2xl border border-[#DDE8E3] bg-white p-3.5 text-inherit no-underline transition-all duration-200 hover:-translate-y-0.5 hover:border-[#AFC9BD] hover:shadow-md dark:border-[#294239] dark:bg-[#15221D] dark:hover:border-[#3A6756] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3DAE8B] motion-reduce:transform-none"
+    >
       <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[#EEF5F1] text-[#265447] dark:bg-[#1D3028] dark:text-[#3DAE8B]">
         <Package className="h-5 w-5" />
       </div>
@@ -274,7 +319,33 @@ function ProductCardView({ block }: { block: Extract<UIBlock, { type: 'product_c
         <p className="text-base font-extrabold text-[#173B33] dark:text-[#3DAE8B]">{block.price}</p>
         {block.savings && <p className="text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">{block.savings}</p>}
       </div>
-    </div>
+      <ChevronRight className="h-4 w-4 shrink-0 text-[#A5B4AD] transition-transform group-hover:translate-x-0.5" />
+    </Link>
+  );
+}
+
+
+function ProductViewToggle() {
+  const productView = useAiChatStore((state) => state.productView);
+  const setProductView = useAiChatStore((state) => state.setProductView);
+  const visual = productView === 'visual';
+  const label = visual ? 'Компактний вигляд товарів' : 'Вигляд товарів із фото';
+
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      aria-pressed={visual}
+      onClick={() => setProductView(visual ? 'compact' : 'visual')}
+      className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3DAE8B] ${
+        visual
+          ? 'border-[#9FC8B8] bg-[#E9F4EF] text-[#265447] dark:border-[#3A6756] dark:bg-[#1B3027] dark:text-[#3DAE8B]'
+          : 'border-transparent bg-transparent text-[#6D8279] hover:bg-[#EEF5F1] hover:text-[#173B33] dark:text-[#A9B6B0] dark:hover:bg-[#1D2A25] dark:hover:text-white'
+      }`}
+    >
+      {visual ? <List className="h-4 w-4" /> : <ImageIcon className="h-4 w-4" />}
+    </button>
   );
 }
 
@@ -776,6 +847,7 @@ function ChatWindow({ mobile }: { mobile: boolean }) {
           </div>
           <p className="mt-0.5 truncate text-[11px] text-[#71827A] dark:text-[#A9B6B0]">Помічник для вигідних покупок</p>
         </div>
+        <ProductViewToggle />
         <IconButton label="Очистити історію" onClick={clearMessages} disabled={!messages.length || isPending}>
           <Trash2 className="h-4 w-4" />
         </IconButton>
@@ -838,7 +910,7 @@ function ChatWindow({ mobile }: { mobile: boolean }) {
             rows={1}
             maxLength={2000}
             disabled={isPending}
-            placeholder="Що знайти або порівняти?"
+            placeholder="Наприклад: найдешевший сир до 50 грн"
             aria-label="Повідомлення для Zephyros"
             className="max-h-28 min-h-10 flex-1 resize-none border-0 bg-transparent py-2 text-[14px] leading-5 text-[#173B33] outline-none placeholder:text-[#91A098] disabled:opacity-60 dark:text-[#EAF3EF] dark:placeholder:text-[#71857C]"
           />

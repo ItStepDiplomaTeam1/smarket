@@ -272,6 +272,49 @@ async def test_deals_prompt_uses_discount_search_instead_of_literal_phrase():
     assert params["sort"] == "discount_percent:desc"
 
 
+@pytest.mark.parametrize(
+    ("message", "expected_query", "expected_min", "expected_max"),
+    [
+        ("дешевий до 50 грн сир", "сир", None, 50.0),
+        ("сыр от 80 до 150 грн", "сыр", 80.0, 150.0),
+    ],
+)
+async def test_free_form_catalog_query_applies_price_filters(
+    message,
+    expected_query,
+    expected_min,
+    expected_max,
+):
+    client = MagicMock(get=AsyncMock(return_value=response_with_json({"hits": []})))
+
+    await build_read_context(
+        message,
+        AgentDeps(http_client=client, user_id=USER_ID),
+        request_id="free-form-price",
+    )
+
+    params = client.get.await_args.kwargs["params"]
+    assert params["q"] == expected_query
+    assert params.get("price_min") == expected_min
+    assert params.get("price_max") == expected_max
+    if "дешевий" in message:
+        assert params["sort"] == "price:asc"
+
+
+async def test_best_value_query_sorts_by_lowest_price():
+    client = MagicMock(get=AsyncMock(return_value=response_with_json({"hits": []})))
+
+    await build_read_context(
+        "найвигідніший кетчуп",
+        AgentDeps(http_client=client, user_id=USER_ID),
+        request_id="best-value",
+    )
+
+    params = client.get.await_args.kwargs["params"]
+    assert params["q"] == "кетчуп"
+    assert params["sort"] == "price:asc"
+
+
 async def test_catalog_products_always_include_add_to_cart_buttons():
     client = MagicMock(
         get=AsyncMock(
@@ -281,6 +324,7 @@ async def test_catalog_products_always_include_add_to_cart_buttons():
                         {
                             "id": 42,
                             "title": "Молоко 2,5%",
+                            "image_url": "https://cdn.example/milk.webp",
                             "offers": [
                                 {
                                     "price": 39.5,
@@ -308,6 +352,8 @@ async def test_catalog_products_always_include_add_to_cart_buttons():
         "action_button",
     ]
     action = prepared.direct_response.blocks[-1]
+    card = prepared.direct_response.blocks[1]
+    assert card.image_url == "https://cdn.example/milk.webp"
     assert action.action == "add_to_cart"
     assert action.payload["product_id"] == 42
 
