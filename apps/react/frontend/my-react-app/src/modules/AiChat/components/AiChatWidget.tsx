@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, type KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import {
   X,
   Send,
@@ -701,6 +702,32 @@ function ChatWindow({ isMobile }: { isMobile: boolean }) {
   const setProvider = useAiChatStore((s) => s.setProvider);
   const setModelName = useAiChatStore((s) => s.setModelName);
 
+  const { data: productsData } = useQuery<any>({
+    queryKey: ['productsCountChat'],
+    queryFn: async () => {
+      const apiBaseUrl = import.meta.env.VITE_API_URL || 'https://smarket-api.duckdns.org';
+      const res = await fetch(`${apiBaseUrl}/api/v1/search/search?limit=1`);
+      if (!res.ok) throw new Error('Failed to load count');
+      return res.json();
+    },
+    staleTime: 1000 * 60 * 10, // 10 minutes cache
+  });
+
+  const totalProducts = productsData?.total_hits ?? productsData?.nb_hits ?? productsData?.total ?? 12394;
+
+  const formatProductCount = (count: number) => {
+    const formatted = new Intl.NumberFormat('uk-UA').format(count);
+    const mod10 = count % 10;
+    const mod100 = count % 100;
+    let word = 'товарів';
+    if (mod10 === 1 && mod100 !== 11) {
+      word = 'товар';
+    } else if (mod10 >= 2 && mod10 <= 4 && (mod100 < 10 || mod100 >= 20)) {
+      word = 'товари';
+    }
+    return `${formatted} ${word} в каталозі`;
+  };
+
   const { mutate: sendMessage, isPending } = useSendAiMessage();
   const [input, setInput] = useState('');
   const [pendingStatus, setPendingStatus] = useState('Думаю над запитом...');
@@ -864,7 +891,7 @@ function ChatWindow({ isMobile }: { isMobile: boolean }) {
           <ZephyrosMark size={28} />
           <div className="flex-1 min-w-0">
             <p className="text-[14px] font-extrabold text-[#173B33] dark:text-white leading-none font-manrope tracking-tight transition-colors duration-300">Zephyros</p>
-            <p className="text-[10.5px] text-[#6D8279] dark:text-[#A9B6B0] mt-1 transition-colors duration-300">12 394 товари в каталозі</p>
+            <p className="text-[10.5px] text-[#6D8279] dark:text-[#A9B6B0] mt-1 transition-colors duration-300">{formatProductCount(totalProducts)}</p>
           </div>
 
           <IconButton onClick={() => setShowSettings((v) => !v)} title="Налаштування" active={showSettings}>
