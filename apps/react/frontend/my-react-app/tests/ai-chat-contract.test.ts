@@ -64,16 +64,25 @@ test('only server-confirmed mutations require action tokens', () => {
 });
 
 
-test('widget keeps mutation confirmation and responsive accessibility contracts', () => {
+test('widget keeps mutation execution and responsive accessibility contracts', () => {
   assert.match(widgetSource, /const isMutation = isMutationAction\(block\.action\);/);
   assert.match(widgetSource, /if \(isMutation\)/);
-  assert.match(widgetSource, /<ConfirmationDialog/);
-  assert.match(widgetSource, /role="alertdialog"/);
-  assert.match(widgetSource, /aria-modal="true"/);
+  assert.match(widgetSource, /execute\(\);/);
+  assert.match(widgetSource, /pending \? 'Виконується/);
   assert.match(widgetSource, /role="dialog"/);
   assert.match(widgetSource, /aria-live="polite"/);
   assert.match(widgetSource, /h-\[100dvh\] w-screen/);
   assert.match(widgetSource, /h-11 w-11/);
   assert.match(widgetSource, /focus-visible:ring-2/);
   assert.doesNotMatch(widgetSource, /Промін|Promin/);
+});
+
+
+test('product cards support persisted visual mode and navigation', () => {
+  assert.match(widgetSource, /state\.productView/);
+  assert.match(widgetSource, /setProductView/);
+  assert.match(widgetSource, /aria-pressed=\{visual\}/);
+  assert.match(widgetSource, /block\.image_url \|\| productPlaceholder/);
+  assert.match(widgetSource, /`\/product\/\$\{block\.product_id\}`/);
+  assert.match(widgetSource, /aria-label=\{`Відкрити товар/);
 });

@@ -1,16 +1,10 @@
 from __future__ import annotations
 
-import asyncio
 import json
 import re
-import uuid
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-import httpx
-from loguru import logger
-
-from app.config import settings
 from app.deps import AgentDeps
 from app.schemas import ZephyrosResponse
 from app.tools import (
@@ -30,6 +24,25 @@ ContextIntent = Literal[
     "cart_remove",
     "cart_clear",
 ]
+
+
+@dataclass(frozen=True)
+class CatalogQuery:
+    query: str
+    price_min: float | None = None
+    price_max: float | None = None
+    sort: str | None = None
+
+    @property
+    def label(self) -> str:
+        parts = [self.query]
+        if self.price_min is not None and self.price_max is not None:
+            parts.append(f"від {self.price_min:g} до {self.price_max:g} грн")
+        elif self.price_min is not None:
+            parts.append(f"від {self.price_min:g} грн")
+        elif self.price_max is not None:
+            parts.append(f"до {self.price_max:g} грн")
+        return " · ".join(parts)
 
 
 @dataclass(frozen=True)
@@ -375,6 +388,7 @@ def _catalog_product_response(
     hits: list[dict[str, Any]],
     *,
     add_requested: bool = False,
+    query_label: str | None = None,
 ) -> ZephyrosResponse:
     """Render catalog facts deterministically and pair every product with a cart action."""
 
@@ -384,7 +398,7 @@ def _catalog_product_response(
             "content": (
                 "Знайшов товар. Підтвердьте додавання кнопкою нижче."
                 if add_requested and len(hits) == 1
-                else f"Знайшов актуальні пропозиції за запитом «{query[:120]}»."
+                else f"Знайшов актуальні пропозиції за запитом «{(query_label or query)[:120]}»."
             ),
         }
     ]
@@ -425,6 +439,7 @@ def _catalog_product_response(
                     "store": store,
                     "price": f"{price:.2f} ₴" if price > 0 else "Ціна уточнюється",
                     "in_stock": bool(offer.get("in_stock", product.get("in_stock", True))),
+                    "image_url": product.get("image_url"),
                 },
                 {
                     "type": "action_button",
@@ -513,12 +528,60 @@ def _catalog_degraded_response(
     )
 
 
-def _catalog_query(message: str) -> str:
-    normalized = message.casefold()
+_PRICE_CURRENCY = r"(?:грн\.?|грив(?:ня|ні|ень)?|₴)?"
+_PRICE_NUMBER = r"(\d+(?:[.,]\d{1,2})?)"
+
+
+def _parse_catalog_query(message: str) -> CatalogQuery:
+    normalized = " ".join(message.casefold().split())
+    price_min: float | None = None
+    price_max: float | None = None
+
+    def number(value: str) -> float:
+        return float(value.replace(",", "."))
+
+    between_pattern = re.compile(
+        rf"\b(?:від|от)\s*{_PRICE_NUMBER}\s*{_PRICE_CURRENCY}\s*(?:до|по|[-–—])\s*"
+        rf"{_PRICE_NUMBER}\s*{_PRICE_CURRENCY}",
+        flags=re.IGNORECASE,
+    )
+    between = between_pattern.search(normalized)
+    if between:
+        price_min, price_max = sorted((number(between.group(1)), number(between.group(2))))
+        normalized = between_pattern.sub(" ", normalized)
+
+    max_pattern = re.compile(
+        rf"\b(?:до|не\s+дорожче|не\s+дороже|максимум|не\s+більше|не\s+больше|under)"
+        rf"\s*{_PRICE_NUMBER}\s*{_PRICE_CURRENCY}",
+        flags=re.IGNORECASE,
+    )
+    maximum = max_pattern.search(normalized)
+    if maximum:
+        price_max = number(maximum.group(1))
+        normalized = max_pattern.sub(" ", normalized)
+
+    min_pattern = re.compile(
+        rf"\b(?:від|от|не\s+дешевше|не\s+дешевле|мінімум|минимум|over)"
+        rf"\s*{_PRICE_NUMBER}\s*{_PRICE_CURRENCY}",
+        flags=re.IGNORECASE,
+    )
+    minimum = min_pattern.search(normalized)
+    if minimum:
+        price_min = number(minimum.group(1))
+        normalized = min_pattern.sub(" ", normalized)
+
+    cheapest_requested = bool(
+        re.search(
+            r"\b(найвигідніш\w*|сам(?:ий|ая|ое)\s+выгодн\w*|найдешевш\w*|"
+            r"сам(?:ий|ая|ое)\s+дешев\w*|дешев(?:ий|а|е|і|ый|ая|ое|ые))\b",
+            normalized,
+            flags=re.IGNORECASE,
+        )
+    )
     query = re.sub(
         r"\b(знайди|знайти|найди|найти|покажи|показати|показать|порівняй|порівняти|"
-        r"сравни|сравнить|ціни?\s+на|цены?\s+на|найдешевший|найдешевше|дешевший|"
-        r"дешевше|додай|додати|добавь?|добавить|поклади|положи)\b",
+        r"сравни|сравнить|ціни?\s+на|цены?\s+на|найвигідніш\w*|выгодн\w*|"
+        r"найдешевш\w*|дешев\w*|додай|додати|добавь?|добавить|поклади|положи)\b",
         " ",
         normalized,
         flags=re.IGNORECASE,
@@ -529,7 +592,18 @@ def _catalog_query(message: str) -> str:
         query,
         flags=re.IGNORECASE,
     )
-    return " ".join(query.split()) or message.strip()
+    query = re.sub(r"\b(?:грн\.?|грив(?:ня|ні|ень)?)\b|₴", " ", query)
+    clean_query = " ".join(query.split()) or message.strip()
+    return CatalogQuery(
+        query=clean_query,
+        price_min=price_min if price_min is None or price_min >= 0 else None,
+        price_max=price_max if price_max is None or price_max > 0 else None,
+        sort="price:asc" if cheapest_requested else None,
+    )
+
+
+def _catalog_query(message: str) -> str:
+    return _parse_catalog_query(message).query
 
 
 

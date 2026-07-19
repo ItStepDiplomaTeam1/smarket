@@ -25,6 +25,7 @@ class ProductCardBlock(BaseModel):
     price: str
     in_stock: bool
     savings: str | None = None
+    image_url: str | None = None
 
 
 class TabItem(BaseModel):

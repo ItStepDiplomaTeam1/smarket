@@ -179,7 +179,7 @@ never generate those two actions yourself.
 Return one JSON object matching ZephyrosResponse: {"blocks": [...]}. Supported blocks:
 - {"type":"text","content":"..."}
 - {"type":"table","title":"...","columns":[...],"rows":[...],"highlight_row":0}
-- {"type":"product_card","product_id":1,"name":"...","store":"...","price":"...","in_stock":true,"savings":null}
+- {"type":"product_card","product_id":1,"name":"...","store":"...","price":"...","in_stock":true,"savings":null,"image_url":null}
 - {"type":"clarification","question":"...","options":["...","..."]}
 - {"type":"action_button","label":"...","action":"add_to_cart|remove_from_cart|clear_cart|create_review|navigate|apply_filters","payload":{...}}
 - {"type":"badge","variant":"savings|best_price|warning|info","label":"...","value":"..."}
