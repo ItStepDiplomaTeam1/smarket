@@ -300,10 +300,14 @@ async def chat(
 
     run_history = message_history if message_history else None
 
-    # Explicit provider in request -> use only that one.
-    # Autoselection is used only when provider is not passed.
+    # Explicit provider in request -> try that one first, then fall back to others if it fails.
     if request.provider:
-        candidates = [request.provider.lower()]
+        primary = request.provider.lower()
+        configured = available_provider_chain()
+        if primary in configured:
+            candidates = [primary] + [p for p in configured if p != primary]
+        else:
+            candidates = configured
     else:
         candidates = available_provider_chain()
 
@@ -491,8 +495,14 @@ async def chat_stream(
 
     run_history = message_history if message_history else None
 
+    # Explicit provider in request -> try that one first, then fall back to others if it fails.
     if request.provider:
-        candidates = [request.provider.lower()]
+        primary = request.provider.lower()
+        configured = available_provider_chain()
+        if primary in configured:
+            candidates = [primary] + [p for p in configured if p != primary]
+        else:
+            candidates = configured
     else:
         candidates = available_provider_chain()
 
