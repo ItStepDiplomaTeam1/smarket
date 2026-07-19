@@ -74,7 +74,7 @@ async def lifespan(app: FastAPI):
         
         async def probe_and_handle(prov: str):
             logger.info(f"Probing provider health on startup: {prov}")
-            is_healthy = await probe_provider_health(prov, timeout_seconds=3.0)
+            is_healthy = await probe_provider_health(prov, timeout_seconds=10.0)
             if not is_healthy:
                 logger.warning(f"Provider {prov} failed startup health probe. Placing in initial cooldown.")
                 _mark_down(prov, settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS)

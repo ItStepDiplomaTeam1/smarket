@@ -16,8 +16,8 @@ class Settings(BaseSettings):
 
     OPENROUTER_MODEL: str = "meta-llama/llama-3.3-70b-instruct:free"
     GEMINI_MODEL: str = "gemini-3.5-flash"
-    GROQ_MODEL: str = "openai/gpt-oss-20b"
-    CEREBRAS_MODEL: str = "qwen3"
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    CEREBRAS_MODEL: str = "gpt-oss-120b"
 
     CIRCUIT_BREAKER_COOLDOWN_SECONDS: int = 60
     LOG_LEVEL: str = "INFO"

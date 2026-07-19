@@ -1,10 +1,13 @@
 import pytest
 import uuid
+import httpx
 from unittest.mock import AsyncMock, MagicMock
 from pydantic_ai import RunContext
 
 from app.deps import AgentDeps
 from app.tools import search_and_compare_offers, add_product_to_cart
+from app.agent import zephyros
+from app.config import settings
 
 @pytest.fixture
 def mock_ctx():
@@ -83,6 +86,65 @@ async def test_search_and_compare_offers_no_results(mock_ctx):
     assert result["match_percentage"] == 0
     assert "fallback" in result
     assert "Не знайдено" in result["fallback"]["message"]
+
+
+@pytest.mark.asyncio
+async def test_search_and_compare_offers_uses_search_metadata_when_details_fail(mock_ctx):
+    search_res = MagicMock()
+    search_res.json.return_value = {
+        "hits": [{
+            "id": 101,
+            "title": "Milk",
+            "price": 35.0,
+            "old_price": 42.0,
+            "store_id": "novus",
+            "store_name": "Novus Podil",
+            "retail_chain": "novus",
+            "in_stock": True,
+        }]
+    }
+    mock_ctx.deps.http_client.get.side_effect = [
+        search_res,
+        httpx.ConnectError("product_service unavailable"),
+    ]
+
+    result = await search_and_compare_offers(mock_ctx, query="milk")
+
+    fallback_offer = result["hits"][0]["detailed_offers"][0]
+    assert fallback_offer == {
+        "store_id": "novus",
+        "store_name": "Novus Podil",
+        "retail_chain": "novus",
+        "price": 35.0,
+        "old_price": 42.0,
+        "in_stock": True,
+        "highlighted": True,
+    }
+
+
+def test_build_model_translates_deprecated_gemini_model(monkeypatch):
+    model = MagicMock()
+    google_model = MagicMock(return_value=model)
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "test-key")
+    monkeypatch.setattr(zephyros, "GoogleModel", google_model)
+
+    assert zephyros.build_model("gemini", "gemini-2.5-flash") is model
+    google_model.assert_called_once_with("gemini-3.5-flash")
+
+
+def test_build_model_translates_deprecated_groq_and_cerebras_models(monkeypatch):
+    openai_model = MagicMock()
+    cerebras_model = MagicMock()
+    monkeypatch.setattr(settings, "GROQ_API_KEY", "test-key")
+    monkeypatch.setattr(settings, "CEREBRAS_API_KEY", "test-key")
+    monkeypatch.setattr(zephyros, "OpenAIChatModel", openai_model)
+    monkeypatch.setattr(zephyros, "CerebrasModel", cerebras_model)
+
+    zephyros.build_model("groq", "openai/gpt-oss-20b")
+    zephyros.build_model("cerebras", "qwen3")
+
+    assert openai_model.call_args.kwargs["model_name"] == "llama-3.3-70b-versatile"
+    assert cerebras_model.call_args.kwargs["model_name"] == "gpt-oss-120b"
 
 @pytest.mark.asyncio
 async def test_add_product_to_cart_requires_confirmation(mock_ctx):

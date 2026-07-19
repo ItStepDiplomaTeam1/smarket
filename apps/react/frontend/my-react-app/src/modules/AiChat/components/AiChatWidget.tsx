@@ -19,7 +19,7 @@ import {
   Check,
 } from 'lucide-react';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
-import { useAiChatStore, type UIBlock, type ZephyrosResponse, type ChatMessage } from '@/modules/AiChat/store/useAiChatStore';
+import { PROVIDER_MODELS, useAiChatStore, type UIBlock, type ZephyrosResponse, type ChatMessage } from '@/modules/AiChat/store/useAiChatStore';
 import { useSendAiMessage } from '@/hooks/api/useAiChatApi';
 
 function generateId() {
@@ -576,24 +576,6 @@ const PROVIDER_LABELS: Record<string, string> = {
   openrouter: 'OpenRouter',
   gemini: 'Gemini',
   groq: 'Groq',
-};
-
-const PROVIDER_MODELS = {
-  cerebras: [
-    { value: 'qwen3', label: 'Qwen 3 (рекомендовано)' },
-  ],
-  openrouter: [
-    { value: 'openai/gpt-oss-120b:free', label: 'GPT OSS 120B Free (рекомендовано)' },
-    { value: 'google/gemini-3.5-flash:free', label: 'Gemini 3.5 Flash Free' },
-    { value: 'meta-llama/llama-3.3-70b-instruct:free', label: 'Llama 3.3 70B Free' },
-  ],
-  gemini: [
-    { value: 'gemini-3.5-flash', label: 'Gemini 3.5 Flash (рекомендовано)' },
-  ],
-  groq: [
-    { value: 'openai/gpt-oss-20b', label: 'GPT OSS 20B (рекомендовано)' },
-    { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B' },
-  ],
 };
 
 // ─── Icon button — shared quiet control style ─────────────────────────────────

@@ -323,6 +323,18 @@ async def search_and_compare_offers(
             offers_data = offers_res
 
         detailed_offers = offers_data.get("prices", []) or offers_data.get("offers", [])
+        if offers_data.get("error") and hit.get("price") is not None:
+            logger.bind(product_id=hit["id"]).info(
+                "Using search-hit metadata because product details are unavailable"
+            )
+            detailed_offers = [{
+                "store_id": hit.get("store_id"),
+                "store_name": hit.get("store_name"),
+                "retail_chain": hit.get("retail_chain"),
+                "price": hit["price"],
+                "old_price": hit.get("old_price"),
+                "in_stock": hit.get("in_stock", False),
+            }]
         
         # Deep copy/re-construct the list to avoid modifying cached shared objects
         processed_offers = []
