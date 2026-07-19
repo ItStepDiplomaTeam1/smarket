@@ -375,6 +375,21 @@ function ActionButtonView({
     }
   };
 
+  let icon = null;
+  if (!pending) {
+    if (completed) {
+      icon = <CheckCircle2 className="h-4 w-4" />;
+    } else if (block.action === 'add_to_cart') {
+      icon = <ShoppingCart className="h-4 w-4" />;
+    } else if (block.action === 'remove_from_cart' || block.action === 'clear_cart') {
+      icon = <Trash2 className="h-4 w-4" />;
+    } else if (block.action === 'create_review') {
+      icon = <Star className="h-4 w-4" />;
+    } else {
+      icon = <ExternalLink className="h-4 w-4" />;
+    }
+  }
+
   const unavailable = isMutation && !block.payload?.action_token;
   return (
     <button
@@ -385,7 +400,7 @@ function ActionButtonView({
       className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-0 bg-[#265447] px-4 py-2.5 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#1B4438] hover:shadow-md active:translate-y-0 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-[#A9BAB3] disabled:shadow-none dark:bg-[#3DAE8B] dark:text-[#0B110F] dark:hover:bg-[#55C49F] dark:disabled:bg-[#405D52] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3DAE8B] focus-visible:ring-offset-2 motion-reduce:transform-none"
     >
       {pending && <LoaderCircle className="h-4 w-4 animate-spin" />}
-      {!pending && (completed ? <CheckCircle2 className="h-4 w-4" /> : block.action === 'add_to_cart' ? <ShoppingCart className="h-4 w-4" /> : block.action === 'remove_from_cart' || block.action === 'clear_cart' ? <Trash2 className="h-4 w-4" /> : block.action === 'create_review' ? <Star className="h-4 w-4" /> : <ExternalLink className="h-4 w-4" />}
+      {icon}
       {pending ? 'Виконується...' : completed ? 'Виконано' : unavailable ? 'Оновіть пропозицію' : block.label}
     </button>
   );
