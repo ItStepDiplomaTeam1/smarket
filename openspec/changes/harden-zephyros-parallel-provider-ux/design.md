@@ -60,7 +60,7 @@ Every winning candidate response is parsed as the existing UI-block schema, cons
 
 ### 6. The assistant becomes a shopping copilot, not a model console
 
-The visible name remains Zephyros for continuity, with “Промін — помічник для покупок” as descriptive copy. The settings overlay loses provider/model selects. It is replaced by lightweight help and preferences that are meaningful to shoppers, such as compact result display and clear-history.
+The visible name and all shopper-facing descriptive copy use Zephyros exclusively. The settings overlay loses provider/model selects. It is replaced by lightweight help and preferences that are meaningful to shoppers, such as compact result display and clear-history.
 
 The chat has four explicit states: ready with suggested shopping prompts; working with semantic steps; answered with cards/tables and clear actions; and degraded with a plain-language notice plus Retry. Provider names, raw errors, and internal model IDs never appear. Existing dark theme, desktop floating panel, mobile full-screen panel, keyboard shortcut, copy, and responsive blocks are preserved. All action buttons use confirmation for mutations; read-only navigation/filter actions stay one-click.
 

@@ -1,10 +1,11 @@
 import { useMutation } from '@tanstack/react-query';
 import { apiClient } from '@/shared/api/apiClient';
 import type { ZephyrosResponse } from '@/modules/AiChat/store/useAiChatStore';
+import { buildChatRequest } from '@/modules/AiChat/lib/chatContract';
 
 interface ChatMessagePayload {
   role: 'user' | 'assistant';
-  content: string | any;
+  content: string | ZephyrosResponse;
 }
 
 interface SendMessagePayload {
@@ -14,9 +15,9 @@ interface SendMessagePayload {
 }
 
 const STATUS_STEPS = [
-  'Думаю над запитом...',
-  'Шукаю товари...',
-  'Генерую відповідь...',
+  'Перевіряю запит...',
+  'Збираю актуальні дані...',
+  'Готую корисну відповідь...',
 ];
 
 export const useSendAiMessage = () => {
@@ -29,16 +30,18 @@ export const useSendAiMessage = () => {
         }
       };
       nextStatus();
+      const timer = window.setInterval(nextStatus, 1800);
 
-      const { data } = await apiClient.post<ZephyrosResponse>(
-        '/api/v1/agent/chat',
-        {
-          message,
-          history: history ?? null,
-        },
-        { timeout: 120000 },
-      );
-      return data;
+      try {
+        const { data } = await apiClient.post<ZephyrosResponse>(
+          '/api/v1/agent/chat',
+          buildChatRequest(message, history),
+          { timeout: 38000 },
+        );
+        return data;
+      } finally {
+        window.clearInterval(timer);
+      }
     },
   });
 };

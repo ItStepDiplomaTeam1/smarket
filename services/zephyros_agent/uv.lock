@@ -1387,7 +1387,7 @@ wheels = [
 ]
 
 [[package]]
-name = "promin-agent"
+name = "zephyros-agent"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
