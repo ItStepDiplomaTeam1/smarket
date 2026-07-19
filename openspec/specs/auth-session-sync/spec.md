@@ -11,9 +11,9 @@ The system SHALL validate the current authenticated user session when the applic
 - **THEN** the system SHALL automatically clear the user authentication state and reset layout header details
 
 ### Requirement: Authenticated User Auth Page Protection
-The system SHALL redirect authenticated users away from the login and registration pages.
+The system SHALL redirect authenticated users away from all authentication pages, including login, registration, and password recovery.
 
-#### Scenario: Logged-in user attempts to visit auth page
-- **WHEN** an authenticated user navigates to `/auth`
+#### Scenario: Logged-in user attempts to visit auth-related pages
+- **WHEN** an authenticated user navigates to `/auth`, `/register`, `/forgot-password`, or `/login`
 - **THEN** the system SHALL redirect them to the home page (`/`)
 
