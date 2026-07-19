@@ -306,88 +306,6 @@ function ClarificationBlockView({
 }
 
 
-function ConfirmationDialog({
-  label,
-  pending,
-  onCancel,
-  onConfirm,
-}: {
-  label: string;
-  pending: boolean;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  const confirmRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    confirmRef.current?.focus();
-  }, []);
-
-  useEffect(() => {
-    const handleEscape = (event: globalThis.KeyboardEvent) => {
-      if (event.key === 'Escape' && !pending) onCancel();
-    };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [onCancel, pending]);
-
-  return (
-    <div
-      className="fixed inset-0 z-50 grid place-items-center bg-[#0B1D17]/45 p-5 backdrop-blur-[2px] motion-reduce:animate-none"
-      style={{ animation: 'zephyrosFadeIn 180ms ease-out both' }}
-      role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !pending) onCancel();
-      }}
-    >
-      <div
-        role="alertdialog"
-        aria-modal="true"
-        aria-labelledby="zephyros-confirm-title"
-        className="w-full max-w-sm rounded-2xl border border-[#DDE8E3] bg-white p-5 shadow-2xl dark:border-[#315345] dark:bg-[#15221D] motion-reduce:animate-none"
-        style={{ animation: 'zephyrosDialogIn 240ms cubic-bezier(0.16,1,0.3,1) both' }}
-      >
-        <div className="flex items-start gap-3">
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#EEF5F1] text-[#265447] dark:bg-[#1D3028] dark:text-[#3DAE8B]">
-            {label.toLocaleLowerCase().includes('видал') || label.toLocaleLowerCase().includes('очист') ? (
-              <Trash2 className="h-5 w-5" />
-            ) : (
-              <ShoppingCart className="h-5 w-5" />
-            )}
-          </div>
-          <div>
-            <h3 id="zephyros-confirm-title" className="text-base font-extrabold text-[#173B33] dark:text-white">
-              Підтвердити дію
-            </h3>
-            <p className="mt-1 text-sm leading-relaxed text-[#61736B] dark:text-[#A9B6B0]">{label}?</p>
-          </div>
-        </div>
-        <div className="mt-5 grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={pending}
-            className="min-h-11 rounded-xl border border-[#D3E0DA] bg-white px-4 text-sm font-bold text-[#50635B] hover:bg-[#F5F9F7] disabled:opacity-50 dark:border-[#315345] dark:bg-[#15221D] dark:text-[#C8D5D0] dark:hover:bg-[#1B2B25] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3DAE8B]"
-          >
-            Скасувати
-          </button>
-          <button
-            ref={confirmRef}
-            type="button"
-            onClick={onConfirm}
-            disabled={pending}
-            className="flex min-h-11 items-center justify-center gap-2 rounded-xl border-0 bg-[#265447] px-4 text-sm font-bold text-white hover:bg-[#1B4438] disabled:opacity-60 dark:bg-[#3DAE8B] dark:text-[#0B110F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3DAE8B] focus-visible:ring-offset-2"
-          >
-            {pending && <LoaderCircle className="h-4 w-4 animate-spin" />}
-            Підтвердити
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
 function ActionButtonView({
   block,
   onFeedback,
@@ -397,7 +315,6 @@ function ActionButtonView({
 }) {
   const navigate = useNavigate();
   const close = useAiChatStore((state) => state.close);
-  const [confirming, setConfirming] = useState(false);
   const [pending, setPending] = useState(false);
   const [completed, setCompleted] = useState(false);
   const isMutation = isMutationAction(block.action);
@@ -409,7 +326,6 @@ function ActionButtonView({
     try {
       await apiClient.post('/api/v1/agent/actions/execute', { action_token: token });
       setCompleted(true);
-      setConfirming(false);
       const successMessages: Partial<
         Record<Extract<UIBlock, { type: 'action_button' }>['action'], string>
       > = {
@@ -427,7 +343,6 @@ function ActionButtonView({
         ],
       });
     } catch {
-      setConfirming(false);
       onFeedback({
         blocks: [
           {
@@ -444,7 +359,9 @@ function ActionButtonView({
 
   const handleClick = () => {
     if (isMutation) {
-      if (block.payload?.action_token && !completed) setConfirming(true);
+      if (block.payload?.action_token && !completed) {
+        execute();
+      }
       return;
     }
     if (block.action === 'navigate' && typeof block.payload?.route === 'string') {
@@ -460,26 +377,17 @@ function ActionButtonView({
 
   const unavailable = isMutation && !block.payload?.action_token;
   return (
-    <>
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={unavailable || pending || completed}
-        title={unavailable ? 'Дія застаріла — повторіть запит' : undefined}
-        className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-0 bg-[#265447] px-4 py-2.5 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#1B4438] hover:shadow-md active:translate-y-0 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-[#A9BAB3] disabled:shadow-none dark:bg-[#3DAE8B] dark:text-[#0B110F] dark:hover:bg-[#55C49F] dark:disabled:bg-[#405D52] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3DAE8B] focus-visible:ring-offset-2 motion-reduce:transform-none"
-      >
-        {completed ? <CheckCircle2 className="h-4 w-4" /> : block.action === 'add_to_cart' ? <ShoppingCart className="h-4 w-4" /> : block.action === 'remove_from_cart' || block.action === 'clear_cart' ? <Trash2 className="h-4 w-4" /> : block.action === 'create_review' ? <Star className="h-4 w-4" /> : <ExternalLink className="h-4 w-4" />}
-        {completed ? 'Виконано' : unavailable ? 'Оновіть пропозицію' : block.label}
-      </button>
-      {confirming && (
-        <ConfirmationDialog
-          label={block.label}
-          pending={pending}
-          onCancel={() => setConfirming(false)}
-          onConfirm={execute}
-        />
-      )}
-    </>
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={unavailable || pending || completed}
+      title={unavailable ? 'Дія застаріла — повторіть запит' : undefined}
+      className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border-0 bg-[#265447] px-4 py-2.5 text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#1B4438] hover:shadow-md active:translate-y-0 active:scale-[0.99] disabled:cursor-not-allowed disabled:bg-[#A9BAB3] disabled:shadow-none dark:bg-[#3DAE8B] dark:text-[#0B110F] dark:hover:bg-[#55C49F] dark:disabled:bg-[#405D52] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#3DAE8B] focus-visible:ring-offset-2 motion-reduce:transform-none"
+    >
+      {pending && <LoaderCircle className="h-4 w-4 animate-spin" />}
+      {!pending && (completed ? <CheckCircle2 className="h-4 w-4" /> : block.action === 'add_to_cart' ? <ShoppingCart className="h-4 w-4" /> : block.action === 'remove_from_cart' || block.action === 'clear_cart' ? <Trash2 className="h-4 w-4" /> : block.action === 'create_review' ? <Star className="h-4 w-4" /> : <ExternalLink className="h-4 w-4" />}
+      {pending ? 'Виконується...' : completed ? 'Виконано' : unavailable ? 'Оновіть пропозицію' : block.label}
+    </button>
   );
 }
 
