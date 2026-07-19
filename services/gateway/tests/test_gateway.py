@@ -1,7 +1,8 @@
 import pytest
 import jwt
 import httpx
-from unittest.mock import MagicMock
+import json
+from unittest.mock import AsyncMock, MagicMock
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -23,6 +24,7 @@ def setup_gateway():
     mock_response.aiter_raw.return_value = mock_aiter_raw()
     
     async def mock_send(request, *args, **kwargs):
+        await request.aread()
         captured_requests.append(request)
         if "connect-error" in str(request.url):
             raise httpx.ConnectError("Connection refused")
@@ -124,3 +126,64 @@ def test_downstream_service_unreachable(setup_gateway):
     response = client.get("/api/v1/products/connect-error")
     assert response.status_code == 503
     assert "недоступний" in response.json()["detail"] or "unavailable" in response.json()["detail"].lower()
+
+
+def test_agent_proxy_preserves_request_id_and_legacy_body(monkeypatch, setup_gateway):
+    captured = setup_gateway
+    monkeypatch.setattr("jwt.decode", lambda token, key, algorithms: {
+        "sub": "e2e0ac63-8f29-471c-9065-660bc277d790",
+        "role": "user",
+        "type": "access",
+    })
+
+    response = client.post(
+        "/api/v1/agent/chat",
+        headers={
+            "Authorization": "Bearer user-token",
+            "X-Request-Id": "request-from-browser",
+        },
+        json={
+            "message": "Порівняй молоко",
+            "provider": "legacy-provider",
+            "model_name": "legacy-model",
+        },
+    )
+
+    assert response.status_code == 200
+    assert len(captured) == 1
+    downstream = captured[0]
+    assert downstream.headers["X-Request-Id"] == "request-from-browser"
+    assert downstream.headers["X-User-Id"] == "e2e0ac63-8f29-471c-9065-660bc277d790"
+    assert json.loads(downstream.content) == {
+        "message": "Порівняй молоко",
+        "provider": "legacy-provider",
+        "model_name": "legacy-model",
+    }
+
+
+def test_agent_proxy_never_exposes_raw_provider_errors(monkeypatch, setup_gateway):
+    monkeypatch.setattr("jwt.decode", lambda token, key, algorithms: {
+        "sub": "e2e0ac63-8f29-471c-9065-660bc277d790",
+        "role": "user",
+        "type": "access",
+    })
+    upstream = MagicMock(spec=httpx.Response)
+    upstream.status_code = 502
+    upstream.headers = httpx.Headers({"content-type": "application/json"})
+    upstream.aread = AsyncMock(
+        return_value=b'{"detail":"openrouter invalid key sk-secret","model":"private-model"}'
+    )
+    upstream.aclose = AsyncMock()
+    app.state.http_client.send = AsyncMock(return_value=upstream)
+
+    response = client.post(
+        "/api/v1/agent/chat",
+        headers={"Authorization": "Bearer user-token"},
+        json={"message": "hello"},
+    )
+
+    assert response.status_code == 502
+    serialized = json.dumps(response.json()).casefold()
+    assert "openrouter" not in serialized
+    assert "private-model" not in serialized
+    assert "sk-secret" not in serialized

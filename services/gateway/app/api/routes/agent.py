@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Request, Depends, Response
+from fastapi import APIRouter, Request, Depends
 from fastapi.responses import JSONResponse, StreamingResponse
 import httpx
 import uuid
+from starlette.background import BackgroundTask
 
 from app.api.core.config import settings
 from app.api.dependencies import verify_jwt
@@ -16,6 +17,34 @@ def _error_response(error: str, detail: str, status_code: int) -> JSONResponse:
     )
 
 
+def _proxy_headers(request: Request) -> dict[str, str]:
+    headers = dict(request.headers)
+    headers.pop("host", None)
+    headers.pop("x-request-id", None)
+    headers["X-Request-Id"] = request.headers.get("X-Request-Id") or str(uuid.uuid4())
+    return headers
+
+
+def _safe_agent_error(status_code: int) -> JSONResponse:
+    if status_code == 401:
+        return _error_response("agent_auth_required", "Потрібно увійти в акаунт", 401)
+    if status_code == 403:
+        return _error_response("agent_action_forbidden", "Дію не дозволено", 403)
+    if status_code == 409:
+        return _error_response(
+            "agent_action_expired",
+            "Дія вже виконана або термін підтвердження минув",
+            409,
+        )
+    if status_code in {400, 422}:
+        return _error_response("agent_invalid_request", "Перевірте запит до Zephyros", status_code)
+    return _error_response(
+        "agent_error",
+        "Zephyros тимчасово не зміг виконати запит",
+        status_code,
+    )
+
+
 @router.post("/summarize-plan", include_in_schema=False)
 async def proxy_summarize_plan(
     request: Request,
@@ -23,9 +52,7 @@ async def proxy_summarize_plan(
     client: httpx.AsyncClient = request.app.state.http_client
     target_url = f"{settings.AGENT_SERVICE_URL}/agent/summarize-plan"
 
-    headers = dict(request.headers)
-    headers.pop("host", None)
-    headers.setdefault("X-Request-Id", str(uuid.uuid4()))
+    headers = _proxy_headers(request)
 
     try:
         req = client.build_request(
@@ -40,6 +67,7 @@ async def proxy_summarize_plan(
             response.aiter_raw(),
             status_code=response.status_code,
             headers=dict(response.headers),
+            background=BackgroundTask(response.aclose),
         )
     except httpx.ConnectError:
         return _error_response("agent_unavailable", "Сервіс агента недоступний", 503)
@@ -58,9 +86,7 @@ async def proxy_to_agent(
     client: httpx.AsyncClient = request.app.state.http_client
     target_url = f"{settings.AGENT_SERVICE_URL}/agent/{path}"
 
-    headers = dict(request.headers)
-    headers.pop("host", None)
-    headers.setdefault("X-Request-Id", str(uuid.uuid4()))
+    headers = _proxy_headers(request)
 
     headers["X-User-Id"] = str(token_payload.get("sub"))
 
@@ -71,24 +97,21 @@ async def proxy_to_agent(
             headers=headers,
             params=request.query_params,
             content=request.stream(),
-            timeout=120.0,
+            timeout=35.0,
         )
         response = await client.send(req, stream=True)
 
         # If upstream returned an error status, read and forward the body
         if response.status_code >= 400:
-            body = await response.aread()
+            await response.aread()
             await response.aclose()
-            return Response(
-                status_code=response.status_code,
-                content=body,
-                media_type="application/json",
-            )
+            return _safe_agent_error(response.status_code)
 
         return StreamingResponse(
             response.aiter_raw(),
             status_code=response.status_code,
             headers=dict(response.headers),
+            background=BackgroundTask(response.aclose),
         )
     except httpx.ReadTimeout:
         return _error_response("agent_timeout", "Сервіс агента не відповів вчасно", 504)

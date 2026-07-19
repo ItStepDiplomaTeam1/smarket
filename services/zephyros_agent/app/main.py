@@ -1,67 +1,44 @@
 import json
+import hmac
+import hashlib
 import time
 import uuid
 import asyncio
 from pydantic_ai import Agent
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Literal
 
 import redis.asyncio as aioredis
 import httpx
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, ORJSONResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from loguru import logger
-from pydantic import BaseModel, ValidationError
-from pydantic_ai.exceptions import ModelHTTPError
+from pydantic import BaseModel, Field
 import pydantic_ai.messages as pydantic_ai_msgs
 
-from app.agent.zephyros import agent, readonly_agent, available_provider_chain, build_model, probe_provider_health
+from app.agent.zephyros import (
+    PROVIDER_REGISTRY,
+    available_provider_chain,
+    build_model,
+    readonly_agent,
+)
 from app.config import settings
 from app.deps import AgentDeps
 from app.logging import setup_logging
-from app.orchestration import ProviderState, ResponseStore, compact_history, race_first_valid
-from app.schemas import ErrorResponse, ZephyrosResponse
+from app.orchestration import (
+    ProviderState,
+    ResponseStore,
+    RoutingMetrics,
+    classify_failure,
+    compact_history,
+    race_first_valid,
+)
+from app.read_context import build_read_context
+from app.schemas import TabsBlock, ZephyrosResponse
 
 setup_logging(level=settings.LOG_LEVEL, json_logs=settings.LOG_JSON)
-
-# Kept as an emergency in-process guard and for backwards-compatible health
-# diagnostics.  The authoritative circuit state is ProviderState/Redis.
-_provider_down_until: dict[str, float] = {}
-
-
-def _truncate(value: str | None, limit: int = 240) -> str:
-    if not value:
-        return ""
-    return value if len(value) <= limit else f"{value[:limit]}..."
-
-
-def _error_response(error: str, detail: str, status_code: int = 502) -> JSONResponse:
-    return JSONResponse(
-        status_code=status_code,
-        content=ErrorResponse(error=error, detail=detail).model_dump(),
-    )
-
-
-def _mark_down(provider: str, seconds: float) -> None:
-    _provider_down_until[provider] = time.monotonic() + seconds
-    logger.bind(provider=provider, cooldown_seconds=seconds).warning(
-        "Provider moved to cooldown",
-    )
-
-
-def _is_down(provider: str) -> bool:
-    until = _provider_down_until.get(provider)
-    if until is not None and time.monotonic() < until:
-        return True
-    if "-" in provider:
-        base = provider.split("-")[0]
-        base_until = _provider_down_until.get(base)
-        if base_until is not None and time.monotonic() < base_until:
-            return True
-    return False
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -72,25 +49,11 @@ async def lifespan(app: FastAPI):
     app.state.redis = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
     app.state.provider_state = ProviderState(app.state.redis)
     app.state.response_store = ResponseStore(app.state.redis)
+    app.state.routing_metrics = RoutingMetrics(app.state.redis)
     logger.info("Zephyros agent service started")
-    try:
-        chain = available_provider_chain()
-        logger.bind(provider_candidates=chain).info("Resolved available provider candidates")
-        
-        async def probe_and_handle(prov: str):
-            logger.info(f"Probing provider health on startup: {prov}")
-            is_healthy = await probe_provider_health(prov, timeout_seconds=10.0)
-            if not is_healthy:
-                logger.warning(f"Provider {prov} failed startup health probe. Placing in initial cooldown.")
-                await app.state.provider_state.mark_failure(
-                    prov, "timeout", settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS
-                )
-            else:
-                logger.info(f"Provider {prov} passed startup health probe.")
-
-        await asyncio.gather(*(probe_and_handle(p) for p in chain), return_exceptions=True)
-    except Exception:
-        logger.exception("Error checking available providers on startup")
+    logger.bind(provider_candidate_count=len(available_provider_chain())).info(
+        "Resolved configured provider candidates; live health is traffic-driven"
+    )
     yield
     await app.state.http_client.aclose()
     await app.state.redis.close()
@@ -100,7 +63,6 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Zephyros AI Agent",
     version="0.1.0",
-    default_response_class=ORJSONResponse,
     lifespan=lifespan,
 )
 
@@ -143,37 +105,191 @@ async def request_logging_middleware(request: Request, call_next):
 
 
 class ChatMessage(BaseModel):
-    role: str
+    role: Literal["user", "assistant"]
     content: str | dict[str, Any]
 
 
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(min_length=1, max_length=settings.CHAT_MAX_INPUT_CHARS)
     # Accepted only for a one-release compatibility window.  Routing ignores it.
     provider: str | None = None
     model_name: str | None = None
-    history: list[ChatMessage] | None = None
+    history: list[ChatMessage] | None = Field(default=None, max_length=50)
 
 
 class ActionExecutionRequest(BaseModel):
-    action_token: str
+    action_token: str = Field(min_length=1, max_length=128)
+
+
+class CacheInvalidationRequest(BaseModel):
+    scope: Literal["catalog", "user"]
+    user_id: str | None = None
+
+
+def _require_operator_key(value: str | None) -> None:
+    configured = settings.ZEPHYROS_OPERATOR_KEY
+    if not configured:
+        raise HTTPException(status_code=404, detail="Not found")
+    if not value or not hmac.compare_digest(value, configured):
+        raise HTTPException(status_code=403, detail="Operator credentials are invalid")
+
+
+def _metric_labels(field: str) -> tuple[str, dict[str, str]]:
+    name, separator, raw_labels = field.partition("|")
+    if not separator:
+        return name, {}
+    labels: dict[str, str] = {}
+    for part in raw_labels.split(","):
+        key, found, value = part.partition("=")
+        if found:
+            labels[key] = value
+    return name, labels
+
+
+def _metric_total(
+    snapshot: dict[str, float],
+    name: str,
+    *,
+    label: tuple[str, str] | None = None,
+) -> float:
+    total = 0.0
+    for field, value in snapshot.items():
+        metric_name, labels = _metric_labels(field)
+        if metric_name != name:
+            continue
+        if label and labels.get(label[0]) != label[1]:
+            continue
+        total += value
+    return total
+
+
+def _slo_observation(snapshot: dict[str, float]) -> dict[str, float | bool | None]:
+    request_count = _metric_total(snapshot, "chat_requests_total")
+    success_count = sum(
+        _metric_total(snapshot, "chat_responses_total", label=("outcome", outcome))
+        for outcome in ("success", "direct", "cache", "singleflight")
+    )
+    success_rate = success_count / request_count if request_count else None
+
+    latency_count = _metric_total(snapshot, "chat_request_latency_count")
+    buckets: dict[float, float] = {}
+    for field, value in snapshot.items():
+        metric_name, labels = _metric_labels(field)
+        if metric_name != "chat_request_latency_bucket" or labels.get("le") == "+Inf":
+            continue
+        try:
+            boundary = float(labels["le"])
+        except (KeyError, ValueError):
+            continue
+        buckets[boundary] = buckets.get(boundary, 0.0) + value
+    p95_ms: float | None = None
+    if latency_count:
+        threshold = latency_count * 0.95
+        p95_ms = next(
+            (boundary for boundary in sorted(buckets) if buckets[boundary] >= threshold),
+            None,
+        )
+
+    return {
+        "sample_size": request_count,
+        "success_rate": success_rate,
+        "success_rate_met": (
+            success_rate >= settings.CHAT_SUCCESS_RATE_SLO
+            if success_rate is not None
+            else None
+        ),
+        "latency_p95_ms": p95_ms,
+        "latency_p95_met": (
+            p95_ms <= settings.CHAT_LATENCY_P95_SLO_MS if p95_ms is not None else None
+        ),
+    }
 
 
 @app.get("/health", tags=["System"])
 async def health_check():
-    from app.agent.zephyros import PROVIDER_CHAIN, PROVIDER_REGISTRY_VERSION, _provider_available
-    snapshots = await app.state.provider_state.snapshot(PROVIDER_CHAIN)
-    provider_states = {
-        prov: {"configured": _provider_available(prov), **snapshots[prov]}
-        for prov in PROVIDER_CHAIN
-    }
-        
+    from app.agent.zephyros import PROVIDER_REGISTRY_VERSION
+
     return {
         "status": "ok",
         "service": "zephyros_agent",
         "registry_version": PROVIDER_REGISTRY_VERSION,
-        "providers": provider_states
+        "routing_mode": settings.ZEPHYROS_ROUTING_MODE,
+        "parallel_cohort_percent": settings.ZEPHYROS_PARALLEL_COHORT_PERCENT,
+        "configured_candidates": len(available_provider_chain()),
     }
+
+
+@app.get("/internal/diagnostics", tags=["System"], include_in_schema=False)
+async def operator_diagnostics(
+    x_zephyros_operator_key: str | None = Header(
+        default=None,
+        alias="X-Zephyros-Operator-Key",
+    ),
+) -> dict[str, Any]:
+    _require_operator_key(x_zephyros_operator_key)
+    from app.agent.zephyros import PROVIDER_REGISTRY, PROVIDER_REGISTRY_VERSION
+
+    redis_client = getattr(app.state, "redis", None)
+    provider_state: ProviderState = getattr(
+        app.state,
+        "provider_state",
+        ProviderState(redis_client),
+    )
+    metrics: RoutingMetrics = getattr(
+        app.state,
+        "routing_metrics",
+        RoutingMetrics(redis_client),
+    )
+    names = [candidate.name for candidate in PROVIDER_REGISTRY]
+    snapshots = await provider_state.snapshot(names)
+    metric_snapshot = await metrics.snapshot()
+    registry = [
+        {
+            "name": candidate.name,
+            "priority": candidate.priority,
+            "timeout_seconds": candidate.timeout_seconds,
+            "concurrency_limit": candidate.concurrency_limit,
+            **snapshots[candidate.name],
+        }
+        for candidate in PROVIDER_REGISTRY
+    ]
+    return {
+        "registry_version": PROVIDER_REGISTRY_VERSION,
+        "routing_mode": settings.ZEPHYROS_ROUTING_MODE,
+        "parallel_cohort_percent": settings.ZEPHYROS_PARALLEL_COHORT_PERCENT,
+        "slo": {
+            "success_rate": settings.CHAT_SUCCESS_RATE_SLO,
+            "latency_p95_ms": settings.CHAT_LATENCY_P95_SLO_MS,
+            "observed": _slo_observation(metric_snapshot),
+        },
+        "providers": registry,
+        "metrics": metric_snapshot,
+    }
+
+
+@app.post("/internal/cache/invalidate", tags=["System"], include_in_schema=False)
+async def invalidate_agent_cache(
+    request: CacheInvalidationRequest,
+    x_zephyros_operator_key: str | None = Header(
+        default=None,
+        alias="X-Zephyros-Operator-Key",
+    ),
+) -> dict[str, str]:
+    _require_operator_key(x_zephyros_operator_key)
+    if request.scope == "user" and not request.user_id:
+        raise HTTPException(status_code=422, detail="user_id is required for user scope")
+    redis_client = getattr(app.state, "redis", None)
+    store: ResponseStore = getattr(app.state, "response_store", ResponseStore(redis_client))
+    try:
+        await store.invalidate(request.scope, request.user_id)
+    except (ValueError, TypeError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    logger.bind(
+        event_type="zephyros.cache.invalidated",
+        scope=request.scope,
+        user_id=request.user_id,
+    ).info("Assistant cache namespace invalidated")
+    return {"status": "invalidated", "scope": request.scope}
 
 
 class SummarizePlanRequest(BaseModel):
@@ -203,50 +319,80 @@ async def summarize_plan(
         f"Загальна сума: {request.total_price:.2f} грн. "
         f"Сума економії: {request.savings_amount:.2f} грн."
     )
-    
-    candidates = available_provider_chain()
+    fallback_text = (
+        f"План на {request.items_count} товарів у {request.store_name} готовий. "
+        f"Загальна сума — {request.total_price:.2f} грн, "
+        f"економія — {request.savings_amount:.2f} грн."
+    )
+    redis_client = getattr(app.state, "redis", None)
+    provider_state: ProviderState = getattr(
+        app.state,
+        "provider_state",
+        ProviderState(redis_client),
+    )
+    metrics: RoutingMetrics = getattr(
+        app.state,
+        "routing_metrics",
+        RoutingMetrics(redis_client),
+    )
+    policies = {candidate.name: candidate for candidate in PROVIDER_REGISTRY}
+    candidates = [
+        provider
+        for provider in available_provider_chain()
+        if await provider_state.acquire(
+            provider,
+            policies[provider].concurrency_limit,
+        )
+    ]
     if not candidates:
-        logger.error("No AI providers configured for summarize-plan")
-        raise HTTPException(status_code=503, detail="ШІ-провайдери не налаштовані на сервері.")
-        
-    last_error: Exception | None = None
-    for provider in candidates:
-        if _is_down(provider):
-            logger.warning(f"Provider {provider} is in cooldown, skipping summarize-plan")
-            continue
-            
+        await metrics.increment("summary_responses_total", labels={"outcome": "deterministic"})
+        return {"text": fallback_text}
+
+    async def attempt(provider: str) -> tuple[str, str | None]:
         try:
-            current_model = build_model(provider)
-            simple_agent = Agent(current_model, system_prompt=SUMMARIZE_SYSTEM_PROMPT)
-            
-            # 4.0 second strict timeout
+            simple_agent = Agent(build_model(provider), system_prompt=SUMMARIZE_SYSTEM_PROMPT)
             result = await asyncio.wait_for(
-                simple_agent.run(prompt),
-                timeout=4.0
+                simple_agent.run(
+                    prompt,
+                    model_settings={"max_tokens": 180},
+                ),
+                timeout=min(6.0, policies[provider].timeout_seconds),
             )
-            return {"text": result.data.strip()}
-            
-        except asyncio.TimeoutError as e:
-            _mark_down(provider, settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS)
-            logger.warning(f"Provider {provider} timed out during summarize-plan")
-            last_error = e
-            continue
-        except ModelHTTPError as e:
-            if e.status_code in (401, 429) or e.status_code >= 500:
-                _mark_down(provider, settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS)
-            logger.warning(f"Provider {provider} returned HTTP error {e.status_code} during summarize-plan")
-            last_error = e
-            continue
-        except Exception as e:
-            _mark_down(provider, settings.CIRCUIT_BREAKER_COOLDOWN_SECONDS)
-            logger.exception(f"Unexpected error with provider {provider} during summarize-plan")
-            last_error = e
-            continue
-            
-    if last_error is None:
-        raise HTTPException(status_code=503, detail="Усі ШІ-провайдери тимчасово недоступні.")
-        
-    raise HTTPException(status_code=503, detail="Помилка генерації опису чека.")
+            output = str(getattr(result, "output", getattr(result, "data", ""))).strip()
+            if not output:
+                raise ValueError("empty summary")
+            await provider_state.mark_success(provider)
+            return provider, output[:800]
+        except Exception as error:
+            await provider_state.mark_failure(provider, classify_failure(error))
+            return provider, None
+        finally:
+            await provider_state.release(provider)
+
+    tasks = [asyncio.create_task(attempt(provider)) for provider in candidates]
+    try:
+        for completed in asyncio.as_completed(tasks, timeout=7.0):
+            provider, output = await completed
+            if output:
+                for task in tasks:
+                    if not task.done():
+                        task.cancel()
+                await asyncio.gather(*tasks, return_exceptions=True)
+                await metrics.increment(
+                    "summary_responses_total",
+                    labels={"outcome": "provider", "provider": provider},
+                )
+                return {"text": output}
+    except TimeoutError:
+        pass
+    finally:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+    await metrics.increment("summary_responses_total", labels={"outcome": "deterministic"})
+    return {"text": fallback_text}
 
 
 def _to_model_history(history: list[ChatMessage] | None) -> list[Any] | None:
@@ -264,21 +410,39 @@ def _to_model_history(history: list[ChatMessage] | None) -> list[Any] | None:
     return compact_history(model_history)
 
 
+def _all_response_blocks(response: ZephyrosResponse) -> list[Any]:
+    flattened: list[Any] = []
+    stack = list(reversed(response.blocks))
+    while stack:
+        block = stack.pop()
+        flattened.append(block)
+        if isinstance(block, TabsBlock):
+            for item in reversed(block.items):
+                stack.extend(reversed(item.blocks))
+    return flattened
+
+
 def _response_cacheable(response: ZephyrosResponse) -> bool:
     return not any(
-        getattr(block, "type", None) == "action_button"
-        and getattr(block, "action", None) == "add_to_cart"
-        for block in response.blocks
+        getattr(block, "type", None) == "fallback"
+        or (
+            getattr(block, "type", None) == "action_button"
+            and getattr(block, "action", None) in {"add_to_cart", "create_review"}
+        )
+        for block in _all_response_blocks(response)
     )
 
 
 async def _issue_action_tokens(response: ZephyrosResponse, user_id: uuid.UUID | None) -> ZephyrosResponse:
-    """Bind proposed cart mutations to one user and one explicit confirmation."""
+    """Bind proposed mutations to one user and one explicit confirmation."""
     redis_client = getattr(app.state, "redis", None)
     if not redis_client or not user_id:
         return response
-    for block in response.blocks:
-        if getattr(block, "type", None) != "action_button" or getattr(block, "action", None) != "add_to_cart":
+    for block in _all_response_blocks(response):
+        if (
+            getattr(block, "type", None) != "action_button"
+            or getattr(block, "action", None) not in {"add_to_cart", "create_review"}
+        ):
             continue
         payload = dict(block.payload)
         token = str(uuid.uuid4())
@@ -291,7 +455,9 @@ async def _issue_action_tokens(response: ZephyrosResponse, user_id: uuid.UUID | 
             payload["action_token"] = token
             block.payload = payload
         except Exception:
-            logger.bind(action="add_to_cart").warning("Could not issue action token; leaving proposal non-executable")
+            logger.bind(action=block.action).warning(
+                "Could not issue action token; leaving proposal non-executable"
+            )
     return response
 
 
@@ -300,11 +466,18 @@ async def execute_action(
     request: ActionExecutionRequest,
     x_user_id: str | None = Header(default=None),
 ) -> dict[str, Any]:
-    """Execute exactly one confirmed cart action. Redis GETDEL makes replays harmless."""
+    """Execute one confirmed mutation. Redis GETDEL makes replays harmless."""
+    if not settings.ZEPHYROS_ACTION_EXECUTOR_ENABLED:
+        raise HTTPException(status_code=503, detail="Confirmed actions are temporarily disabled")
     if not x_user_id:
         raise HTTPException(status_code=401, detail="Authentication is required")
     redis_client = getattr(app.state, "redis", None)
     http_client = getattr(app.state, "http_client", None)
+    metrics: RoutingMetrics = getattr(
+        app.state,
+        "routing_metrics",
+        RoutingMetrics(redis_client),
+    )
     if not redis_client or not http_client:
         raise HTTPException(status_code=503, detail="Action service is temporarily unavailable")
     try:
@@ -313,34 +486,95 @@ async def execute_action(
         logger.bind(error=str(error)).warning("Action token store unavailable")
         raise HTTPException(status_code=503, detail="Action confirmation is temporarily unavailable") from error
     if not raw:
+        await metrics.increment("action_executions_total", labels={"outcome": "replay_or_expired"})
         raise HTTPException(status_code=409, detail="This action has expired or was already completed")
-    action = json.loads(raw)
-    if action.get("user_id") != x_user_id or action.get("action") != "add_to_cart":
+    try:
+        action = json.loads(raw)
+    except (TypeError, json.JSONDecodeError) as error:
+        await metrics.increment("action_executions_total", labels={"outcome": "invalid_token"})
+        raise HTTPException(status_code=403, detail="Action token is invalid") from error
+    action_name = action.get("action")
+    if action.get("user_id") != x_user_id or action_name not in {"add_to_cart", "create_review"}:
+        await metrics.increment("action_executions_total", labels={"outcome": "forbidden"})
         raise HTTPException(status_code=403, detail="Action token is not valid for this user")
     payload = action["payload"]
     headers = {"X-User-Id": x_user_id}
     try:
-        carts_response = await http_client.get(f"{settings.CART_SERVICE_URL}/", headers=headers, timeout=3.0)
-        carts_response.raise_for_status()
-        carts = carts_response.json()
-        if carts:
-            cart_id = carts[0]["id"]
+        if action_name == "add_to_cart":
+            carts_response = await http_client.get(
+                f"{settings.CART_SERVICE_URL}/",
+                headers=headers,
+                timeout=settings.INTERNAL_READ_TIMEOUT_SECONDS,
+            )
+            carts_response.raise_for_status()
+            carts = carts_response.json()
+            if carts:
+                cart_id = carts[0]["id"]
+            else:
+                created = await http_client.post(
+                    f"{settings.CART_SERVICE_URL}/",
+                    json={"name": "Мій кошик"},
+                    headers=headers,
+                    timeout=settings.INTERNAL_READ_TIMEOUT_SECONDS,
+                )
+                created.raise_for_status()
+                cart_id = created.json()["id"]
+            mutated = await http_client.post(
+                f"{settings.CART_SERVICE_URL}/{cart_id}/items",
+                json={
+                    "product_id": payload["product_id"],
+                    "quantity": payload.get("quantity", 1),
+                },
+                headers=headers,
+                timeout=settings.INTERNAL_READ_TIMEOUT_SECONDS,
+            )
         else:
-            created = await http_client.post(f"{settings.CART_SERVICE_URL}/", json={"name": "Мій кошик"}, headers=headers, timeout=3.0)
-            created.raise_for_status()
-            cart_id = created.json()["id"]
-        added = await http_client.post(
-            f"{settings.CART_SERVICE_URL}/{cart_id}/items",
-            json={"product_id": payload["product_id"], "quantity": payload.get("quantity", 1)},
-            headers=headers,
-            timeout=3.0,
-        )
-        added.raise_for_status()
+            mutated = await http_client.post(
+                f"{settings.REVIEWS_SERVICE_URL}/",
+                json={
+                    "product_id": payload["product_id"],
+                    "rating": payload["rating"],
+                    "text": payload.get("text"),
+                },
+                headers=headers,
+                timeout=settings.INTERNAL_READ_TIMEOUT_SECONDS,
+            )
+        mutated.raise_for_status()
     except (httpx.RequestError, httpx.HTTPStatusError) as error:
-        logger.bind(user_id=x_user_id, error=str(error)).warning("Confirmed cart action failed")
-        raise HTTPException(status_code=502, detail="Не вдалося додати товар до кошика") from error
-    logger.bind(user_id=x_user_id, product_id=payload["product_id"]).info("Confirmed cart action completed")
-    return {"status": "success", "message": "Товар додано до кошика."}
+        await metrics.increment(
+            "action_executions_total",
+            labels={"action": str(action_name), "outcome": "dependency_error"},
+        )
+        logger.bind(
+            event_type="zephyros.action.failed",
+            user_id=x_user_id,
+            action=action_name,
+            error_type=type(error).__name__,
+        ).warning("Confirmed action failed")
+        detail = (
+            "Не вдалося додати товар до кошика"
+            if action_name == "add_to_cart"
+            else "Не вдалося опублікувати відгук"
+        )
+        raise HTTPException(status_code=502, detail=detail) from error
+
+    store: ResponseStore = getattr(app.state, "response_store", ResponseStore(redis_client))
+    try:
+        await store.invalidate("user", x_user_id)
+    except Exception:
+        logger.bind(action=action_name).warning("User response cache invalidation failed")
+    await metrics.increment(
+        "action_executions_total",
+        labels={"action": str(action_name), "outcome": "success"},
+    )
+    logger.bind(
+        event_type="zephyros.action.completed",
+        user_id=x_user_id,
+        action=action_name,
+        product_id=payload["product_id"],
+    ).info("Confirmed action completed")
+    message = "Товар додано до кошика." if action_name == "add_to_cart" else "Відгук опубліковано."
+    return {"status": "success", "message": message}
 
 
 @app.post("/agent/chat", response_model=ZephyrosResponse, tags=["Agent"])
@@ -349,6 +583,7 @@ async def chat(
     http_request: Request,
     x_user_id: str | None = Header(default=None),
 ) -> ZephyrosResponse:
+    started_at = time.perf_counter()
     user_id: uuid.UUID | None = None
     if x_user_id:
         try:
@@ -363,7 +598,7 @@ async def chat(
         user_id=str(user_id) if user_id else None,
         message_length=len(request.message),
     )
-    chat_log.info("Chat request received")
+    chat_log.bind(event_type="zephyros.chat.received").info("Chat request received")
     if request.provider or request.model_name:
         chat_log.bind(legacy_provider=request.provider, legacy_model=request.model_name).info(
             "Deprecated client provider selection ignored"
@@ -375,47 +610,196 @@ async def chat(
         redis_client=getattr(app.state, "redis", None),
     )
 
-    candidates = available_provider_chain()
-    if not candidates:
-        chat_log.error("No AI providers configured")
-        return ZephyrosResponse.model_validate({"blocks": [{"type": "fallback", "message": "Промін тимчасово недоступний.", "suggestion": "Спробуйте пізніше."}]})
-
-    cacheable = ResponseStore.cacheable(request.message)
-    cache_key = ResponseStore.key(request.message, [m.model_dump() for m in request.history or []], str(user_id) if user_id else None)
     redis_client = getattr(app.state, "redis", None)
     store: ResponseStore = getattr(app.state, "response_store", ResponseStore(redis_client))
     provider_state: ProviderState = getattr(app.state, "provider_state", ProviderState(redis_client))
+    metrics: RoutingMetrics = getattr(
+        app.state,
+        "routing_metrics",
+        RoutingMetrics(redis_client),
+    )
+    await metrics.increment("chat_requests_total")
+    if request.provider or request.model_name:
+        await metrics.increment("legacy_routing_fields_total")
+
+    cacheable = ResponseStore.cacheable(request.message)
+    user_scope = str(user_id) if user_id else None
+    base_cache_key = ResponseStore.key(
+        request.message,
+        [message.model_dump() for message in request.history or []],
+        user_scope,
+    )
+    cache_key = await store.versioned_key(base_cache_key, user_scope=user_scope)
     if cacheable:
         cached = await store.get(cache_key)
         if cached:
-            chat_log.bind(cache="hit").info("Returning cached structured response")
+            await metrics.increment("chat_cache_total", labels={"outcome": "hit"})
+            await metrics.observe_ms(
+                "chat_request_latency",
+                (time.perf_counter() - started_at) * 1000,
+                labels={"route": "cache"},
+            )
+            await metrics.increment("chat_responses_total", labels={"outcome": "cache"})
+            chat_log.bind(
+                event_type="zephyros.chat.completed",
+                route="cache",
+                cache="hit",
+            ).info("Returning cached structured response")
             return cached
+    await metrics.increment("chat_cache_total", labels={"outcome": "miss"})
     future, leader = await store.join_or_lead(cache_key)
     if not leader:
         chat_log.bind(cache="singleflight-join").info("Joining in-flight chat request")
-        return await future
+        response = await future
+        await metrics.increment("chat_singleflight_total", labels={"scope": "process"})
+        await metrics.increment("chat_responses_total", labels={"outcome": "singleflight"})
+        await metrics.observe_ms(
+            "chat_request_latency",
+            (time.perf_counter() - started_at) * 1000,
+            labels={"route": "singleflight"},
+        )
+        chat_log.bind(
+            event_type="zephyros.chat.completed",
+            route="singleflight",
+        ).info("Chat request joined process-local orchestration")
+        return response
 
     try:
+        distributed_result = await store.acquire_distributed(cache_key)
+        if distributed_result is not None:
+            await store.finish(cache_key, future, distributed_result)
+            await metrics.increment("chat_singleflight_total", labels={"scope": "redis"})
+            await metrics.increment("chat_responses_total", labels={"outcome": "singleflight"})
+            await metrics.observe_ms(
+                "chat_request_latency",
+                (time.perf_counter() - started_at) * 1000,
+                labels={"route": "singleflight"},
+            )
+            chat_log.bind(
+                event_type="zephyros.chat.completed",
+                route="singleflight",
+                cache="distributed-singleflight-join",
+            ).info(
+                "Joined cross-worker chat request"
+            )
+            return distributed_result
+
+        prepared = await build_read_context(request.message, deps, request_id=request_id)
+        chat_log = chat_log.bind(
+            intent=prepared.intent,
+            context_bytes=len(json.dumps(prepared.data, ensure_ascii=False)),
+        )
+        if prepared.direct_response is not None:
+            response = await _issue_action_tokens(prepared.direct_response, user_id)
+            if cacheable and _response_cacheable(response):
+                await store.set(cache_key, response)
+            await store.finish(cache_key, future, response)
+            await metrics.increment("chat_responses_total", labels={"outcome": "direct"})
+            await metrics.observe_ms(
+                "chat_request_latency",
+                (time.perf_counter() - started_at) * 1000,
+                labels={"route": "deterministic"},
+            )
+            chat_log.bind(
+                event_type="zephyros.chat.completed",
+                route="deterministic",
+                cache="miss",
+            ).info(
+                "Chat request completed without provider usage"
+            )
+            return response
+
+        candidates = available_provider_chain()
+        if not candidates:
+            fallback = prepared.degraded_response or ZephyrosResponse.model_validate(
+                {
+                    "blocks": [
+                        {
+                            "type": "fallback",
+                            "message": "Zephyros тимчасово не може сформувати відповідь.",
+                            "suggestion": "Спробуйте ще раз за кілька секунд.",
+                        }
+                    ]
+                }
+            )
+            await store.finish(cache_key, future, fallback)
+            await metrics.increment("chat_responses_total", labels={"outcome": "fallback"})
+            await metrics.observe_ms(
+                "chat_request_latency",
+                (time.perf_counter() - started_at) * 1000,
+                labels={"route": "fallback"},
+            )
+            chat_log.bind(
+                event_type="zephyros.chat.fallback",
+                reason="no-providers",
+            ).error("No AI providers configured")
+            return fallback
+
+        cohort_identity = user_scope or request_id
+        cohort_bucket = int(hashlib.sha256(cohort_identity.encode()).hexdigest()[:8], 16) % 100
+        routing_mode = settings.ZEPHYROS_ROUTING_MODE
+        if (
+            routing_mode == "parallel-race"
+            and cohort_bucket >= settings.ZEPHYROS_PARALLEL_COHORT_PERCENT
+        ):
+            routing_mode = "sequential"
         result = await race_first_valid(
             request_id=request_id,
-            message=request.message,
+            message=prepared.render_prompt(request.message),
             deps=deps,
             history=_to_model_history(request.history),
             candidates=candidates,
             build_model=build_model,
             run_agent=readonly_agent.run,
             state=provider_state,
+            allowed_product_ids=prepared.allowed_product_ids,
+            fallback_response=prepared.degraded_response,
+            metrics=metrics,
+            candidate_timeouts={
+                candidate.name: candidate.timeout_seconds
+                for candidate in PROVIDER_REGISTRY
+            },
+            candidate_limits={
+                candidate.name: candidate.concurrency_limit
+                for candidate in PROVIDER_REGISTRY
+            },
+            routing_mode=routing_mode,
         )
         result.response = await _issue_action_tokens(result.response, user_id)
         if cacheable and result.winner and _response_cacheable(result.response):
             await store.set(cache_key, result.response)
-        chat_log.bind(cache=result.cache, winner=result.winner, candidate_count=len(candidates)).info("Chat orchestration completed")
+        chat_log.bind(
+            event_type=(
+                "zephyros.chat.completed"
+                if result.winner
+                else "zephyros.chat.fallback"
+            ),
+            cache=result.cache,
+            winner=result.winner,
+            candidate_count=len(candidates),
+        ).info("Chat orchestration completed")
         await store.finish(cache_key, future, result.response)
+        outcome = "success" if result.winner else "fallback"
+        await metrics.increment("chat_responses_total", labels={"outcome": outcome})
+        await metrics.observe_ms(
+            "chat_request_latency",
+            (time.perf_counter() - started_at) * 1000,
+            labels={"route": "provider-race"},
+        )
         return result.response
     except Exception:
         fallback = ZephyrosResponse.model_validate({"blocks": [{"type": "fallback", "message": "Не вдалося підготувати відповідь.", "suggestion": "Спробуйте ще раз."}]})
         await store.finish(cache_key, future, fallback)
-        chat_log.exception("Chat orchestration failed")
+        await metrics.increment("chat_responses_total", labels={"outcome": "internal_error"})
+        await metrics.observe_ms(
+            "chat_request_latency",
+            (time.perf_counter() - started_at) * 1000,
+            labels={"route": "internal-error"},
+        )
+        chat_log.bind(
+            event_type="zephyros.chat.fallback",
+            reason="internal-error",
+        ).exception("Chat orchestration failed")
         return fallback
 
 

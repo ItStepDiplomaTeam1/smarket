@@ -54,7 +54,8 @@ app.add_middleware(
     allow_origin_regex=r"https://smarket-7go\.pages\.dev|https://.*\.smarket-7go\.pages\.dev|https://smarket-admin\.pages\.dev|https://.*\.smarket-admin\.pages\.dev|http://localhost:\d+|http://127.0.0.1:\d+|http://157\.180\.74\.21(:\d+)?",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "Accept", "X-User-Id"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "X-User-Id", "X-Request-Id"],
+    expose_headers=["X-Request-Id"],
 )
 
 API_V1_STR = "/api/v1"

@@ -45,5 +45,6 @@ class Settings(BaseSettings):
         return self
 
 
-settings = Settings()
+# Required values are populated from the process environment by BaseSettings.
+settings = Settings()  # type: ignore[call-arg]
 
