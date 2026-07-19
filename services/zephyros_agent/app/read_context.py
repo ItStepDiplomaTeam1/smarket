@@ -92,12 +92,37 @@ _NON_SEARCH_MESSAGES = (
     "привіт",
     "привет",
     "hello",
+    "hi",
     "дякую",
     "спасибо",
+    "thank",
     "хто ти",
     "кто ты",
     "що ти вмієш",
     "что ты умеешь",
+    "як справи",
+    "як твої справи",
+    "як в тебе справи",
+    "как дела",
+    "как твои дела",
+    "как у тебя дела",
+    "how are you",
+    "whats up",
+    "what's up",
+    "добридень",
+    "добрий день",
+    "доброго дня",
+    "добрий вечір",
+    "доброе утро",
+    "здравствуйте",
+    "вітаю",
+    "приветствую",
+    "до побачення",
+    "до свидания",
+    "бувай",
+    "пока",
+    "дякую",
+    "дякую тобі",
 )
 
 
@@ -114,7 +139,7 @@ def classify_intent(message: str) -> ContextIntent:
         return "cart_comparison"
     if has_cart and not any(word in normalized for word in _MUTATION_WORDS):
         return "cart_view"
-    if any(phrase in normalized for phrase in _NON_SEARCH_MESSAGES):
+    if any(re.search(rf"\b{re.escape(phrase)}\b", normalized) for phrase in _NON_SEARCH_MESSAGES):
         return "none"
     if normalized in _AFFIRMATIONS:
         return "none"

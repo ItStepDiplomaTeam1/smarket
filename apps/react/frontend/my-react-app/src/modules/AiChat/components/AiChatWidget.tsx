@@ -333,7 +333,7 @@ function ConfirmationDialog({
 
   return (
     <div
-      className="absolute inset-0 z-50 grid place-items-center bg-[#0B1D17]/45 p-5 backdrop-blur-[2px] motion-reduce:animate-none"
+      className="fixed inset-0 z-50 grid place-items-center bg-[#0B1D17]/45 p-5 backdrop-blur-[2px] motion-reduce:animate-none"
       style={{ animation: 'zephyrosFadeIn 180ms ease-out both' }}
       role="presentation"
       onMouseDown={(event) => {
