@@ -3,9 +3,13 @@ import { useEffect } from 'react';
 import { Header } from '@/shared/ui/Header';
 import { Footer } from '@/shared/ui/Footer';
 import { AiChatWidget } from '@/modules/AiChat';
+import { useFetchMe } from '@/hooks/api/useAuthApi';
 
 export const MainLayout = () => {
   const location = useLocation();
+  
+  // Call useFetchMe globally to validate session on startup
+  useFetchMe();
 
   useEffect(() => {
     if (location.hash) {

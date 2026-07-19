@@ -1,3 +1,6 @@
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '@/modules/Auth/store/authStore';
 import btngoogle from '@/shared/assets/google.svg';
 import checkIcon from '@/shared/assets/checkgreen.svg';
 import logo from '@/shared/assets/logo.svg';
@@ -8,6 +11,15 @@ import { useGoogleLogin } from '@react-oauth/google';
 import { useGoogleOAuth } from '@/hooks/api/useAuthApi';
 
 export default function AuthPage() {
+    const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            navigate('/', { replace: true });
+        }
+    }, [isAuthenticated, navigate]);
+
     const googleOAuthMutation = useGoogleOAuth();
 
     const handleGoogleLogin = useGoogleLogin({

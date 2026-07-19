@@ -56,6 +56,15 @@ export const useFetchMe = () => {
         }
     }, [query.data, isAuthenticated]);
 
+    useEffect(() => {
+        if (query.isError) {
+            const status = (query.error as any)?.response?.status;
+            if (status === 401 || status === 403) {
+                useAuthStore.getState().logout();
+            }
+        }
+    }, [query.isError, query.error]);
+
     return query;
 };
 
