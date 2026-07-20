@@ -136,61 +136,85 @@ async def internal_dashboard_stats(db: AsyncSession = Depends(get_db)) -> dict:
         return _dashboard_cache
 
     try:
-        total_products = await db.scalar(select(func.count(Product.id)))
-        total_stores = await db.scalar(select(func.count(Store.external_id)))
-        
-        today = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
-        prices_updated_today = await db.scalar(
-            select(func.count(Price.id)).where(Price.recorded_at >= today)
-        )
-        
-        # Отримання динаміки оновлення цін за останні 7 днів (завжди 7 точок на графіку)
-        start_date = today - timedelta(days=6)
-        days_map = {
-            (start_date + timedelta(days=i)).strftime("%d.%m"): 0
-            for i in range(7)
-        }
-        stmt = (
-            select(
-                func.date_trunc(text("'day'"), Price.recorded_at).label('day'),
-                func.count(Price.id).label('count')
-            )
-            .where(Price.recorded_at >= start_date)
-            .group_by(func.date_trunc(text("'day'"), Price.recorded_at))
-            .order_by(func.date_trunc(text("'day'"), Price.recorded_at).asc())
-        )
-        result = await db.execute(stmt)
-        for row in result.all():
-            if row.day:
-                date_str = row.day.strftime("%d.%m")
-                if date_str in days_map:
-                    days_map[date_str] = row.count
+        now_dt = datetime.now(timezone.utc).replace(tzinfo=None)
+        today = now_dt.replace(hour=0, minute=0, second=0, microsecond=0)
 
-        price_dynamics = [{"name": name, "value": count} for name, count in days_map.items()]
-        # Отримання кількості товарів без категорії (аномалії)
-        products_without_category = await db.scalar(
-            select(func.count(Product.id)).where(Product.canonical_category_id.is_(None))
-        )
-        
-        # Отримання кількості прихованих (неактивних) товарів
-        hidden_products = await db.scalar(
-            select(func.count(Product.id)).where(Product.is_hidden == True)
-        )
-        
+        total_products = 0
+        try:
+            total_products = await db.scalar(select(func.count(Product.id))) or 0
+        except Exception as e:
+            logger.error(f"[dashboard-stats] count products failed: {e}")
+
+        total_stores = 0
+        try:
+            total_stores = await db.scalar(select(func.count(Store.external_id))) or 0
+        except Exception as e:
+            logger.error(f"[dashboard-stats] count stores failed: {e}")
+
+        prices_updated_today = 0
+        try:
+            prices_updated_today = await db.scalar(
+                select(func.count(Price.id)).where(Price.recorded_at >= today)
+            ) or 0
+        except Exception as e:
+            logger.error(f"[dashboard-stats] count prices_updated_today failed: {e}")
+
+        price_dynamics = []
+        try:
+            start_date = today - timedelta(days=6)
+            days_map = {
+                (start_date + timedelta(days=i)).strftime("%d.%m"): 0
+                for i in range(7)
+            }
+            stmt = (
+                select(
+                    func.date_trunc('day', Price.recorded_at).label('day'),
+                    func.count(Price.id).label('count')
+                )
+                .where(Price.recorded_at >= start_date)
+                .group_by(func.date_trunc('day', Price.recorded_at))
+                .order_by(func.date_trunc('day', Price.recorded_at).asc())
+            )
+            result = await db.execute(stmt)
+            for row in result.all():
+                if row.day:
+                    date_str = row.day.strftime("%d.%m")
+                    if date_str in days_map:
+                        days_map[date_str] = row.count
+            price_dynamics = [{"name": name, "value": count} for name, count in days_map.items()]
+        except Exception as e:
+            logger.error(f"[dashboard-stats] price_dynamics failed: {e}")
+
+        products_without_category = 0
+        try:
+            products_without_category = await db.scalar(
+                select(func.count(Product.id)).where(Product.canonical_category_id.is_(None))
+            ) or 0
+        except Exception as e:
+            logger.error(f"[dashboard-stats] products_without_category failed: {e}")
+
+        hidden_products = 0
+        try:
+            hidden_products = await db.scalar(
+                select(func.count(Product.id)).where(Product.is_hidden == True)
+            ) or 0
+        except Exception as e:
+            logger.error(f"[dashboard-stats] hidden_products failed: {e}")
+
         res = {
-            "totalProducts": total_products or 0,
-            "totalStores": total_stores or 0,
-            "pricesUpdatedToday": prices_updated_today or 0,
+            "totalProducts": total_products,
+            "totalStores": total_stores,
+            "pricesUpdatedToday": prices_updated_today,
             "priceDynamics": price_dynamics,
-            "productsWithoutCategory": products_without_category or 0,
-            "hiddenProducts": hidden_products or 0
+            "productsWithoutCategory": products_without_category,
+            "hiddenProducts": hidden_products
         }
 
         _dashboard_cache = res
         _dashboard_cache_time = now
         return res
     except Exception as exc:
-        logger.error(f"[dashboard-stats] failed: {exc}")
+        logger.error(f"[dashboard-stats] outer failed: {exc}")
         if _dashboard_cache is not None:
             return _dashboard_cache
         return {
