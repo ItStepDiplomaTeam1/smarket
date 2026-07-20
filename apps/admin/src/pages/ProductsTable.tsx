@@ -9,6 +9,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { useProducts, useToggleProductVisibility } from '@/hooks/useProducts';
+import { useDashboardData } from '@/hooks/useDashboardData';
 import { MetricCard } from '@/components/MetricCard';
 
 import PackageIcon from '@/assets/MetricCardIcons/Package.svg';
@@ -185,6 +186,8 @@ const ProductsTable: React.FC = () => {
     inStock: selectedStatus === 'active' ? true : selectedStatus === 'inactive' ? false : undefined,
   });
 
+  const { data: dashboardData } = useDashboardData();
+
   // Query to get the absolute total products in the database (unfiltered)
   const { data: globalStats } = useProducts({
     page: 1,
@@ -193,7 +196,7 @@ const ProductsTable: React.FC = () => {
 
   const products = data?.hits || [];
   const totalHits = data?.total_hits || 0;
-  const totalGlobalProducts = globalStats?.total_hits || 0;
+  const totalGlobalProducts = dashboardData?.metrics.totalProducts || globalStats?.total_hits || 0;
   const totalPages = Math.ceil(totalHits / limit) || 1;
 
   const getPageNumbers = () => {
