@@ -200,20 +200,20 @@ async def get_dashboard_summary(request: Request):
 
     async def fetch_product_stats():
         try:
-            resp = await client.get(f"{settings.PRODUCT_SERVICE_URL}/api/v1/internal/dashboard-stats", timeout=5.0)
+            resp = await client.get(f"{settings.PRODUCT_SERVICE_URL}/api/v1/internal/dashboard-stats", timeout=15.0)
             if resp.status_code == 200:
                 return resp.json()
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[Gateway] Error fetching product stats: {e}", flush=True)
         return {"totalProducts": 0, "totalStores": 0, "pricesUpdatedToday": 0}
 
     async def fetch_auth_stats():
         try:
-            resp = await client.get(f"{settings.AUTH_SERVICE_URL}/internal/dashboard-stats", timeout=5.0)
+            resp = await client.get(f"{settings.AUTH_SERVICE_URL}/internal/dashboard-stats", timeout=15.0)
             if resp.status_code == 200:
                 return resp.json()
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[Gateway] Error fetching auth stats: {e}", flush=True)
         return {"totalUsers": 0}
 
     async def fetch_system_logs():
@@ -221,7 +221,7 @@ async def get_dashboard_summary(request: Request):
             resp = await client.get(
                 f"{settings.AUDIT_SERVICE_URL}/admin/audit",
                 params={"limit": 5},
-                timeout=5.0
+                timeout=15.0
             )
             if resp.status_code == 200:
                 data = resp.json()
@@ -237,8 +237,8 @@ async def get_dashboard_summary(request: Request):
                         "status": status_map.get(item.get("severity", "info"), "info")
                     })
                 return logs
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[Gateway] Error fetching system logs: {e}", flush=True)
         return []
 
     MOCK_RATINGS = [
@@ -254,7 +254,7 @@ async def get_dashboard_summary(request: Request):
             resp = await client.get(
                 f"{settings.SEARCH_SERVICE_URL}/api/v1/search",
                 params={"limit": 5},
-                timeout=5.0
+                timeout=15.0
             )
             if resp.status_code == 200:
                 data = resp.json()
@@ -273,9 +273,7 @@ async def get_dashboard_summary(request: Request):
                         })
                 return popular_products
         except Exception as e:
-            import traceback
             print(f"[Gateway] Error fetching popular products: {e}", flush=True)
-            traceback.print_exc()
         return []
 
     prod_stats, auth_stats, system_logs, popular_products = await asyncio.gather(

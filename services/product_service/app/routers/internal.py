@@ -117,11 +117,24 @@ async def internal_health_check() -> dict:
     }
 
 
+# ── In-Memory Cache for Dashboard Stats ────────────────────────────────────────
+_dashboard_cache: dict | None = None
+_dashboard_cache_time: float = 0.0
+_DASHBOARD_CACHE_TTL = 60.0  # seconds
+
+
 @router.get("/dashboard-stats")
 async def internal_dashboard_stats(db: AsyncSession = Depends(get_db)) -> dict:
     """
     Returns aggregate stats for the admin dashboard.
+    Cached in-memory for 60 seconds to prevent heavy database scans on every refetch.
     """
+    global _dashboard_cache, _dashboard_cache_time
+    now = asyncio.get_event_loop().time()
+
+    if _dashboard_cache is not None and (now - _dashboard_cache_time < _DASHBOARD_CACHE_TTL):
+        return _dashboard_cache
+
     try:
         total_products = await db.scalar(select(func.count(Product.id)))
         total_stores = await db.scalar(select(func.count(Store.external_id)))
@@ -161,7 +174,7 @@ async def internal_dashboard_stats(db: AsyncSession = Depends(get_db)) -> dict:
             select(func.count(Product.id)).where(Product.is_hidden == True)
         )
         
-        return {
+        res = {
             "totalProducts": total_products or 0,
             "totalStores": total_stores or 0,
             "pricesUpdatedToday": prices_updated_today or 0,
@@ -169,8 +182,14 @@ async def internal_dashboard_stats(db: AsyncSession = Depends(get_db)) -> dict:
             "productsWithoutCategory": products_without_category or 0,
             "hiddenProducts": hidden_products or 0
         }
+
+        _dashboard_cache = res
+        _dashboard_cache_time = now
+        return res
     except Exception as exc:
         logger.error(f"[dashboard-stats] failed: {exc}")
+        if _dashboard_cache is not None:
+            return _dashboard_cache
         return {
             "totalProducts": 0,
             "totalStores": 0,
@@ -179,3 +198,4 @@ async def internal_dashboard_stats(db: AsyncSession = Depends(get_db)) -> dict:
             "productsWithoutCategory": 0,
             "hiddenProducts": 0
         }
+
