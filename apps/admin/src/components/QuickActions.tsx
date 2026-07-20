@@ -39,11 +39,11 @@ export const QuickActions: React.FC = () => {
       <h3 className="font-manrope text-lg font-bold text-textMain">Швидкі дії</h3>
       <div className="border-b border-border my-3" />
       
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         <button 
           onClick={() => handleAction('start')}
           disabled={etlControl.isPending || isRunning || statusLoading}
-          className={`h-[54px] w-full flex items-center justify-center gap-2 px-3 rounded-2xl border-2 transition-colors group relative
+          className={`h-[54px] w-full flex items-center justify-center gap-1.5 px-1.5 sm:px-3 rounded-2xl border-2 transition-colors group relative overflow-hidden
             ${isRunning 
               ? 'border-[#008C5E] bg-[#008C5E] cursor-default' // Active state
               : (isDarkMode ? 'border-[#008C5E] bg-[#008C5E]/70 hover:bg-[#008C5E]/90' : 'border-[#008C5E] bg-[#EBF6F1]/70 hover:bg-[#EBF6F1]/90')
@@ -58,11 +58,11 @@ export const QuickActions: React.FC = () => {
               <img 
                 src={startIcon} 
                 alt="Запустити" 
-                className="h-[20px] w-auto object-contain shrink-0" 
+                className="w-4 h-4 sm:w-4.5 sm:h-4.5 object-contain shrink-0" 
                 style={isRunning || isDarkMode ? { filter: 'brightness(0) invert(1)' } : undefined}
               />
               <span 
-                className={`text-[12px] md:text-xs font-bold whitespace-nowrap
+                className={`text-[10px] sm:text-xs font-bold text-center leading-tight min-w-0
                   ${isRunning ? 'text-white' : (isDarkMode ? 'text-white' : 'text-[#008C5E]')}
                 `}
               >
@@ -75,7 +75,7 @@ export const QuickActions: React.FC = () => {
         <button 
           onClick={() => handleAction('stop')}
           disabled={etlControl.isPending || !isRunning || statusLoading}
-          className={`h-[54px] w-full flex items-center justify-center gap-2 px-3 rounded-2xl border-2 transition-colors group relative
+          className={`h-[54px] w-full flex items-center justify-center gap-1.5 px-1.5 sm:px-3 rounded-2xl border-2 transition-colors group relative overflow-hidden
             ${!isRunning 
               ? 'border-[#FDC80D] bg-[#FDC80D] cursor-default' // Active state
               : (isDarkMode ? 'border-[#FDC80D] bg-[#FDC80D]/70 hover:bg-[#FDC80D]/90' : 'border-[#FDC80D] bg-[#FFFBEB]/70 hover:bg-[#FFFBEB]/90')
@@ -90,11 +90,11 @@ export const QuickActions: React.FC = () => {
               <img 
                 src={stopIcon} 
                 alt="Зупинити" 
-                className="h-[20px] w-auto object-contain shrink-0" 
+                className="w-4 h-4 sm:w-4.5 sm:h-4.5 object-contain shrink-0" 
                 style={!isRunning || isDarkMode ? { filter: 'brightness(0) invert(1)' } : undefined}
               />
               <span 
-                className={`text-[12px] md:text-xs font-bold whitespace-nowrap
+                className={`text-[10px] sm:text-xs font-bold text-center leading-tight min-w-0
                   ${!isRunning ? 'text-white' : (isDarkMode ? 'text-white' : 'text-[#FDC80D]')}
                 `}
               >
