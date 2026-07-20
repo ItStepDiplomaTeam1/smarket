@@ -45,7 +45,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
 
         {/* Content */}
         <div className={cn("flex flex-col w-full flex-1 justify-between", isRowLayout ? "mt-0 lg:mt-4" : "mt-4")}>
-          <p className="text-xs sm:text-sm text-textMuted leading-tight font-medium">
+          <p className="text-xs sm:text-sm text-textMuted leading-tight font-medium min-h-[2.5rem] flex items-start">
             {title}
           </p>
           <div className="mt-auto pt-1.5 flex flex-col">
