@@ -144,26 +144,29 @@ async def internal_dashboard_stats(db: AsyncSession = Depends(get_db)) -> dict:
             select(func.count(Price.id)).where(Price.recorded_at >= today)
         )
         
-        # Отримання динаміки оновлення цін за останні 7 днів
-        seven_days_ago = today - timedelta(days=7)
+        # Отримання динаміки оновлення цін за останні 7 днів (завжди 7 точок на графіку)
+        start_date = today - timedelta(days=6)
+        days_map = {
+            (start_date + timedelta(days=i)).strftime("%d.%m"): 0
+            for i in range(7)
+        }
         stmt = (
             select(
                 func.date_trunc(text("'day'"), Price.recorded_at).label('day'),
                 func.count(Price.id).label('count')
             )
-            .where(Price.recorded_at >= seven_days_ago)
+            .where(Price.recorded_at >= start_date)
             .group_by(func.date_trunc(text("'day'"), Price.recorded_at))
             .order_by(func.date_trunc(text("'day'"), Price.recorded_at).asc())
         )
         result = await db.execute(stmt)
-        price_dynamics = []
         for row in result.all():
-            d_date = row.day
-            if d_date:
-                price_dynamics.append({
-                    "name": d_date.strftime("%d.%m"),
-                    "value": row.count
-                })
+            if row.day:
+                date_str = row.day.strftime("%d.%m")
+                if date_str in days_map:
+                    days_map[date_str] = row.count
+
+        price_dynamics = [{"name": name, "value": count} for name, count in days_map.items()]
         # Отримання кількості товарів без категорії (аномалії)
         products_without_category = await db.scalar(
             select(func.count(Product.id)).where(Product.canonical_category_id.is_(None))
