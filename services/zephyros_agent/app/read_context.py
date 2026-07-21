@@ -635,6 +635,10 @@ async def build_read_context(
             )
             return PreparedReadContext(intent="none", direct_response=response)
     intent = classify_intent(message)
+    if intent == "catalog_search":
+        semantic_intent = await _classify_intent_semantically(message, deps)
+        if semantic_intent == "none":
+            intent = "none"
     if intent == "cart_comparison":
         return await _prepare_cart(deps, compare=True, request_id=request_id)
     if intent == "cart_view":
@@ -660,3 +664,97 @@ async def build_read_context(
     if intent == "catalog_search":
         return await _prepare_catalog(message, deps, request_id)
     return PreparedReadContext(intent="none")
+
+
+def _is_simple_search_query(message: str) -> bool:
+    normalized = " ".join(message.casefold().split())
+    help_markers = {
+        "як", "де", "хто", "що", "чому", "help", "якщо", "інструкц",
+        "правил", "умеешь", "вмієш", "доставк", "оплат", "акці",
+        "скидк", "магазин", "кошик", "корзин"
+    }
+    if any(marker in normalized for marker in help_markers):
+        return False
+    words = [w for w in re.findall(r"[a-zа-яіїєґ0-9]+", normalized)]
+    if len(words) <= 2 and "?" not in message:
+        return True
+    return False
+
+
+async def _classify_intent_semantically(message: str, deps: AgentDeps) -> ContextIntent:
+    from app.config import settings
+    if not settings.INTENT_CLASSIFIER_ENABLED:
+        return "catalog_search"
+
+    if _is_simple_search_query(message):
+        return "catalog_search"
+
+    normalized = " ".join(message.casefold().split())
+    import hashlib
+    h = hashlib.sha256(normalized.encode("utf-8")).hexdigest()
+    cache_key = f"zephyros:intent-cache:{h}"
+
+    from loguru import logger
+
+    # Check cache
+    if deps.redis_client:
+        try:
+            cached = await deps.redis_client.get(cache_key)
+            if cached in (b"catalog_search", b"none", "catalog_search", "none"):
+                val = cached.decode("utf-8") if isinstance(cached, bytes) else cached
+                logger.bind(query=message, intent=val, source="cache").info("Semantic intent cache hit")
+                return val
+        except Exception as error:
+            logger.bind(error=str(error)).warning("Semantic intent cache read failed")
+
+    # Call zero-shot classifier
+    from pydantic_ai import Agent
+    from app.agent.zephyros import available_provider_chain, build_model
+    import asyncio
+
+    candidates = available_provider_chain()
+    if not candidates:
+        return "catalog_search"
+
+    provider = candidates[0]
+    logger.bind(query=message, provider=provider).info("Running semantic intent classifier LLM request")
+
+    try:
+        classifier_model = build_model(provider)
+        classifier_agent = Agent(classifier_model, system_prompt=settings.INTENT_CLASSIFIER_PROMPT)
+
+        result = await asyncio.wait_for(
+            classifier_agent.run(message, model_settings={"max_tokens": 5}),
+            timeout=settings.INTENT_CLASSIFIER_TIMEOUT_SECONDS,
+        )
+
+        output = ""
+        if hasattr(result, "data"):
+            output = str(result.data)
+        elif hasattr(result, "output"):
+            output = str(result.output)
+
+        output = output.strip().lower()
+
+        if "none" in output:
+            intent = "none"
+        else:
+            intent = "catalog_search"
+
+        logger.bind(query=message, provider=provider, raw_output=output, resolved_intent=intent).info("Semantic intent classifier resolved")
+
+        # Set cache
+        if deps.redis_client:
+            try:
+                await deps.redis_client.set(
+                    cache_key,
+                    intent,
+                    ex=settings.INTENT_CLASSIFIER_CACHE_TTL_SECONDS,
+                )
+            except Exception as error:
+                logger.bind(error=str(error)).warning("Semantic intent cache write failed")
+
+        return intent
+    except Exception as error:
+        logger.bind(query=message, error=repr(error)).warning("Semantic intent classifier failed, defaulting to catalog_search")
+        return "catalog_search"

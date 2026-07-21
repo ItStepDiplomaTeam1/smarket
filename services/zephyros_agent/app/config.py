@@ -40,6 +40,18 @@ class Settings(BaseSettings):
     ZEPHYROS_PARALLEL_COHORT_PERCENT: int = 100
     ZEPHYROS_ACTION_EXECUTOR_ENABLED: bool = True
     ZEPHYROS_OPERATOR_KEY: str | None = None
+    INTENT_CLASSIFIER_ENABLED: bool = True
+    INTENT_CLASSIFIER_TIMEOUT_SECONDS: float = 1.0
+    INTENT_CLASSIFIER_CACHE_TTL_SECONDS: int = 86400
+    INTENT_CLASSIFIER_PROMPT: str = (
+        "Ти — класифікатор інтенту користувача для помічника покупок Smarket.\n"
+        "Твоє завдання — визначити, чи хоче користувач знайти/купити конкретний товар, "
+        "чи він ставить загальне питання про використання сервісу, вітається, або просто спілкується (chitchat).\n"
+        "Поверни виключно одне з двох слів:\n"
+        "- `catalog_search` (якщо користувач шукає конкретні товари, ціни, знижки, наявність)\n"
+        "- `none` (якщо це chitchat, вітання, загальне питання типу 'як працює кошик', 'які магазини є', 'що ти вмієш')\n"
+        "Не пиши жодних інших слів, пояснень чи знаків пунктуації."
+    )
     CHAT_SUCCESS_RATE_SLO: float = 0.995
     CHAT_LATENCY_P95_SLO_MS: int = 12000
     LOG_LEVEL: str = "INFO"
@@ -75,6 +87,8 @@ class Settings(BaseSettings):
             "INTERNAL_READ_TIMEOUT_SECONDS": self.INTERNAL_READ_TIMEOUT_SECONDS,
             "CART_COMPARISON_TIMEOUT_SECONDS": self.CART_COMPARISON_TIMEOUT_SECONDS,
             "CHAT_LATENCY_P95_SLO_MS": self.CHAT_LATENCY_P95_SLO_MS,
+            "INTENT_CLASSIFIER_TIMEOUT_SECONDS": self.INTENT_CLASSIFIER_TIMEOUT_SECONDS,
+            "INTENT_CLASSIFIER_CACHE_TTL_SECONDS": self.INTENT_CLASSIFIER_CACHE_TTL_SECONDS,
         }
         invalid = [name for name, value in positive_values.items() if value <= 0]
         if invalid:

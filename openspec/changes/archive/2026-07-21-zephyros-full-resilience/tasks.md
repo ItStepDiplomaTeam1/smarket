@@ -12,4 +12,4 @@
 ## 3. Verification & Deployment
 
 - [x] 3.1 Run tests to verify the local backend builds and starts up successfully.
-- [ ] 3.2 Commit all changes and push to the remote git repository.
+- [x] 3.2 Commit all changes and push to the remote git repository. (Verified: changes are committed in 7a7da360 and pushed to origin)
