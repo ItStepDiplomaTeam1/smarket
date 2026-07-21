@@ -26,7 +26,6 @@ export interface MeResponse {
     role: string;
     photo_url?: string;
     settings?: Record<string, any>;
-    is_oauth_user?: boolean;
 }
 
 export const useFetchMe = () => {

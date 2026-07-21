@@ -23,7 +23,6 @@ export function SettingsContent() {
   const logout = useAuthStore((s) => s.logout);
   const updateUser = useAuthStore((s) => s.updateUser);
   const { data: meData } = useFetchMe();
-  const isOAuthUser = meData?.is_oauth_user ?? false;
 
   // Особисті дані
   const [name, setName] = useState(user?.name || 'Марина Добра');
@@ -122,15 +121,11 @@ export function SettingsContent() {
 
     try {
       await changePasswordMutation.mutateAsync({
-        // For OAuth users there is no old password — backend skips verification
-        old_password: isOAuthUser ? '' : oldPassword,
+        old_password: oldPassword,
         new_password: newPassword,
       });
 
-      const successMsg = isOAuthUser
-        ? 'Пароль встановлено! Тепер ви можете входити з паролем.'
-        : 'Пароль успішно змінено! Будь ласка, увійдіть знову з новим паролем.';
-      toast.success(successMsg);
+      toast.success('Пароль успішно змінено! Будь ласка, увійдіть знову з новим паролем.');
       setShowPasswordModal(false);
       setOldPassword('');
       setNewPassword('');
@@ -491,13 +486,21 @@ const Button: React.FC<ButtonProps> = ({ variant = 'save', children, className =
                   />
                 </div>
 
-                {/* Кнопка Змінити / Встановити пароль */}
+                {/* Кнопка Змінити пароль */}
                 <Button 
                   variant="security"
-                  onClick={() => setShowPasswordModal(true)}
+                  onClick={() => {
+                    const settings = meData?.settings || {};
+                    const isOAuth = !!(settings.google_name || settings.google_picture || settings.telegram_id || settings.telegram_username || settings.telegram_first_name);
+                    if (isOAuth) {
+                      toast.error('Для вашого типу акаунту зміна пароля недоступна');
+                      return;
+                    }
+                    setShowPasswordModal(true);
+                  }}
                   className="w-full sm:w-[135px] shrink-0"
                 >
-                  {isOAuthUser ? 'Встановити пароль' : 'Змінити пароль'}
+                  Змінити пароль
                 </Button>
               </div>
 
@@ -626,39 +629,22 @@ const Button: React.FC<ButtonProps> = ({ variant = 'save', children, className =
 
       {/* Модальне вікно: Зміна пароля */}
       {showPasswordModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4"
-          onClick={(e) => { if (e.target === e.currentTarget) { setShowPasswordModal(false); setOldPassword(''); setNewPassword(''); } }}
-        >
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4">
           <div className="w-full max-w-[400px] bg-white dark:bg-[#1C2723] border border-[#265447]/30 rounded-[16px] p-[24px] flex flex-col gap-[20px] shadow-[0_12px_40px_rgba(0,0,0,0.5)]">
             <h4 className="font-manrope text-[18px] font-extrabold text-[#173B33] dark:text-white m-0">
-              {isOAuthUser ? 'Встановлення пароля' : 'Зміна пароля'}
+              Зміна пароля
             </h4>
-
-            {isOAuthUser && (
-              <div className="flex items-start gap-[8px] bg-[#EAF7F2] dark:bg-[#173B33]/50 border border-[#6FE3C2]/40 rounded-[8px] px-[12px] py-[10px]">
-                <svg className="shrink-0 mt-[1px] text-[#265447] dark:text-[#6FE3C2]" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-                <p className="font-inter text-[12px] text-[#265447] dark:text-[#6FE3C2] m-0 leading-[1.5]">
-                  Ваш акаунт прив'язаний через Google або Telegram. Введіть новий пароль — після цього ви зможете входити і з паролем теж.
-                </p>
-              </div>
-            )}
             
-            {!isOAuthUser && (
-              <div className="flex flex-col gap-[6px]">
-                <label className="text-[11px] text-[#6D8279] dark:text-[#94A3B8]">Старий пароль</label>
-                <input 
-                  type="password"
-                  placeholder="Введіть старий пароль"
-                  value={oldPassword}
-                  onChange={(e) => setOldPassword(e.target.value)}
-                  className="h-[40px] w-full border border-[#E5E7EB] dark:border-[#265447]/30 rounded-[8px] px-[12px] bg-white dark:bg-[#173B33] text-[#173B33] dark:text-white font-inter text-[13px] outline-none focus:border-[#173B33] dark:focus:border-[#4ADE80] transition-colors"
-                />
-              </div>
-            )}
+            <div className="flex flex-col gap-[6px]">
+              <label className="text-[11px] text-[#6D8279] dark:text-[#94A3B8]">Старий пароль</label>
+              <input 
+                type="password"
+                placeholder="Введіть старий пароль"
+                value={oldPassword}
+                onChange={(e) => setOldPassword(e.target.value)}
+                className="h-[40px] w-full border border-[#E5E7EB] dark:border-[#265447]/30 rounded-[8px] px-[12px] bg-white dark:bg-[#173B33] text-[#173B33] dark:text-white font-inter text-[13px] outline-none focus:border-[#173B33] dark:focus:border-[#4ADE80] transition-colors"
+              />
+            </div>
 
             <div className="flex flex-col gap-[6px]">
               <label className="text-[11px] text-[#6D8279] dark:text-[#94A3B8]">Новий пароль</label>
@@ -704,7 +690,7 @@ const Button: React.FC<ButtonProps> = ({ variant = 'save', children, className =
                 onClick={handlePasswordChange}
                 className="h-[36px] px-[20px] rounded-[8px] bg-[#173B33] dark:bg-[#3DAE8B] border-none text-white dark:text-[#111A17] font-semibold text-[13px] cursor-pointer hover:bg-[#265447] dark:hover:bg-[#3DAE8B]/90 transition-colors"
               >
-                {isOAuthUser ? 'Встановити пароль' : 'Зберегти'}
+                Зберегти
               </button>
             </div>
           </div>
