@@ -1,12 +1,14 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type Theme = 'light' | 'dark' | 'system';
+export type Theme = 'light' | 'dark';
 
 interface ThemeState {
   theme: Theme;
   setTheme: (theme: Theme) => void;
 }
+
+const normalizeTheme = (theme: unknown): Theme => theme === 'dark' ? 'dark' : 'light';
 
 export function getCookie(name: string): string | null {
   if (typeof document === 'undefined') return null;
@@ -34,7 +36,7 @@ export function setCookie(name: string, value: string, days = 365) {
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set) => ({
-      theme: (getCookie('theme') as Theme) || 'system',
+      theme: normalizeTheme(getCookie('theme')),
       setTheme: (theme) => {
         setCookie('theme', theme, 365);
         set({ theme });
@@ -42,6 +44,16 @@ export const useThemeStore = create<ThemeState>()(
     }),
     {
       name: 'theme-storage',
+      merge: (persistedState, currentState) => {
+        const persistedTheme = (persistedState as { theme?: unknown } | null)?.theme;
+
+        return {
+          ...currentState,
+          theme: persistedTheme === undefined
+            ? currentState.theme
+            : normalizeTheme(persistedTheme),
+        };
+      },
     }
   )
 );
