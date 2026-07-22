@@ -22,13 +22,17 @@ export default function ProductDetail() {
       return;
     }
 
-    const fetchProduct = async () => {
+    const fetchProduct = async (retries = 1) => {
       try {
         setIsLoading(true);
         setNotFound(false);
         const response = await apiClient.get(`/api/v1/products/${productId}`);
         setProduct(response.data);
       } catch (error) {
+        if (retries > 0) {
+          await new Promise((r) => setTimeout(r, 1000));
+          return fetchProduct(retries - 1);
+        }
         console.error('Помилка завантаження товару:', error);
         setNotFound(true);
       } finally {

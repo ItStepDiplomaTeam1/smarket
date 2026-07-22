@@ -179,19 +179,7 @@ export function SMProduct({ currentProduct }: SMProductProps) {
                 const shuffled = [...allProducts].sort(() => 0.5 - Math.random());
                 const selected = shuffled.slice(0, 4);
 
-                const detailed = await Promise.all(
-                    selected.map(async (p: Product) => {
-                        try {
-                            const detailRes = await apiClient.get(`/api/v1/products/${p.id}`);
-                            return detailRes.data;
-                        } catch (err) {
-                            console.error(`Помилка отримання детальної інформації для ${p.id}:`, err);
-                            return p;
-                        }
-                    })
-                );
-
-                setSimilarProducts(detailed);
+                setSimilarProducts(selected);
             } catch (error) {
                 console.error("Помилка завантаження схожих товарів:", error);
             } finally {

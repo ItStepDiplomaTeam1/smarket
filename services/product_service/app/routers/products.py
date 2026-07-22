@@ -834,33 +834,17 @@ async def get_product(
             detail=f"Товар з id={product_id} не знайдено",
         )
 
-    # Підзапит: остання ціна для кожного магазину (щоб не було дублікатів з лог-таблиці)
-    latest_price_subq = (
-        select(
-            Price.store_id,
-            func.max(Price.recorded_at).label("max_recorded_at"),
-        )
-        .where(Price.product_id == product_id)
-        .group_by(Price.store_id)
-        .subquery()
-    )
-
+    # Оптимальний вибір останніх цін по магазинах через DISTINCT ON
     prices_stmt = (
         select(Price)
         .options(selectinload(Price.store))
-        .join(
-            latest_price_subq,
-            and_(
-                Price.store_id == latest_price_subq.c.store_id,
-                Price.recorded_at == latest_price_subq.c.max_recorded_at,
-            ),
-        )
         .where(Price.product_id == product_id)
-        .order_by(Price.price)
+        .distinct(Price.store_id)
+        .order_by(Price.store_id, Price.recorded_at.desc())
     )
 
     prices_result = await db.execute(prices_stmt)
-    latest_prices = list(prices_result.scalars().all())
+    latest_prices = sorted(list(prices_result.scalars().all()), key=lambda p: p.price)
 
     return ProductDetail(
         id=product.id,

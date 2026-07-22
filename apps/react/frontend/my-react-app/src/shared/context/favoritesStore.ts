@@ -46,16 +46,36 @@ export const useFavoritesStore = create<FavoritesState>((set, get) => ({
   },
 
   add: async (product) => {
+    // Optimistic update
+    const tempId = `temp-${Date.now()}`;
+    const newItem: FavoriteItem = {
+      id: tempId,
+      product_id: product.product_id,
+      product_title: product.product_title || null,
+      product_image_url: product.product_image_url || null,
+      product_price: product.product_price || null,
+      added_at: new Date().toISOString(),
+    };
+
+    set((state) => ({
+      items: state.items.some((i) => i.product_id === product.product_id)
+        ? state.items
+        : [newItem, ...state.items],
+    }));
+
     try {
       const res = await apiClient.post<FavoriteItem>('/api/v1/favorites/', product);
       set((state) => ({
-        items: state.items.some((i) => i.product_id === product.product_id)
-          ? state.items.map((i) => (i.product_id === product.product_id ? res.data : i))
-          : [res.data, ...state.items],
+        items: state.items.map((i) =>
+          i.product_id === product.product_id ? res.data : i
+        ),
       }));
     } catch (err) {
       console.error('Failed to add favorite:', err);
-      throw err;
+      // Revert optimistic add on failure
+      set((state) => ({
+        items: state.items.filter((i) => i.product_id !== product.product_id),
+      }));
     }
   },
 

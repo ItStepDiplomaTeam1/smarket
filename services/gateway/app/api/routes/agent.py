@@ -91,12 +91,13 @@ async def proxy_to_agent(
     headers["X-User-Id"] = str(token_payload.get("sub"))
 
     try:
+        body_content = b"" if request.method in ["GET", "HEAD", "DELETE"] else request.stream()
         req = client.build_request(
             method=request.method,
             url=target_url,
             headers=headers,
             params=request.query_params,
-            content=request.stream(),
+            content=body_content,
             timeout=35.0,
         )
         response = await client.send(req, stream=True)
