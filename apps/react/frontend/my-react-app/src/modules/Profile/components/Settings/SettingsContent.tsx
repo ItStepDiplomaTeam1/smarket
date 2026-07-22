@@ -489,7 +489,15 @@ const Button: React.FC<ButtonProps> = ({ variant = 'save', children, className =
                 {/* Кнопка Змінити пароль */}
                 <Button 
                   variant="security"
-                  onClick={() => setShowPasswordModal(true)}
+                  onClick={() => {
+                    const settings = meData?.settings || {};
+                    const isOAuth = !!(settings.google_name || settings.google_picture || settings.telegram_id || settings.telegram_username || settings.telegram_first_name);
+                    if (isOAuth) {
+                      toast.error('Для вашого типу акаунту зміна пароля недоступна');
+                      return;
+                    }
+                    setShowPasswordModal(true);
+                  }}
                   className="w-full sm:w-[135px] shrink-0"
                 >
                   Змінити пароль
@@ -623,7 +631,9 @@ const Button: React.FC<ButtonProps> = ({ variant = 'save', children, className =
       {showPasswordModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[999] flex items-center justify-center p-4">
           <div className="w-full max-w-[400px] bg-white dark:bg-[#1C2723] border border-[#265447]/30 rounded-[16px] p-[24px] flex flex-col gap-[20px] shadow-[0_12px_40px_rgba(0,0,0,0.5)]">
-            <h4 className="font-manrope text-[18px] font-extrabold text-[#173B33] dark:text-white m-0">Зміна пароля</h4>
+            <h4 className="font-manrope text-[18px] font-extrabold text-[#173B33] dark:text-white m-0">
+              Зміна пароля
+            </h4>
             
             <div className="flex flex-col gap-[6px]">
               <label className="text-[11px] text-[#6D8279] dark:text-[#94A3B8]">Старий пароль</label>

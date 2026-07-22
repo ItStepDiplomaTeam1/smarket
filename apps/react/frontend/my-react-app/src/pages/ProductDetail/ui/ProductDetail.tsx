@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { ProductHero, About, RecentlyViewed, SMProduct, Reviews} from '@/modules/Product'
 import { apiClient } from '@/shared/api/apiClient';
 import { type Product } from '@/modules/Product/type';
+import { generateSlug } from '@/shared/utils/url';
 
 export default function ProductDetail() {
   // Універсальний парсинг ID
   const params = useParams<{ idAndSlug?: string; id?: string }>();
+  const navigate = useNavigate();
   const rawParam = params.idAndSlug || params.id; 
   const extractedId = rawParam ? rawParam.split('-')[0] : null;
   const productId = extractedId ? Number(extractedId) : null;
@@ -41,6 +43,17 @@ export default function ProductDetail() {
     };
     fetchProduct();
   }, [productId]);
+
+  // Автоматичне оновлення URL для відображення слага (SEO URL)
+  useEffect(() => {
+    if (product && productId) {
+      const canonicalSlug = generateSlug(product.title);
+      const expectedParam = `${productId}-${canonicalSlug}`;
+      if (rawParam !== expectedParam) {
+        navigate(`/product/${expectedParam}`, { replace: true });
+      }
+    }
+  }, [product, productId, rawParam, navigate]);
 
   // Зберігаємо переглянутий товар в localStorage
   useEffect(() => {
