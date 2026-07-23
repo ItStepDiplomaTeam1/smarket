@@ -689,12 +689,21 @@ jobs:
           cat "${{ github.workspace }}"/services/*/.env >> infra/.env 2>/dev/null || true
           cat "${{ github.workspace }}"/services/*/.env >> .env 2>/dev/null || true
 
-          # Ensure real infrastructure secrets from environment are propagated to .env & infra/.env
+          # Ensure real infrastructure secrets from environment are propagated to .env, infra/.env, and service .env files
           for var in REDIS_PASSWORD RABBITMQ_PASS MONGO_PASS MEILISEARCH_API_KEY SEARCH_INTERNAL_API_TOKEN ETL_ADMIN_KEY; do
             val="${!var}"
-            if [ -n "$val" ] && ! grep -q "^${var}=" .env 2>/dev/null; then
+            if [ -n "$val" ]; then
+              sed -i "/^${var}=/d" .env 2>/dev/null || true
               echo "${var}=${val}" >> .env
+              sed -i "/^${var}=/d" infra/.env 2>/dev/null || true
               echo "${var}=${val}" >> infra/.env
+
+              for f in "${{ github.workspace }}"/services/*/.env; do
+                if [ -f "$f" ]; then
+                  sed -i "/^${var}=/d" "$f" 2>/dev/null || true
+                  echo "${var}=${val}" >> "$f"
+                fi
+              done
             fi
           done
 
