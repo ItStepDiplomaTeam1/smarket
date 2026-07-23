@@ -61,9 +61,16 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
 
+import os
+
+debug = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
+
 app = FastAPI(
     title="Cart Service",
     version="1.0.0",
+    docs_url="/docs" if debug else None,
+    redoc_url="/redoc" if debug else None,
+    openapi_url="/openapi.json" if debug else None,
     default_response_class=ORJSONResponse,
     lifespan=lifespan,
 )

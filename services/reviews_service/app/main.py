@@ -55,10 +55,17 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
 
+import os
+
+debug = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
+
 app = FastAPI(
     title="Reviews Service",
     description="Мікросервіс для роботи з відгуками товарів",
     version="1.0.0",
+    docs_url="/docs" if debug else None,
+    redoc_url="/redoc" if debug else None,
+    openapi_url="/openapi.json" if debug else None,
     lifespan=lifespan,
 )
 

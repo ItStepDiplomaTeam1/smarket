@@ -1,3 +1,4 @@
+import os
 from contextlib import asynccontextmanager
 
 import httpx
@@ -34,11 +35,16 @@ async def lifespan(app: FastAPI):
     await app.state.auth_http_client.aclose()
 
 
+debug = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
+
 app = FastAPI(
     title="Api Gateway",
     version="0.1.0",
     lifespan=lifespan,
     redirect_slashes=False,
+    docs_url="/docs" if debug else None,
+    redoc_url="/redoc" if debug else None,
+    openapi_url="/openapi.json" if debug else None,
 )
 
 app.add_middleware(
