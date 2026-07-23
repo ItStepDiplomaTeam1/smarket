@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { Shield, ChevronDown, CheckCircle, AlertCircle } from 'lucide-react';
@@ -51,15 +51,6 @@ const Select = ({ options, value, onChange }: { options: string[]; value: string
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 const SettingsPage: React.FC = () => {
-  // State
-  const [security, setSecurity] = useState({ logoutTime: '30 хв', password: '••••••••' });
-  const [oldPassword, setOldPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [passwordError, setPasswordError] = useState('');
-  const [passwordLoading, setPasswordLoading] = useState(false);
-  const [passwordSuccess, setPasswordSuccess] = useState(false);
-
   // Queries & Mutations
   const queryClient = useQueryClient();
   const { data: userProfile, isLoading } = useQuery({
@@ -70,8 +61,19 @@ const SettingsPage: React.FC = () => {
     },
   });
 
+  const profileLogoutTime = userProfile?.settings?.logoutTime;
+  const [security, setSecurity] = useState({ logoutTime: '', password: '••••••••' });
+  const selectedLogoutTime = security.logoutTime || profileLogoutTime || '30 хв';
+
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
+
   const updateSettingsMutation = useMutation({
-    mutationFn: async (newSettings: any) => {
+    mutationFn: async (newSettings: Record<string, unknown>) => {
       const { data } = await apiClient.patch('/auth/settings', { settings: newSettings });
       return data;
     },
@@ -83,24 +85,15 @@ const SettingsPage: React.FC = () => {
   });
 
   const changePasswordMutation = useMutation({
-    mutationFn: async ({ old_password, new_password }: any) => {
+    mutationFn: async ({ old_password, new_password }: { old_password?: string; new_password?: string }) => {
       const { data } = await apiClient.patch('/auth/password', { old_password, new_password });
       return data;
     },
   });
 
-  // Init state from fetched profile
-  useEffect(() => {
-    if (userProfile?.settings) {
-      if (userProfile.settings.logoutTime) {
-        setSecurity(prev => ({ ...prev, logoutTime: userProfile.settings.logoutTime }));
-      }
-    }
-  }, [userProfile]);
-
   const handleSaveSettings = () => {
     updateSettingsMutation.mutate({
-      logoutTime: security.logoutTime,
+      logoutTime: selectedLogoutTime,
     });
   };
 
@@ -127,8 +120,9 @@ const SettingsPage: React.FC = () => {
       setNewPassword('');
       setConfirmPassword('');
       setTimeout(() => setPasswordSuccess(false), 4000);
-    } catch (err: any) {
-      setPasswordError(err.response?.data?.detail || err.message || 'Помилка зміни пароля');
+    } catch (err: unknown) {
+      const errorMsg = err && typeof err === 'object' && 'response' in err ? (err as { response?: { data?: { detail?: string } } }).response?.data?.detail : undefined;
+      setPasswordError(errorMsg || (err instanceof Error ? err.message : 'Помилка зміни пароля'));
     } finally {
       setPasswordLoading(false);
     }
@@ -157,7 +151,7 @@ const SettingsPage: React.FC = () => {
                 <Label>Автовихід із сесії</Label>
                 <Select
                   options={['15 хв', '30 хв', '1 година', 'Ніколи']}
-                  value={security.logoutTime}
+                  value={selectedLogoutTime}
                   onChange={(v) => setSecurity({ ...security, logoutTime: v })}
                 />
               </div>

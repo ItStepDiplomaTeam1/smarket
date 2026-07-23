@@ -54,7 +54,8 @@ async def _proxy_to_auth(
     target_url = f"{settings.AUTH_SERVICE_URL}/admin/{path}"
 
     headers = dict(request.headers)
-    headers.pop("host", None)
+    for sensitive_header in ("host", "authorization", "cookie", "x-user-id", "x-user-role", "x-admin-key"):
+        headers.pop(sensitive_header, None)
     # Inject extracted user context so auth_service can trust it without re-decoding
     headers["X-User-Id"] = str(payload.get("sub", ""))
     headers["X-User-Role"] = str(payload.get("role", ""))
@@ -79,6 +80,7 @@ async def _proxy_to_auth(
 
 # ── Admin Routes ──────────────────────────────────────────────────────────────
 
+
 @router.get("/audit", tags=["Admin", "Audit Logs"])
 async def get_audit_logs(request: Request):
     """
@@ -87,10 +89,11 @@ async def get_audit_logs(request: Request):
     """
     payload = _verify_admin_token(request)
     client: httpx.AsyncClient = request.app.state.http_client
-    
+
     target_url = f"{settings.AUDIT_SERVICE_URL}/admin/audit"
     headers = dict(request.headers)
-    headers.pop("host", None)
+    for sensitive_header in ("host", "authorization", "cookie", "x-user-id", "x-user-role", "x-admin-key"):
+        headers.pop(sensitive_header, None)
     headers["X-User-Id"] = str(payload.get("sub", ""))
     headers["X-User-Role"] = str(payload.get("role", ""))
 
@@ -124,14 +127,13 @@ async def get_audit_health(request: Request):
     client: httpx.AsyncClient = request.app.state.http_client
     target_url = f"{settings.AUDIT_SERVICE_URL}/health"
     headers = dict(request.headers)
-    headers.pop("host", None)
+    for sensitive_header in ("host", "authorization", "cookie", "x-user-id", "x-user-role", "x-admin-key"):
+        headers.pop(sensitive_header, None)
     try:
         response = await client.get(target_url, headers=headers)
         return JSONResponse(status_code=response.status_code, content=response.json())
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
-
-
 
 
 @router.get("/recent-users")
@@ -142,17 +144,22 @@ async def get_recent_users(request: Request):
     """
     payload = _verify_admin_token(request)
     client: httpx.AsyncClient = request.app.state.http_client
-    
+
     target_url = f"{settings.AUTH_SERVICE_URL}/admin/recent-users"
     headers = dict(request.headers)
-    headers.pop("host", None)
+    for sensitive_header in ("host", "authorization", "cookie", "x-user-id", "x-user-role", "x-admin-key"):
+        headers.pop(sensitive_header, None)
     headers["X-User-Id"] = str(payload.get("sub", ""))
     headers["X-User-Role"] = str(payload.get("role", ""))
 
     try:
-        resp = await client.get(target_url, headers=headers, params=request.query_params)
+        resp = await client.get(
+            target_url, headers=headers, params=request.query_params
+        )
         if resp.status_code != 200:
-            return JSONResponse(content={"detail": "Auth service error"}, status_code=resp.status_code)
+            return JSONResponse(
+                content={"detail": "Auth service error"}, status_code=resp.status_code
+            )
         users = resp.json()
     except httpx.ConnectError:
         raise HTTPException(status_code=503, detail="Auth service unavailable")
@@ -165,7 +172,9 @@ async def get_recent_users(request: Request):
 
     async def fetch_counts(service_url: str, endpoint: str):
         try:
-            r = await client.post(f"{service_url}{endpoint}", json={"user_ids": user_ids}, timeout=5.0)
+            r = await client.post(
+                f"{service_url}{endpoint}", json={"user_ids": user_ids}, timeout=5.0
+            )
             if r.status_code == 200:
                 return r.json()
         except Exception:
@@ -174,7 +183,7 @@ async def get_recent_users(request: Request):
 
     cart_counts, review_counts = await asyncio.gather(
         fetch_counts(settings.CART_SERVICE_URL, "/internal/carts/counts"),
-        fetch_counts(settings.REVIEWS_SERVICE_URL, "/internal/reviews/counts")
+        fetch_counts(settings.REVIEWS_SERVICE_URL, "/internal/reviews/counts"),
     )
 
     for u in users_list:
@@ -192,7 +201,7 @@ async def get_recent_users(request: Request):
 @router.get("/dashboard-summary")
 async def get_dashboard_summary(request: Request):
     """
-    Returns aggregate stats and mock data for the admin dashboard.
+    Returns aggregate stats for the admin dashboard.
     Fetches real metrics from product_service and auth_service.
     """
     _verify_admin_token(request)
@@ -200,7 +209,10 @@ async def get_dashboard_summary(request: Request):
 
     async def fetch_product_stats():
         try:
-            resp = await client.get(f"{settings.PRODUCT_SERVICE_URL}/api/v1/internal/dashboard-stats", timeout=15.0)
+            resp = await client.get(
+                f"{settings.PRODUCT_SERVICE_URL}/api/v1/internal/dashboard-stats",
+                timeout=15.0,
+            )
             if resp.status_code == 200:
                 return resp.json()
         except Exception as e:
@@ -209,7 +221,9 @@ async def get_dashboard_summary(request: Request):
 
     async def fetch_auth_stats():
         try:
-            resp = await client.get(f"{settings.AUTH_SERVICE_URL}/internal/dashboard-stats", timeout=15.0)
+            resp = await client.get(
+                f"{settings.AUTH_SERVICE_URL}/internal/dashboard-stats", timeout=15.0
+            )
             if resp.status_code == 200:
                 return resp.json()
         except Exception as e:
@@ -221,7 +235,7 @@ async def get_dashboard_summary(request: Request):
             resp = await client.get(
                 f"{settings.AUDIT_SERVICE_URL}/admin/audit",
                 params={"limit": 5},
-                timeout=15.0
+                timeout=15.0,
             )
             if resp.status_code == 200:
                 data = resp.json()
@@ -229,108 +243,111 @@ async def get_dashboard_summary(request: Request):
                 logs = []
                 status_map = {"info": "success", "warning": "warning", "error": "error"}
                 for item in items:
-                    logs.append({
-                        "id": str(item.get("id", "")),
-                        "time": item.get("created_at", ""),
-                        "event": item.get("event_type", "Unknown Event"),
-                        "details": item.get("details", "") or item.get("message", "") or item.get("actor", ""),
-                        "status": status_map.get(item.get("severity", "info"), "info")
-                    })
+                    logs.append(
+                        {
+                            "id": str(item.get("id", "")),
+                            "time": item.get("created_at", ""),
+                            "event": item.get("event_type", "Unknown Event"),
+                            "details": item.get("details", "")
+                            or item.get("message", "")
+                            or item.get("actor", ""),
+                            "status": status_map.get(
+                                item.get("severity", "info"), "info"
+                            ),
+                        }
+                    )
                 return logs
         except Exception as e:
             print(f"[Gateway] Error fetching system logs: {e}", flush=True)
         return []
-
-    MOCK_RATINGS = [
-        {"rating": 4.8, "reviews": 412},
-        {"rating": 4.6, "reviews": 287},
-        {"rating": 4.9, "reviews": 193},
-        {"rating": 4.3, "reviews": 156},
-        {"rating": 4.7, "reviews": 98},
-    ]
 
     async def fetch_popular_products():
         try:
             resp = await client.get(
                 f"{settings.SEARCH_SERVICE_URL}/api/v1/search",
                 params={"limit": 5},
-                timeout=15.0
+                timeout=15.0,
             )
             if resp.status_code == 200:
                 data = resp.json()
                 items = data.get("hits", [])
                 popular_products = []
-                for i, item in enumerate(items):
-                    if i < len(MOCK_RATINGS):
-                        mock_rating = MOCK_RATINGS[i]
-                        popular_products.append({
+                for item in items:
+                    popular_products.append(
+                        {
                             "id": str(item.get("id", "")),
                             "name": item.get("title", ""),
                             "category": item.get("category_name") or "—",
                             "image": item.get("image_url") or "",
-                            "rating": mock_rating["rating"],
-                            "reviews": mock_rating["reviews"],
-                        })
+                            "rating": float(item.get("rating") or 0),
+                            "reviews": int(
+                                item.get("reviews_count") or item.get("reviews") or 0
+                            ),
+                        }
+                    )
                 return popular_products
         except Exception as e:
             print(f"[Gateway] Error fetching popular products: {e}", flush=True)
         return []
 
     prod_stats, auth_stats, system_logs, popular_products = await asyncio.gather(
-        fetch_product_stats(), 
+        fetch_product_stats(),
         fetch_auth_stats(),
         fetch_system_logs(),
-        fetch_popular_products()
+        fetch_popular_products(),
     )
 
-    return JSONResponse(content={
-        "metrics": {
-            "totalProducts": prod_stats.get("totalProducts", 0),
-            "totalStores": prod_stats.get("totalStores", 0),
-            "totalUsers": auth_stats.get("totalUsers", 0),
-            "pricesUpdatedToday": prod_stats.get("pricesUpdatedToday", 0),
-        },
-        "priceDynamics": prod_stats.get("priceDynamics", []),
-        "systemLogs": system_logs,
-        "needsAttention": [
-            {
-                "id": "1",
-                "source": f"{prod_stats.get('productsWithoutCategory', 0)} товарів",
-                "message": "без категорії",
-                "time": "системна аномалія",
-                "type": "warning"
+    return JSONResponse(
+        content={
+            "metrics": {
+                "totalProducts": prod_stats.get("totalProducts", 0),
+                "totalStores": prod_stats.get("totalStores", 0),
+                "totalUsers": auth_stats.get("totalUsers", 0),
+                "pricesUpdatedToday": prod_stats.get("pricesUpdatedToday", 0),
             },
-            {
-                "id": "2",
-                "source": "0 товарів",
-                "message": "без цін",
-                "time": "усі ціни актуальні",
-                "type": "success"
-            },
-            {
-                "id": "3",
-                "source": f"{prod_stats.get('hiddenProducts', 0)} товарів",
-                "message": "приховані",
-                "time": "приховано від покупців" if prod_stats.get('hiddenProducts', 0) > 0 else "усі товари видимі",
-                "type": "warning" if prod_stats.get('hiddenProducts', 0) > 0 else "success"
-            }
-        ],
-        "popularCategories": [],
-        "newUsers": [],
-        "searchQueries": [],
-        "dataCollection": {
-            "updatedToday": 0,
-            "activeParsers": 0,
-            "errors": 0
-        },
-        "sourceStatus": [],
-        "systemStatus": [],
-        "popularProducts": popular_products
-    })
+            "priceDynamics": prod_stats.get("priceDynamics", []),
+            "systemLogs": system_logs,
+            "needsAttention": [
+                {
+                    "id": "1",
+                    "source": f"{prod_stats.get('productsWithoutCategory', 0)} товарів",
+                    "message": "без категорії",
+                    "time": "системна аномалія",
+                    "type": "warning",
+                },
+                {
+                    "id": "2",
+                    "source": "0 товарів",
+                    "message": "без цін",
+                    "time": "усі ціни актуальні",
+                    "type": "success",
+                },
+                {
+                    "id": "3",
+                    "source": f"{prod_stats.get('hiddenProducts', 0)} товарів",
+                    "message": "приховані",
+                    "time": "приховано від покупців"
+                    if prod_stats.get("hiddenProducts", 0) > 0
+                    else "усі товари видимі",
+                    "type": "warning"
+                    if prod_stats.get("hiddenProducts", 0) > 0
+                    else "success",
+                },
+            ],
+            "popularCategories": [],
+            "newUsers": [],
+            "searchQueries": [],
+            "dataCollection": {"updatedToday": 0, "activeParsers": 0, "errors": 0},
+            "sourceStatus": [],
+            "systemStatus": [],
+            "popularProducts": popular_products,
+        }
+    )
 
 
-
-async def _probe_http_service(client: httpx.AsyncClient, url: str, timeout: float = 3.0) -> str:
+async def _probe_http_service(
+    client: httpx.AsyncClient, url: str, timeout: float = 3.0
+) -> str:
     try:
         resp = await client.get(url, timeout=timeout)
         if resp.status_code == 200:
@@ -389,14 +406,33 @@ async def get_system_status(request: Request):
     product_task = _probe_http_service(client, f"{settings.PRODUCT_SERVICE_URL}/health")
     cart_task = _probe_http_service(client, f"{settings.CART_SERVICE_URL}/health")
     reviews_task = _probe_http_service(client, f"{settings.REVIEWS_SERVICE_URL}/health")
-    search_task = _probe_search_service(client, f"{settings.SEARCH_SERVICE_URL}/api/v1/health")
+    search_task = _probe_search_service(
+        client, f"{settings.SEARCH_SERVICE_URL}/api/v1/health"
+    )
     etl_task = _probe_etl_service(client, f"{settings.ETL_SERVICE_URL}/health")
     email_task = _probe_http_service(client, f"{settings.EMAIL_WORKER_URL}/health")
     audit_task = _probe_http_service(client, f"{settings.AUDIT_SERVICE_URL}/health")
 
-    (db_res, auth_res, product_res, cart_res, reviews_res, 
-     search_res, (etl_res, mongo_res), email_res, audit_res) = await asyncio.gather(
-        db_task, auth_task, product_task, cart_task, reviews_task, search_task, etl_task, email_task, audit_task
+    (
+        db_res,
+        auth_res,
+        product_res,
+        cart_res,
+        reviews_res,
+        search_res,
+        (etl_res, mongo_res),
+        email_res,
+        audit_res,
+    ) = await asyncio.gather(
+        db_task,
+        auth_task,
+        product_task,
+        cart_task,
+        reviews_task,
+        search_task,
+        etl_task,
+        email_task,
+        audit_task,
     )
 
     # Compile result dict
@@ -407,7 +443,6 @@ async def get_system_status(request: Request):
         "Meilisearch": db_res.get("Meilisearch", "Помилка"),
         "RabbitMQ": db_res.get("RabbitMQ", "Помилка"),
         "MongoDB": mongo_res,
-        
         # Microservices
         "API Gateway": "Працює",
         "Auth Service": auth_res,
@@ -421,7 +456,6 @@ async def get_system_status(request: Request):
     }
 
     return JSONResponse(content=service_statuses)
-
 
 
 @router.get("/etl/health")
@@ -460,7 +494,7 @@ async def control_etl(request: Request):
     """
     Проксює запит /admin/etl/control до ETL-воркера (products_etl).
     Керує станом ETL-планувальника (старт/стоп).
-    Вимагає роль адміністратора та API-ключ ETL.
+    Вимагає роль адміністратора. Інфраструктурний ETL-ключ додає gateway.
     """
     payload = _verify_admin_token(request)
     client: httpx.AsyncClient = request.app.state.http_client
@@ -468,11 +502,13 @@ async def control_etl(request: Request):
     # Read request body
     body = await request.body()
 
-    # Forward headers, including X-Admin-Key if provided
+    # Never trust or forward an infrastructure key supplied by the browser.
     headers = dict(request.headers)
-    headers.pop("host", None)
+    for sensitive_header in ("host", "authorization", "cookie", "x-user-id", "x-user-role", "x-admin-key"):
+        headers.pop(sensitive_header, None)
     headers["X-User-Id"] = str(payload.get("sub", ""))
     headers["X-User-Role"] = str(payload.get("role", ""))
+    headers["X-Admin-Key"] = settings.ETL_ADMIN_KEY
 
     try:
         req = client.build_request(
@@ -497,10 +533,12 @@ async def control_etl(request: Request):
             status_code=504,
         )
 
+
 @router.post("/users/{user_id}/block")
 async def block_user(user_id: str, request: Request):
     payload = _verify_admin_token(request)
     return await _proxy_to_auth(request, f"users/{user_id}/block", payload)
+
 
 @router.post("/users/{user_id}/unblock")
 async def unblock_user(user_id: str, request: Request):

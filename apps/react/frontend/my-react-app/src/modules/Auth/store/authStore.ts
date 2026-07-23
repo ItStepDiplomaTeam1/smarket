@@ -1,77 +1,62 @@
 // src/modules/Auth/store/authStore.ts
 import { create } from 'zustand';
-import {persist} from 'zustand/middleware';
 
-interface User {
+export interface UserSettings {
+  name?: string;
+  phone?: string;
+  city?: string;
+  favorite_store?: string;
+  photo_url?: string;
+  [key: string]: unknown;
+}
+
+export interface User {
   id: string;
   name?: string;
   email: string;
   role?: string;
   photoUrl?: string;
+  settings?: UserSettings;
 }
 
 interface AuthState {
   token: string | null;
   user: User | null;
   isAuthenticated: boolean;
+  isInitializing: boolean;
   setAuth: (token: string, user: User) => void;
+  finishInitialization: () => void;
   logout: () => void;
   updateUser: (updatedFields: Partial<User>) => void;
 }
 
-
 const initialAuthState = {
   token: null,
-  user: null, isAuthenticated: false,
-}
+  user: null,
+  isAuthenticated: false,
+};
 
-function isTokenExpired(token: string | null): boolean {
-  if (!token) return true;
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return true;
-    const base64Url = parts[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(
-      atob(base64)
-        .split('')
-        .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-        .join('')
-    );
-    const payload = JSON.parse(jsonPayload);
-    if (!payload.exp) return true;
-    const currentTime = Math.floor(Date.now() / 1000);
-    return payload.exp < currentTime;
-  } catch {
-    return true;
-  }
-}
+export const useAuthStore = create<AuthState>((set) => ({
+  ...initialAuthState,
+  isInitializing: true,
 
+  // Access tokens and user PII intentionally live only in memory. The refresh
+  // token remains in an HttpOnly cookie and restores the session after reload.
+  setAuth: (token, user) => set({
+    token,
+    user,
+    isAuthenticated: true,
+    isInitializing: false,
+  }),
 
-export const useAuthStore = create<AuthState> () (
-    persist(
-        (set) => ({
-          ...initialAuthState,
+  finishInitialization: () => set({ isInitializing: false }),
 
-          setAuth: (token, user) => set(() => {
-            const savedName = localStorage.getItem(`smarket_user_name_${user.email}`);
-            return {
-              token,
-              user: savedName ? { ...user, name: savedName } : user,
-              isAuthenticated: true
-            };
-          }),
+  logout: () => set({
+    ...initialAuthState,
+    isInitializing: false,
+  }),
 
-          logout: () => set(initialAuthState),
-
-          updateUser: (updatedFields) => set((state) => {
-            if (state.user?.email && updatedFields.name) {
-              localStorage.setItem(`smarket_user_name_${state.user.email}`, updatedFields.name);
-            }
-            return {
-              user: state.user ? { ...state.user, ...updatedFields } : null
-            };
-          }),
-        }), {name: 'auth-storage'}
-    )
-)
+  updateUser: (updatedFields) => set((state) => ({
+    user: state.user ? { ...state.user, ...updatedFields } : null,
+  })),
+}));

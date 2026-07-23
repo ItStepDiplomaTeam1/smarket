@@ -59,6 +59,23 @@ class CartResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class SharedCartItemResponse(BaseModel):
+    id: uuid.UUID
+    product_id: int
+    quantity: int
+    product_name: Optional[str] = None
+    price: Optional[float] = None
+    image_url: Optional[str] = None
+
+
+class SharedCartResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    updated_at: datetime
+    items: List[SharedCartItemResponse] = Field(default_factory=list)
+    total_price: float = 0.0
+
+
 class CartStoreComparison(BaseModel):
     store_id: str
     store_name: str

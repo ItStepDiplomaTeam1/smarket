@@ -1,4 +1,8 @@
-use axum::{extract::{State, Path}, http::StatusCode, Json};
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    Json,
+};
 use meilisearch_sdk::client::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -15,7 +19,7 @@ pub struct ProductDocument {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unit: Option<String>,
-    
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub weight: Option<f64>,
 
@@ -98,14 +102,14 @@ pub async fn index_handler(
     }
 
     let count = payload.documents.len();
-    info!("[index] Отримано батч з {} документів для індексації", count);
+    info!(
+        "[index] Отримано батч з {} документів для індексації",
+        count
+    );
 
     let index = client.index("products");
 
-    match index
-        .add_or_replace(&payload.documents, Some("id"))
-        .await
-    {
+    match index.add_or_replace(&payload.documents, Some("id")).await {
         Ok(task) => {
             info!(
                 "[index] Задачу на індексацію {} документів поставлено в чергу Meilisearch. Task UID: {:?}",
@@ -137,14 +141,14 @@ pub async fn patch_handler(
     }
 
     let count = payload.documents.len();
-    info!("[patch] Отримано {} документів для часткового оновлення", count);
+    info!(
+        "[patch] Отримано {} документів для часткового оновлення",
+        count
+    );
 
     let index = client.index("products");
 
-    match index
-        .add_or_update(&payload.documents, Some("id"))
-        .await
-    {
+    match index.add_or_update(&payload.documents, Some("id")).await {
         Ok(task) => {
             info!(
                 "[patch] Запит на оновлення {} документів відправлено в Meilisearch. Task UID: {:?}",
@@ -157,10 +161,15 @@ pub async fn patch_handler(
             })))
         }
         Err(err) => {
-            error!("[patch] Помилка часткового оновлення в Meilisearch: {:?}", err);
+            error!(
+                "[patch] Помилка часткового оновлення в Meilisearch: {:?}",
+                err
+            );
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": "Meilisearch partial update failed", "detail": err.to_string() })),
+                Json(
+                    json!({ "error": "Meilisearch partial update failed", "detail": err.to_string() }),
+                ),
             ))
         }
     }
@@ -187,7 +196,10 @@ pub async fn delete_handler(
             })))
         }
         Err(err) => {
-            error!("[delete] Помилка при видаленні документа {} з Meilisearch: {:?}", id, err);
+            error!(
+                "[delete] Помилка при видаленні документа {} з Meilisearch: {:?}",
+                id, err
+            );
             Err((
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(json!({ "error": "Meilisearch deletion failed", "detail": err.to_string() })),

@@ -14,7 +14,7 @@ export const CartSavedList: React.FC = () => {
   const handleShare = async (cartId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setOpenMenuId(null);
-    const url = `${window.location.origin}/cart/${cartId}`;
+    const url = `${window.location.origin}/cart/shared/${cartId}`;
     try {
       if (navigator.share) {
         await navigator.share({ title: 'Мій кошик Smarket', url });

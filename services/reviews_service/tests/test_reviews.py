@@ -1,7 +1,7 @@
 import pytest
 import uuid
 import datetime
-from unittest.mock import AsyncMock, MagicMock, ANY
+from unittest.mock import AsyncMock, ANY
 from fastapi.testclient import TestClient
 
 from app.main import app
@@ -12,6 +12,7 @@ from app import crud
 
 client = TestClient(app)
 
+
 @pytest.fixture
 def mock_db():
     db = AsyncMock()
@@ -19,14 +20,17 @@ def mock_db():
     yield db
     app.dependency_overrides.clear()
 
+
 @pytest.fixture
 def mock_auth():
     async def mock_get_current_user():
         return "e2e0ac63-8f29-471c-9065-660bc277d790", "Test User"
+
     app.dependency_overrides[get_current_user] = mock_get_current_user
     yield
     if get_current_user in app.dependency_overrides:
         del app.dependency_overrides[get_current_user]
+
 
 @pytest.fixture
 def mock_review():
@@ -37,8 +41,9 @@ def mock_review():
         user_name="Test User",
         rating=5,
         text="Excellent product!",
-        created_at=datetime.datetime.now(datetime.UTC)
+        created_at=datetime.datetime.now(datetime.UTC),
     )
+
 
 @pytest.mark.asyncio
 async def test_get_product_reviews(mock_db, mock_review, monkeypatch):
@@ -53,6 +58,7 @@ async def test_get_product_reviews(mock_db, mock_review, monkeypatch):
     assert data[0]["text"] == "Excellent product!"
     mock_get.assert_awaited_once_with(mock_db, 42)
 
+
 @pytest.mark.asyncio
 async def test_add_review_success(mock_db, mock_auth, mock_review, monkeypatch):
     mock_create = AsyncMock(return_value=mock_review)
@@ -65,11 +71,26 @@ async def test_add_review_success(mock_db, mock_auth, mock_review, monkeypatch):
     data = response.json()
     assert data["text"] == "Excellent product!"
     mock_create.assert_awaited_once_with(
-        mock_db,
-        ANY,
-        uuid.UUID("e2e0ac63-8f29-471c-9065-660bc277d790"),
-        "Test User"
+        mock_db, ANY, uuid.UUID("e2e0ac63-8f29-471c-9065-660bc277d790"), "Test User"
     )
+
+
+@pytest.mark.asyncio
+async def test_add_duplicate_review_returns_conflict(mock_db, mock_auth, monkeypatch):
+    monkeypatch.setattr(
+        crud,
+        "create_review",
+        AsyncMock(side_effect=crud.DuplicateReviewError),
+    )
+
+    response = client.post(
+        "/api/v1/reviews/",
+        json={"product_id": 42, "rating": 4, "text": "Duplicate"},
+    )
+
+    assert response.status_code == 409
+    assert "вже залишили" in response.json()["detail"]
+
 
 @pytest.mark.asyncio
 async def test_add_review_invalid_rating(mock_db, mock_auth):
@@ -83,6 +104,7 @@ async def test_add_review_invalid_rating(mock_db, mock_auth):
     response = client.post("/api/v1/reviews/", json=payload)
     assert response.status_code == 422
 
+
 @pytest.mark.asyncio
 async def test_edit_review_by_owner(mock_db, mock_auth, mock_review, monkeypatch):
     mock_update = AsyncMock(return_value=mock_review)
@@ -90,7 +112,7 @@ async def test_edit_review_by_owner(mock_db, mock_auth, mock_review, monkeypatch
 
     payload = {"rating": 4, "text": "Updated text"}
     review_id = "d3b07384-d113-4ec2-a52d-947cd7281f9b"
-    
+
     response = client.put(f"/api/v1/reviews/{review_id}", json=payload)
     assert response.status_code == 200
     mock_update.assert_awaited_once_with(
@@ -98,8 +120,9 @@ async def test_edit_review_by_owner(mock_db, mock_auth, mock_review, monkeypatch
         review_id=uuid.UUID(review_id),
         user_id=uuid.UUID("e2e0ac63-8f29-471c-9065-660bc277d790"),
         rating=4,
-        text="Updated text"
+        text="Updated text",
     )
+
 
 @pytest.mark.asyncio
 async def test_edit_review_by_non_owner(mock_db, mock_auth, monkeypatch):
@@ -108,10 +131,11 @@ async def test_edit_review_by_non_owner(mock_db, mock_auth, monkeypatch):
 
     payload = {"rating": 4, "text": "Updated text"}
     review_id = str(uuid.uuid4())
-    
+
     response = client.put(f"/api/v1/reviews/{review_id}", json=payload)
     assert response.status_code == 404
     assert "у вас немає прав" in response.json()["detail"]
+
 
 @pytest.mark.asyncio
 async def test_delete_review_by_owner(mock_db, mock_auth, monkeypatch):
@@ -120,14 +144,13 @@ async def test_delete_review_by_owner(mock_db, mock_auth, monkeypatch):
 
     review_id = "d3b07384-d113-4ec2-a52d-947cd7281f9b"
     response = client.delete(f"/api/v1/reviews/{review_id}")
-    
+
     assert response.status_code == 200
     assert "успішно видалено" in response.json()["message"]
     mock_delete.assert_awaited_once_with(
-        mock_db,
-        uuid.UUID(review_id),
-        uuid.UUID("e2e0ac63-8f29-471c-9065-660bc277d790")
+        mock_db, uuid.UUID(review_id), uuid.UUID("e2e0ac63-8f29-471c-9065-660bc277d790")
     )
+
 
 @pytest.mark.asyncio
 async def test_delete_review_by_non_owner(mock_db, mock_auth, monkeypatch):
@@ -136,6 +159,6 @@ async def test_delete_review_by_non_owner(mock_db, mock_auth, monkeypatch):
 
     review_id = str(uuid.uuid4())
     response = client.delete(f"/api/v1/reviews/{review_id}")
-    
+
     assert response.status_code == 404
     assert "у вас немає прав" in response.json()["detail"]

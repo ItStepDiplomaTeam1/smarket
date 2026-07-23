@@ -36,10 +36,19 @@ apiClient.interceptors.request.use((config) => {
 // and redirect to /login.
 
 let isRefreshing = false;
-let refreshQueue: Array<(token: string) => void> = [];
+let refreshQueue: Array<{
+  resolve: (token: string) => void;
+  reject: (error: unknown) => void;
+}> = [];
 
-const processQueue = (token: string) => {
-  refreshQueue.forEach((resolve) => resolve(token));
+const processQueue = (error: unknown, token?: string) => {
+  refreshQueue.forEach(({ resolve, reject }) => {
+    if (error || !token) {
+      reject(error);
+    } else {
+      resolve(token);
+    }
+  });
   refreshQueue = [];
 };
 
@@ -53,8 +62,8 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401 && !isRefreshRequest && !originalRequest?._retry) {
       if (isRefreshing) {
         // Queue the request until a refresh is in progress
-        return new Promise<string>((resolve) => {
-          refreshQueue.push(resolve);
+        return new Promise<string>((resolve, reject) => {
+          refreshQueue.push({ resolve, reject });
         }).then((newToken) => {
           if (originalRequest.headers) {
             originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
@@ -72,17 +81,18 @@ apiClient.interceptors.response.use(
         const newToken = data.access_token;
 
         useAuthStore.getState().setToken(newToken);
-        processQueue(newToken);
+        processQueue(null, newToken);
 
         if (originalRequest.headers) {
           originalRequest.headers['Authorization'] = `Bearer ${newToken}`;
         }
         return apiClient(originalRequest);
-      } catch {
+      } catch (refreshError) {
+        processQueue(refreshError);
         // Refresh failed — force logout
         useAuthStore.getState().logout();
         window.location.href = '/login';
-        return Promise.reject(error);
+        return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
       }

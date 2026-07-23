@@ -9,7 +9,7 @@ router = APIRouter()
 
 @router.api_route(
     "",
-    methods=["GET", "POST", "DELETE"],
+    methods=["GET"],
     include_in_schema=False,
 )
 async def proxy_to_search_root(request: Request):
@@ -18,30 +18,29 @@ async def proxy_to_search_root(request: Request):
 
 @router.api_route(
     "/{path:path}",
-    methods=["GET", "POST", "DELETE"],
+    methods=["GET"],
     include_in_schema=False,
 )
 async def proxy_to_search(request: Request, path: str):
     """Проксі до search_service (Rust / Axum / Meilisearch).
 
-    Усі запити до /api/v1/search/* пробрасуємо напряму.
-    Аутентифікація не потрібна — пошук є публічним read-only endpoint.
+    Назовні проксіюються лише GET-запити. Індексація та видалення документів
+    є внутрішніми операціями ETL і ніколи не повинні проходити через Gateway.
     """
     client: httpx.AsyncClient = request.app.state.http_client
 
     target_url = f"{settings.SEARCH_SERVICE_URL}/api/v1/{path}"
 
     headers = dict(request.headers)
-    headers.pop("host", None)
+    for sensitive_header in ("host", "authorization", "cookie", "x-user-id", "x-user-role"):
+        headers.pop(sensitive_header, None)
 
     try:
-        body_content = b"" if request.method in ["GET", "HEAD", "DELETE"] else request.stream()
         req = client.build_request(
-            method=request.method,
+            method="GET",
             url=target_url,
             headers=headers,
             params=request.query_params,
-            content=body_content,
         )
         response = await client.send(req, stream=True)
         return StreamingResponse(

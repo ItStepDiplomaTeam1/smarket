@@ -35,7 +35,8 @@ async def proxy_to_favorites(
     target_url = f"{settings.CART_SERVICE_URL}/favorites/{path}"
 
     headers = dict(request.headers)
-    headers.pop("host", None)
+    for sensitive_header in ("host", "authorization", "cookie", "x-user-id", "x-user-role"):
+        headers.pop(sensitive_header, None)
     headers["X-User-Id"] = str(token_payload.get("sub"))
 
     try:

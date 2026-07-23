@@ -1,17 +1,27 @@
 mod handlers;
 
+use axum::{
+    body::Body,
+    extract::State,
+    http::{header::HeaderName, Request, StatusCode},
+    middleware::Next,
+    response::Response,
+};
+use chrono::Utc;
 use std::env;
 use std::net::SocketAddr;
+use std::sync::Arc;
+use subtle::ConstantTimeEq;
 use tracing::info;
-use chrono::Utc;
 
 use handlers::get_search::search_handler;
-use handlers::post_index::{index_handler, patch_handler, delete_handler};
+use handlers::post_index::{delete_handler, index_handler, patch_handler};
 
 struct Config {
     service_port: u16,
     meilisearch_host: String,
     meilisearch_api_key: String,
+    internal_api_token: Arc<str>,
 }
 
 impl Config {
@@ -26,22 +36,51 @@ impl Config {
             "http://meilisearch:7700".to_string()
         });
 
-        let meilisearch_api_key = env::var("MEILISEARCH_API_KEY").unwrap_or_else(|_| {
-            eprintln!("WARNING: MEILISEARCH_API_KEY not set. Defaulting to masterKey123");
-            "masterKey123".to_string()
-        });
+        let meilisearch_api_key = env::var("MEILISEARCH_API_KEY")
+            .unwrap_or_else(|_| panic!("MEILISEARCH_API_KEY must be configured"));
+        let internal_api_token: Arc<str> = env::var("SEARCH_INTERNAL_API_TOKEN")
+            .expect("SEARCH_INTERNAL_API_TOKEN must be configured")
+            .into();
+        assert!(
+            internal_api_token.len() >= 32,
+            "SEARCH_INTERNAL_API_TOKEN must contain at least 32 characters"
+        );
 
         Self {
             service_port: port,
             meilisearch_host,
             meilisearch_api_key,
+            internal_api_token,
         }
     }
 }
 
+static INTERNAL_TOKEN_HEADER: HeaderName = HeaderName::from_static("x-internal-token");
+
+fn token_matches(expected: &str, supplied: &str) -> bool {
+    expected.len() == supplied.len() && bool::from(expected.as_bytes().ct_eq(supplied.as_bytes()))
+}
+
+async fn require_internal_token(
+    State(expected_token): State<Arc<str>>,
+    request: Request<Body>,
+    next: Next,
+) -> Result<Response, StatusCode> {
+    let supplied_token = request
+        .headers()
+        .get(&INTERNAL_TOKEN_HEADER)
+        .and_then(|value| value.to_str().ok())
+        .ok_or(StatusCode::UNAUTHORIZED)?;
+
+    if !token_matches(&expected_token, supplied_token) {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+
+    Ok(next.run(request).await)
+}
 
 async fn configure_meilisearch_index(client: &meilisearch_sdk::client::Client) {
-    use meilisearch_sdk::settings::{Settings, PaginationSetting};
+    use meilisearch_sdk::settings::{PaginationSetting, Settings};
 
     let settings = Settings::new()
         .with_searchable_attributes(["title", "brand", "category_name", "canonical_ean"])
@@ -92,14 +131,21 @@ async fn main() {
     )
     .unwrap();
 
-    info!("Meilisearch client initialized: {}", config.meilisearch_host);
+    info!(
+        "Meilisearch client initialized: {}",
+        config.meilisearch_host
+    );
 
     configure_meilisearch_index(&client).await;
 
-    use axum::{routing::{get, post, patch, delete}, Json, Router};
+    use axum::{
+        middleware,
+        routing::{delete, get, patch, post},
+        Json, Router,
+    };
     use serde_json::json;
 
-    let api_routes = Router::new()
+    let public_routes = Router::new()
         .route(
             "/health",
             get(|| async {
@@ -110,19 +156,36 @@ async fn main() {
                 }))
             }),
         )
-        .route("/search", get(search_handler))
+        .route("/search", get(search_handler));
+
+    let internal_routes = Router::new()
         .route("/index", post(index_handler).patch(patch_handler))
         .route("/index/:id", delete(delete_handler))
-        .with_state(client);
+        .route_layer(middleware::from_fn_with_state(
+            config.internal_api_token.clone(),
+            require_internal_token,
+        ));
+
+    let api_routes = public_routes.merge(internal_routes).with_state(client);
 
     let app = Router::new().nest("/api/v1", api_routes);
 
-    let addr: SocketAddr = format!("0.0.0.0:{}", config.service_port)
-        .parse()
-        .unwrap();
+    let addr: SocketAddr = format!("0.0.0.0:{}", config.service_port).parse().unwrap();
 
     info!("Search service starting on {}", addr);
 
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::token_matches;
+
+    #[test]
+    fn internal_token_comparison_rejects_missing_or_changed_bytes() {
+        assert!(token_matches("correct-token", "correct-token"));
+        assert!(!token_matches("correct-token", "wrong-token"));
+        assert!(!token_matches("correct-token", "correct-token-extra"));
+    }
 }

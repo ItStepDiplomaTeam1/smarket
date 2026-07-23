@@ -4,13 +4,14 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { apiClient } from '@/shared/api/apiClient';
-import { useAuthStore } from '@/modules/Auth/store/authStore';
+import { useAuthStore, type UserSettings } from '@/modules/Auth/store/authStore';
+import { getSafeAuthReturnTo } from '@/modules/Auth/lib/authRedirect';
 
 interface OAuthUser {
     id: string;
     email: string;
     role: string;
-    settings?: Record<string, any>;
+    settings?: UserSettings;
 }
 
 interface OAuthResponse {
@@ -25,7 +26,7 @@ export interface MeResponse {
     username: string;
     role: string;
     photo_url?: string;
-    settings?: Record<string, any>;
+    settings?: UserSettings;
 }
 
 export const useFetchMe = () => {
@@ -50,6 +51,7 @@ export const useFetchMe = () => {
                         ...state.user,
                         name: query.data.username || state.user.name,
                         photoUrl: query.data.photo_url || state.user.photoUrl,
+                        settings: query.data.settings,
                     }
                 };
             });
@@ -58,7 +60,7 @@ export const useFetchMe = () => {
 
     useEffect(() => {
         if (query.isError) {
-            const status = (query.error as any)?.response?.status;
+            const status = axios.isAxiosError(query.error) ? query.error.response?.status : undefined;
             if (status === 401 || status === 403) {
                 useAuthStore.getState().logout();
             }
@@ -95,14 +97,13 @@ export const useGoogleOAuth = () => {
             });
             try {
                 const { data: me } = await apiClient.get<MeResponse>('/api/v1/auth/me');
-                const savedName = localStorage.getItem(`smarket_user_name_${me.email}`);
                 useAuthStore.setState((state) => ({
-                    user: state.user ? { ...state.user, name: savedName || me.username, photoUrl: me.photo_url || state.user.photoUrl } : state.user,
+                    user: state.user ? { ...state.user, name: me.username, photoUrl: me.photo_url || state.user.photoUrl, settings: me.settings } : state.user,
                 }));
             } catch {
                 // fallback
             }
-            navigate('/');
+            navigate(getSafeAuthReturnTo());
         },
     });
 };
@@ -135,12 +136,12 @@ export const useTelegramOAuth = () => {
             try {
                 const { data: me } = await apiClient.get<MeResponse>('/api/v1/auth/me');
                 useAuthStore.setState((state) => ({
-                    user: state.user ? { ...state.user, name: me.username, photoUrl: me.photo_url || state.user.photoUrl } : state.user,
+                    user: state.user ? { ...state.user, name: me.username, photoUrl: me.photo_url || state.user.photoUrl, settings: me.settings } : state.user,
                 }));
             } catch {
                 // fallback
             }
-            navigate('/');
+            navigate(getSafeAuthReturnTo());
         },
     });
 };
@@ -184,12 +185,12 @@ export const useRegisterVerify = () => {
             try {
                 const { data: me } = await apiClient.get<MeResponse>('/api/v1/auth/me');
                 useAuthStore.setState((state) => ({
-                    user: state.user ? { ...state.user, name: me.username, photoUrl: me.photo_url || state.user.photoUrl } : state.user,
+                    user: state.user ? { ...state.user, name: me.username, photoUrl: me.photo_url || state.user.photoUrl, settings: me.settings } : state.user,
                 }));
             } catch {
                 // fallback
             }
-            navigate('/');
+            navigate(getSafeAuthReturnTo());
         },
     });
 };

@@ -16,6 +16,7 @@ const Profile = lazyWithRetry(() => import('@/pages/Profile/ui/ProfilePage.tsx')
 const Catalog = lazyWithRetry(() => import('@/pages/Catalog/ui/Catalog.tsx'));
 const ShopsPage = lazyWithRetry(() => import('@/pages/Shops/ui/ShopPage.tsx'));
 const CartPage = lazyWithRetry(() => import('@/pages/Cart/ui/CartPage.tsx').then(m => ({ default: m.CartPage })));
+const SharedCartPage = lazyWithRetry(() => import('@/pages/Cart/ui/SharedCartPage.tsx').then(m => ({ default: m.SharedCartPage })));
 const ReceiptPage = lazyWithRetry(() => import('@/pages/ReceiptPage/ReceiptPage.tsx'));
 
 const ProfileDashboard = lazy(() => import('@/modules/Profile/components/MainContent').then(m => ({ default: m.MainContent })));
@@ -119,6 +120,14 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<PageSkeleton />}>
             <CartPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: '/cart/shared/:cartId',
+        element: (
+          <Suspense fallback={<PageSkeleton />}>
+            <SharedCartPage />
           </Suspense>
         ),
       },

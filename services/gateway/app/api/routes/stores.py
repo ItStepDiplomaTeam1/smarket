@@ -19,7 +19,8 @@ async def proxy_to_stores(request: Request, path: str):
     target_url = f"{settings.STORES_SERVICE_URL}/{path}"
 
     headers = dict(request.headers)
-    headers.pop("host", None)
+    for sensitive_header in ("host", "authorization", "cookie", "x-user-id", "x-user-role"):
+        headers.pop(sensitive_header, None)
 
     try:
         body_content = b"" if request.method == "GET" else request.stream()

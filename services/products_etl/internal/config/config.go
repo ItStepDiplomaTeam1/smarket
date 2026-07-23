@@ -10,14 +10,15 @@ import (
 )
 
 type Config struct {
-	MongoURI          string `env:"MONGO_URI,required"`
-	MongoDBName       string `env:"MONGO_DB_NAME" envDefault:"smarket_datalake"`
-	DatabaseURL       string `env:"DATABASE_URL,required"`
-	RabbitMQURL       string `env:"RABBITMQ_URL,required"`
-	ETLQueueName      string `env:"ETL_QUEUE_NAME" envDefault:"etl_tasks"`
-	Environment       string `env:"ENV" envDefault:"development"`
-	SearchServiceURL  string `env:"SEARCH_SERVICE_URL" envDefault:"http://search_service:8083"`
-	ETLAdminKey       string `env:"ETL_ADMIN_KEY,required"`
+	MongoURI            string `env:"MONGO_URI,required"`
+	MongoDBName         string `env:"MONGO_DB_NAME" envDefault:"smarket_datalake"`
+	DatabaseURL         string `env:"DATABASE_URL,required"`
+	RabbitMQURL         string `env:"RABBITMQ_URL,required"`
+	ETLQueueName        string `env:"ETL_QUEUE_NAME" envDefault:"etl_tasks"`
+	Environment         string `env:"ENV" envDefault:"development"`
+	SearchServiceURL    string `env:"SEARCH_SERVICE_URL" envDefault:"http://search_service:8083"`
+	SearchInternalToken string `env:"SEARCH_INTERNAL_API_TOKEN,required"`
+	ETLAdminKey         string `env:"ETL_ADMIN_KEY,required"`
 }
 
 func LoadConfig() *Config {
@@ -26,6 +27,12 @@ func LoadConfig() *Config {
 	cfg := &Config{}
 	if err := env.Parse(cfg); err != nil {
 		log.Fatalf("Критична помилка парсингу конфігурації: %v", err)
+	}
+	if len(cfg.SearchInternalToken) < 32 {
+		log.Fatal("SEARCH_INTERNAL_API_TOKEN must contain at least 32 characters")
+	}
+	if len(cfg.ETLAdminKey) < 32 {
+		log.Fatal("ETL_ADMIN_KEY must contain at least 32 characters")
 	}
 	return cfg
 }

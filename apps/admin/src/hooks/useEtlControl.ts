@@ -23,20 +23,9 @@ export const useEtlControl = () => {
 
   return useMutation({
     mutationFn: async (action: 'start' | 'stop') => {
-      const adminKey = import.meta.env.VITE_ETL_ADMIN_KEY;
-      if (!adminKey) {
-        throw new Error('ETL API Key is not configured in frontend .env');
-      }
-
-      const { data } = await apiClient.post(
-        '/admin/etl/control',
-        { action },
-        {
-          headers: {
-            'X-Admin-Key': adminKey,
-          },
-        }
-      );
+      // The infrastructure key is injected by gateway after JWT role
+      // verification. It must never be compiled into the browser bundle.
+      const { data } = await apiClient.post('/admin/etl/control', { action });
       return data;
     },
     onSuccess: () => {

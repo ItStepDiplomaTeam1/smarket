@@ -30,7 +30,8 @@ async def proxy_to_product(request: Request, path: str):
     target_url = f"{settings.PRODUCT_SERVICE_URL}/api/v1/products/{path}"
 
     headers = dict(request.headers)
-    headers.pop("host", None)
+    for sensitive_header in ("host", "authorization", "cookie", "x-user-id", "x-user-role"):
+        headers.pop(sensitive_header, None)
 
     if request.method in ["POST", "PUT", "DELETE", "PATCH"]:
         auth_header = request.headers.get("Authorization")
