@@ -87,6 +87,7 @@ async def get_recent_users(
     logger.info(f"Admin requested {limit} recent users — returned {len(users)} records")
     return [_format_user(u) for u in users]
 
+
 @router.post("/users/{user_id}/block")
 async def block_user(
     user_id: str,
@@ -105,10 +106,12 @@ async def block_user(
         raise HTTPException(status_code=404, detail="Користувача не знайдено")
 
     user.is_active = False
+    user.token_version = int(getattr(user, "token_version", 0) or 0) + 1
     await db.commit()
     await invalidate_cached_auth_user(user.email)
     logger.info(f"Admin blocked user {user_id}")
     return {"status": "ok", "message": "Користувача заблоковано"}
+
 
 @router.post("/users/{user_id}/unblock")
 async def unblock_user(

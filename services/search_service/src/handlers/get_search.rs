@@ -1,4 +1,8 @@
-use axum::{extract::{Query, State}, http::StatusCode, Json};
+use axum::{
+    extract::{Query, State},
+    http::StatusCode,
+    Json,
+};
 use meilisearch_sdk::client::Client;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -25,7 +29,10 @@ where
             "true" | "1" => Ok(Some(true)),
             "false" | "0" => Ok(Some(false)),
             "" => Ok(None),
-            other => other.parse::<bool>().map(Some).map_err(serde::de::Error::custom),
+            other => other
+                .parse::<bool>()
+                .map(Some)
+                .map_err(serde::de::Error::custom),
         },
         None => Ok(None),
     }
@@ -108,18 +115,16 @@ where
     let raw = Option::<serde_json::Value>::deserialize(deserializer)?;
     match raw {
         None => Ok(vec![]),
-        Some(serde_json::Value::Array(arr)) => Ok(
-            arr.into_iter()
-                .filter_map(|v| v.as_str().map(|s| s.to_owned()))
-                .filter(|s| !s.is_empty())
-                .collect()
-        ),
-        Some(serde_json::Value::String(s)) => Ok(
-            s.split(',')
-                .map(|p| p.trim().to_owned())
-                .filter(|s| !s.is_empty())
-                .collect()
-        ),
+        Some(serde_json::Value::Array(arr)) => Ok(arr
+            .into_iter()
+            .filter_map(|v| v.as_str().map(|s| s.to_owned()))
+            .filter(|s| !s.is_empty())
+            .collect()),
+        Some(serde_json::Value::String(s)) => Ok(s
+            .split(',')
+            .map(|p| p.trim().to_owned())
+            .filter(|s| !s.is_empty())
+            .collect()),
         Some(_) => Ok(vec![]),
     }
 }
@@ -142,7 +147,9 @@ where
             if s.is_empty() {
                 Ok(None)
             } else {
-                s.parse::<usize>().map(Some).map_err(serde::de::Error::custom)
+                s.parse::<usize>()
+                    .map(Some)
+                    .map_err(serde::de::Error::custom)
             }
         }
         None => Ok(None),
@@ -185,7 +192,7 @@ pub struct SearchRequest {
     /// subcategory_slug: "molochni-produkty" etc. — OR logic across types.
     #[serde(default, deserialize_with = "deserialize_string_vec")]
     pub subcategory_slug: Vec<String>,
-    
+
     #[serde(default, deserialize_with = "deserialize_string_vec")]
     pub discount_range: Vec<String>,
 }
@@ -261,7 +268,9 @@ pub async fn search_handler(
         if filters.retail_chains.len() == 1 {
             filter_conditions.push(format!("retail_chain = \"{}\"", filters.retail_chains[0]));
         } else {
-            let in_clause = filters.retail_chains.iter()
+            let in_clause = filters
+                .retail_chains
+                .iter()
                 .map(|c| format!("\"{}\"", c))
                 .collect::<Vec<_>>()
                 .join(", ");
@@ -324,7 +333,8 @@ pub async fn search_handler(
         }
 
         if !expanded_slugs.is_empty() {
-            let formatted_slugs: Vec<String> = expanded_slugs.into_iter()
+            let formatted_slugs: Vec<String> = expanded_slugs
+                .into_iter()
                 .map(|s| format!("\"{}\"", s))
                 .collect();
             filter_conditions.push(format!("category_slug IN [{}]", formatted_slugs.join(", ")));
@@ -350,7 +360,11 @@ pub async fn search_handler(
         search_builder.with_filter(&filter_str);
     }
 
-    let sort_query = payload.sort.as_ref().map(|s| vec![s.clone()]).unwrap_or_default();
+    let sort_query = payload
+        .sort
+        .as_ref()
+        .map(|s| vec![s.clone()])
+        .unwrap_or_default();
     let sort_refs: Vec<&str> = sort_query.iter().map(|s| s.as_str()).collect();
     if !sort_refs.is_empty() {
         search_builder.with_sort(&sort_refs);
@@ -362,32 +376,36 @@ pub async fn search_handler(
             let total_hits = results.estimated_total_hits;
             let processing_time_ms = results.processing_time_ms;
 
-            let hits: Vec<Value> = results.hits.into_iter().map(|hit| {
-                let doc = hit.result;
-                json!({
-                    "id": doc.id,
-                    "title": doc.title,
-                    "brand": doc.brand,
-                    "unit": doc.unit,
-                    "weight": doc.weight,
-                    "image_url": doc.image_url,
-                    "canonical_ean": doc.canonical_ean,
-                    "category_id": doc.category_id,
-                    "category_slug": doc.category_slug,
-                    "category_name": doc.category_name,
-                    "main_category_id": doc.main_category_id,
-                    "offers": [{
-                        "store": {
-                            "id": doc.store_id,
-                            "name": doc.store_name,
-                            "retail_chain": doc.retail_chain,
-                        },
-                        "price": doc.price,
-                        "old_price": doc.old_price,
-                        "in_stock": doc.in_stock,
-                    }]
+            let hits: Vec<Value> = results
+                .hits
+                .into_iter()
+                .map(|hit| {
+                    let doc = hit.result;
+                    json!({
+                        "id": doc.id,
+                        "title": doc.title,
+                        "brand": doc.brand,
+                        "unit": doc.unit,
+                        "weight": doc.weight,
+                        "image_url": doc.image_url,
+                        "canonical_ean": doc.canonical_ean,
+                        "category_id": doc.category_id,
+                        "category_slug": doc.category_slug,
+                        "category_name": doc.category_name,
+                        "main_category_id": doc.main_category_id,
+                        "offers": [{
+                            "store": {
+                                "id": doc.store_id,
+                                "name": doc.store_name,
+                                "retail_chain": doc.retail_chain,
+                            },
+                            "price": doc.price,
+                            "old_price": doc.old_price,
+                            "in_stock": doc.in_stock,
+                        }]
+                    })
                 })
-            }).collect();
+                .collect();
 
             info!(
                 "[search] Знайдено {} результатів (estimated total: {:?}), за {}мс",
@@ -474,10 +492,7 @@ pub fn expand_subcategory_prefixes(sub_slug: &str) -> Vec<String> {
             "pulses-and-grain".to_string(),
             "pasta".to_string(),
         ],
-        "frozen" => vec![
-            "frozen".to_string(),
-            "frozen-food".to_string(),
-        ],
+        "frozen" => vec!["frozen".to_string(), "frozen-food".to_string()],
         "cans" => vec![
             "canned-food".to_string(),
             "tins-jars-cooking".to_string(),
@@ -577,12 +592,12 @@ mod tests {
             build_offer_type_filter("save"),
             Some("old_price IS NOT NULL".to_string())
         );
-        
+
         let new_filter = build_offer_type_filter("new");
         assert!(new_filter.is_some());
         let new_filter_str = new_filter.unwrap();
         assert!(new_filter_str.starts_with("created_at_ts >= "));
-        
+
         assert_eq!(build_offer_type_filter("invalid"), None);
     }
-}
+}

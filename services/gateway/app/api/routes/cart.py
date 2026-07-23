@@ -8,16 +8,16 @@ from app.api.dependencies import verify_jwt
 router = APIRouter()
 
 
-@router.get("/receipts/{share_token}", include_in_schema=False)
-async def proxy_public_receipt(
+@router.get("/shared/{cart_id}", include_in_schema=False)
+async def proxy_public_shared_cart(
     request: Request,
-    share_token: str,
+    cart_id: str,
 ):
     client: httpx.AsyncClient = request.app.state.http_client
-    target_url = f"{settings.CART_SERVICE_URL}/cart/receipts/{share_token}"
-
+    target_url = f"{settings.CART_SERVICE_URL}/cart/shared/{cart_id}"
     headers = dict(request.headers)
-    headers.pop("host", None)
+    for sensitive_header in ("host", "authorization", "cookie", "x-user-id", "x-user-role"):
+        headers.pop(sensitive_header, None)
 
     try:
         req = client.build_request(
@@ -27,10 +27,43 @@ async def proxy_public_receipt(
             params=request.query_params,
         )
         response = await client.send(req, stream=True)
+        response_headers = dict(response.headers)
+        response_headers["Cache-Control"] = "no-store"
         return StreamingResponse(
             response.aiter_raw(),
             status_code=response.status_code,
-            headers=dict(response.headers),
+            headers=response_headers,
+        )
+    except httpx.ConnectError:
+        raise HTTPException(status_code=503, detail="Сервіс кошика недоступний")
+
+
+@router.get("/receipts/{share_token}", include_in_schema=False)
+async def proxy_public_receipt(
+    request: Request,
+    share_token: str,
+):
+    client: httpx.AsyncClient = request.app.state.http_client
+    target_url = f"{settings.CART_SERVICE_URL}/cart/receipts/{share_token}"
+
+    headers = dict(request.headers)
+    for sensitive_header in ("host", "authorization", "cookie", "x-user-id", "x-user-role"):
+        headers.pop(sensitive_header, None)
+
+    try:
+        req = client.build_request(
+            method="GET",
+            url=target_url,
+            headers=headers,
+            params=request.query_params,
+        )
+        response = await client.send(req, stream=True)
+        response_headers = dict(response.headers)
+        response_headers["Cache-Control"] = "no-store"
+        return StreamingResponse(
+            response.aiter_raw(),
+            status_code=response.status_code,
+            headers=response_headers,
         )
     except httpx.ConnectError:
         raise HTTPException(status_code=503, detail="Сервіс кошика недоступний")
@@ -63,7 +96,8 @@ async def proxy_to_cart(
     target_url = f"{settings.CART_SERVICE_URL}/cart/{path}"
 
     headers = dict(request.headers)
-    headers.pop("host", None)
+    for sensitive_header in ("host", "authorization", "cookie", "x-user-id", "x-user-role"):
+        headers.pop(sensitive_header, None)
 
     # Оскільки Gateway вже перевірив токен, ми просто передаємо ID користувача.
     # Cart Service буде працювати з цим X-User-Id і навіть не знатиме про існування JWT.
@@ -71,7 +105,9 @@ async def proxy_to_cart(
     headers["X-User-Id"] = str(token_payload.get("sub"))
 
     try:
-        body_content = b"" if request.method in ["GET", "HEAD", "DELETE"] else request.stream()
+        body_content = (
+            b"" if request.method in ["GET", "HEAD", "DELETE"] else request.stream()
+        )
         req = client.build_request(
             method=request.method,
             url=target_url,

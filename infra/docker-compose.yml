@@ -54,8 +54,10 @@ services:
     environment:
       COOKIE_SECURE: "${COOKIE_SECURE:-true}"
       COOKIE_SAMESITE: "${COOKIE_SAMESITE:-none}"
-      COOKIE_DOMAIN: "${COOKIE_DOMAIN:-smarket-api.duckdns.org}"
-      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
+      # Empty means a safer host-only cookie.
+      COOKIE_DOMAIN: "${COOKIE_DOMAIN:-}"
+      REDIS_URL: "redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379/0"
+      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:?RABBITMQ_PASS must be set}@rabbitmq:5672/"
     env_file:
       - ../services/auth_service/.env
     depends_on:
@@ -91,6 +93,9 @@ services:
       - "8080:8080"
     env_file:
       - ../services/gateway/.env
+    environment:
+      ENV: production
+      ETL_ADMIN_KEY: "${ETL_ADMIN_KEY:?ETL_ADMIN_KEY must be set}"
     depends_on:
       auth_service:
         condition: service_healthy
@@ -181,7 +186,8 @@ services:
     expose:
       - "8000"
     environment:
-      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
+      REDIS_URL: "redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379/0"
+      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:?RABBITMQ_PASS must be set}@rabbitmq:5672/"
     env_file:
       - ../services/product_service/.env
     depends_on:
@@ -212,7 +218,7 @@ services:
     expose:
       - "8002"
     environment:
-      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
+      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:?RABBITMQ_PASS must be set}@rabbitmq:5672/"
     env_file:
       - ../services/cart_service/.env
     depends_on:
@@ -243,7 +249,7 @@ services:
     expose:
       - "8004"
     environment:
-      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
+      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:?RABBITMQ_PASS must be set}@rabbitmq:5672/"
     env_file:
       - ../services/reviews_service/.env
     depends_on:
@@ -265,7 +271,7 @@ services:
       - -c
       - cd /app/services/audit_service && alembic upgrade head
     environment:
-      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
+      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:?RABBITMQ_PASS must be set}@rabbitmq:5672/"
     env_file:
       - ../services/audit_service/.env
     depends_on:
@@ -281,7 +287,7 @@ services:
     expose:
       - "8006"
     environment:
-      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
+      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:?RABBITMQ_PASS must be set}@rabbitmq:5672/"
     env_file:
       - ../services/audit_service/.env
     depends_on:
@@ -305,11 +311,15 @@ services:
       - ""
       - --appendonly
       - "no"
+      - --requirepass
+      - "${REDIS_PASSWORD:?REDIS_PASSWORD must be set}"
+    environment:
+      REDIS_PASSWORD: "${REDIS_PASSWORD:?REDIS_PASSWORD must be set}"
     expose:
       - "6379"
     healthcheck:
       <<: *healthcheck-defaults
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
       start_period: "${REDIS_HEALTH_START_PERIOD:-10s}"
     mem_limit: 192m
     cpus: 0.25
@@ -322,7 +332,7 @@ services:
       - "5672"
     environment:
       RABBITMQ_DEFAULT_USER: "${RABBITMQ_USER:-smarket}"
-      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_PASS:-secure_rmq_pass_123}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_PASS:?RABBITMQ_PASS must be set}"
       RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: "+S 1:1 +sbwt none +sbwtdcpu none +sbwtdio none"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
@@ -347,7 +357,7 @@ services:
       - --quiet
     environment:
       MONGO_INITDB_ROOT_USERNAME: "${MONGO_USER:-admin}"
-      MONGO_INITDB_ROOT_PASSWORD: "${MONGO_PASS:-secure_mongo_pass_123}"
+      MONGO_INITDB_ROOT_PASSWORD: "${MONGO_PASS:?MONGO_PASS must be set}"
     expose:
       - "27017"
     volumes:
@@ -383,7 +393,7 @@ services:
     expose:
       - "8085"
     environment:
-      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
+      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:?RABBITMQ_PASS must be set}@rabbitmq:5672/"
     env_file:
       - ../services/email_worker/.env
     depends_on:
@@ -401,9 +411,11 @@ services:
       dockerfile: Dockerfile
     environment:
       ENV: production
-      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:-secure_rmq_pass_123}@rabbitmq:5672/"
-      MONGO_URI: "mongodb://${MONGO_USER:-admin}:${MONGO_PASS:-secure_mongo_pass_123}@mongodb:27017/?authSource=admin"
+      RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:?RABBITMQ_PASS must be set}@rabbitmq:5672/"
+      MONGO_URI: "mongodb://${MONGO_USER:-admin}:${MONGO_PASS:?MONGO_PASS must be set}@mongodb:27017/?authSource=admin"
       SEARCH_SERVICE_URL: "http://search_service:8083"
+      SEARCH_INTERNAL_API_TOKEN: "${SEARCH_INTERNAL_API_TOKEN:?SEARCH_INTERNAL_API_TOKEN must be set}"
+      ETL_ADMIN_KEY: "${ETL_ADMIN_KEY:?ETL_ADMIN_KEY must be set}"
     env_file:
       - ../services/products_etl/.env
     expose:
@@ -428,7 +440,7 @@ services:
     image: getmeili/meilisearch:v1.8
     user: "root"
     environment:
-      MEILI_MASTER_KEY: "${MEILISEARCH_API_KEY:-masterKey_smarket_secure_2025}"
+      MEILI_MASTER_KEY: "${MEILISEARCH_API_KEY:?MEILISEARCH_API_KEY must be set}"
       MEILI_ENV: "${MEILI_ENV:-production}"
       MEILI_NO_ANALYTICS: "true"
     expose:
@@ -454,7 +466,8 @@ services:
     environment:
       PORT: "8083"
       MEILISEARCH_HOST: "http://meilisearch:7700"
-      MEILISEARCH_API_KEY: "${MEILISEARCH_API_KEY:-masterKey_smarket_secure_2025}"
+      MEILISEARCH_API_KEY: "${MEILISEARCH_API_KEY:?MEILISEARCH_API_KEY must be set}"
+      SEARCH_INTERNAL_API_TOKEN: "${SEARCH_INTERNAL_API_TOKEN:?SEARCH_INTERNAL_API_TOKEN must be set}"
       RUST_LOG: "info"
     depends_on:
       meilisearch:
@@ -492,6 +505,7 @@ services:
       - ../services/zephyros_agent/.env
     environment:
       PORT: "8005"
+      REDIS_URL: "redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379/0"
       SEARCH_SERVICE_URL: "http://search_service:8083/api/v1"
       PRODUCT_SERVICE_URL: "http://product_service:8000/api/v1"
       CART_SERVICE_URL: "http://cart_service:8002/cart"

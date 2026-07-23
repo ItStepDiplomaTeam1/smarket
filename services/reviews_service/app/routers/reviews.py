@@ -38,7 +38,13 @@ async def add_review(
 ):
     """Додати новий відгук до товару"""
     user_id, user_name = user
-    return await crud.create_review(db, review_in, uuid.UUID(user_id), user_name)
+    try:
+        return await crud.create_review(db, review_in, uuid.UUID(user_id), user_name)
+    except crud.DuplicateReviewError as err:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Ви вже залишили відгук для цього товару",
+        ) from err
 
 
 @router.put("/{review_id}", response_model=ReviewResponse)

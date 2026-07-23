@@ -23,7 +23,8 @@ async def proxy_reviews_public(request: Request, product_id: int):
     target_url = f"{settings.REVIEWS_SERVICE_URL}/api/v1/reviews/product/{product_id}"
 
     headers = dict(request.headers)
-    headers.pop("host", None)
+    for sensitive_header in ("host", "authorization", "cookie", "x-user-id", "x-user-role", "x-user-name"):
+        headers.pop(sensitive_header, None)
 
     try:
         req = client.build_request(
@@ -56,7 +57,8 @@ async def proxy_user_reviews_public(request: Request, user_id: str):
     target_url = f"{settings.REVIEWS_SERVICE_URL}/api/v1/reviews/user/{user_id}"
 
     headers = dict(request.headers)
-    headers.pop("host", None)
+    for sensitive_header in ("host", "authorization", "cookie", "x-user-id", "x-user-role", "x-user-name"):
+        headers.pop(sensitive_header, None)
 
     try:
         req = client.build_request(
@@ -88,7 +90,8 @@ async def _proxy_reviews_protected(
     target_url = f"{settings.REVIEWS_SERVICE_URL}/api/v1/reviews/{path}"
 
     headers = dict(request.headers)
-    headers.pop("host", None)
+    for sensitive_header in ("host", "authorization", "cookie", "x-user-id", "x-user-role", "x-user-name"):
+        headers.pop(sensitive_header, None)
     headers.pop("content-length", None)
     headers.pop("Content-Length", None)
 
@@ -186,4 +189,3 @@ async def proxy_reviews_delete(
     token_payload: dict = Depends(verify_jwt),
 ):
     return await _proxy_reviews_protected(request, path, token_payload)
-

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import axios from 'axios';
 import { apiClient } from '@/shared/api/apiClient';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
@@ -17,6 +18,47 @@ const UKRAINIAN_CITIES = [
   'Біла Церква', 'Ужгород', "Кам'янець-Подільський"
 ];
 
+const getApiErrorMessage = (error: unknown, fallback: string): string => {
+  if (axios.isAxiosError(error) && typeof error.response?.data?.detail === 'string') {
+    return error.response.data.detail;
+  }
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return fallback;
+};
+
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: 'save' | 'security' | 'logout';
+  children: React.ReactNode;
+}
+
+const Button: React.FC<ButtonProps> = ({ variant = 'save', children, className = '', ...props }) => {
+  let colorClasses = '';
+  if (variant === 'save') {
+    colorClasses = 'bg-transparent border-[#6FE3C2] text-[#255848] hover:bg-[#6FE3C2]/5 dark:bg-[#3DAE8B] dark:text-[#111A17] dark:hover:bg-[#3DAE8B]/90 dark:border-transparent';
+  } else if (variant === 'security') {
+    colorClasses = 'bg-transparent border-[#00B15E] text-[#00B15E] hover:bg-[#00B15E]/5 dark:bg-[#4ADE80] dark:text-[#111A17] dark:hover:bg-[#4ADE80]/90 dark:border-transparent';
+  } else if (variant === 'logout') {
+    colorClasses = 'bg-transparent border-[#6D8279] text-[#255848] hover:bg-[#6D8279]/5 dark:bg-[#3DAE8B] dark:text-[#111A17] dark:hover:bg-[#3DAE8B]/90 dark:border-transparent';
+  }
+
+  return (
+    <button
+      className={`h-[36px] px-[19px] py-[10px] rounded-[10px] border text-[13px] font-bold font-inter cursor-pointer transition-all flex items-center justify-center whitespace-nowrap active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${colorClasses} ${className}`}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+};
+
+const BreadcrumbChevron = () => (
+  <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 mx-[2px] brightness-50 dark:brightness-100">
+    <path d="M4.5 9L7.5 6L4.5 3" stroke="#6D8279" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+  </svg>
+);
+
 export function SettingsContent() {
   const navigate = useNavigate();
   const user = useAuthStore((s) => s.user);
@@ -25,8 +67,8 @@ export function SettingsContent() {
   const { data: meData } = useFetchMe();
 
   // Особисті дані
-  const [name, setName] = useState(user?.name || 'Марина Добра');
-  const [email, setEmail] = useState(user?.email || 'marine.dobra@gmail.com');
+  const [name, setName] = useState(user?.name || '');
+  const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState('+38 000 000 00 00');
 
   // Локація та магазини
@@ -38,7 +80,7 @@ export function SettingsContent() {
   const [showStoreDropdown, setShowStoreDropdown] = useState(false);
 
   // Безпека — Пароль
-  const [password, setPassword] = useState('••••••••');
+  const password = '••••••••';
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -64,45 +106,43 @@ export function SettingsContent() {
   const handleSaveLocation = async () => {
     if (!user?.email) return;
     try {
-      localStorage.setItem(`smarket_user_city_${user.email}`, city);
-      localStorage.setItem(`smarket_user_favorite_store_${user.email}`, favoriteStore);
-
       const currentSettings = meData?.settings || {};
+      const nextSettings = {
+        ...currentSettings,
+        city,
+        favorite_store: favoriteStore,
+      };
       await apiClient.patch('/api/v1/auth/settings', {
-        settings: {
-          ...currentSettings,
-          city: city,
-          favorite_store: favoriteStore
-        }
+        settings: nextSettings,
       });
 
+      updateUser({ settings: nextSettings });
+      window.dispatchEvent(new Event('profile-updated'));
       window.dispatchEvent(new Event('profile-updated'));
       triggerSave('Локацію збережено!');
-    } catch (error: any) {
-      toast.error(error?.response?.data?.detail || 'Не вдалося зберегти локацію на сервері');
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Не вдалося зберегти локацію на сервері'));
     }
   };
 
   const handleSavePersonal = async () => {
     if (!user?.email) return;
     try {
-      localStorage.setItem(`smarket_user_name_${user.email}`, name);
-      localStorage.setItem(`smarket_user_phone_${user.email}`, phone);
-
       const currentSettings = meData?.settings || {};
+      const nextSettings = {
+        ...currentSettings,
+        name,
+        phone,
+      };
       await apiClient.patch('/api/v1/auth/settings', {
-        settings: {
-          ...currentSettings,
-          name: name,
-          phone: phone
-        }
+        settings: nextSettings,
       });
 
-      updateUser({ name });
+      updateUser({ name, settings: nextSettings });
       window.dispatchEvent(new Event('profile-updated'));
       triggerSave('Дані збережено!');
-    } catch (error: any) {
-      toast.error(error?.response?.data?.detail || 'Не вдалося зберегти дані на сервері');
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Не вдалося зберегти дані на сервері'));
     }
   };
 
@@ -132,8 +172,8 @@ export function SettingsContent() {
 
       logout();
       navigate('/login');
-    } catch (error: any) {
-      toast.error(error.message || 'Не вдалося змінити пароль');
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Не вдалося змінити пароль'));
     }
   };
 
@@ -175,8 +215,8 @@ export function SettingsContent() {
 
       logout();
       navigate('/login');
-    } catch (error: any) {
-      toast.error(error.message || 'Не вдалося змінити email. Спробуйте пізніше.');
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, 'Не вдалося змінити email. Спробуйте пізніше.'));
     }
   };
 
@@ -193,10 +233,10 @@ export function SettingsContent() {
     const userEmail = user?.email;
     if (userEmail) {
       const backendSettings = meData?.settings || {};
-      const savedCity = backendSettings.city || localStorage.getItem(`smarket_user_city_${userEmail}`);
-      const savedStore = backendSettings.favorite_store || localStorage.getItem(`smarket_user_favorite_store_${userEmail}`);
-      const savedPhone = backendSettings.phone || localStorage.getItem(`smarket_user_phone_${userEmail}`);
-      const savedName = backendSettings.name || user?.name || localStorage.getItem(`smarket_user_name_${userEmail}`);
+      const savedCity = backendSettings.city;
+      const savedStore = backendSettings.favorite_store;
+      const savedPhone = backendSettings.phone;
+      const savedName = backendSettings.name || user?.name;
 
       setCity(savedCity || 'Київ');
       setFavoriteStore(savedStore || 'Всі магазини');
@@ -205,43 +245,11 @@ export function SettingsContent() {
         setName(savedName);
       }
     }
-  }, [user?.email, meData]);
-
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'save' | 'security' | 'logout';
-  children: React.ReactNode;
-}
-
-const Button: React.FC<ButtonProps> = ({ variant = 'save', children, className = '', ...props }) => {
-  let colorClasses = '';
-  if (variant === 'save') {
-    colorClasses = 'bg-transparent border-[#6FE3C2] text-[#255848] hover:bg-[#6FE3C2]/5 dark:bg-[#3DAE8B] dark:text-[#111A17] dark:hover:bg-[#3DAE8B]/90 dark:border-transparent';
-  } else if (variant === 'security') {
-    colorClasses = 'bg-transparent border-[#00B15E] text-[#00B15E] hover:bg-[#00B15E]/5 dark:bg-[#4ADE80] dark:text-[#111A17] dark:hover:bg-[#4ADE80]/90 dark:border-transparent';
-  } else if (variant === 'logout') {
-    colorClasses = 'bg-transparent border-[#6D8279] text-[#255848] hover:bg-[#6D8279]/5 dark:bg-[#3DAE8B] dark:text-[#111A17] dark:hover:bg-[#3DAE8B]/90 dark:border-transparent';
-  }
-
-  return (
-    <button
-      className={`h-[36px] px-[19px] py-[10px] rounded-[10px] border text-[13px] font-bold font-inter cursor-pointer transition-all flex items-center justify-center whitespace-nowrap active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed ${colorClasses} ${className}`}
-      {...props}
-    >
-      {children}
-    </button>
-  );
-};
-
-  const BreadcrumbChevron = () => (
-    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" className="shrink-0 mx-[2px] brightness-50 dark:brightness-100">
-      <path d="M4.5 9L7.5 6L4.5 3" stroke="#6D8279" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
+  }, [user?.email, meData, user?.name]);
 
   return (
     <section className="w-full font-inter flex-1 min-w-0 pb-[40px] max-w-[927px]">
       <div className="w-full">
-        
         {/* Хлібні крихти */}
         <div className="flex flex-wrap items-center gap-[4px] font-inter text-[13px] text-[#6D8279] mb-[12px]">
           <span className="cursor-pointer hover:text-[#173B33] dark:hover:text-[#3DAE8B] transition-colors" onClick={() => navigate('/')}>Головна</span>

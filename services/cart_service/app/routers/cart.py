@@ -1,12 +1,23 @@
 from typing import Optional
 import uuid
 import secrets
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, BackgroundTasks, Query
+from fastapi import (
+    APIRouter,
+    Depends,
+    Header,
+    HTTPException,
+    Request,
+    BackgroundTasks,
+    Query,
+)
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 import httpx
 from loguru import logger
 
 
+from app.database.models import Cart, Receipt
 from app.database.session import get_db
 from app.shared.schemas import (
     CartItemCreate,
@@ -15,6 +26,9 @@ from app.shared.schemas import (
     CartCreate,
     CartItemUpdate,
     ReceiptResponse,
+    ShareEmailRequest,
+    ImportCartResponse,
+    SharedCartResponse,
 )
 from app import crud
 from app.external_api import (
@@ -36,27 +50,24 @@ router = APIRouter(prefix="/cart", tags=["Cart"])
 
 @router.get("/", response_model=list[CartResponse])
 async def get_all_carts(
-    user_id: uuid.UUID = Depends(get_user_id), 
+    user_id: uuid.UUID = Depends(get_user_id),
     db: AsyncSession = Depends(get_db),
     http_client: httpx.AsyncClient = Depends(get_http_client),
 ):
     """Отримати список усіх кошиків користувача"""
     carts = await crud.get_user_carts(db, user_id)
-    
+
     # Gather all items across all carts
     all_items = []
     for cart in carts:
         all_items.extend(cart.items)
-        
+
     # Fetch details for all items in batch
     product_ids = list(set(item.product_id for item in all_items))
     product_details_list = await fetch_products_batch_details(http_client, product_ids)
-    
+
     # Map from product_id to product_data
-    product_data_map = {
-        details.get("id"): details 
-        for details in product_details_list
-    }
+    product_data_map = {details.get("id"): details for details in product_details_list}
 
     responses = []
     for cart in carts:
@@ -65,13 +76,15 @@ async def get_all_carts(
         for item in cart.items:
             product_data = product_data_map.get(item.product_id, {})
             prices = product_data.get("prices", [])
-            valid_prices = [p.get("price", 0.0) for p in prices if p.get("in_stock", False)]
+            valid_prices = [
+                p.get("price", 0.0) for p in prices if p.get("in_stock", False)
+            ]
             if valid_prices:
                 price = min(valid_prices)
             else:
                 all_prices = [p.get("price", 0.0) for p in prices]
                 price = min(all_prices) if all_prices else 0.0
-            
+
             name = product_data.get("title", "Невідомий товар")
             image_url = product_data.get("image_url")
             item_price = price * item.quantity
@@ -120,7 +133,7 @@ async def create_new_cart(
     }
 
 
-@router.get("/{cart_id}", response_model=CartResponse)
+@router.get("/{cart_id:uuid}", response_model=CartResponse)
 async def get_cart(
     cart_id: uuid.UUID,
     user_id: uuid.UUID = Depends(get_user_id),
@@ -140,21 +153,18 @@ async def get_cart(
         "items": [],
         "total_price": 0.0,
     }
-    
+
     # Fetch details for all items in batch
     product_ids = list(set(item.product_id for item in cart.items))
     product_details_list = await fetch_products_batch_details(http_client, product_ids)
 
-    product_data_map = {
-        details.get("id"): details 
-        for details in product_details_list
-    }
+    product_data_map = {details.get("id"): details for details in product_details_list}
 
     total_price = 0.0
     for item in cart.items:
         product_data = product_data_map.get(item.product_id, {})
         name = product_data.get("title", "Невідомий товар")
-        
+
         prices = product_data.get("prices", [])
         valid_prices = [p.get("price", 0.0) for p in prices if p.get("in_stock", False)]
         if valid_prices:
@@ -235,7 +245,9 @@ async def update_item_quantity(
     http_client: httpx.AsyncClient = Depends(get_http_client),
 ):
     """Оновити кількість товару в кошику"""
-    cart = await crud.update_item_quantity(db, user_id, cart_id, item_id, item_in.quantity)
+    cart = await crud.update_item_quantity(
+        db, user_id, cart_id, item_id, item_in.quantity
+    )
     if not cart:
         raise HTTPException(status_code=404, detail="Кошик або товар не знайдено")
     return await get_cart(cart_id, user_id, db, http_client)
@@ -283,20 +295,19 @@ async def _build_stores_comparison(
 ) -> tuple[list[dict], dict]:
     if not cart or not cart.items:
         return [], {}
-    
+
     mapped_city = None
     if city:
         mapped_city = CITY_MAPPING.get(city.lower().strip())
         if not mapped_city:
             mapped_city = city.lower().strip()
-    
+
     # Fetch offers for all items in batch
     product_ids = list(set(item.product_id for item in cart.items))
     offers_data_list = await fetch_products_batch_offers(http_client, product_ids)
 
     offers_data_map = {
-        offer_data.get("id"): offer_data
-        for offer_data in offers_data_list
+        offer_data.get("id"): offer_data for offer_data in offers_data_list
     }
 
     stores_comparison = {}
@@ -375,7 +386,9 @@ async def _build_stores_comparison(
                         "is_complete": False,
                     }
                 if in_stock:
-                    stores_comparison_all[store_id]["total_price"] += price * item.quantity
+                    stores_comparison_all[store_id]["total_price"] += (
+                        price * item.quantity
+                    )
                     stores_comparison_all[store_id]["found_items_count"] += 1
                     stores_comparison_all[store_id]["missing_items_count"] -= 1
 
@@ -412,6 +425,7 @@ async def _generate_ai_description(
     from app.database.session import _get_session_factory
     from app.config import settings
     from sqlalchemy import text
+
     url = f"{settings.ZEPHYROS_AGENT_URL}/agent/summarize-plan"
     payload = {
         "store_name": store_name,
@@ -428,15 +442,23 @@ async def _generate_ai_description(
                 if summary_text:
                     async with _get_session_factory()() as db:
                         await db.execute(
-                            text("UPDATE receipts SET ai_description = :text WHERE id = :id"),
-                            {"text": summary_text, "id": receipt_id}
+                            text(
+                                "UPDATE receipts SET ai_description = :text WHERE id = :id"
+                            ),
+                            {"text": summary_text, "id": receipt_id},
                         )
                         await db.commit()
-                        logger.info(f"Successfully generated AI description for receipt {receipt_id}")
+                        logger.info(
+                            f"Successfully generated AI description for receipt {receipt_id}"
+                        )
                 else:
-                    logger.warning(f"summarize-plan returned 200 but text is missing/empty: {data}")
+                    logger.warning(
+                        f"summarize-plan returned 200 but text is missing/empty: {data}"
+                    )
             else:
-                logger.error(f"Failed to generate AI description for receipt {receipt_id}: status {response.status_code}")
+                logger.error(
+                    f"Failed to generate AI description for receipt {receipt_id}: status {response.status_code}"
+                )
     except Exception as e:
         logger.exception(f"Error in background task generating AI description: {e}")
 
@@ -456,52 +478,59 @@ async def complete_cart(
     if not cart.items:
         raise HTTPException(status_code=422, detail="Кошик порожній")
 
-    result_list, offers_data_map = await _build_stores_comparison(cart, http_client, city=city)
+    result_list, offers_data_map = await _build_stores_comparison(
+        cart, http_client, city=city
+    )
     if not result_list:
-        raise HTTPException(status_code=422, detail="Не знайдено пропозицій для товарів у кошику")
+        raise HTTPException(
+            status_code=422, detail="Не знайдено пропозицій для товарів у кошику"
+        )
 
-    chosen_store_comp = result_list[0]
+    complete_stores = [s for s in result_list if s.get("is_complete", False)]
+    if not complete_stores:
+        raise HTTPException(
+            status_code=422,
+            detail="Жоден магазин не має всіх товарів із кошика",
+        )
+
+    chosen_store_comp = complete_stores[0]
     chosen_store_id = chosen_store_comp["store_id"]
 
-    # Filter complete stores to calculate savings
-    complete_stores = [s for s in result_list if s.get("is_complete", False)]
-    if complete_stores:
-        if len(complete_stores) > 1:
-            max_complete_price = max(s["total_price"] for s in complete_stores)
-            savings_amount = max(0.0, max_complete_price - chosen_store_comp["total_price"])
-        else:
-            savings_amount = 0.0
+    if len(complete_stores) > 1:
+        max_complete_price = max(s["total_price"] for s in complete_stores)
+        savings_amount = max(0.0, max_complete_price - chosen_store_comp["total_price"])
     else:
-        max_partial_price = max(s["total_price"] for s in result_list)
-        savings_amount = max(0.0, max_partial_price - chosen_store_comp["total_price"])
+        savings_amount = 0.0
 
     snapshot_items = []
     for item in cart.items:
         prod_data = offers_data_map.get(item.product_id, {})
         prod_name = prod_data.get("title", "Невідомий товар")
-        
+
         store_offer = None
         for offer in prod_data.get("offers", []):
             if offer.get("store", {}).get("external_id") == chosen_store_id:
                 store_offer = offer
                 break
-        
+
         if store_offer:
             in_stock = store_offer.get("in_stock", False)
             price = store_offer.get("price", 0.0)
         else:
             in_stock = False
             price = 0.0
-            
+
         subtotal = price * item.quantity
-        snapshot_items.append({
-            "product_id": item.product_id,
-            "name": prod_name,
-            "quantity": item.quantity,
-            "price": price,
-            "subtotal": subtotal,
-            "in_stock": in_stock
-        })
+        snapshot_items.append(
+            {
+                "product_id": item.product_id,
+                "name": prod_name,
+                "quantity": item.quantity,
+                "price": price,
+                "subtotal": subtotal,
+                "in_stock": in_stock,
+            }
+        )
 
     snapshot_store = {
         "store_id": chosen_store_id,
@@ -512,9 +541,9 @@ async def complete_cart(
         "lng": chosen_store_comp.get("lng"),
         "is_complete": chosen_store_comp["is_complete"],
         "items": snapshot_items,
-        "subtotal": chosen_store_comp["total_price"]
+        "subtotal": chosen_store_comp["total_price"],
     }
-    
+
     # Generate unique share token
     share_token = None
     for _ in range(10):
@@ -533,7 +562,7 @@ async def complete_cart(
         savings_amount=savings_amount,
         share_token=share_token,
         ai_description=None,
-        snapshot=[snapshot_store]
+        snapshot=[snapshot_store],
     )
     db.add(receipt)
     await db.delete(cart)
@@ -546,7 +575,7 @@ async def complete_cart(
         chosen_store_comp["store_name"],
         len(snapshot_items),
         chosen_store_comp["total_price"],
-        savings_amount
+        savings_amount,
     )
 
     return receipt
@@ -566,14 +595,9 @@ async def duplicate_cart_endpoint(
     return await get_cart(new_cart.id, user_id, db, http_client)
 
 
-from app.database.models import Cart, Receipt
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
-from app.shared.schemas import ShareEmailRequest, ImportCartResponse
-
-@router.get("/shared/{cart_id}", response_model=CartResponse)
+@router.get("/shared/{cart_id}", response_model=SharedCartResponse)
 async def get_shared_cart(
-    cart_id: uuid.UUID, 
+    cart_id: uuid.UUID,
     db: AsyncSession = Depends(get_db),
     http_client: httpx.AsyncClient = Depends(get_http_client),
 ):
@@ -583,16 +607,13 @@ async def get_shared_cart(
     cart = result.scalars().first()
 
     if not cart:
-        raise HTTPException(status_code=404, detail="Cart not found")
-    
+        raise HTTPException(status_code=404, detail="Кошик за посиланням не знайдено")
+
     # Fetch details for all items in batch
     product_ids = list(set(item.product_id for item in cart.items))
     product_details_list = await fetch_products_batch_details(http_client, product_ids)
 
-    product_data_map = {
-        details.get("id"): details 
-        for details in product_details_list
-    }
+    product_data_map = {details.get("id"): details for details in product_details_list}
 
     total_price = 0.0
     items_response = []
@@ -605,7 +626,7 @@ async def get_shared_cart(
         else:
             all_prices = [p.get("price", 0.0) for p in prices]
             price = min(all_prices) if all_prices else 0.0
-        
+
         name = product_data.get("title", "Невідомий товар")
         image_url = product_data.get("image_url")
         item_price = price * item.quantity
@@ -614,7 +635,6 @@ async def get_shared_cart(
         items_response.append(
             {
                 "id": item.id,
-                "cart_id": item.cart_id,
                 "product_id": item.product_id,
                 "quantity": item.quantity,
                 "product_name": name,
@@ -625,7 +645,6 @@ async def get_shared_cart(
 
     return {
         "id": cart.id,
-        "user_id": cart.user_id,
         "name": cart.name,
         "updated_at": cart.updated_at,
         "items": items_response,
@@ -638,7 +657,7 @@ async def share_cart_by_email(
     cart_id: uuid.UUID,
     request: ShareEmailRequest,
     user_id: uuid.UUID = Depends(get_user_id),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Відправити посилання на спільний кошик через email"""
     cart = await crud.get_cart(db, user_id, cart_id)
@@ -646,7 +665,7 @@ async def share_cart_by_email(
         raise HTTPException(status_code=404, detail="Cart not found")
 
     from app.main import broker
-    
+
     await broker.publish(
         {
             "email": request.email,
@@ -662,10 +681,12 @@ async def share_cart_by_email(
 async def import_shared_cart(
     shared_cart_id: uuid.UUID,
     user_id: uuid.UUID = Depends(get_user_id),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
 ):
     """Скопіювати товари зі спільного кошика у новий кошик поточного користувача"""
-    stmt = select(Cart).where(Cart.id == shared_cart_id).options(selectinload(Cart.items))
+    stmt = (
+        select(Cart).where(Cart.id == shared_cart_id).options(selectinload(Cart.items))
+    )
     result = await db.execute(stmt)
     shared_cart = result.scalars().first()
 
@@ -677,10 +698,10 @@ async def import_shared_cart(
 
     for item in shared_cart.items:
         await crud.add_item(
-            db, 
-            user_id, 
-            new_cart.id, 
-            CartItemCreate(product_id=item.product_id, quantity=item.quantity)
+            db,
+            user_id,
+            new_cart.id,
+            CartItemCreate(product_id=item.product_id, quantity=item.quantity),
         )
 
     return {"new_cart_id": new_cart.id, "message": "Cart imported successfully"}

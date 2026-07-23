@@ -3,6 +3,9 @@ export interface StoreComparison {
   storeName: string;
   totalPrice: number;
   isBest: boolean;
+  isComplete?: boolean;
+  foundItemsCount?: number;
+  missingItemsCount?: number;
 }
 
 // Підсумок конкретного кошика

@@ -19,7 +19,8 @@ def _error_response(error: str, detail: str, status_code: int) -> JSONResponse:
 
 def _proxy_headers(request: Request) -> dict[str, str]:
     headers = dict(request.headers)
-    headers.pop("host", None)
+    for sensitive_header in ("host", "authorization", "cookie", "x-user-id", "x-user-role"):
+        headers.pop(sensitive_header, None)
     headers.pop("x-request-id", None)
     headers["X-Request-Id"] = request.headers.get("X-Request-Id") or str(uuid.uuid4())
     return headers

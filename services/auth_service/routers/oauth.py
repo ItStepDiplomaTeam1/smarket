@@ -170,8 +170,9 @@ async def oauth_google_login(
             f"Google OAuth: існуючий користувач {_mask_email(email)} (ID: {user.id}) увійшов"
         )
 
-    access_token = create_access_token(str(user.id), user.role, user.email)
-    refresh_token = create_refresh_token(str(user.id), user.role, user.email)
+    token_version = int(getattr(user, "token_version", 0) or 0)
+    access_token = create_access_token(str(user.id), user.role, user.email, token_version)
+    refresh_token = create_refresh_token(str(user.id), user.role, user.email, token_version)
 
     response.set_cookie(**_build_cookie_params(value=refresh_token))
 
@@ -270,8 +271,9 @@ async def oauth_telegram_login(
         )
 
     # Issue JWT tokens
-    access_token = create_access_token(str(user.id), user.role, user.email)
-    refresh_token = create_refresh_token(str(user.id), user.role, user.email)
+    token_version = int(getattr(user, "token_version", 0) or 0)
+    access_token = create_access_token(str(user.id), user.role, user.email, token_version)
+    refresh_token = create_refresh_token(str(user.id), user.role, user.email, token_version)
 
     response.set_cookie(**_build_cookie_params(value=refresh_token))
 

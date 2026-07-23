@@ -1,9 +1,14 @@
 import uuid
 from sqlalchemy import select, delete
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database.models import Review
 from app.shared.schemas import ReviewCreate
+
+
+class DuplicateReviewError(Exception):
+    """A user may have only one review per product."""
 
 
 # 1. Отримати всі відгуки для конкретного товару
@@ -15,7 +20,6 @@ async def get_reviews_by_product(db: AsyncSession, product_id: int):
     )
     result = await db.execute(stmt)
     return result.scalars().all()
-
 
 
 # 2. Отримати всі відгуки конкретного користувача
@@ -41,7 +45,11 @@ async def create_review(
         text=review_in.text,
     )
     db.add(new_review)
-    await db.commit()
+    try:
+        await db.commit()
+    except IntegrityError as err:
+        await db.rollback()
+        raise DuplicateReviewError from err
     await db.refresh(new_review)
     return new_review
 

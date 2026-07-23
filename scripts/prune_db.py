@@ -4,7 +4,8 @@ import asyncpg
 import time
 
 def get_db_url():
-    env_path = r"c:\Users\ashfromsky\PycharmProjects\smarket\services\product_service\.env"
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    env_path = os.path.join(base_dir, "services", "product_service", ".env")
     if os.path.exists(env_path):
         with open(env_path, 'r') as f:
             for line in f:

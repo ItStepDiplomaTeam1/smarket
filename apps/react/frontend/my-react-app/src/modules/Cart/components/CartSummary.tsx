@@ -1,4 +1,5 @@
 import React from 'react';
+import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useCartStore } from '../store/useCartStore';
@@ -13,7 +14,7 @@ export const CartSummary: React.FC = () => {
 
   const handleShare = async () => {
     if (!activeCartId) return;
-    const url = `${window.location.origin}/cart/${activeCartId}`;
+    const url = `${window.location.origin}/cart/shared/${activeCartId}`;
     try {
       if (navigator.share) {
         await navigator.share({ title: 'Мій кошик Smarket', url });
@@ -32,9 +33,11 @@ export const CartSummary: React.FC = () => {
       const receipt = await completeMutation.mutateAsync(activeCartId);
       toast.success('Чек успішно створено!');
       navigate(`/receipts/${receipt.share_token}`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to complete cart', err);
-      const detail = err?.response?.data?.detail || 'Не вдалося створити список покупок';
+      const detail = axios.isAxiosError(err)
+        ? err.response?.data?.detail || 'Не вдалося створити список покупок'
+        : 'Не вдалося створити список покупок';
       toast.error(detail);
     }
   };
@@ -49,11 +52,14 @@ export const CartSummary: React.FC = () => {
 
   if (!activeCart) return null;
 
-  const bestStore = comparisonData && comparisonData.length > 0 ? comparisonData[0].storeName : activeCart.bestStore;
-  const bestPrice = comparisonData && comparisonData.length > 0 ? comparisonData[0].totalPrice : activeCart.bestPrice;
+  const completeComparisons = comparisonData?.filter((store) => store.isComplete) ?? [];
+  const bestCompleteStore = completeComparisons[0];
+  const hasCompleteStore = completeComparisons.length > 0;
+  const bestStore = bestCompleteStore?.storeName ?? 'Немає повного набору';
+  const bestPrice = bestCompleteStore?.totalPrice ?? 0;
   const comparison = comparisonData || activeCart.summary.comparison;
 
-  const prices = comparisonData ? comparisonData.map((c: any) => c.totalPrice) : [];
+  const prices = completeComparisons.map((store) => store.totalPrice);
   const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
   const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
   const calculatedSavings = maxPrice > minPrice ? maxPrice - minPrice : 0;
@@ -89,9 +95,16 @@ export const CartSummary: React.FC = () => {
       <div>
         <h3 className="font-medium text-gray-900 dark:text-white mb-3 text-sm">Порівняння магазинів</h3>
         <div className="flex flex-col gap-2">
-          {comparison.map((store: any) => (
+          {comparison.map((store) => (
             <div key={store.storeName} className="flex justify-between items-center py-2 border-b border-gray-100 dark:border-[#265447]/20 last:border-0 gap-4">
-              <span className="text-[#6D8279] dark:text-[#A9B6B0] font-['Inter'] flex-1 truncate" title={store.storeName}>{store.storeName}</span>
+              <span className="text-[#6D8279] dark:text-[#A9B6B0] font-['Inter'] flex-1 truncate" title={store.storeName}>
+                {store.storeName}
+                {store.isComplete === false && (
+                  <span className="block text-xs text-amber-700 dark:text-amber-400">
+                    Немає {store.missingItemsCount ?? 0} товарів
+                  </span>
+                )}
+              </span>
               <span className="font-semibold text-[#173B33] dark:text-white font-['Inter'] whitespace-nowrap shrink-0">{Number(store.totalPrice).toFixed(2)} ₴</span>
             </div>
           ))}
@@ -109,13 +122,21 @@ export const CartSummary: React.FC = () => {
       <button 
         className="w-full py-3 bg-[#265447] dark:bg-[#3DAE8B] text-white dark:text-[#111A17] rounded-xl font-medium font-['Inter'] hover:bg-[#1A3E2F] dark:hover:bg-[#2C9E7C] transition-colors mb-3 min-h-[44px] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
         onClick={handleComplete}
-        disabled={completeMutation.isPending || (activeCart.summary.totalItems === 0)}
-        title={activeCart.summary.totalItems === 0 ? 'Додайте товари до кошика' : undefined}
+        disabled={completeMutation.isPending || activeCart.summary.totalItems === 0 || !hasCompleteStore}
+        title={
+          activeCart.summary.totalItems === 0
+            ? 'Додайте товари до кошика'
+            : !hasCompleteStore
+              ? 'Жоден магазин не має всіх товарів'
+              : undefined
+        }
       >
         {completeMutation.isPending ? (
           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white dark:border-[#111A17]"></div>
         ) : activeCart.summary.totalItems === 0 ? (
           'Кошик порожній'
+        ) : !hasCompleteStore ? (
+          'Немає повного набору'
         ) : (
           'Створити список покупок'
         )}

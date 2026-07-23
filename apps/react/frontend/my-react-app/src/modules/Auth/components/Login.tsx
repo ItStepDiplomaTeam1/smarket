@@ -9,6 +9,7 @@ import eyeIcon from '@/shared/assets/ButtonEye.svg';
 import { apiClient } from '@/shared/api/apiClient';
 import { useAuthStore } from '../store/authStore';
 import { type MeResponse } from '@/hooks/api/useAuthApi';
+import { getSafeAuthReturnTo } from '@/modules/Auth/lib/authRedirect';
 
 interface LoginResponse {
     access_token: string;
@@ -48,13 +49,13 @@ export const LoginForm = () => {
             try {
                 const { data: me } = await apiClient.get<MeResponse>('/api/v1/auth/me');
                 useAuthStore.setState((state) => ({
-                    user: state.user ? { ...state.user, name: me.username } : state.user,
+                    user: state.user ? { ...state.user, name: me.username, settings: me.settings } : state.user,
                 }));
             } catch {
                 // якщо /me не відповів — ім'я залишиться undefined, дефолтний fallback спрацює на бекенді
             }
             toast.success(`З поверненням! Ви успішно увійшли.`);
-            navigate('/');
+            navigate(getSafeAuthReturnTo());
         },
     });
 

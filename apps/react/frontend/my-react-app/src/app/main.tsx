@@ -6,6 +6,7 @@ import '../index.css'
 import { AppRouter } from './routes/Router'
 import { Toaster } from 'react-hot-toast'
 import { ThemeProvider } from './providers/ThemeProvider'
+import { AuthBootstrap } from '@/modules/Auth/components/AuthBootstrap'
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -67,8 +68,10 @@ createRoot(document.getElementById('root')!).render(
     <GoogleOAuthProvider clientId={googleClientId}>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider>
-          <AppRouter />
-          <Toaster position="top-center" toastOptions={{ duration: 4000 }} />
+          <AuthBootstrap>
+            <AppRouter />
+            <Toaster position="top-center" toastOptions={{ duration: 4000 }} />
+          </AuthBootstrap>
         </ThemeProvider>
       </QueryClientProvider>
     </GoogleOAuthProvider>

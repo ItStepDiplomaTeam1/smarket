@@ -29,7 +29,13 @@ import (
 // щоб product_service (Python) міг моментально інвалідувати кеш.
 // Стратегія 4: після кожного батчу надсилає HTTP POST до search_service
 // для індексації змінених товарів у Meilisearch.
-func TransformLoadWorker(mongoClient *mongo.Client, pgPool *pgxpool.Pool, mongoDBName string, searchServiceURL string) {
+func TransformLoadWorker(
+	mongoClient *mongo.Client,
+	pgPool *pgxpool.Pool,
+	mongoDBName string,
+	searchServiceURL string,
+	searchInternalToken string,
+) {
 	collection := mongoClient.Database(mongoDBName).Collection("raw_pages")
 
 	log.Println("[Transform] Воркер трансформації запущено.")
@@ -37,7 +43,13 @@ func TransformLoadWorker(mongoClient *mongo.Client, pgPool *pgxpool.Pool, mongoD
 	for {
 		time.Sleep(5 * time.Second)
 
-		if err := runTransformBatch(context.Background(), collection, pgPool, searchServiceURL); err != nil {
+		if err := runTransformBatch(
+			context.Background(),
+			collection,
+			pgPool,
+			searchServiceURL,
+			searchInternalToken,
+		); err != nil {
 			log.Printf("[Transform] Помилка обробки батчу: %v", err)
 		}
 	}
@@ -45,7 +57,13 @@ func TransformLoadWorker(mongoClient *mongo.Client, pgPool *pgxpool.Pool, mongoD
 
 // runTransformBatch вичитує один батч «нових» документів і обробляє кожен.
 // Після успішної обробки батчу надсилає pg_notify та оновлює Meilisearch.
-func runTransformBatch(ctx context.Context, collection *mongo.Collection, pgPool *pgxpool.Pool, searchServiceURL string) error {
+func runTransformBatch(
+	ctx context.Context,
+	collection *mongo.Collection,
+	pgPool *pgxpool.Pool,
+	searchServiceURL string,
+	searchInternalToken string,
+) error {
 	docs, err := findNewDocuments(ctx, collection)
 	if err != nil {
 		return fmt.Errorf("читання з Mongo: %w", err)
@@ -87,7 +105,7 @@ func runTransformBatch(ctx context.Context, collection *mongo.Collection, pgPool
 		notifyProductsUpdated(ctx, pgPool, storeID)
 		// Стратегія 4: індексуємо оновлені товари в Meilisearch (fire-and-forget)
 		if searchServiceURL != "" {
-			go indexProductsToSearch(pgPool, searchServiceURL, storeID)
+			go indexProductsToSearch(pgPool, searchServiceURL, searchInternalToken, storeID)
 		}
 	}
 
@@ -707,8 +725,8 @@ type SearchProductDocument struct {
 	IsHidden       bool     `json:"is_hidden"`
 	// CreatedAtTs — Unix timestamp (seconds) of product.created_at.
 	// Used by search_service to filter "new" products (created in last 14 days).
-	CreatedAtTs    int64    `json:"created_at_ts"`
-	DiscountPercent *int    `json:"discount_percent,omitempty"`
+	CreatedAtTs     int64 `json:"created_at_ts"`
+	DiscountPercent *int  `json:"discount_percent,omitempty"`
 }
 
 type searchIndexRequest struct {
@@ -718,7 +736,12 @@ type searchIndexRequest struct {
 // indexProductsToSearch вибирає оновлені товари з PostgreSQL для заданого store_id
 // та надсилає їх у search_service для індексації в Meilisearch.
 // Викликається як горутина (fire-and-forget), помилки не є критичними.
-func indexProductsToSearch(pgPool *pgxpool.Pool, searchServiceURL string, storeID string) {
+func indexProductsToSearch(
+	pgPool *pgxpool.Pool,
+	searchServiceURL string,
+	searchInternalToken string,
+	storeID string,
+) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -826,7 +849,7 @@ func indexProductsToSearch(pgPool *pgxpool.Pool, searchServiceURL string, storeI
 	}
 
 	url := strings.TrimRight(searchServiceURL, "/") + "/api/v1/index"
-	resp, err := postWithRetry(url, body, 5)
+	resp, err := postWithRetry(url, body, searchInternalToken, 5)
 	if err != nil {
 		log.Printf("[SearchIndex] WARN: HTTP POST до search_service не вдалось після повторів (store=%s): %v", storeID, err)
 		return
@@ -842,13 +865,19 @@ func indexProductsToSearch(pgPool *pgxpool.Pool, searchServiceURL string, storeI
 }
 
 // postWithRetry здійснює HTTP POST із експоненціальною затримкою при помилках мережі або 5xx помилках сервера.
-func postWithRetry(url string, body []byte, maxRetries int) (*http.Response, error) {
+func postWithRetry(url string, body []byte, internalToken string, maxRetries int) (*http.Response, error) {
 	var resp *http.Response
 	var err error
 	delay := 1 * time.Second
 
 	for i := 0; i < maxRetries; i++ {
-		resp, err = http.Post(url, "application/json", bytes.NewReader(body)) //nolint:gosec
+		req, requestErr := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
+		if requestErr != nil {
+			return nil, fmt.Errorf("створення запиту search_service: %w", requestErr)
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-Internal-Token", internalToken)
+		resp, err = http.DefaultClient.Do(req) //nolint:gosec
 		if err == nil && resp.StatusCode < 500 {
 			// Успіх або клієнтська помилка (4xx), повторювати не потрібно
 			return resp, nil
@@ -871,7 +900,11 @@ func postWithRetry(url string, body []byte, maxRetries int) (*http.Response, err
 
 // RunFullBackfill вибирає абсолютно всі товари з PostgreSQL та надсилає їх у search_service.
 // Повертає кількість успішно проіндексованих товарів та помилку.
-func RunFullBackfill(pgPool *pgxpool.Pool, searchServiceURL string) (int, error) {
+func RunFullBackfill(
+	pgPool *pgxpool.Pool,
+	searchServiceURL string,
+	searchInternalToken string,
+) (int, error) {
 	ctx := context.Background()
 
 	// Отримуємо загальну кількість
@@ -931,7 +964,7 @@ func RunFullBackfill(pgPool *pgxpool.Pool, searchServiceURL string) (int, error)
 			return fmt.Errorf("marshal batch: %w", err)
 		}
 
-		resp, err := postWithRetry(url, body, 5)
+		resp, err := postWithRetry(url, body, searchInternalToken, 5)
 		if err != nil {
 			return fmt.Errorf("надсилання батчу: %w", err)
 		}
@@ -1011,7 +1044,6 @@ func RunFullBackfill(pgPool *pgxpool.Pool, searchServiceURL string) (int, error)
 	log.Printf("[Backfill] Успішно завершено! Всього проіндексовано: %d товарів", indexedCount)
 	return indexedCount, nil
 }
-
 
 // notifyProductsUpdated надсилає pg_notify на канал 'products_updated'.
 // product_service (Python/asyncpg) слухає цей канал і інвалідує кеш.

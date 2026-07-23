@@ -55,7 +55,7 @@
 *   **Успішна відповідь (`201 Created`):**
     ```json
     {
-      "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "access_token": "<access_token>",
       "token_type": "bearer",
       "email": "user@example.com"
     }
@@ -78,7 +78,7 @@
 *   **Успішна відповідь (`200 OK`):**
     ```json
     {
-      "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "access_token": "<access_token>",
       "token_type": "bearer"
     }
     ```
@@ -92,7 +92,7 @@
 *   **Успішна відповідь (`200 OK`):**
     ```json
     {
-      "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+      "access_token": "<access_token>",
       "token_type": "bearer"
     }
     ```

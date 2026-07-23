@@ -3,7 +3,7 @@ import type { AxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://157.180.74.21:8080',
+  baseURL: import.meta.env.VITE_API_URL || 'https://smarket-api.duckdns.org',
   timeout: 10000,
   withCredentials: true,
   headers: {
@@ -21,10 +21,7 @@ let failedQueue: Array<{
 function processQueue(error: unknown, token: string | null) {
   failedQueue.forEach(({ resolve, reject }) => {
     if (error) {
-      // Якщо оновлення токена не вдалося, даємо запитам у черзі інтерцептора запитів
-      // спробувати виконатися анонімно (передаємо null).
-      // Інтерцептор відповідей сам відхилить свій запит, якщо отримає null.
-      resolve(null);
+      reject(error);
     } else {
       resolve(token);
     }
@@ -53,7 +50,7 @@ function isTokenExpired(token: string | null): boolean {
     const currentTime = Math.floor(Date.now() / 1000);
     // Токен вважається простроченим, якщо до закінчення залишилось менше 10 секунд
     return payload.exp - currentTime < 10;
-  } catch (e) {
+  } catch {
     return true;
   }
 }
@@ -73,7 +70,7 @@ apiClient.interceptors.request.use(
               reject: (err) => reject(err),
             });
           });
-        } catch (err) {
+        } catch {
           token = null;
         }
       } else {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,9 +11,9 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"smarket/services/products_etl/DTO"
 	"strings"
 	"sync/atomic"
-	"smarket/services/products_etl/DTO"
 	"syscall"
 	"time"
 
@@ -72,7 +73,6 @@ func healthHandler(infra *database.Infrastructure) http.HandlerFunc {
 	}
 }
 
-
 // getProductsHandler returns a list of products
 // @Summary     Отримати список товарів з Zakaz.ua
 // @Description Виконує запит до API Zakaz.ua та повертає список товарів для заданого магазину та категорії
@@ -117,12 +117,21 @@ func getProductsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // backfillHandler запускає повну реіндексацію товарів у Meilisearch
-func backfillHandler(pgPool *pgxpool.Pool, searchServiceURL string) http.HandlerFunc {
+func backfillHandler(
+	pgPool *pgxpool.Pool,
+	searchServiceURL string,
+	searchInternalToken string,
+	adminKey string,
+) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if !validAdminKey(r.Header.Get("X-Admin-Key"), adminKey) {
+			http.Error(w, `{"error":"unauthorized"}`, http.StatusUnauthorized)
+			return
+		}
 		log.Println("[HTTP] Отримано запит на повний бекфілл індексу Meilisearch")
-		
+
 		go func() {
-			_, err := service.RunFullBackfill(pgPool, searchServiceURL)
+			_, err := service.RunFullBackfill(pgPool, searchServiceURL, searchInternalToken)
 			if err != nil {
 				log.Printf("[Backfill] Помилка асинхронного бекфіллу: %v", err)
 			}
@@ -132,6 +141,11 @@ func backfillHandler(pgPool *pgxpool.Pool, searchServiceURL string) http.Handler
 		w.WriteHeader(http.StatusAccepted)
 		_, _ = w.Write([]byte(`{"status":"started","message":"Процес повної реіндексації запустищено у фоні. Слідкуйте за логами products_etl."}`))
 	}
+}
+
+func validAdminKey(providedKey, expectedKey string) bool {
+	return len(providedKey) == len(expectedKey) &&
+		subtle.ConstantTimeCompare([]byte(providedKey), []byte(expectedKey)) == 1
 }
 
 // etlControlRequest represents the request body for the ETL control endpoint
@@ -155,7 +169,7 @@ func etlControlHandler(infra *database.Infrastructure, adminKey string) http.Han
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Validate API key
 		providedKey := r.Header.Get("X-Admin-Key")
-		if providedKey == "" || providedKey != adminKey {
+		if !validAdminKey(providedKey, adminKey) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
 			_, _ = w.Write([]byte(`{"error":"unauthorized","detail":"Missing or invalid API key"}`))
@@ -300,7 +314,10 @@ func main() {
 
 		mux.HandleFunc("/health", healthHandler(infra))
 		mux.HandleFunc("GET /product/get", getProductsHandler)
-		mux.HandleFunc("POST /backfill", backfillHandler(infra.PgPool, cfg.SearchServiceURL))
+		mux.HandleFunc(
+			"POST /backfill",
+			backfillHandler(infra.PgPool, cfg.SearchServiceURL, cfg.SearchInternalToken, cfg.ETLAdminKey),
+		)
 		mux.HandleFunc("POST /admin/etl/control", etlControlHandler(infra, cfg.ETLAdminKey))
 
 		server = &http.Server{
@@ -445,10 +462,14 @@ func main() {
 	// Горутина №3: Transform & Load (MongoDB → PostgreSQL → Meilisearch)
 	// Опитує MongoDB на нові документи, трансформує їх та зберігає в Postgres.
 	// Після кожного батчу надсилає оновлені товари в search_service для індексації.
-	go service.TransformLoadWorker(infra.MongoClient, infra.PgPool, cfg.MongoDBName, cfg.SearchServiceURL)
+	go service.TransformLoadWorker(
+		infra.MongoClient,
+		infra.PgPool,
+		cfg.MongoDBName,
+		cfg.SearchServiceURL,
+		cfg.SearchInternalToken,
+	)
 	log.Printf("[main] TransformLoadWorker запущено (MongoDB: %s → PostgreSQL → Meilisearch via %s)", cfg.MongoDBName, cfg.SearchServiceURL)
-
-
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)

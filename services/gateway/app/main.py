@@ -1,10 +1,21 @@
 from contextlib import asynccontextmanager
-import os
+
+import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import httpx
 
-from app.api.routes import auth, products, cart, stores, reviews, admin, search, agent, favorites
+from app.api.core.config import settings
+from app.api.routes import (
+    admin,
+    agent,
+    auth,
+    cart,
+    favorites,
+    products,
+    reviews,
+    search,
+    stores,
+)
 
 
 @asynccontextmanager
@@ -23,38 +34,19 @@ async def lifespan(app: FastAPI):
     await app.state.auth_http_client.aclose()
 
 
-app = FastAPI(title="Api Gateway", version="0.1.0", lifespan=lifespan, redirect_slashes=False)
-
-cors_origins_env = os.getenv("CORS_ORIGINS", "")
-origins = [
-    "http://localhost:3000",
-    "http://localhost:5173",
-    "http://localhost:5174",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:5174",
-    # Production server
-    "http://157.180.74.21",
-    "http://157.180.74.21:80",
-    "http://157.180.74.21:8080",
-]
-
-if cors_origins_env:
-    origins.extend([o.strip() for o in cors_origins_env.split(",") if o.strip()])
-
-# Always ensure pages.dev production domain is allowed
-if "https://smarket-7go.pages.dev" not in origins:
-    origins.append("https://smarket-7go.pages.dev")
-if "https://smarket-admin.pages.dev" not in origins:
-    origins.append("https://smarket-admin.pages.dev")
+app = FastAPI(
+    title="Api Gateway",
+    version="0.1.0",
+    lifespan=lifespan,
+    redirect_slashes=False,
+)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_origin_regex=r"https://smarket-7go\.pages\.dev|https://.*\.smarket-7go\.pages\.dev|https://smarket-admin\.pages\.dev|https://.*\.smarket-admin\.pages\.dev|http://localhost:\d+|http://127.0.0.1:\d+|http://157\.180\.74\.21(:\d+)?",
+    allow_origins=settings.allowed_cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "Accept", "X-User-Id", "X-Request-Id"],
+    allow_headers=["Authorization", "Content-Type", "Accept", "X-Request-Id"],
     expose_headers=["X-Request-Id"],
 )
 
@@ -72,14 +64,15 @@ app.include_router(
     reviews.router, prefix=f"{API_V1_STR}/reviews", tags=["Reviews Proxy v1"]
 )
 app.include_router(admin.router, prefix=f"{API_V1_STR}/admin", tags=["Admin Proxy v1"])
-app.include_router(search.router, prefix=f"{API_V1_STR}/search", tags=["Search Proxy v1"])
+app.include_router(
+    search.router, prefix=f"{API_V1_STR}/search", tags=["Search Proxy v1"]
+)
 app.include_router(agent.router, prefix=f"{API_V1_STR}/agent", tags=["Agent Proxy v1"])
-app.include_router(favorites.router, prefix=f"{API_V1_STR}/favorites", tags=["Favorites Proxy v1"])
+app.include_router(
+    favorites.router, prefix=f"{API_V1_STR}/favorites", tags=["Favorites Proxy v1"]
+)
 
 
 @app.get("/health", tags=["System"])
 async def root():
     return {"status": "ok", "service": "Api Gateway", "version": "v1"}
-
-
-# -------------------------------------------------

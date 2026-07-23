@@ -9,10 +9,7 @@ on:
 
 
 permissions:
-  contents: write
-  packages: write
-  pull-requests: write
-  security-events: write
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -36,7 +33,7 @@ jobs:
   # ═══════════════════════════════════════════
   detect:
     name: 🔍 Detect Changes
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     outputs:
       has_python: ${{ steps.changes.outputs.has_python }}
       has_go: ${{ steps.changes.outputs.has_go }}
@@ -198,8 +195,13 @@ jobs:
           fi
 
           has_node=false
-          if changed '^apps/react/frontend/my-react-app/'; then
+          if changed '^apps/(react/frontend/my-react-app|admin)/'; then
             has_node=true
+          fi
+
+          workflow_changed=false
+          if changed '^\.github/workflows/|^\.pre-commit-config\.yaml$|^scripts/run_service_tests\.py$'; then
+            workflow_changed=true
           fi
 
           has_python=false
@@ -209,7 +211,7 @@ jobs:
           [[ "$docker_services" != "[]" ]] && has_docker=true
 
           has_ci_changes=false
-          if [[ "$has_python" == "true" || "$has_go" == "true" || "$has_rust" == "true" || "$has_node" == "true" || "$has_docker" == "true" || "$deploy_infra" == "true" ]]; then
+          if [[ "$has_python" == "true" || "$has_go" == "true" || "$has_rust" == "true" || "$has_node" == "true" || "$has_docker" == "true" || "$deploy_infra" == "true" || "$workflow_changed" == "true" ]]; then
             has_ci_changes=true
           fi
 
@@ -240,7 +242,7 @@ jobs:
   # ═══════════════════════════════════════════
   security:
     name: 🔐 Security Scan
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: detect
     if: needs.detect.outputs.has_ci_changes == 'true'
     steps:
@@ -252,9 +254,9 @@ jobs:
         run: |
           docker run --rm \
             -v "${{ github.workspace }}:/repo" \
-            zricethezav/gitleaks:latest \
+            zricethezav/gitleaks:v8.24.2 \
             detect --source /repo --no-git --verbose --redact \
-            --exit-code 0
+            --exit-code 1
 
       - name: Trivy — vulnerability scan
         uses: aquasecurity/trivy-action@v0.36.0
@@ -264,7 +266,6 @@ jobs:
           severity: CRITICAL,HIGH
           format: table
           exit-code: 1
-        continue-on-error: true
 
   # ═══════════════════════════════════════════
   #  STAGE 3 — LINT & TEST (parallel)
@@ -278,7 +279,7 @@ jobs:
       needs.detect.outputs.has_python == 'true' &&
       needs.detect.outputs.python_services_matrix != '[]' &&
       needs.detect.outputs.python_services_matrix != ''
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -338,7 +339,7 @@ jobs:
       needs.detect.outputs.has_python == 'true' &&
       needs.detect.outputs.python_services_matrix != '[]' &&
       needs.detect.outputs.python_services_matrix != ''
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -378,6 +379,7 @@ jobs:
           REDIS_URL: "redis://localhost:6379"
           SECRET_KEY: "cafebabe00000000000000000000000000000000000000000000000000000000"
           JWT_SECRET_KEY: "cafebabe00000000000000000000000000000000000000000000000000000000"
+          ETL_ADMIN_KEY: "dummy-etl-admin-key-for-tests-123456"
           RABBITMQ_URL: "amqp://guest:guest@localhost:5672//"
           RESEND_API_KEY: "dummy-resend-api-key"
           APP_HOST: "0.0.0.0"
@@ -402,13 +404,21 @@ jobs:
 
   # ── Node.js / React ───────────────────────
   node-ci:
-    name: ⚛️ Node.js
+    name: ⚛️ Node.js — ${{ matrix.app.name }}
     needs: detect
     if: needs.detect.outputs.has_node == 'true'
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          - name: storefront
+            path: apps/react/frontend/my-react-app
+          - name: admin
+            path: apps/admin
     defaults:
       run:
-        working-directory: apps/react/frontend/my-react-app
+        working-directory: ${{ matrix.app.path }}
     steps:
       - uses: actions/checkout@v4
 
@@ -416,27 +426,24 @@ jobs:
       - name: Cache node_modules
         uses: actions/cache@v4
         with:
-          path: apps/react/frontend/my-react-app/node_modules
-          key: node-modules-${{ hashFiles('apps/react/frontend/my-react-app/package-lock.json') }}
-          restore-keys: node-modules-
+          path: ${{ matrix.app.path }}/node_modules
+          key: node-modules-${{ matrix.app.name }}-${{ hashFiles(format('{0}/package-lock.json', matrix.app.path)) }}
+          restore-keys: node-modules-${{ matrix.app.name }}-
 
       - run: npm ci --prefer-offline --no-audit --no-fund
-      - run: npm run type-check --if-present || true
-      - run: npm test --if-present || true
-      - run: npm run build --if-present || true
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+      - name: Contract tests
+        run: npm run test:ai --if-present
+      - name: Production build
+        run: npm run build
 
   # ── Go / ETL ──────────────────────────────
   go-ci:
     name: 🐹 Go ETL
     needs: detect
     if: needs.detect.outputs.has_go == 'true'
-    runs-on: self-hosted
-    env:
-      HOME: /root
-      GOPATH: /root/go
-      GOMODCACHE: /root/go/pkg/mod
-      GOCACHE: /root/.cache/go-build
-      PATH: /usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: services/products_etl
@@ -448,8 +455,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            /root/go/pkg/mod
-            /root/.cache/go-build
+            ~/go/pkg/mod
+            ~/.cache/go-build
           key: go-${{ hashFiles('services/products_etl/go.sum') }}
           restore-keys: go-
 
@@ -463,11 +470,9 @@ jobs:
     name: 🦀 Rust Search Service
     needs: detect
     if: needs.detect.outputs.has_rust == 'true'
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     env:
       CARGO_TERM_COLOR: always
-      HOME: /root
-      PATH: /root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     defaults:
       run:
         working-directory: services/search_service
@@ -478,9 +483,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            /root/.cargo/registry/cache
-            /root/.cargo/registry/index
-            /root/.cargo/git/db
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/index
+            ~/.cargo/git/db
             services/search_service/target
           key: rust-${{ hashFiles('services/search_service/Cargo.lock') }}
           restore-keys: rust-
@@ -489,7 +494,7 @@ jobs:
         run: |
           if ! command -v cargo &> /dev/null; then
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-            source /root/.cargo/env
+            source "$HOME/.cargo/env"
           fi
           rustc --version
           cargo --version
@@ -514,7 +519,10 @@ jobs:
       needs.detect.outputs.services_matrix != '[]' &&
       needs.detect.outputs.services_matrix != '' &&
       (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     strategy:
       matrix:
         service: ${{ fromJson(needs.detect.outputs.services_matrix || '[]') }}
@@ -573,8 +581,10 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
     runs-on: self-hosted
+    permissions:
+      contents: read
+      packages: read
     env:
-      HOME: /root
       DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
       SMARKET_DEPLOY_WAIT_TIMEOUT: "360"
 
@@ -688,7 +698,7 @@ jobs:
       - rust-ci
       - docker-build
     if: always()
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Check all results
         run: |

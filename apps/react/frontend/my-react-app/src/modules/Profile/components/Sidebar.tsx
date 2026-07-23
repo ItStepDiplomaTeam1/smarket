@@ -67,7 +67,7 @@ export const Sidebar = () => {
 
   // Відображуване ім'я: ім'я зі стору або з /me
   const email = user?.email;
-  const userCity = (email ? localStorage.getItem(`smarket_user_city_${email}`) : null) || meData?.settings?.city || 'Київ';
+  const userCity = meData?.settings?.city || user?.settings?.city || 'Київ';
   const locationLabel = `${userCity}, Україна`;
 
   const displayName = user?.name || meData?.username || user?.email || 'Користувач';
@@ -84,14 +84,15 @@ export const Sidebar = () => {
       const DEFAULT_CITY  = 'Київ';
       const DEFAULT_STORE = 'Всі магазини';
       
-      const phone = localStorage.getItem(`smarket_user_phone_${email}`);
-      const city = localStorage.getItem(`smarket_user_city_${email}`);
-      const favoriteStore = localStorage.getItem(`smarket_user_favorite_store_${email}`);
+      const settings = meData?.settings || user.settings || {};
+      const phone = settings.phone;
+      const city = settings.city;
+      const favoriteStore = settings.favorite_store;
       
       let count = 0;
       
       // 1. Ім'я
-      if (user.name && user.name.trim().length > 0 && user.name.trim() !== 'Марина Добра') {
+      if (user.name && user.name.trim().length > 0) {
         count += 1;
       }
       // 2. Email
@@ -124,7 +125,7 @@ export const Sidebar = () => {
     return () => {
       window.removeEventListener('profile-updated', updateProgress);
     };
-  }, [user, email]);
+  }, [user, email, meData?.settings]);
 
   const handleLogout = async () => {
     try {

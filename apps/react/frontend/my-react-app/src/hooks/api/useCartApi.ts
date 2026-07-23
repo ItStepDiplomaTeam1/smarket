@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/shared/api/apiClient';
-import type { CartListItem, CartDetailResponse } from '@/mocks/cartData';
+import type { CartListItem, CartDetailResponse, StoreComparison } from '@/mocks/cartData';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 
 // We map the backend responses to the frontend types.
@@ -70,19 +70,27 @@ export const useFetchCartDetails = (cartId: string | null) => {
 
 export const useFetchCartComparison = (cartId: string | null) => {
   const user = useAuthStore((state) => state.user);
-  const email = user?.email;
-  const userCity = (email ? localStorage.getItem(`smarket_user_city_${email}`) : null) || 'Київ';
+  const userCity = user?.settings?.city || 'Київ';
 
-  return useQuery({
+  return useQuery<StoreComparison[]>({
     queryKey: ['cart-compare', cartId, userCity],
     queryFn: async () => {
       const { data } = await apiClient.get(`/api/v1/cart/${cartId}/compare`, {
         params: { city: userCity }
       });
-      return data.map((c: { store_name: string; total_price: number; is_complete: boolean }) => ({
+      return data.map((c: {
+        store_name: string;
+        total_price: number;
+        is_complete: boolean;
+        found_items_count: number;
+        missing_items_count: number;
+      }, index: number) => ({
         storeName: c.store_name,
         totalPrice: c.total_price,
-        isBest: c.is_complete,
+        isBest: index === 0 && c.is_complete,
+        isComplete: c.is_complete,
+        foundItemsCount: c.found_items_count,
+        missingItemsCount: c.missing_items_count,
       }));
     },
     enabled: !!cartId,
@@ -122,11 +130,11 @@ export const useUpdateCartItemQuantity = () => {
       const previousCart = queryClient.getQueryData(['cart', newVariables.cartId]);
 
       if (previousCart) {
-        queryClient.setQueryData(['cart', newVariables.cartId], (old: any) => {
+        queryClient.setQueryData<CartDetailResponse | null>(['cart', newVariables.cartId], (old) => {
           if (!old) return old;
           return {
             ...old,
-            items: old.items.map((item: any) =>
+            items: old.items.map((item) =>
               item.id === newVariables.itemId
                 ? { 
                     ...item, 
@@ -270,8 +278,7 @@ export interface ReceiptListItem {
 export const useCompleteCart = () => {
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
-  const email = user?.email;
-  const userCity = (email ? localStorage.getItem(`smarket_user_city_${email}`) : null) || 'Київ';
+  const userCity = user?.settings?.city || 'Київ';
 
   return useMutation<ReceiptResponse, Error, string>({
     mutationFn: async (cartId: string) => {
@@ -338,8 +345,24 @@ export const useImportCart = () => {
   });
 };
 
+export interface SharedCartItem {
+  id: string;
+  product_id: number;
+  product_name: string;
+  quantity: number;
+  price: number;
+  image_url?: string | null;
+}
+
+export interface SharedCart {
+  id: string;
+  name: string;
+  items: SharedCartItem[];
+  total_price: number;
+}
+
 export const useFetchSharedCart = (cartId: string | null) => {
-  return useQuery({
+  return useQuery<SharedCart>({
     queryKey: ['shared-cart', cartId],
     queryFn: async () => {
       const { data } = await apiClient.get(`/api/v1/cart/shared/${cartId}`);

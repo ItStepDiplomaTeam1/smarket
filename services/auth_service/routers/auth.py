@@ -1,3 +1,4 @@
+import hashlib
 import os
 import secrets
 from datetime import UTC, datetime
@@ -14,9 +15,13 @@ from services.auth_service.database.models import User
 from services.auth_service.database.session import get_db
 from services.auth_service.plugins.checking.user import get_authenticated_user
 from services.auth_service.plugins.security.auth_cache import (
+    _get_redis_client,
     cache_auth_user,
     invalidate_cached_auth_user,
-    _get_redis_client,
+)
+from services.auth_service.plugins.security.email_sender import (
+    send_otp_email,
+    send_password_reset_email,
 )
 from services.auth_service.plugins.security.hash.password import hash_password, verify_password
 from services.auth_service.plugins.security.jwt_handler import (
@@ -27,24 +32,23 @@ from services.auth_service.plugins.security.jwt_handler import (
     decode_token,
 )
 from services.auth_service.plugins.security.limiters.auth_limiter import auth_limiter
+from services.auth_service.plugins.security.otp import generate_secure_otp, save_otp, verify_otp
 from services.auth_service.plugins.security.token_blacklist import (
     blacklist_token,
-    is_token_blacklisted,
+    consume_refresh_token,
 )
-from services.auth_service.plugins.security.otp import generate_secure_otp, save_otp, verify_otp
-from services.auth_service.plugins.security.email_sender import send_otp_email, send_password_reset_email
 from services.auth_service.shared.DTO import (
     ChangePasswordRequest,
+    ForgotPasswordRequest,
     LoginResponse,
+    RegisterPendingResponse,
     RegisterRequest,
     RegisterResponse,
+    ResetPasswordRequest,
     TokenResponse,
     UpdateSettingsRequest,
     UserResponse,
-    RegisterPendingResponse,
     VerifyOTPRequest,
-    ForgotPasswordRequest,
-    ResetPasswordRequest,
 )
 
 router = APIRouter(default_response_class=ORJSONResponse)
@@ -62,6 +66,23 @@ _COOKIE_SECURE = _get_cookie_secure()
 _security = HTTPBearer()
 
 
+def _user_token_version(user: User) -> int:
+    return int(getattr(user, "token_version", 0) or 0)
+
+
+def _remaining_token_ttl(payload: dict) -> int:
+    exp_ts = payload.get("exp")
+    if not exp_ts:
+        return 0
+    if isinstance(exp_ts, datetime):
+        return int((exp_ts - datetime.now(UTC)).total_seconds())
+    return int(exp_ts - datetime.now(UTC).timestamp())
+
+
+def _password_reset_key(token: str) -> str:
+    return f"pwd_reset:{hashlib.sha256(token.encode('utf-8')).hexdigest()}"
+
+
 def _build_cookie_params(value: str | None = None, is_delete: bool = False) -> dict:
     """
     Builds parameters for set_cookie or delete_cookie based on env variables.
@@ -74,7 +95,8 @@ def _build_cookie_params(value: str | None = None, is_delete: bool = False) -> d
         "httponly": True,
         "secure": _COOKIE_SECURE,
         "samesite": samesite,
-        "path": "/",
+        # The cookie is only needed by gateway auth endpoints.
+        "path": "/api/v1/auth",
     }
 
     if domain:
@@ -86,7 +108,6 @@ def _build_cookie_params(value: str | None = None, is_delete: bool = False) -> d
         params["max_age"] = _REFRESH_TOKEN_MAX_AGE
 
     return params
-
 
 
 def _mask_email(email: str) -> str:
@@ -140,6 +161,14 @@ async def _get_current_user(
             detail="User is inactive",
         )
 
+    if payload.get("ver") != _user_token_version(user):
+        logger.warning(f"Запит із відкликаної сесії користувача з ID {user_id}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session has been revoked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     return user
 
 
@@ -158,7 +187,9 @@ def _is_invalid_token(token: str) -> bool:
         return True
 
 
-@router.post("/register", response_model=RegisterPendingResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register", response_model=RegisterPendingResponse, status_code=status.HTTP_201_CREATED
+)
 @auth_limiter.limit("3/minute")
 @auth_limiter.limit("10/hour")
 async def register(
@@ -175,13 +206,17 @@ async def register(
 
         if existing_user:
             if existing_user.is_active:
-                logger.warning(f"Помилка реєстрації: email {_mask_email(body.email)} вже існує та активний")
+                logger.warning(
+                    f"Помилка реєстрації: email {_mask_email(body.email)} вже існує та активний"
+                )
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
                     detail="Email already registered",
                 )
             else:
-                logger.info(f"Оновлення пароля та повторний запит OTP для неактивного користувача з email: {_mask_email(body.email)}")
+                logger.info(
+                    f"Оновлення пароля та повторний запит OTP для неактивного користувача з email: {_mask_email(body.email)}"
+                )
                 existing_user.hashed_password = hash_password(body.password)
                 existing_user.updated_at = datetime.now(UTC)
                 if body.name:
@@ -223,7 +258,9 @@ async def register(
         raise
     except IntegrityError as err:
         await db.rollback()
-        logger.warning(f"Помилка реєстрації (унікальність): email {_mask_email(body.email)} вже існує в системі")
+        logger.warning(
+            f"Помилка реєстрації (унікальність): email {_mask_email(body.email)} вже існує в системі"
+        )
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Email already registered",
@@ -259,7 +296,9 @@ async def register_verify(
         user = result.scalar_one_or_none()
 
         if not user:
-            logger.warning(f"Користувача з email {_mask_email(body.email)} не знайдено під час верифікації")
+            logger.warning(
+                f"Користувача з email {_mask_email(body.email)} не знайдено під час верифікації"
+            )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="User not found",
@@ -274,8 +313,9 @@ async def register_verify(
         await cache_auth_user(user)
 
         # Issue JWT tokens
-        access_token = create_access_token(str(user.id), user.role, user.email)
-        refresh_token = create_refresh_token(str(user.id), user.role, user.email)
+        token_version = _user_token_version(user)
+        access_token = create_access_token(str(user.id), user.role, user.email, token_version)
+        refresh_token = create_refresh_token(str(user.id), user.role, user.email, token_version)
 
         # Set refresh token cookie
         response.set_cookie(**_build_cookie_params(value=refresh_token))
@@ -336,8 +376,9 @@ async def login(
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        access_token = create_access_token(str(user.id), user.role, user.email)
-        refresh_token = create_refresh_token(str(user.id), user.role, user.email)
+        token_version = _user_token_version(user)
+        access_token = create_access_token(str(user.id), user.role, user.email, token_version)
+        refresh_token = create_refresh_token(str(user.id), user.role, user.email, token_version)
 
         response.set_cookie(**_build_cookie_params(value=refresh_token))
 
@@ -393,8 +434,9 @@ async def refresh(request: Request, response: Response, db: AsyncSession = Depen
         )
 
     jti = payload.get("jti")
-    if jti and await is_token_blacklisted(jti):
-        logger.warning(f"Спроба оновлення з анульованим refresh токеном (jti: {jti})")
+    token_ttl = _remaining_token_ttl(payload)
+    if not jti or not await consume_refresh_token(jti, token_ttl):
+        logger.warning("Спроба повторного використання або неперевірений refresh токен")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Refresh token has been revoked",
@@ -432,23 +474,21 @@ async def refresh(request: Request, response: Response, db: AsyncSession = Depen
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    if payload.get("ver") != _user_token_version(user):
+        logger.warning(f"Спроба оновлення відкликаної сесії користувача з ID: {user_id}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session has been revoked",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     logger.info(
         f"Успішно оновлено токени для користувача з ID: {payload.get('sub')} (роль: {user.role})"
     )
 
-    old_jti = payload.get("jti")
-    if old_jti:
-        exp_ts = payload.get("exp")
-        if exp_ts:
-            if isinstance(exp_ts, datetime):
-                old_ttl = int((exp_ts - datetime.now(UTC)).total_seconds())
-            else:
-                old_ttl = int(exp_ts - datetime.now(UTC).timestamp())
-            if old_ttl > 0:
-                await blacklist_token(old_jti, old_ttl)
-
-    new_access_token = create_access_token(str(user.id), user.role, user.email)
-    new_refresh_token = create_refresh_token(str(user.id), user.role, user.email)
+    token_version = _user_token_version(user)
+    new_access_token = create_access_token(str(user.id), user.role, user.email, token_version)
+    new_refresh_token = create_refresh_token(str(user.id), user.role, user.email, token_version)
 
     response.set_cookie(**_build_cookie_params(value=new_refresh_token))
     return TokenResponse(
@@ -494,6 +534,7 @@ async def get_me(current_user: User = Depends(_get_current_user)):
 @router.patch("/password", status_code=status.HTTP_200_OK)
 async def change_password(
     body: ChangePasswordRequest,
+    response: Response,
     current_user: User = Depends(_get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
@@ -504,8 +545,10 @@ async def change_password(
         )
 
     current_user.hashed_password = hash_password(body.new_password)
+    current_user.token_version = _user_token_version(current_user) + 1
     await db.commit()
     await invalidate_cached_auth_user(current_user.email)
+    response.delete_cookie(**_build_cookie_params(is_delete=True))
     return {"message": "Пароль успішно змінено"}
 
 
@@ -537,8 +580,13 @@ async def logout(request: Request, response: Response):
                         ttl = int((exp_ts - datetime.now(UTC)).total_seconds())
                     else:
                         ttl = int(exp_ts - datetime.now(UTC).timestamp())
-                    if ttl > 0:
-                        await blacklist_token(jti, ttl)
+                    if ttl > 0 and not await blacklist_token(jti, ttl):
+                        raise HTTPException(
+                            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            detail="Unable to revoke session safely",
+                        )
+        except HTTPException:
+            raise
         except Exception:
             logger.exception("Не вдалося заблокувати refresh токен при logout")
     response.delete_cookie(**_build_cookie_params(is_delete=True))
@@ -546,7 +594,11 @@ async def logout(request: Request, response: Response):
 
 
 @router.get("/users/{user_id}")
-async def get_user_by_id(user_id: str, db: AsyncSession = Depends(get_db)):
+async def get_user_by_id(
+    user_id: str,
+    _: User = Depends(_get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     import uuid
 
     try:
@@ -564,84 +616,85 @@ async def get_user_by_id(user_id: str, db: AsyncSession = Depends(get_db)):
             detail="User not found",
         )
     username = user.email.split("@")[0] if "@" in user.email else user.email
-    return {"id": str(user.id), "email": user.email, "username": username, "role": user.role}
+    return {"id": str(user.id), "username": username}
 
 
 @router.post("/forgot-password", status_code=status.HTTP_200_OK)
-async def forgot_password(
-    body: ForgotPasswordRequest,
-    db: AsyncSession = Depends(get_db)
-):
+async def forgot_password(body: ForgotPasswordRequest, db: AsyncSession = Depends(get_db)):
     logger.info(f"Запит на відновлення пароля для email: {_mask_email(body.email)}")
-    
+
     result = await db.execute(select(User).where(User.email == body.email))
     user = result.scalar_one_or_none()
-    
+
     if user and user.is_active:
         token = secrets.token_urlsafe(32)
         try:
             redis_client = _get_redis_client()
-            await redis_client.setex(f"pwd_reset:{token}", 900, body.email)
-            
+            await redis_client.setex(_password_reset_key(token), 900, body.email)
+
             frontend_url = (os.getenv("FRONTEND_URL") or "http://localhost:5173").rstrip("/")
             reset_link = f"{frontend_url}/reset-password?token={token}&email={body.email}"
-            
+
             await send_password_reset_email(body.email, reset_link)
             logger.success(f"Надіслано лист для відновлення пароля для {_mask_email(body.email)}")
-        except Exception as e:
-            logger.error(f"Помилка при створенні токена відновлення пароля для {body.email}: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="Internal server error",
+        except Exception as err:
+            logger.error(
+                f"Помилка при створенні токена відновлення пароля для "
+                f"{_mask_email(body.email)}: {err}"
             )
-            
-    return {"message": "Якщо email зареєстрований в системі, лист із інструкціями для відновлення пароля надіслано."}
+
+    return {
+        "message": "Якщо email зареєстрований в системі, лист із інструкціями для відновлення пароля надіслано."
+    }
 
 
 @router.post("/reset-password", status_code=status.HTTP_200_OK)
-async def reset_password(
-    body: ResetPasswordRequest,
-    db: AsyncSession = Depends(get_db)
-):
+async def reset_password(body: ResetPasswordRequest, db: AsyncSession = Depends(get_db)):
     logger.info(f"Запит на скидання пароля за токеном для email: {_mask_email(body.email)}")
-    
+
     try:
         redis_client = _get_redis_client()
-        stored_email_bytes = await redis_client.get(f"pwd_reset:{body.token}")
+        reset_key = _password_reset_key(body.token)
+        # GETDEL makes recovery tokens single-use even under concurrent requests.
+        stored_email_bytes = await redis_client.getdel(reset_key)
         if not stored_email_bytes:
-            logger.warning(f"Спроба скидання пароля з невалідним або простроченим токеном для {_mask_email(body.email)}")
+            logger.warning(
+                f"Спроба скидання пароля з невалідним або простроченим токеном для {_mask_email(body.email)}"
+            )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Недійсний або прострочений токен відновлення пароля",
             )
-            
+
         stored_email = stored_email_bytes.decode("utf-8")
         if stored_email.strip().lower() != body.email.strip().lower():
-            logger.warning(f"Невідповідність email для токена відновлення: {stored_email} != {body.email}")
+            logger.warning(
+                f"Невідповідність email для токена відновлення: {stored_email} != {body.email}"
+            )
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Недійсний або прострочений токен відновлення пароля",
             )
-            
+
         result = await db.execute(select(User).where(User.email == body.email))
         user = result.scalar_one_or_none()
-        
+
         if not user or not user.is_active:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Користувача не знайдено або він неактивний",
             )
-            
+
         user.hashed_password = hash_password(body.new_password)
+        user.token_version = _user_token_version(user) + 1
         user.updated_at = datetime.now(UTC)
         await db.commit()
-        
-        await redis_client.delete(f"pwd_reset:{body.token}")
+
         await invalidate_cached_auth_user(body.email)
-        
+
         logger.success(f"Пароль користувача {_mask_email(body.email)} успішно оновлено")
         return {"message": "Пароль успішно оновлено"}
-        
+
     except HTTPException:
         raise
     except Exception as e:

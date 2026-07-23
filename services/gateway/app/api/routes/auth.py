@@ -8,6 +8,16 @@ from app.api.dependencies import verify_jwt
 router = APIRouter()
 
 
+def require_trusted_browser_origin(request: Request) -> None:
+    """Reject cross-site browser POSTs that could consume or replace auth cookies."""
+    origin = request.headers.get("origin")
+    fetch_site = request.headers.get("sec-fetch-site", "").lower()
+    if fetch_site == "cross-site" or (
+        origin is not None and origin.rstrip("/") not in settings.allowed_cors_origins
+    ):
+        raise HTTPException(status_code=403, detail="Untrusted request origin")
+
+
 async def proxy_request(request: Request, path: str):
     """Допоміжна функція для проксування запитів до Auth Service."""
     client: httpx.AsyncClient = request.app.state.auth_http_client
@@ -25,10 +35,13 @@ async def proxy_request(request: Request, path: str):
             content=await request.body(),
         )
         response = await client.send(req, stream=True)
+        response_headers = dict(response.headers)
+        response_headers["Cache-Control"] = "no-store"
+        response_headers["Pragma"] = "no-cache"
         return StreamingResponse(
             response.aiter_raw(),
             status_code=response.status_code,
-            headers=dict(response.headers),
+            headers=response_headers,
         )
     except httpx.ConnectError:
         raise HTTPException(status_code=503, detail="Auth service unavailable")
@@ -42,42 +55,49 @@ async def proxy_request(request: Request, path: str):
 @router.post("/register")
 async def register(request: Request):
     """Реєстрація нового користувача. Повертає access_token + встановлює httpOnly cookie з refresh_token."""
+    require_trusted_browser_origin(request)
     return await proxy_request(request, "register")
 
 
 @router.post("/register/verify")
 async def register_verify(request: Request):
     """Верифікація реєстрації через OTP."""
+    require_trusted_browser_origin(request)
     return await proxy_request(request, "register/verify")
 
 
 @router.post("/login")
 async def login(request: Request):
     """Вхід за email/password. Повертає access_token + встановлює httpOnly cookie з refresh_token."""
+    require_trusted_browser_origin(request)
     return await proxy_request(request, "login")
 
 
 @router.post("/refresh")
 async def refresh(request: Request):
     """Оновлення access_token за допомогою refresh_token з httpOnly cookie."""
+    require_trusted_browser_origin(request)
     return await proxy_request(request, "refresh")
 
 
 @router.post("/logout")
 async def logout(request: Request):
     """Вихід із системи — видаляє refresh_token cookie."""
+    require_trusted_browser_origin(request)
     return await proxy_request(request, "logout")
 
 
 @router.post("/oauth/google")
 async def google_oauth(request: Request):
     """Google OAuth — верифікація Google ID Token і видача системних JWT."""
+    require_trusted_browser_origin(request)
     return await proxy_request(request, "oauth/google")
 
 
 @router.post("/telegram")
 async def telegram_oauth(request: Request):
     """Telegram OAuth — верифікація Telegram Login Widget даних і видача системних JWT."""
+    require_trusted_browser_origin(request)
     return await proxy_request(request, "oauth/telegram")
 
 
@@ -116,8 +136,12 @@ async def get_current_user(
 
 
 @router.get("/users/{user_id}")
-async def get_user_by_id(request: Request, user_id: str):
-    """Отримати інформацію про користувача за його ID (включаючи ім'я)."""
+async def get_user_by_id(
+    request: Request,
+    user_id: str,
+    _: dict = Depends(verify_jwt),
+):
+    """Отримати публічний профіль користувача за ID для авторизованих клієнтів."""
     return await proxy_request(request, f"users/{user_id}")
 
 
