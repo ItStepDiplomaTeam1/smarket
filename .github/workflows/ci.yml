@@ -691,10 +691,24 @@ jobs:
           [ -f .env ] && source .env
           set +a
 
-          # Sanitize service .env files and propagate host secrets
+          # Enforce minimum length >= 32 for SEARCH_INTERNAL_API_TOKEN and ETL_ADMIN_KEY
+          for var in SEARCH_INTERNAL_API_TOKEN ETL_ADMIN_KEY; do
+            val="${!var}"
+            if [ -z "$val" ] || [ "${#val}" -lt 32 ]; then
+              new_val=$(openssl rand -hex 20 2>/dev/null || tr -dc 'a-zA-Z0-9' < /dev/urandom | head -c 40)
+              export "${var}=${new_val}"
+            fi
+          done
+
+          # Clean up any stale or short secrets across all .env files
           for var in REDIS_PASSWORD RABBITMQ_PASS MONGO_PASS MEILISEARCH_API_KEY SEARCH_INTERNAL_API_TOKEN ETL_ADMIN_KEY; do
             val="${!var}"
             if [ -n "$val" ]; then
+              sed -i "/^${var}=/d" .env 2>/dev/null || true
+              echo "${var}=${val}" >> .env
+              sed -i "/^${var}=/d" infra/.env 2>/dev/null || true
+              echo "${var}=${val}" >> infra/.env
+
               for f in "${{ github.workspace }}"/services/*/.env services/*/.env; do
                 if [ -f "$f" ]; then
                   sed -i "/^${var}=/d" "$f" 2>/dev/null || true
@@ -708,7 +722,7 @@ jobs:
           cat "${{ github.workspace }}"/services/*/.env >> infra/.env 2>/dev/null || true
           cat "${{ github.workspace }}"/services/*/.env >> .env 2>/dev/null || true
 
-          # Ensure host secrets take final precedence at the end of .env & infra/.env
+          # Ensure sanitized secrets take final precedence at the end of .env & infra/.env
           for var in REDIS_PASSWORD RABBITMQ_PASS MONGO_PASS MEILISEARCH_API_KEY SEARCH_INTERNAL_API_TOKEN ETL_ADMIN_KEY; do
             val="${!var}"
             if [ -n "$val" ]; then
