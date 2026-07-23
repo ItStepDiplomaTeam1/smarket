@@ -716,9 +716,9 @@ jobs:
           docker compose --env-file .env -f infra/docker-compose.yml pull --quiet
 
           # Reset mongodb container & volume to ensure new MONGO_PASS initializes cleanly
-          docker compose --env-file .env -f infra/docker-compose.yml stop mongodb 2>/dev/null || true
-          docker compose --env-file .env -f infra/docker-compose.yml rm -f mongodb 2>/dev/null || true
-          docker volume rm infra_mongodb_data smarket_mongodb_data 2>/dev/null || true
+          docker compose --env-file .env -f infra/docker-compose.yml stop mongodb 2>/dev/null || :
+          docker compose --env-file .env -f infra/docker-compose.yml rm -f mongodb 2>/dev/null || :
+          docker volume rm infra_mongodb_data smarket_mongodb_data 2>/dev/null || :
 
           if ! docker compose --env-file .env -f infra/docker-compose.yml up -d --remove-orphans --wait --wait-timeout "${SMARKET_DEPLOY_WAIT_TIMEOUT:-240}"; then
             docker compose --env-file .env -f infra/docker-compose.yml ps
