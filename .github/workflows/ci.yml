@@ -661,6 +661,10 @@ jobs:
           else
             git fetch "${{ github.workspace }}" HEAD
           fi
+          # Preserve host existing infra env files before checkout refresh
+          [ -f infra/.env ] && cp infra/.env /tmp/smarket_infra_host.env 2>/dev/null || true
+          [ -f .env ] && cp .env /tmp/smarket_root_host.env 2>/dev/null || true
+
           git checkout -f -B develop FETCH_HEAD
 
           for srv in services/gateway services/auth_service services/product_service \
@@ -669,8 +673,21 @@ jobs:
                      services/audit_service; do
             cp "${{ github.workspace }}/$srv/.env" "$srv/.env" 2>/dev/null || true
           done
-          cat "${{ github.workspace }}"/services/*/.env > infra/.env 2>/dev/null || true
-          cat "${{ github.workspace }}"/services/*/.env > .env 2>/dev/null || true
+
+          # Restore base host infra envs if present, then append downloaded service secrets
+          if [ -f /tmp/smarket_infra_host.env ]; then
+            cp /tmp/smarket_infra_host.env infra/.env
+          else
+            touch infra/.env
+          fi
+          if [ -f /tmp/smarket_root_host.env ]; then
+            cp /tmp/smarket_root_host.env .env
+          else
+            touch .env
+          fi
+
+          cat "${{ github.workspace }}"/services/*/.env >> infra/.env 2>/dev/null || true
+          cat "${{ github.workspace }}"/services/*/.env >> .env 2>/dev/null || true
 
           set -a
           [ -f .env ] && source .env
