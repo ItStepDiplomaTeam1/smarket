@@ -120,6 +120,51 @@ def test_add_item_invalid_payload():
     assert response.status_code == 422
 
 
+def test_get_all_carts_ignores_malformed_product_prices(monkeypatch):
+    item = CartItem(
+        id=uuid.uuid4(),
+        cart_id=CART_ID,
+        product_id=PRODUCT_ID,
+        quantity=2,
+    )
+    cart = Cart(
+        id=CART_ID,
+        user_id=USER_ID,
+        name="Test Cart",
+        updated_at=datetime.datetime.utcnow(),
+        items=[item],
+    )
+    monkeypatch.setattr(
+        crud,
+        "get_user_carts",
+        AsyncMock(return_value=[cart]),
+    )
+    monkeypatch.setattr(
+        "app.routers.cart.fetch_products_batch_details",
+        AsyncMock(
+            return_value=[
+                None,
+                {
+                    "id": PRODUCT_ID,
+                    "title": "Milk",
+                    "image_url": None,
+                    "prices": [
+                        None,
+                        {"price": None, "in_stock": True},
+                        {"price": "42.50", "in_stock": True},
+                    ],
+                },
+            ]
+        ),
+    )
+
+    response = client.get("/cart/")
+
+    assert response.status_code == 200
+    assert response.json()[0]["total_price"] == 85.0
+    assert response.json()[0]["items"][0]["price"] == 42.5
+
+
 @pytest.mark.asyncio
 async def test_compare_cart_happy_path(monkeypatch):
     mock_item = CartItem(

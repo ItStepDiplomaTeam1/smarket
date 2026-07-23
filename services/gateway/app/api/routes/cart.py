@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Request, HTTPException, Depends
-from fastapi.responses import StreamingResponse
+from fastapi.responses import Response, StreamingResponse
 import httpx
 
 from app.api.core.config import settings
@@ -115,11 +115,32 @@ async def proxy_to_cart(
             params=request.query_params,
             content=body_content,
         )
-        response = await client.send(req, stream=True)
-        return StreamingResponse(
-            response.aiter_raw(),
+        # Cart responses are small JSON documents. Buffering them keeps read
+        # failures inside this handler so the gateway can return a CORS-enabled
+        # error instead of failing later while StreamingResponse is iterating.
+        response = await client.send(req)
+        response_headers = {
+            key: value
+            for key, value in response.headers.items()
+            if key.lower()
+            not in {
+                "connection",
+                "content-encoding",
+                "content-length",
+                "transfer-encoding",
+            }
+        }
+        return Response(
+            content=response.content,
             status_code=response.status_code,
-            headers=dict(response.headers),
+            headers=response_headers,
         )
+    except httpx.TimeoutException:
+        raise HTTPException(status_code=504, detail="Сервіс кошика не відповів вчасно")
     except httpx.ConnectError:
         raise HTTPException(status_code=503, detail="Сервіс кошика недоступний")
+    except httpx.HTTPError:
+        raise HTTPException(
+            status_code=502,
+            detail="Помилка під час отримання відповіді сервісу кошика",
+        )

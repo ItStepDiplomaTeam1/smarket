@@ -9,6 +9,7 @@ import { useCartStore } from '@/modules/Cart/store/useCartStore';
 import { generateSlug } from '@/shared/utils/url'; 
 import { useFavoritesStore } from '@/shared/context/favoritesStore';
 import { useNavigate } from 'react-router-dom';
+import { useSimilarProducts } from '@/hooks/api/useSimilarProducts';
 
 import zagluska from '@/shared/assets/Vectorbuttle.svg';
 
@@ -70,7 +71,13 @@ const SmCard = ({ product }: { product: Product }) => {
                 const detail = error.response?.data?.detail;
                 
                 if (Array.isArray(detail)) {
-                    const errorMessages = detail.map((err: any) => `Поле: [${err.loc.join(' -> ')}] | Проблема: ${err.msg}`).join('\n');
+                    const validationErrors = detail as Array<{
+                        loc: Array<string | number>;
+                        msg: string;
+                    }>;
+                    const errorMessages = validationErrors
+                        .map((err) => `Поле: [${err.loc.join(' -> ')}] | Проблема: ${err.msg}`)
+                        .join('\n');
                     alert(`Помилка даних (422):\n${errorMessages}`);
                 } else {
                     const backendMessage = detail || error.response?.data?.message || 'Помилка мережі';
@@ -155,40 +162,15 @@ interface SMProductProps {
 }
 
 export function SMProduct({ currentProduct }: SMProductProps) {
-    const [similarProducts, setSimilarProducts] = useState<Product[]>([]);
-    const [isLoading, setIsLoading] = useState<boolean>(true);
-
-    React.useEffect(() => {
-        if (!currentProduct?.category && currentProduct?.canonical_category_id == null) {
-            setIsLoading(false);
-            return;
-        }
-
-        const fetchSimilarProducts = async () => {
-            try {
-                setIsLoading(true);
-                const categoryId = currentProduct.canonical_category_id ?? currentProduct.category?.id;
-                const response = await apiClient.get('/api/v1/products', {
-                    params: { category: categoryId }
-                });
-                
-                let allProducts: Product[] = response.data?.items || response.data || [];
-
-                allProducts = allProducts.filter((p: Product) => p.id !== currentProduct.id);
-
-                const shuffled = [...allProducts].sort(() => 0.5 - Math.random());
-                const selected = shuffled.slice(0, 4);
-
-                setSimilarProducts(selected);
-            } catch (error) {
-                console.error("Помилка завантаження схожих товарів:", error);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchSimilarProducts();
-    }, [currentProduct]);
+    const currentProductId = currentProduct?.id;
+    const categoryId =
+        currentProduct?.canonical_category_id ??
+        currentProduct?.category?.id ??
+        undefined;
+    const {
+        data: similarProducts = [],
+        isLoading,
+    } = useSimilarProducts(currentProductId, categoryId);
 
     if (isLoading || similarProducts.length === 0) return null;
 

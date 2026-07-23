@@ -1,3 +1,5 @@
+from collections.abc import Mapping
+import math
 from typing import Optional
 import uuid
 import secrets
@@ -48,6 +50,59 @@ def get_user_id(x_user_id: uuid.UUID = Header(..., alias="X-User-Id")) -> uuid.U
 router = APIRouter(prefix="/cart", tags=["Cart"])
 
 
+def _build_product_data_map(payload: object) -> dict[int, Mapping[str, object]]:
+    if not isinstance(payload, list):
+        logger.warning("Product Service returned a non-list batch payload")
+        return {}
+
+    product_data_map: dict[int, Mapping[str, object]] = {}
+    for details in payload:
+        if not isinstance(details, Mapping):
+            continue
+        product_id = details.get("id")
+        if isinstance(product_id, int):
+            product_data_map[product_id] = details
+    return product_data_map
+
+
+def _get_product_snapshot(
+    product_data: Mapping[str, object],
+) -> tuple[str, str | None, float]:
+    raw_prices = product_data.get("prices")
+    prices = raw_prices if isinstance(raw_prices, list) else []
+    in_stock_prices: list[float] = []
+    all_prices: list[float] = []
+
+    for price_data in prices:
+        if not isinstance(price_data, Mapping):
+            continue
+        raw_price = price_data.get("price")
+        if isinstance(raw_price, bool) or not isinstance(
+            raw_price, (int, float, str)
+        ):
+            continue
+        try:
+            price = float(raw_price)
+        except ValueError:
+            continue
+        if not math.isfinite(price) or price < 0:
+            continue
+        all_prices.append(price)
+        if price_data.get("in_stock") is True:
+            in_stock_prices.append(price)
+
+    selected_price = min(in_stock_prices or all_prices, default=0.0)
+    raw_name = product_data.get("title")
+    name = (
+        raw_name.strip()
+        if isinstance(raw_name, str) and raw_name.strip()
+        else "Невідомий товар"
+    )
+    raw_image_url = product_data.get("image_url")
+    image_url = raw_image_url if isinstance(raw_image_url, str) else None
+    return name, image_url, selected_price
+
+
 @router.get("/", response_model=list[CartResponse])
 async def get_all_carts(
     user_id: uuid.UUID = Depends(get_user_id),
@@ -67,7 +122,7 @@ async def get_all_carts(
     product_details_list = await fetch_products_batch_details(http_client, product_ids)
 
     # Map from product_id to product_data
-    product_data_map = {details.get("id"): details for details in product_details_list}
+    product_data_map = _build_product_data_map(product_details_list)
 
     responses = []
     for cart in carts:
@@ -75,18 +130,7 @@ async def get_all_carts(
         items_response = []
         for item in cart.items:
             product_data = product_data_map.get(item.product_id, {})
-            prices = product_data.get("prices", [])
-            valid_prices = [
-                p.get("price", 0.0) for p in prices if p.get("in_stock", False)
-            ]
-            if valid_prices:
-                price = min(valid_prices)
-            else:
-                all_prices = [p.get("price", 0.0) for p in prices]
-                price = min(all_prices) if all_prices else 0.0
-
-            name = product_data.get("title", "Невідомий товар")
-            image_url = product_data.get("image_url")
+            name, image_url, price = _get_product_snapshot(product_data)
             item_price = price * item.quantity
             total_price += item_price
 
@@ -158,22 +202,12 @@ async def get_cart(
     product_ids = list(set(item.product_id for item in cart.items))
     product_details_list = await fetch_products_batch_details(http_client, product_ids)
 
-    product_data_map = {details.get("id"): details for details in product_details_list}
+    product_data_map = _build_product_data_map(product_details_list)
 
     total_price = 0.0
     for item in cart.items:
         product_data = product_data_map.get(item.product_id, {})
-        name = product_data.get("title", "Невідомий товар")
-
-        prices = product_data.get("prices", [])
-        valid_prices = [p.get("price", 0.0) for p in prices if p.get("in_stock", False)]
-        if valid_prices:
-            price = min(valid_prices)
-        else:
-            all_prices = [p.get("price", 0.0) for p in prices]
-            price = min(all_prices) if all_prices else 0.0
-
-        image_url = product_data.get("image_url")
+        name, image_url, price = _get_product_snapshot(product_data)
         item_price = price * item.quantity
         total_price += item_price
 
@@ -613,22 +647,13 @@ async def get_shared_cart(
     product_ids = list(set(item.product_id for item in cart.items))
     product_details_list = await fetch_products_batch_details(http_client, product_ids)
 
-    product_data_map = {details.get("id"): details for details in product_details_list}
+    product_data_map = _build_product_data_map(product_details_list)
 
     total_price = 0.0
     items_response = []
     for item in cart.items:
         product_data = product_data_map.get(item.product_id, {})
-        prices = product_data.get("prices", [])
-        valid_prices = [p.get("price", 0.0) for p in prices if p.get("in_stock", False)]
-        if valid_prices:
-            price = min(valid_prices)
-        else:
-            all_prices = [p.get("price", 0.0) for p in prices]
-            price = min(all_prices) if all_prices else 0.0
-
-        name = product_data.get("title", "Невідомий товар")
-        image_url = product_data.get("image_url")
+        name, image_url, price = _get_product_snapshot(product_data)
         item_price = price * item.quantity
         total_price += item_price
 

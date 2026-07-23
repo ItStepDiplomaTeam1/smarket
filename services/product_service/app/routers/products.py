@@ -5,6 +5,7 @@ from fastapi.responses import ORJSONResponse
 from sqlalchemy import select, func, and_, update, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
+from sqlalchemy.sql.elements import ColumnElement
 from typing import Optional
 from datetime import datetime, timedelta, timezone
 
@@ -52,6 +53,96 @@ GLOBAL_CATEGORIES = {
 router = APIRouter(tags=["Products"], default_response_class=ORJSONResponse)
 
 
+async def _fetch_latest_product_prices(
+    db: AsyncSession,
+    product_ids: list[int],
+    store_ids: list[str],
+) -> list[Price]:
+    if not product_ids:
+        return []
+
+    latest_price_subq = (
+        select(
+            Price.product_id,
+            Price.store_id,
+            func.max(Price.recorded_at).label("max_recorded_at"),
+        )
+        .where(Price.product_id.in_(product_ids))
+        .group_by(Price.product_id, Price.store_id)
+        .subquery("selected_latest_prices")
+    )
+
+    stmt = (
+        select(Price)
+        .options(selectinload(Price.store))
+        .join(
+            latest_price_subq,
+            and_(
+                Price.product_id == latest_price_subq.c.product_id,
+                Price.store_id == latest_price_subq.c.store_id,
+                Price.recorded_at == latest_price_subq.c.max_recorded_at,
+            ),
+        )
+    )
+    if store_ids:
+        stmt = stmt.join(Store, Price.store_id == Store.external_id).where(
+            Store.retail_chain.in_(store_ids)
+        )
+
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
+
+
+def _build_paginated_products_response(
+    total: int,
+    products: list[Product],
+    prices: list[Price],
+) -> PaginatedProductsResponse:
+    prices_by_product: dict[int, list[Price]] = {}
+    for price in prices:
+        prices_by_product.setdefault(price.product_id, []).append(price)
+
+    response_items = []
+    for product in products:
+        product_prices = sorted(
+            prices_by_product.get(product.id, []),
+            key=lambda item: float(item.price),
+        )
+        product_offers = [
+            ProductOfferResponse(
+                store=product_price.store,
+                price=float(product_price.price),
+                old_price=(
+                    float(product_price.old_price)
+                    if product_price.old_price is not None
+                    else None
+                ),
+                in_stock=product_price.in_stock,
+                recorded_at=product_price.recorded_at,
+            )
+            for product_price in product_prices
+        ]
+
+        response_items.append(
+            ProductOffersResponse(
+                id=product.id,
+                ean=product.ean,
+                store_product_id=product.store_product_id,
+                title=product.title,
+                brand=product.brand,
+                unit=product.unit,
+                weight=product.weight,
+                image_url=product.image_url,
+                canonical_category_id=product.canonical_category_id,
+                category=product.category,
+                created_at=product.created_at,
+                offers=product_offers,
+            )
+        )
+
+    return PaginatedProductsResponse(total=total, items=response_items)
+
+
 @router.get(
     "/",
     response_model=PaginatedProductsResponse,
@@ -78,6 +169,68 @@ async def get_products(
     offer_list = [o.strip() for o in offers.split(",")] if offers else []
     # Парсинг знижок
     discount_list = [d.strip() for d in discounts.split(",")] if discounts else []
+
+    # "Popular" recommendations do not depend on price aggregates. Selecting the
+    # small product page first prevents a category request from grouping the
+    # entire immutable price history before LIMIT can be applied.
+    has_price_filters = bool(
+        store_ids
+        or max_price is not None
+        or discount_list
+        or {"promo", "save"}.intersection(offer_list)
+    )
+    if sort_by == "popular" and not has_price_filters:
+        product_conditions: list[ColumnElement[bool]] = [
+            Product.is_hidden.is_(False)
+        ]
+        if search:
+            product_conditions.append(Product.title.ilike(f"%{search}%"))
+        if category and category.isdigit():
+            product_conditions.append(
+                Product.canonical_category_id == int(category)
+            )
+        if "new" in offer_list:
+            fourteen_days_ago = datetime.now(timezone.utc) - timedelta(days=14)
+            product_conditions.append(Product.created_at >= fourteen_days_ago)
+
+        eligible_products_stmt = select(Product.id.label("product_id"))
+        if subcat_list:
+            eligible_products_stmt = eligible_products_stmt.join(Category).where(
+                Category.slug.in_(subcat_list)
+            )
+        eligible_products = (
+            eligible_products_stmt.where(*product_conditions)
+            .subquery("eligible_products")
+        )
+
+        fast_total = int(
+            await db.scalar(
+                select(func.count()).select_from(eligible_products)
+            )
+            or 0
+        )
+        if not fast_total:
+            return PaginatedProductsResponse(total=0, items=[])
+
+        products_result = await db.execute(
+            select(Product)
+            .join(
+                eligible_products,
+                Product.id == eligible_products.c.product_id,
+            )
+            .options(selectinload(Product.category))
+            .order_by(Product.id.desc())
+            .offset(skip)
+            .limit(limit)
+        )
+        selected_products = list(products_result.scalars().all())
+        selected_ids = [product.id for product in selected_products]
+        selected_prices = await _fetch_latest_product_prices(
+            db, selected_ids, store_ids
+        )
+        return _build_paginated_products_response(
+            fast_total, selected_products, selected_prices
+        )
 
     # 2. CTE для ОСТАННІХ ЦІН (залишається без змін)
     latest_price_subq = (
@@ -172,7 +325,7 @@ async def get_products(
         if discount_conditions:
             base_stmt = base_stmt.where(or_(*discount_conditions))
 
-    base_stmt = base_stmt.where(Product.is_hidden == False)
+    base_stmt = base_stmt.where(Product.is_hidden.is_(False))
 
     # 7. Підрахунок загальної кількості для пагінації
     count_stmt = select(func.count()).select_from(base_stmt.subquery())
@@ -207,63 +360,10 @@ async def get_products(
     product_ids = [p.id for p in products]
 
     # 10. Отримання детальних Offers ТІЛЬКИ для відібраних товарів
-    offers_stmt = (
-        select(Price)
-        .options(selectinload(Price.store))
-        .join(
-            latest_price_subq,
-            and_(
-                Price.product_id == latest_price_subq.c.product_id,
-                Price.store_id == latest_price_subq.c.store_id,
-                Price.recorded_at == latest_price_subq.c.max_recorded_at,
-            ),
-        )
-        .where(Price.product_id.in_(product_ids))
-    )
-    if store_ids:
-        offers_stmt = offers_stmt.join(Store, Price.store_id == Store.external_id).where(Store.retail_chain.in_(store_ids))
-
-    offers_result = await db.execute(offers_stmt)
-    prices = offers_result.scalars().all()
-
-    # Групуємо ціни за товаром
-    prices_by_product = {}
-    for price in prices:
-        prices_by_product.setdefault(price.product_id, []).append(price)
+    prices = await _fetch_latest_product_prices(db, product_ids, store_ids)
 
     # 11. Формування фінальної відповіді
-    response_items = []
-    for product in products:
-        product_prices = prices_by_product.get(product.id, [])
-        offers = [
-            ProductOfferResponse(
-                store=p_price.store,
-                price=float(p_price.price),
-                old_price=float(p_price.old_price) if p_price.old_price else None,
-                in_stock=p_price.in_stock,
-                recorded_at=p_price.recorded_at,
-            )
-            for p_price in product_prices
-        ]
-
-        response_items.append(
-            ProductOffersResponse(
-                id=product.id,
-                ean=product.ean,
-                store_product_id=product.store_product_id,
-                title=product.title,
-                brand=product.brand,
-                unit=product.unit,
-                weight=product.weight,
-                image_url=product.image_url,
-                canonical_category_id=product.canonical_category_id,
-                category=product.category,
-                created_at=product.created_at,
-                offers=offers,
-            )
-        )
-
-    return PaginatedProductsResponse(total=total, items=response_items)
+    return _build_paginated_products_response(int(total), products, prices)
 
 
 @router.get(
@@ -317,7 +417,7 @@ async def get_products_by_store(
                 StoreProduct.store_id == store_id,
             ),
         )
-        .where(Product.is_hidden == False)
+        .where(Product.is_hidden.is_(False))
     )
 
     if category_id is not None:
@@ -406,7 +506,7 @@ async def get_categories(
 ):
     stmt = select(Category)
     if not include_hidden:
-        stmt = stmt.where(Category.is_hidden == False)
+        stmt = stmt.where(Category.is_hidden.is_(False))
     stmt = stmt.order_by(Category.name)
     result = await db.execute(stmt)
     return list(result.scalars().all())
@@ -433,7 +533,7 @@ async def get_subcategories_by_main_category(
         select(func.count(Product.id))
         .where(
             Product.canonical_category_id == Category.id,
-            Product.is_hidden == False,
+            Product.is_hidden.is_(False),
         )
         .correlate(Category)
         .scalar_subquery()
@@ -449,7 +549,7 @@ async def get_subcategories_by_main_category(
         )
         .where(
             Category.main_category_id == main_category_id,
-            Category.is_hidden == False,
+            Category.is_hidden.is_(False),
         )
         .order_by(Category.name)
     )

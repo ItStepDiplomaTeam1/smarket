@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 
@@ -37,9 +37,35 @@ interface StoreCard {
   prod: number;
   promo: number;
   eco: number;
-  logo_url: string;
   city: string;
 }
+
+const STORE_BADGES: Record<string, { label: string; className: string }> = {
+  novus: {
+    label: 'NOVUS',
+    className: 'bg-[#187A4A] text-white',
+  },
+  atb: {
+    label: 'АТБ',
+    className: 'bg-[#D71920] text-white',
+  },
+  silpo: {
+    label: 'СІЛЬПО',
+    className: 'bg-[#F58220] text-white',
+  },
+  auchan: {
+    label: 'AUCHAN',
+    className: 'bg-white text-[#D71920]',
+  },
+  metro: {
+    label: 'METRO',
+    className: 'bg-[#003B7A] text-[#FFD500]',
+  },
+  ekomarket: {
+    label: 'EKO',
+    className: 'bg-[#1F8A43] text-white',
+  },
+};
 
 // ================= API =================
 const API_BASE = import.meta.env.VITE_API_URL || 'https://smarket-api.duckdns.org';
@@ -80,7 +106,6 @@ const fetchStoresWithStats = async (): Promise<StoreCard[]> => {
           prod: stats.total_products,
           promo: stats.promo_products,
           eco: stats.max_savings,
-          logo_url: stats.store_logo_url,
           city: store.city || '',
         };
       } catch {
@@ -92,7 +117,6 @@ const fetchStoresWithStats = async (): Promise<StoreCard[]> => {
           prod: 0,
           promo: 0,
           eco: 0,
-          logo_url: '',
           city: store.city || '',
         };
       }
@@ -139,9 +163,15 @@ export const Mainpart: React.FC = () => {
     e.preventDefault();
   };
 
-  useEffect(() => {
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
     setCurrentPage(1);
-  }, [searchQuery, activeCategoryTab]);
+  };
+
+  const handleCategoryChange = (category: string) => {
+    setActiveCategoryTab(category);
+    setCurrentPage(1);
+  };
 
   const filteredStores = useMemo(() => {
     if (!stores) return [];
@@ -195,7 +225,7 @@ export const Mainpart: React.FC = () => {
                   type="text"
                   placeholder="Пошук магазину..."
                   value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                   className="w-full h-[46px] md:h-[48px] bg-[#F9FAFB] dark:bg-[#0D1612] border border-[#E5E7EB] dark:border-[#1F3227] rounded-[8px] pl-[44px] pr-[16px] text-[14px] text-[#111827] dark:text-white placeholder-[#9CA3AF] dark:placeholder-[#7A8D85] outline-none focus:border-[#265447] dark:focus:border-[#3CD27D] transition-colors"
                 />
               </div>
@@ -244,7 +274,7 @@ export const Mainpart: React.FC = () => {
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveCategoryTab(tab.id)}
+              onClick={() => handleCategoryChange(tab.id)}
               className={`px-[14px] md:px-[16px] py-[6px] md:py-[8px] rounded-[100px] text-[12px] md:text-[13px] font-medium transition-colors ${
                 activeCategoryTab === tab.id
                   ? 'bg-[#265447] dark:bg-[#3CD27D] text-white dark:text-[#0B120F]'
@@ -278,22 +308,17 @@ export const Mainpart: React.FC = () => {
               >
                 {/* Логотип та Бейдж */}
                 <div className="flex justify-between items-start mb-[16px]">
-                  <div className="w-[48px] h-[48px] md:w-[52px] md:h-[52px] rounded-[12px] border border-[#E5E7EB] dark:border-[#2B4236] bg-white flex items-center justify-center p-[6px] overflow-hidden shrink-0">
-                    {store.logo_url ? (
-                      <img 
-                        src={store.logo_url} 
-                        alt={store.name} 
-                        className="w-full h-full object-contain"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none';
-                          (e.target as HTMLImageElement).parentElement!.innerHTML = `<span class="font-black text-[#111827] text-[11px] text-center leading-tight">${store.retail_chain.slice(0, 4).toUpperCase()}</span>`;
-                        }}
-                      />
-                    ) : (
-                      <span className="font-black text-[#111827] text-[12px] md:text-[14px] text-center leading-tight">
-                        {store.retail_chain.slice(0, 4).toUpperCase()}
-                      </span>
-                    )}
+                  <div
+                    aria-label={`Логотип ${store.name}`}
+                    className={`w-[48px] h-[48px] md:w-[52px] md:h-[52px] rounded-[12px] border border-[#E5E7EB] dark:border-[#2B4236] flex items-center justify-center p-[6px] overflow-hidden shrink-0 ${
+                      STORE_BADGES[store.retail_chain]?.className ??
+                      'bg-white text-[#111827]'
+                    }`}
+                  >
+                    <span className="font-black text-[10px] md:text-[11px] text-center leading-tight tracking-[-0.02em]">
+                      {STORE_BADGES[store.retail_chain]?.label ??
+                        store.retail_chain.slice(0, 4).toUpperCase()}
+                    </span>
                   </div>
                   
                   {store.promo > 0 && (

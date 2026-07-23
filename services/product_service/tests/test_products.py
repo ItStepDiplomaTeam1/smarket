@@ -135,6 +135,31 @@ async def test_get_products_sort(mock_db, mock_product, mock_price):
     response = client.get("/api/v1/products?sort=price_asc")
     assert response.status_code == 200
 
+
+@pytest.mark.asyncio
+async def test_get_popular_products_limits_price_history_to_selected_page(
+    mock_db, mock_product, mock_price
+):
+    mock_db.scalar.return_value = 1
+
+    mock_result_products = MagicMock()
+    mock_result_products.scalars().all.return_value = [mock_product]
+
+    mock_result_prices = MagicMock()
+    mock_result_prices.scalars().all.return_value = [mock_price]
+
+    mock_db.execute.side_effect = [mock_result_products, mock_result_prices]
+
+    response = client.get(
+        "/api/v1/products?category=1&limit=5&sort_by=popular"
+    )
+
+    assert response.status_code == 200
+    assert response.json()["items"][0]["offers"][0]["price"] == 45.50
+    latest_prices_sql = str(mock_db.execute.await_args_list[1].args[0])
+    assert "prices.product_id IN" in latest_prices_sql
+
+
 @pytest.mark.asyncio
 async def test_get_products_page_beyond_result_set(mock_db):
     mock_db.scalar.return_value = 5 # 5 total matching products

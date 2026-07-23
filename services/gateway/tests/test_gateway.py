@@ -34,6 +34,7 @@ def setup_gateway():
     mock_response = MagicMock(spec=httpx.Response)
     mock_response.status_code = 200
     mock_response.headers = httpx.Headers({"content-type": "application/json"})
+    mock_response.content = b'{"status": "ok_downstream"}'
     mock_response.json.return_value = {"status": "ok"}
 
     async def mock_aiter_raw():
@@ -186,6 +187,38 @@ def test_shared_cart_is_public_and_strips_authorization(setup_gateway):
     assert len(captured) == 1
     assert "cart/shared/349fd043-4712-4fb8-9c48-e8cb9a712f5a" in str(captured[0].url)
     assert captured[0].headers.get("Authorization") is None
+
+
+def test_cart_read_failure_returns_cors_enabled_gateway_error(
+    monkeypatch, setup_gateway
+):
+    monkeypatch.setattr(
+        "jwt.decode",
+        lambda token, key, algorithms: {
+            "sub": "e2e0ac63-8f29-471c-9065-660bc277d790",
+            "role": "user",
+            "type": "access",
+        },
+    )
+
+    async def raise_read_error(request, *args, **kwargs):
+        raise httpx.ReadError("broken downstream response", request=request)
+
+    app.state.http_client.send = raise_read_error
+
+    response = client.get(
+        "/api/v1/cart/",
+        headers={
+            "Authorization": "Bearer valid-user-token",
+            "Origin": "https://smarket-7go.pages.dev",
+        },
+    )
+
+    assert response.status_code == 502
+    assert (
+        response.headers["access-control-allow-origin"]
+        == "https://smarket-7go.pages.dev"
+    )
 
 
 def test_admin_route_regular_user_forbidden(monkeypatch, setup_gateway):
