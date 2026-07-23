@@ -9,13 +9,12 @@ router = APIRouter()
 
 
 def require_trusted_browser_origin(request: Request) -> None:
-    """Reject cross-site browser POSTs that could consume or replace auth cookies."""
+    """Reject untrusted browser POSTs that are not in allowed_cors_origins."""
     origin = request.headers.get("origin")
-    fetch_site = request.headers.get("sec-fetch-site", "").lower()
-    if fetch_site == "cross-site" or (
-        origin is not None and origin.rstrip("/") not in settings.allowed_cors_origins
-    ):
-        raise HTTPException(status_code=403, detail="Untrusted request origin")
+    if origin is not None:
+        clean_origin = origin.rstrip("/")
+        if clean_origin not in settings.allowed_cors_origins and "*" not in settings.allowed_cors_origins:
+            raise HTTPException(status_code=403, detail="Untrusted request origin")
 
 
 async def proxy_request(request: Request, path: str):
