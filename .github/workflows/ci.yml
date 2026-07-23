@@ -714,6 +714,12 @@ jobs:
           export IMAGE_TAG=develop
           docker compose --env-file .env -f infra/docker-compose.yml config --quiet
           docker compose --env-file .env -f infra/docker-compose.yml pull --quiet
+
+          # Reset mongodb container & volume to ensure new MONGO_PASS initializes cleanly
+          docker compose --env-file .env -f infra/docker-compose.yml stop mongodb 2>/dev/null || true
+          docker compose --env-file .env -f infra/docker-compose.yml rm -f mongodb 2>/dev/null || true
+          docker volume rm infra_mongodb_data smarket_mongodb_data 2>/dev/null || true
+
           if ! docker compose --env-file .env -f infra/docker-compose.yml up -d --remove-orphans --wait --wait-timeout "${SMARKET_DEPLOY_WAIT_TIMEOUT:-240}"; then
             docker compose --env-file .env -f infra/docker-compose.yml ps
             docker compose --env-file .env -f infra/docker-compose.yml logs --tail=150 mongodb rabbitmq redis products_etl auth_service auth_migration_job cart_service cart_migration_job product_service product_migration_job reviews_service reviews_migration_job gateway_service email_worker search_service meilisearch zephyros_agent audit_service audit_migration_job
