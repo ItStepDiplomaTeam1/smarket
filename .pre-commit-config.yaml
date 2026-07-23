@@ -6,6 +6,17 @@ repos:
         args: [ --fix ]
       - id: ruff-format
 
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-yaml
+        args: [--allow-multiple-documents]
+      - id: check-json
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
   - repo: local
     hooks:
       - id: run-service-tests
@@ -13,4 +24,4 @@ repos:
         entry: python scripts/run_service_tests.py
         language: python
         files: ^services/
-        pass_filenames: true
+        pass_filenames: false
