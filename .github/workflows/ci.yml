@@ -689,17 +689,10 @@ jobs:
           cat "${{ github.workspace }}"/services/*/.env >> infra/.env 2>/dev/null || true
           cat "${{ github.workspace }}"/services/*/.env >> .env 2>/dev/null || true
 
-          # Ensure all 6 required infra variables have non-empty values in .env & infra/.env
+          # Ensure real infrastructure secrets from environment are propagated to .env & infra/.env
           for var in REDIS_PASSWORD RABBITMQ_PASS MONGO_PASS MEILISEARCH_API_KEY SEARCH_INTERNAL_API_TOKEN ETL_ADMIN_KEY; do
-            if ! grep -q "^${var}=" .env 2>/dev/null; then
-              case "$var" in
-                REDIS_PASSWORD)            val="${REDIS_PASSWORD:-smarket_redis_pass_123}" ;;
-                RABBITMQ_PASS)             val="${RABBITMQ_PASS:-smarket_rmq_pass_123}" ;;
-                MONGO_PASS)                val="${MONGO_PASS:-smarket_mongo_pass_123}" ;;
-                MEILISEARCH_API_KEY)       val="${MEILISEARCH_API_KEY:-smarket_meilisearch_master_key_123}" ;;
-                SEARCH_INTERNAL_API_TOKEN) val="${SEARCH_INTERNAL_API_TOKEN:-smarket_search_token_123}" ;;
-                ETL_ADMIN_KEY)             val="${ETL_ADMIN_KEY:-smarket_etl_admin_key_123}" ;;
-              esac
+            val="${!var}"
+            if [ -n "$val" ] && ! grep -q "^${var}=" .env 2>/dev/null; then
               echo "${var}=${val}" >> .env
               echo "${var}=${val}" >> infra/.env
             fi
