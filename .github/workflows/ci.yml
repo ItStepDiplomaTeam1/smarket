@@ -695,7 +695,7 @@ jobs:
           for var in REDIS_PASSWORD RABBITMQ_PASS MONGO_PASS MEILISEARCH_API_KEY SEARCH_INTERNAL_API_TOKEN ETL_ADMIN_KEY; do
             val="${!var}"
             if [ -n "$val" ]; then
-              for f in "${{ github.workspace }}"/services/*/.env; do
+              for f in "${{ github.workspace }}"/services/*/.env services/*/.env; do
                 if [ -f "$f" ]; then
                   sed -i "/^${var}=/d" "$f" 2>/dev/null || true
                   echo "${var}=${val}" >> "$f"
