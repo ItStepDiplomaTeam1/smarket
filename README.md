@@ -133,9 +133,9 @@ cd services/search_service && cargo test
 ## 👥 Команда Проєкту & Ліцензія
 
 * **Тимофій Щур** — Tech Lead, Core Backend Engineer ([@ashfromsky](https://github.com/ashfromsky))
-* **Соботович Ілля** — Frontend Developer, Technical Writer, Project Manager
-* **Шевченко Максим** — Full Stack Developer
-* **Мироненко Владислав** — Full Stack Developer
+* **Соботович Ілля** — Frontend Developer ([@IllyaStack](https://github.com/IllyaStack))
+* **Шевченко Максим** — Full Stack Developer, Project Manager ([@MxmXyn245](https://github.com/MxmXyn245))
+* **Мироненко Владислав** — Full Stack Developer ([@Indolop](https://github.com/Indolop))
 * **Фесун Ігор** — UI/UX Designer & Prototyper
 * **Мельникова Катерина** — Business Analyst / Brand Designer
 
