@@ -674,7 +674,7 @@ jobs:
             cp "${{ github.workspace }}/$srv/.env" "$srv/.env" 2>/dev/null || true
           done
 
-          # Restore base host infra envs if present, then append downloaded service secrets
+          # Restore base host infra envs if present
           if [ -f /tmp/smarket_infra_host.env ]; then
             cp /tmp/smarket_infra_host.env infra/.env
           else
@@ -686,10 +686,29 @@ jobs:
             touch .env
           fi
 
+          # Source host .env to populate process environment with valid secrets
+          set -a
+          [ -f .env ] && source .env
+          set +a
+
+          # Sanitize service .env files and propagate host secrets
+          for var in REDIS_PASSWORD RABBITMQ_PASS MONGO_PASS MEILISEARCH_API_KEY SEARCH_INTERNAL_API_TOKEN ETL_ADMIN_KEY; do
+            val="${!var}"
+            if [ -n "$val" ]; then
+              for f in "${{ github.workspace }}"/services/*/.env; do
+                if [ -f "$f" ]; then
+                  sed -i "/^${var}=/d" "$f" 2>/dev/null || true
+                  echo "${var}=${val}" >> "$f"
+                fi
+              done
+            fi
+          done
+
+          # Combine service .env files
           cat "${{ github.workspace }}"/services/*/.env >> infra/.env 2>/dev/null || true
           cat "${{ github.workspace }}"/services/*/.env >> .env 2>/dev/null || true
 
-          # Ensure real infrastructure secrets from environment are propagated to .env, infra/.env, and service .env files
+          # Ensure host secrets take final precedence at the end of .env & infra/.env
           for var in REDIS_PASSWORD RABBITMQ_PASS MONGO_PASS MEILISEARCH_API_KEY SEARCH_INTERNAL_API_TOKEN ETL_ADMIN_KEY; do
             val="${!var}"
             if [ -n "$val" ]; then
@@ -697,13 +716,6 @@ jobs:
               echo "${var}=${val}" >> .env
               sed -i "/^${var}=/d" infra/.env 2>/dev/null || true
               echo "${var}=${val}" >> infra/.env
-
-              for f in "${{ github.workspace }}"/services/*/.env; do
-                if [ -f "$f" ]; then
-                  sed -i "/^${var}=/d" "$f" 2>/dev/null || true
-                  echo "${var}=${val}" >> "$f"
-                fi
-              done
             fi
           done
 
