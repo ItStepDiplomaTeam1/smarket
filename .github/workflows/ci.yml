@@ -444,12 +444,6 @@ jobs:
     needs: detect
     if: needs.detect.outputs.has_go == 'true'
     runs-on: ubuntu-latest
-    env:
-      HOME: /root
-      GOPATH: /root/go
-      GOMODCACHE: /root/go/pkg/mod
-      GOCACHE: /root/.cache/go-build
-      PATH: /usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     defaults:
       run:
         working-directory: services/products_etl
@@ -461,8 +455,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            /root/go/pkg/mod
-            /root/.cache/go-build
+            ~/go/pkg/mod
+            ~/.cache/go-build
           key: go-${{ hashFiles('services/products_etl/go.sum') }}
           restore-keys: go-
 
@@ -479,8 +473,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CARGO_TERM_COLOR: always
-      HOME: /root
-      PATH: /root/.cargo/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     defaults:
       run:
         working-directory: services/search_service
@@ -491,9 +483,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            /root/.cargo/registry/cache
-            /root/.cargo/registry/index
-            /root/.cargo/git/db
+            ~/.cargo/registry/cache
+            ~/.cargo/registry/index
+            ~/.cargo/git/db
             services/search_service/target
           key: rust-${{ hashFiles('services/search_service/Cargo.lock') }}
           restore-keys: rust-
@@ -502,7 +494,7 @@ jobs:
         run: |
           if ! command -v cargo &> /dev/null; then
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-            source /root/.cargo/env
+            source "$HOME/.cargo/env"
           fi
           rustc --version
           cargo --version
@@ -593,7 +585,6 @@ jobs:
       contents: read
       packages: read
     env:
-      HOME: /root
       DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
       SMARKET_DEPLOY_WAIT_TIMEOUT: "360"
 
