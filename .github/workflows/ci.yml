@@ -585,6 +585,7 @@ jobs:
       contents: read
       packages: read
     env:
+      HOME: /root
       DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
       SMARKET_DEPLOY_WAIT_TIMEOUT: "360"
 
