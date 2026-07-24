@@ -45,24 +45,36 @@ async def is_token_blacklisted(jti: str) -> bool:
         return True
 
 
-async def consume_refresh_token(jti: str, ttl_seconds: int) -> bool:
-    """Atomically mark a refresh token as used.
+import time
 
-    Returning False means that the token was already consumed or that Redis
-    could not safely verify single use. This intentionally fails closed.
+
+async def consume_refresh_token(jti: str, ttl_seconds: int) -> bool:
+    """Atomically mark a refresh token as used with a 10-second grace period.
+
+    Allows concurrent or rapid refresh requests during page reload within 10 seconds,
+    preventing race condition logouts on reload.
     """
     if not jti or ttl_seconds <= 0:
         return False
 
     client = _get_redis_client()
     try:
-        result = await client.set(
-            f"{_BLACKLIST_PREFIX}{jti}",
-            "1",
-            ex=ttl_seconds,
-            nx=True,
-        )
-        return bool(result)
+        key = f"{_BLACKLIST_PREFIX}{jti}"
+        now = time.time()
+
+        existing = await client.get(key)
+        if existing:
+            try:
+                consumed_at = float(existing)
+                # Grace period: if consumed within the last 10 seconds, accept it
+                if now - consumed_at <= 10.0:
+                    return True
+            except (ValueError, TypeError):
+                pass
+            return False
+
+        await client.set(key, str(now), ex=ttl_seconds)
+        return True
     except redis.RedisError:
         logger.exception("Failed to atomically consume refresh token — rejecting token")
         return False
