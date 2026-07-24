@@ -322,6 +322,36 @@ CITY_MAPPING = {
 }
 
 
+def _deduplicate_store_offers(offers: list[dict]) -> list[dict]:
+    """Залишає одну актуальну пропозицію на фізичний магазин."""
+    offers_by_store: dict[str, dict] = {}
+
+    for offer in offers:
+        store_id = offer.get("store", {}).get("external_id")
+        if not store_id:
+            continue
+
+        current_offer = offers_by_store.get(store_id)
+        if current_offer is None:
+            offers_by_store[store_id] = offer
+            continue
+
+        current_in_stock = bool(current_offer.get("in_stock", False))
+        candidate_in_stock = bool(offer.get("in_stock", False))
+        current_price = float(current_offer.get("price") or math.inf)
+        candidate_price = float(offer.get("price") or math.inf)
+
+        if (
+            candidate_in_stock
+            and not current_in_stock
+            or candidate_in_stock == current_in_stock
+            and candidate_price < current_price
+        ):
+            offers_by_store[store_id] = offer
+
+    return list(offers_by_store.values())
+
+
 async def _build_stores_comparison(
     cart,
     http_client: httpx.AsyncClient,
@@ -349,8 +379,7 @@ async def _build_stores_comparison(
     for item in cart.items:
         offers_data = offers_data_map.get(item.product_id, {})
         offers = offers_data.get("offers", [])
-        seen_stores_for_item = set()
-        for offer in offers:
+        for offer in _deduplicate_store_offers(offers):
             store = offer.get("store")
             if not store:
                 continue
@@ -362,7 +391,7 @@ async def _build_stores_comparison(
                     continue
 
             store_id = store.get("external_id")
-            if not store_id or store_id in seen_stores_for_item:
+            if not store_id:
                 continue
 
             price = offer.get("price", 0.0)
@@ -380,12 +409,20 @@ async def _build_stores_comparison(
                     "found_items_count": 0,
                     "missing_items_count": total_items_in_cart,
                     "is_complete": False,
+                    "item_prices": [],
                 }
             if in_stock:
-                seen_stores_for_item.add(store_id)
                 stores_comparison[store_id]["total_price"] += price * item.quantity
                 stores_comparison[store_id]["found_items_count"] += 1
                 stores_comparison[store_id]["missing_items_count"] -= 1
+                stores_comparison[store_id]["item_prices"].append(
+                    {
+                        "product_id": item.product_id,
+                        "unit_price": price,
+                        "quantity": item.quantity,
+                        "subtotal": price * item.quantity,
+                    }
+                )
 
     for store_id, comp in stores_comparison.items():
         if comp["found_items_count"] == total_items_in_cart:
@@ -417,13 +454,12 @@ async def _build_stores_comparison(
         for item in cart.items:
             offers_data = offers_data_map.get(item.product_id, {})
             offers = offers_data.get("offers", [])
-            seen_stores_for_item_fallback = set()
-            for offer in offers:
+            for offer in _deduplicate_store_offers(offers):
                 store = offer.get("store")
                 if not store:
                     continue
                 store_id = store.get("external_id")
-                if not store_id or store_id in seen_stores_for_item_fallback:
+                if not store_id:
                     continue
 
                 price = offer.get("price", 0.0)
@@ -441,14 +477,22 @@ async def _build_stores_comparison(
                         "found_items_count": 0,
                         "missing_items_count": total_items_in_cart,
                         "is_complete": False,
+                        "item_prices": [],
                     }
                 if in_stock:
-                    seen_stores_for_item_fallback.add(store_id)
                     stores_comparison_all[store_id]["total_price"] += (
                         price * item.quantity
                     )
                     stores_comparison_all[store_id]["found_items_count"] += 1
                     stores_comparison_all[store_id]["missing_items_count"] -= 1
+                    stores_comparison_all[store_id]["item_prices"].append(
+                        {
+                            "product_id": item.product_id,
+                            "unit_price": price,
+                            "quantity": item.quantity,
+                            "subtotal": price * item.quantity,
+                        }
+                    )
 
         for store_id, comp in stores_comparison_all.items():
             if comp["found_items_count"] == total_items_in_cart:

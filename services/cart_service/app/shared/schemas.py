@@ -76,6 +76,13 @@ class SharedCartResponse(BaseModel):
     total_price: float = 0.0
 
 
+class CartStoreItemPrice(BaseModel):
+    product_id: int
+    unit_price: float
+    quantity: int
+    subtotal: float
+
+
 class CartStoreComparison(BaseModel):
     store_id: str
     store_name: str
@@ -85,6 +92,7 @@ class CartStoreComparison(BaseModel):
     found_items_count: int
     missing_items_count: int
     is_complete: bool
+    item_prices: List[CartStoreItemPrice] = Field(default_factory=list)
 
     model_config = ConfigDict(from_attributes=True)
 

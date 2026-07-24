@@ -36,9 +36,9 @@ export const useFetchCartDetails = (cartId: string | null) => {
     queryFn: async () => {
       const { data } = await apiClient.get(`/api/v1/cart/${cartId}`);
       
-      const itemsWithImages = data.items.map((item: { product_id: string; product_name: string; quantity: number; price: number; id: string; image_url?: string }) => {
+      const itemsWithImages = data.items.map((item: { product_id: string | number; product_name: string; quantity: number; price: number; id: string; image_url?: string }) => {
         return {
-          productId: item.product_id,
+          productId: item.product_id.toString(),
           name: item.product_name,
           quantity: item.quantity,
           basePrice: item.price,
@@ -87,6 +87,12 @@ export const useFetchCartComparison = (cartId: string | null) => {
         is_complete: boolean;
         found_items_count: number;
         missing_items_count: number;
+        item_prices?: Array<{
+          product_id: number;
+          unit_price: number;
+          quantity: number;
+          subtotal: number;
+        }>;
       }, index: number) => ({
         storeId: c.store_id,
         storeName: c.store_name,
@@ -97,6 +103,12 @@ export const useFetchCartComparison = (cartId: string | null) => {
         isComplete: c.is_complete,
         foundItemsCount: c.found_items_count,
         missingItemsCount: c.missing_items_count,
+        itemPrices: c.item_prices?.map((item) => ({
+          productId: item.product_id.toString(),
+          unitPrice: item.unit_price,
+          quantity: item.quantity,
+          subtotal: item.subtotal,
+        })) ?? [],
       }));
     },
     enabled: !!cartId,
@@ -116,6 +128,7 @@ export const useUpdateCartItem = () => {
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['cart', variables.cartId] });
+      queryClient.invalidateQueries({ queryKey: ['cart-compare', variables.cartId] });
       queryClient.invalidateQueries({ queryKey: ['carts'] });
     },
   });
@@ -162,6 +175,7 @@ export const useUpdateCartItemQuantity = () => {
     },
     onSettled: (data, error, variables) => {
       queryClient.invalidateQueries({ queryKey: ['cart', variables.cartId] });
+      queryClient.invalidateQueries({ queryKey: ['cart-compare', variables.cartId] });
       queryClient.invalidateQueries({ queryKey: ['carts'] });
     },
   });
@@ -177,6 +191,7 @@ export const useDeleteCartItem = () => {
     },
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['cart', variables.cartId] });
+      queryClient.invalidateQueries({ queryKey: ['cart-compare', variables.cartId] });
       queryClient.invalidateQueries({ queryKey: ['carts'] });
     },
   });
@@ -220,6 +235,7 @@ export const useClearCart = () => {
     },
     onSuccess: (_, cartId) => {
       queryClient.invalidateQueries({ queryKey: ['cart', cartId] });
+      queryClient.invalidateQueries({ queryKey: ['cart-compare', cartId] });
       queryClient.invalidateQueries({ queryKey: ['carts'] });
     },
   });

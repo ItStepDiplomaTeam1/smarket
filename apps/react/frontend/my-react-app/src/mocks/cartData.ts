@@ -1,4 +1,11 @@
 // Загальна інформація про магазин у порівнянні
+export interface StoreItemPrice {
+  productId: string;
+  unitPrice: number;
+  quantity: number;
+  subtotal: number;
+}
+
 export interface StoreComparison {
   storeId: string;
   storeName: string;
@@ -9,6 +16,7 @@ export interface StoreComparison {
   isComplete?: boolean;
   foundItemsCount?: number;
   missingItemsCount?: number;
+  itemPrices?: StoreItemPrice[];
 }
 
 // Підсумок конкретного кошика

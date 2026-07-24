@@ -200,6 +200,19 @@ async def test_compare_cart_happy_path(monkeypatch):
                     },
                     {
                         "store": {
+                            "external_id": "store_silpo",
+                            "name": "Silpo",
+                            "retail_chain": "silpo",
+                            "city": "kiev",
+                            "address": "Khreshchatyk 1",
+                            "lat": 50.45,
+                            "lng": 30.52,
+                        },
+                        "price": 10.5,
+                        "in_stock": True,
+                    },
+                    {
+                        "store": {
                             "external_id": "store_novus",
                             "name": "Novus",
                             "retail_chain": "novus",
@@ -225,8 +238,17 @@ async def test_compare_cart_happy_path(monkeypatch):
     assert data[0]["store_id"] == "store_silpo"
     assert data[0]["total_price"] == 21.0
     assert data[0]["is_complete"] is True
+    assert data[0]["item_prices"] == [
+        {
+            "product_id": PRODUCT_ID,
+            "unit_price": 10.5,
+            "quantity": 2,
+            "subtotal": 21.0,
+        }
+    ]
     assert data[1]["store_id"] == "store_novus"
     assert data[1]["total_price"] == 24.0
+    assert data[1]["item_prices"][0]["unit_price"] == 12.0
 
 
 @pytest.mark.asyncio

@@ -49,6 +49,21 @@ The system SHALL calculate `savings_amount` as the highest `total_price` among a
 - **WHEN** only one store has `is_complete=True`
 - **THEN** `savings_amount` = 0.00
 
+### Requirement: Store-consistent cart prices
+Each store returned by `GET /carts/{cart_id}/compare` SHALL include an `item_prices` list with `product_id`, `unit_price`, `quantity`, and `subtotal` for every available cart item. A client that selects a complete store SHALL display these unit prices and subtotals so that the sum of visible cart rows equals the selected store's `total_price`.
+
+#### Scenario: User selects a store with different item prices
+- **WHEN** the cart initially displays global minimum prices for its products
+- **WHEN** the user selects a complete store from the comparison
+- **THEN** every cart row displays the corresponding `item_prices.unit_price` from that store
+- **THEN** each row total equals `unit_price × quantity`
+- **THEN** the sum of row totals equals the selected store's `total_price`
+
+#### Scenario: Duplicate latest offers for one physical store
+- **WHEN** Product Service returns duplicate latest offers for the same product and `store_id`
+- **THEN** the comparison includes that product only once for that store
+- **THEN** the duplicate MUST NOT inflate `found_items_count`, `item_prices`, or `total_price`
+
 ### Requirement: Receipt immutability
 The system SHALL store receipt data in a dedicated `receipts` table as a JSONB snapshot. The receipt MUST NOT reference live `prices` table records. Prices captured in `snapshot` MUST remain unchanged for the lifetime of the receipt record.
 

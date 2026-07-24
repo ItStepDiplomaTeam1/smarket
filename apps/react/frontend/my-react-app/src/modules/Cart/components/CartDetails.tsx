@@ -1,18 +1,35 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useCartStore } from '../store/useCartStore';
-import { useFetchCartDetails, useUpdateCartItem, useClearCart, useUpdateCartItemQuantity, useDeleteCartItem } from '../../../hooks/api/useCartApi';
 import { Trash2, Plus, Minus } from 'lucide-react';
+import { useCartStore } from '@/modules/Cart/store/useCartStore';
+import {
+  useClearCart,
+  useDeleteCartItem,
+  useFetchCartComparison,
+  useFetchCartDetails,
+  useUpdateCartItemQuantity,
+} from '@/hooks/api/useCartApi';
 import mainMilk from '@/shared/assets/milk.svg';
 
 export const CartDetails: React.FC = () => {
   const navigate = useNavigate();
-  const { activeCartId } = useCartStore();
+  const activeCartId = useCartStore((state) => state.activeCartId);
+  const selectedStoreId = useCartStore((state) =>
+    activeCartId ? state.selectedStoreByCart[activeCartId] : undefined
+  );
   const { data: activeCart, isLoading } = useFetchCartDetails(activeCartId);
-  const { mutate: updateItem } = useUpdateCartItem();
+  const { data: comparisonData } = useFetchCartComparison(activeCartId);
   const { mutate: updateQuantity } = useUpdateCartItemQuantity();
   const { mutate: deleteItem } = useDeleteCartItem();
   const { mutate: clearCart, isPending: isClearing } = useClearCart();
+  const completeComparisons =
+    comparisonData?.filter((store) => store.isComplete) ?? [];
+  const selectedStore =
+    completeComparisons.find((store) => store.storeId === selectedStoreId) ??
+    completeComparisons[0];
+  const selectedPricesByProductId = new Map(
+    selectedStore?.itemPrices?.map((item) => [item.productId, item.unitPrice]) ?? []
+  );
 
   if (isLoading) {
     return (
@@ -50,7 +67,12 @@ export const CartDetails: React.FC = () => {
         {activeCart.items.length === 0 ? (
           <div className="text-center py-10 text-[#6D8279] dark:text-[#A9B6B0] font-['Inter']">Кошик порожній</div>
         ) : (
-          activeCart.items.map((item) => (
+          activeCart.items.map((item) => {
+            const displayedUnitPrice =
+              selectedPricesByProductId.get(item.productId) ?? item.basePrice;
+            const displayedTotalPrice = displayedUnitPrice * item.quantity;
+
+            return (
             <div key={item.productId} className="flex flex-col sm:flex-row gap-4 p-4 bg-white dark:bg-[#1D2A25] border border-[#265447]/10 dark:border-[#265447]/20 rounded-xl hover:border-[#265447]/30 dark:hover:border-[#265447]/50 transition-colors items-start sm:items-center">
               {/* Image */}
               <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-50 dark:bg-[#111A17] border border-gray-100 dark:border-[#265447]/15 rounded-xl flex items-center justify-center shrink-0 overflow-hidden relative p-1 transition-all">
@@ -75,8 +97,13 @@ export const CartDetails: React.FC = () => {
                       {item.name}
                     </h3>
                     <div className="text-sm text-[#6D8279] dark:text-[#A9B6B0] font-['Inter']">
-                      {item.basePrice.toFixed(2)} ₴ / шт
+                      {displayedUnitPrice.toFixed(2)} ₴ / шт
                     </div>
+                    {selectedStore ? (
+                      <div className="mt-1 truncate text-xs text-[#6D8279] dark:text-[#7E968C]" title={selectedStore.storeName}>
+                        Ціна в {selectedStore.storeName}
+                      </div>
+                    ) : null}
                   </div>
 
                   {/* Quantity Controls */}
@@ -101,7 +128,7 @@ export const CartDetails: React.FC = () => {
                 {/* Bottom/Right Section: Price & Delete */}
                 <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 w-full sm:w-auto border-t sm:border-t-0 border-gray-50 dark:border-[#265447]/10 pt-3 sm:pt-0">
                   <div className="font-bold font-['Manrope'] text-lg text-[#173B33] dark:text-white text-right whitespace-nowrap min-w-[80px]">
-                    {item.totalItemPrice.toFixed(2)} ₴
+                    {displayedTotalPrice.toFixed(2)} ₴
                   </div>
                   <button 
                     className="p-3 text-gray-400 dark:text-[#A9B6B0] hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition-colors shrink-0 min-w-[44px] min-h-[44px] flex items-center justify-center"
@@ -113,7 +140,8 @@ export const CartDetails: React.FC = () => {
 
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </div>
 

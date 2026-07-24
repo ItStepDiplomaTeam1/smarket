@@ -52,12 +52,13 @@ const HeartIcon = () => (
 
 // ================= ТИПІЗАЦІЯ ДАНИХ З БЕКЕНДУ =================
 interface StoreInfo {
-  external_id: string;
+  external_id?: string;
+  id?: string;
   name: string;
-  retail_chain: string;
-  city: string;
-  is_active: boolean;
-  synced_at: string;
+  retail_chain?: string;
+  city?: string;
+  is_active?: boolean;
+  synced_at?: string;
 }
 
 interface StoreOffer {
@@ -90,12 +91,18 @@ interface Product {
   category_slug?: string;
   main_category_id?: number;
   created_at: string;
-  offers?: StoreOffer[]; 
+  offers?: StoreOffer[];
+  storesCount?: number;
 }
 
 interface ProductsResponse {
   items: Product[];
   total: number;
+}
+
+interface BatchOffersProduct {
+  id: number;
+  offers?: StoreOffer[];
 }
 
 interface FetchFilters {
@@ -159,6 +166,33 @@ const PROPOSAL_OPTIONS = [
   { id: 'new', name: 'Нові надходження' },
   { id: 'save', name: 'Найбільша економія' },
 ];
+
+const countAvailableStores = (offers: StoreOffer[] = []): number => {
+  const storeKeys = new Set<string>();
+
+  for (const offer of offers) {
+    if (!offer.in_stock || offer.store.is_active === false) continue;
+
+    const storeKey =
+      offer.store.retail_chain?.trim() ||
+      offer.store.external_id ||
+      offer.store.id;
+    if (storeKey) storeKeys.add(storeKey);
+  }
+
+  return storeKeys.size;
+};
+
+const getStoresLabel = (count: number): string => {
+  const lastTwoDigits = count % 100;
+  const lastDigit = count % 10;
+
+  if (lastDigit === 1 && lastTwoDigits !== 11) return 'магазин';
+  if (lastDigit >= 2 && lastDigit <= 4 && (lastTwoDigits < 12 || lastTwoDigits > 14)) {
+    return 'магазини';
+  }
+  return 'магазинів';
+};
 
 // Fetch total_hits for a given filter combination (limit=1 for efficiency)
 const fetchCount = async (params: Record<string, string>): Promise<number> => {
@@ -234,8 +268,42 @@ const fetchProducts = async (filters: FetchFilters): Promise<ProductsResponse> =
         throw new Error('Помилка завантаження товарів');
     }
     const searchData = json;
+    const searchItems: Product[] = searchData.hits || [];
+    let items = searchItems.map((product) => ({
+      ...product,
+      storesCount: countAvailableStores(product.offers),
+    }));
+
+    if (searchItems.length > 0) {
+      const batchUrl = new URL(`${apiBaseUrl}/api/v1/products/batch/offers`);
+      searchItems.forEach((product) => {
+        batchUrl.searchParams.append('product_ids', product.id.toString());
+      });
+
+      try {
+        const batchResponse = await fetch(batchUrl.toString());
+        if (batchResponse.ok) {
+          const productsWithOffers: BatchOffersProduct[] = await batchResponse.json();
+          const countsByProductId = new Map(
+            productsWithOffers.map((product) => [
+              product.id,
+              countAvailableStores(product.offers),
+            ])
+          );
+          items = searchItems.map((product) => ({
+            ...product,
+            storesCount:
+              countsByProductId.get(product.id) ??
+              countAvailableStores(product.offers),
+          }));
+        }
+      } catch {
+        // Search data remains usable while the read-only batch adapter is unavailable.
+      }
+    }
+
     return {
-        items: searchData.hits || [],
+        items,
         total: searchData.total_hits || searchData.nb_hits || 0
     };
 };
@@ -848,7 +916,7 @@ export function MainContent() {
                 
                 const discountPercent = oldPrice ? Math.round(((oldPrice - currentPrice) / oldPrice) * 100) : 0;
                 const discountAmount = oldPrice ? Math.round(oldPrice - currentPrice) : 0;
-                const storesCount = product.offers?.length || 1; 
+                const storesCount = product.storesCount ?? countAvailableStores(product.offers);
 
                 const hasBadge = discountPercent > 0 || idx % 4 === 1 || idx % 4 === 3;
                 const badgeType = discountPercent > 0 ? 'discount' : (idx % 4 === 1 ? 'new' : 'top');
@@ -934,7 +1002,7 @@ export function MainContent() {
                           <span className={`w-[4px] h-[4px] rounded-full ${storesCount >= 3 ? 'bg-[#10B981] dark:bg-[#3CD27D]' : 'bg-[#D1D5DB] dark:bg-[#25392F]'}`}></span>
                         </div>
                         <span className="text-[12px] text-[#6D8279] dark:text-white">
-                          {storesCount} {storesCount === 1 ? 'магазин' : storesCount < 5 ? 'магазини' : 'магазинів'}
+                          {storesCount} {getStoresLabel(storesCount)}
                         </span>
                       </div>
                       

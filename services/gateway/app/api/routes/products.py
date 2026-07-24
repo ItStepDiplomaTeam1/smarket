@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, Query
 from fastapi.responses import StreamingResponse
 import httpx
 import jwt
@@ -6,6 +6,19 @@ import jwt
 from app.api.core.config import settings
 
 router = APIRouter()
+
+
+def _public_product_headers(request: Request) -> dict[str, str]:
+    headers = dict(request.headers)
+    for sensitive_header in (
+        "host",
+        "authorization",
+        "cookie",
+        "x-user-id",
+        "x-user-role",
+    ):
+        headers.pop(sensitive_header, None)
+    return headers
 
 
 # Динамічна труба для всього, що йде на /products/*
@@ -16,6 +29,38 @@ router = APIRouter()
 )
 async def proxy_to_product_root(request: Request):
     return await proxy_to_product(request, "")
+
+
+@router.get("/batch/offers", include_in_schema=False)
+async def get_public_product_batch_offers(
+    request: Request,
+    product_ids: list[int] = Query(..., min_length=1, max_length=50),
+):
+    """Публічний read-only адаптер до внутрішнього POST batch/offers."""
+    client: httpx.AsyncClient = request.app.state.http_client
+    target_url = f"{settings.PRODUCT_SERVICE_URL}/api/v1/products/batch/offers"
+
+    try:
+        downstream_request = client.build_request(
+            method="POST",
+            url=target_url,
+            headers=_public_product_headers(request),
+            json={"product_ids": product_ids},
+        )
+        response = await client.send(downstream_request, stream=True)
+        return StreamingResponse(
+            response.aiter_raw(),
+            status_code=response.status_code,
+            headers=dict(response.headers),
+        )
+    except httpx.ReadTimeout:
+        raise HTTPException(
+            status_code=504, detail="Сервіс товарів не відповів вчасно"
+        )
+    except httpx.ConnectError:
+        raise HTTPException(
+            status_code=503, detail="Сервіс товарів (Product Service) недоступний"
+        )
 
 
 @router.api_route(
@@ -29,9 +74,7 @@ async def proxy_to_product(request: Request, path: str):
     # Формуємо кінцеву URL-адресу до мікросервісу товарів
     target_url = f"{settings.PRODUCT_SERVICE_URL}/api/v1/products/{path}"
 
-    headers = dict(request.headers)
-    for sensitive_header in ("host", "authorization", "cookie", "x-user-id", "x-user-role"):
-        headers.pop(sensitive_header, None)
+    headers = _public_product_headers(request)
 
     if request.method in ["POST", "PUT", "DELETE", "PATCH"]:
         auth_header = request.headers.get("Authorization")

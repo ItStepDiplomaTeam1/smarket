@@ -130,6 +130,38 @@ def test_public_route_bypass_jwt(setup_gateway):
     assert "products" in str(captured[0].url)
 
 
+def test_public_product_batch_offers_uses_bounded_read_only_adapter(setup_gateway):
+    captured = setup_gateway
+
+    response = client.get(
+        "/api/v1/products/batch/offers",
+        params=[("product_ids", "101"), ("product_ids", "202")],
+        headers={"Authorization": "Bearer must-not-be-forwarded"},
+    )
+
+    assert response.status_code == 200
+    assert len(captured) == 1
+    downstream = captured[0]
+    assert downstream.method == "POST"
+    assert str(downstream.url).endswith("/api/v1/products/batch/offers")
+    assert json.loads(downstream.content) == {"product_ids": [101, 202]}
+    assert downstream.headers.get("Authorization") is None
+
+
+def test_product_batch_offers_rejects_unbounded_or_direct_public_post(setup_gateway):
+    captured = setup_gateway
+
+    missing_ids = client.get("/api/v1/products/batch/offers")
+    direct_post = client.post(
+        "/api/v1/products/batch/offers",
+        json={"product_ids": [101]},
+    )
+
+    assert missing_ids.status_code == 422
+    assert direct_post.status_code == 401
+    assert len(captured) == 0
+
+
 def test_search_mutations_are_not_exposed(setup_gateway):
     captured = setup_gateway
 
