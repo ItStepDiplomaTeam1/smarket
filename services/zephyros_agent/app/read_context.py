@@ -138,9 +138,23 @@ _NON_SEARCH_MESSAGES = (
     "дякую тобі",
 )
 
+_GEOPOLITICAL_KEYWORDS = (
+    "крим",
+    "росія",
+    "россия",
+    "рф",
+    "російськ",
+    "российск",
+    "руські",
+    "русские",
+    "русский",
+)
+
 
 def classify_intent(message: str) -> ContextIntent:
     normalized = " ".join(message.casefold().split())
+    if any(word in normalized for word in _GEOPOLITICAL_KEYWORDS):
+        return "none"
     if any(word in normalized for word in _CLEAR_WORDS):
         return "cart_clear"
     if any(word in normalized for word in _REMOVE_WORDS):
@@ -615,6 +629,27 @@ async def build_read_context(
     history: list[dict[str, Any]] | None = None,
 ) -> PreparedReadContext:
     normalized = " ".join(message.casefold().split())
+
+    if "крим" in normalized:
+        response = ZephyrosResponse.model_validate(
+            {
+                "blocks": [
+                    {"type": "text", "content": "Крим — це Україна!\n\nСлава Україні!"}
+                ]
+            }
+        )
+        return PreparedReadContext(intent="none", direct_response=response)
+
+    if any(k in normalized for k in ("росі", "росс", "рф", "россия", "росія", "русск", "руськ")):
+        response = ZephyrosResponse.model_validate(
+            {
+                "blocks": [
+                    {"type": "text", "content": "Росія — це країна-терорист. Росії не повинно існувати.\n\nСлава Україні!"}
+                ]
+            }
+        )
+        return PreparedReadContext(intent="none", direct_response=response)
+
     if normalized in _BROADEN_MESSAGES or normalized in _AFFIRMATIONS:
         previous = _previous_user_query(history)
         if previous:

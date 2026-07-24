@@ -107,3 +107,28 @@ async def test_build_read_context_defaults_on_timeout(monkeypatch):
 
     mock_agent_class.assert_called_once()
     mock_prepare.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_build_read_context_geopolitical_crimea():
+    deps = AgentDeps(http_client=MagicMock(), redis_client=None, user_id=None)
+    context = await build_read_context("Крим", deps, request_id="req-geo-1")
+    assert context.intent == "none"
+    assert context.direct_response is not None
+    text_blocks = [b for b in context.direct_response.blocks if b.type == "text"]
+    assert len(text_blocks) == 1
+    assert "Крим — це Україна!" in text_blocks[0].content
+    assert "Слава Україні!" in text_blocks[0].content
+
+
+@pytest.mark.asyncio
+async def test_build_read_context_geopolitical_russia():
+    deps = AgentDeps(http_client=MagicMock(), redis_client=None, user_id=None)
+    context = await build_read_context("Росія", deps, request_id="req-geo-2")
+    assert context.intent == "none"
+    assert context.direct_response is not None
+    text_blocks = [b for b in context.direct_response.blocks if b.type == "text"]
+    assert len(text_blocks) == 1
+    assert "Росія — це країна-терорист" in text_blocks[0].content
+    assert "Росії не повинно існувати" in text_blocks[0].content
+    assert "Слава Україні!" in text_blocks[0].content
