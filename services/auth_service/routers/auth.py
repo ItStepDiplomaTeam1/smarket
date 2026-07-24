@@ -98,8 +98,7 @@ def _build_cookie_params(value: str | None = None, is_delete: bool = False) -> d
         "httponly": True,
         "secure": secure,
         "samesite": samesite,
-        # The cookie is only needed by gateway auth endpoints.
-        "path": "/api/v1/auth",
+        "path": "/",
     }
 
     if domain:

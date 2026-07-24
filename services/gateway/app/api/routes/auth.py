@@ -37,11 +37,14 @@ async def proxy_request(request: Request, path: str):
         response_headers = dict(response.headers)
         response_headers["Cache-Control"] = "no-store"
         response_headers["Pragma"] = "no-cache"
-        return StreamingResponse(
+        out_response = StreamingResponse(
             response.aiter_raw(),
             status_code=response.status_code,
             headers=response_headers,
         )
+        for cookie_val in response.headers.get_list("set-cookie"):
+            out_response.headers.append("set-cookie", cookie_val)
+        return out_response
     except httpx.ConnectError:
         raise HTTPException(status_code=503, detail="Auth service unavailable")
 
