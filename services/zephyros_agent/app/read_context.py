@@ -153,6 +153,8 @@ _GEOPOLITICAL_KEYWORDS = (
 
 def classify_intent(message: str) -> ContextIntent:
     normalized = " ".join(message.casefold().split())
+    if normalized.strip(".! ").strip() == "67":
+        return "none"
     if any(word in normalized for word in _GEOPOLITICAL_KEYWORDS):
         return "none"
     if any(word in normalized for word in _CLEAR_WORDS):
@@ -629,6 +631,16 @@ async def build_read_context(
     history: list[dict[str, Any]] | None = None,
 ) -> PreparedReadContext:
     normalized = " ".join(message.casefold().split())
+
+    if normalized.strip(".! ").strip() == "67":
+        response = ZephyrosResponse.model_validate(
+            {
+                "blocks": [
+                    {"type": "text", "content": "СІКС СЕВЕНННННННННННН 🎉"}
+                ]
+            }
+        )
+        return PreparedReadContext(intent="none", direct_response=response)
 
     if "крим" in normalized:
         response = ZephyrosResponse.model_validate(

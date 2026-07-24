@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 
 export type UIBlock =
   | { type: 'text'; content: string }
+  | { type: 'image'; url: string; alt?: string }
   | { type: 'table'; title?: string; columns: string[]; rows: (string | boolean | number | null)[][]; highlight_row?: number }
   | { type: 'product_card'; product_id: number; name: string; store: string; price: string; in_stock: boolean; savings?: string; image_url?: string | null }
   | { type: 'tabs'; items: { label: string; blocks: UIBlock[] }[] }

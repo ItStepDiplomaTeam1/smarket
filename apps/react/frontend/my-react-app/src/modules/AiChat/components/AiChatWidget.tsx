@@ -29,6 +29,8 @@ import {
   X,
 } from 'lucide-react';
 
+import confetti from 'canvas-confetti';
+
 import { useSendAiMessage } from '@/hooks/api/useAiChatApi';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { hasFallback, isMutationAction } from '@/modules/AiChat/lib/chatContract';
@@ -40,6 +42,7 @@ import {
 } from '@/modules/AiChat/store/useAiChatStore';
 import { apiClient } from '@/shared/api/apiClient';
 import productPlaceholder from '@/shared/assets/products-zaglushka.svg';
+import poroshenkoGif from '@/shared/assets/poroshenko_67.gif';
 
 
 const QUICK_PROMPTS = [
@@ -114,6 +117,8 @@ function serializeBlocksToText(blocks: UIBlock[]): string {
           ]
             .filter(Boolean)
             .join('\n');
+        case 'image':
+          return `[Зображення: ${block.alt || 'GIF'}]`;
         case 'product_card':
           return `${block.name} — ${block.price} · ${block.store}`;
         case 'clarification':
@@ -571,6 +576,16 @@ function BlockRenderer({
   switch (block.type) {
     case 'text':
       return <p className="whitespace-pre-wrap text-sm leading-6 text-[#2C423A] dark:text-[#E4EFEB]">{block.content}</p>;
+    case 'image':
+      return (
+        <div className="overflow-hidden rounded-xl border border-[#DDE8E3] dark:border-[#294239] shadow-sm my-1">
+          <img
+            src={block.url}
+            alt={block.alt || 'GIF'}
+            className="w-full h-auto max-h-[350px] object-cover rounded-xl"
+          />
+        </div>
+      );
     case 'table':
       return <TableBlockView block={block} />;
     case 'product_card':
@@ -783,6 +798,26 @@ function ChatWindow({ mobile }: { mobile: boolean }) {
           const degraded = hasFallback(response);
           setLastFailedMessage(degraded ? messageText : null);
           appendAssistant(response);
+          const responseText = serializeBlocksToText(response.blocks);
+          if (messageText.trim() === '67' || responseText.includes('СІКС СЕВЕН')) {
+            confetti({
+              particleCount: 120,
+              spread: 80,
+              origin: { y: 0.6 },
+              colors: ['#265447', '#3DAE8B', '#FFCC00', '#FF5722', '#E91E63', '#9C27B0'],
+            });
+            setTimeout(() => {
+              appendAssistant({
+                blocks: [
+                  {
+                    type: 'image',
+                    url: poroshenkoGif,
+                    alt: 'Порошенко 67',
+                  },
+                ],
+              });
+            }, 300);
+          }
         },
         onError: (error) => {
           console.error('[Zephyros] Chat request failed', error);
