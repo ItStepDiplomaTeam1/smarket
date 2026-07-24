@@ -14,7 +14,7 @@ from fastapi.responses import ORJSONResponse
 from app.database.session import _get_engine, get_db
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends
-from sqlalchemy import text, select, func
+from sqlalchemy import text, select, func, Date
 from datetime import datetime, timezone, timedelta
 
 from app.database.models import Product, Store, Price
