@@ -1,38 +1,128 @@
-// src/shared/components/ThemeToggle.tsx
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
 import { useThemeStore } from '../store/useThemeStore';
 
-export function ThemeToggle() {
-    const { theme, setTheme } = useThemeStore();
-    const isDark = theme === 'dark';
-
-    const toggleTheme = () => {
-        setTheme(isDark ? 'light' : 'dark');
-    };
-
-    return (
-        <button
-            onClick={toggleTheme}
-            className={`relative w-[34px] h-[13px] rounded-full p-0 flex items-center transition-colors duration-300 cursor-pointer border-none overflow-visible ${
-                isDark ? 'bg-[#3CD27D]' : 'bg-[#173B33]'
-            }`}
-            aria-label="Toggle theme"
-        >
-            {/* Велика яскраво-зелена бульбашка, яка рухається.
-              Вона виступає за межі треку зверху, знизу та по боках.
-            */}
-            <div
-                className={`absolute top-1/2 -translate-y-1/2 w-[24px] h-[24px] rounded-full bg-[#3CD27D] flex items-center justify-center transition-transform duration-300 left-[-4px] ${
-                    isDark ? 'translate-x-[24px]' : 'translate-x-0'
-                }`}
-            >
-                {/* Внутрішня темна кулька */}
-                <div className="w-[18px] h-[18px] rounded-full bg-[#1A352E] relative shadow-inner">
-                    
-                    {/* Білий реалістичний відблиск з макета */}
-                    <span className="absolute top-[2px] right-[2px] w-[5px] h-[5px] bg-white rounded-full opacity-90 transform rotate-45 scale-x-[1.2]" />
-                
-                </div>
-            </div>
-        </button>
-    );
+export interface ThemeToggleProps {
+  isDark?: boolean;
+  onChange?: (isDark: boolean) => void;
 }
+
+export const ThemeToggle: React.FC<ThemeToggleProps> = ({ isDark: controlledIsDark, onChange }) => {
+  const { theme, setTheme } = useThemeStore();
+  const [internalIsDark, setInternalIsDark] = useState(false);
+
+  const isDark = controlledIsDark !== undefined 
+    ? controlledIsDark 
+    : (theme !== undefined ? theme === 'dark' : internalIsDark);
+
+  const handleToggle = () => {
+    const nextState = !isDark;
+    if (controlledIsDark === undefined) {
+      setTheme(nextState ? 'dark' : 'light');
+      setInternalIsDark(nextState);
+    }
+    onChange?.(nextState);
+  };
+
+  return (
+    <svg
+      width="56"
+      height="26"
+      viewBox="0 0 56 26"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      onClick={handleToggle}
+      style={{ cursor: 'pointer', overflow: 'visible' }}
+      aria-label="Toggle dark mode"
+      role="switch"
+      aria-checked={isDark}
+    >
+      {/* Thin Track */}
+      <motion.rect
+        x="0"
+        y="7"
+        width="56"
+        height="12"
+        rx="6"
+        animate={{ fill: isDark ? '#42E38B' : '#234E3F' }}
+        transition={{ duration: 0.6, ease: [0.4, 0.0, 0.2, 1] }}
+      />
+
+      {/* Knob A (Light Mode Active) */}
+      <motion.g
+        initial={false}
+        animate={{
+          x: isDark ? 30 : 0,
+          rotate: isDark ? 90 : 0,
+          opacity: isDark ? 0 : 1,
+        }}
+        transition={{ duration: 0.6, ease: [0.4, 0.0, 0.2, 1] }}
+        style={{ originX: '13px', originY: '13px' }}
+      >
+        {/* Outer Bulge Border */}
+        <motion.circle
+          cx="13"
+          cy="13"
+          r="13"
+          animate={{ fill: isDark ? '#42E38B' : '#234E3F' }}
+          transition={{ duration: 0.6, ease: [0.4, 0.0, 0.2, 1] }}
+        />
+        {/* Inner Colored Knob */}
+        <motion.circle
+          cx="13"
+          cy="13"
+          r="8"
+          animate={{ fill: isDark ? '#234E3F' : '#42E38B' }}
+          transition={{ duration: 0.6, ease: [0.4, 0.0, 0.2, 1] }}
+        />
+        {/* Glare */}
+        <motion.ellipse
+          cx="9.5"
+          cy="9.5"
+          rx="3.5"
+          ry="2"
+          fill="#FFFFFF"
+          transform="rotate(-45 9.5 9.5)"
+        />
+      </motion.g>
+
+      {/* Knob B (Dark Mode Active) */}
+      <motion.g
+        initial={false}
+        animate={{
+          x: isDark ? 30 : 0,
+          rotate: isDark ? 0 : -90,
+          opacity: isDark ? 1 : 0,
+        }}
+        transition={{ duration: 0.6, ease: [0.4, 0.0, 0.2, 1] }}
+        style={{ originX: '13px', originY: '13px' }}
+      >
+        {/* Outer Bulge Border */}
+        <motion.circle
+          cx="13"
+          cy="13"
+          r="13"
+          animate={{ fill: isDark ? '#42E38B' : '#234E3F' }}
+          transition={{ duration: 0.6, ease: [0.4, 0.0, 0.2, 1] }}
+        />
+        {/* Inner Colored Knob */}
+        <motion.circle
+          cx="13"
+          cy="13"
+          r="8"
+          animate={{ fill: isDark ? '#234E3F' : '#42E38B' }}
+          transition={{ duration: 0.6, ease: [0.4, 0.0, 0.2, 1] }}
+        />
+        {/* Glare */}
+        <motion.ellipse
+          cx="9.5"
+          cy="9.5"
+          rx="3.5"
+          ry="2"
+          fill="#FFFFFF"
+          transform="rotate(-45 9.5 9.5)"
+        />
+      </motion.g>
+    </svg>
+  );
+};
