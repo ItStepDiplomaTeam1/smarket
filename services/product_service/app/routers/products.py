@@ -605,10 +605,15 @@ async def update_search_index_visibility(product_ids: list[int], is_hidden: bool
     async with httpx.AsyncClient() as client:
         for i in range(0, len(documents), chunk_size):
             chunk = documents[i:i + chunk_size]
+            headers = {}
+            if settings.SEARCH_INTERNAL_API_TOKEN:
+                headers["x-internal-token"] = settings.SEARCH_INTERNAL_API_TOKEN
+
             try:
                 await client.patch(
                     f"{settings.SEARCH_SERVICE_URL}/api/v1/index",
                     json={"documents": chunk},
+                    headers=headers,
                     timeout=10.0
                 )
             except Exception as e:

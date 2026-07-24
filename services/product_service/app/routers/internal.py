@@ -168,12 +168,12 @@ async def internal_dashboard_stats(db: AsyncSession = Depends(get_db)) -> dict:
             }
             stmt = (
                 select(
-                    func.date_trunc('day', Price.recorded_at).label('day'),
+                    func.cast(Price.recorded_at, Date).label('day'),
                     func.count(Price.id).label('count')
                 )
                 .where(Price.recorded_at >= start_date)
-                .group_by(func.date_trunc('day', Price.recorded_at))
-                .order_by(func.date_trunc('day', Price.recorded_at).asc())
+                .group_by(func.cast(Price.recorded_at, Date))
+                .order_by(func.cast(Price.recorded_at, Date).asc())
             )
             result = await db.execute(stmt)
             for row in result.all():

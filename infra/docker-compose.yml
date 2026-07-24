@@ -188,6 +188,7 @@ services:
     environment:
       REDIS_URL: "redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379/0"
       RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:?RABBITMQ_PASS must be set}@rabbitmq:5672/"
+      SEARCH_INTERNAL_API_TOKEN: "${SEARCH_INTERNAL_API_TOKEN:?SEARCH_INTERNAL_API_TOKEN must be set}"
     env_file:
       - ../services/product_service/.env
     depends_on:

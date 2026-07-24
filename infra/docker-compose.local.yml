@@ -251,6 +251,7 @@ services:
     environment:
       ENV: development
       REDIS_URL: "redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379/0"
+      SEARCH_INTERNAL_API_TOKEN: "${SEARCH_INTERNAL_API_TOKEN:?SEARCH_INTERNAL_API_TOKEN must be set}"
     depends_on:
       product_migration_job:
         condition: service_completed_successfully

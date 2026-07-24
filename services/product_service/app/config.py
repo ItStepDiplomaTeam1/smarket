@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     NOTIFY_DATABASE_URL: str = ""
 
     SEARCH_SERVICE_URL: str = "http://search_service:8083"
+    SEARCH_INTERNAL_API_TOKEN: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
