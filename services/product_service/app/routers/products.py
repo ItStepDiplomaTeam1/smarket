@@ -707,16 +707,48 @@ async def update_global_category_visibility(
         
     await db.commit()
     
-    # 5. Оновлюємо Meilisearch (fire-and-forget, але await для надійності)
+    # 5. Оновлюємо Meilisearch
     if product_ids:
-        import asyncio
-        asyncio.create_task(update_search_index_visibility(list(product_ids), body.is_hidden))
+        try:
+            await update_search_index_visibility(list(product_ids), body.is_hidden)
+        except Exception as e:
+            print(f"[ProductService] Error awaiting search index update: {e}")
         
     return GlobalCategoryResponse(
         id=main_category_id,
         name=GLOBAL_CATEGORIES[main_category_id],
         is_hidden=body.is_hidden
     )
+
+
+@router.post(
+    "/categories/sync-visibility",
+    summary="Синхронізація статусу is_hidden між PostgreSQL та Meilisearch",
+)
+async def sync_all_visibility_to_meilisearch(
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Зчитує всі приховані товари з PostgreSQL і синхронізує їхній стан is_hidden з Meilisearch.
+    """
+    hidden_stmt = select(Product.id).where(Product.is_hidden.is_(True))
+    hidden_res = await db.execute(hidden_stmt)
+    hidden_ids = list(hidden_res.scalars().all())
+    
+    visible_stmt = select(Product.id).where(Product.is_hidden.is_(False))
+    visible_res = await db.execute(visible_stmt)
+    visible_ids = list(visible_res.scalars().all())
+    
+    if hidden_ids:
+        await update_search_index_visibility(hidden_ids, True)
+    if visible_ids:
+        await update_search_index_visibility(visible_ids, False)
+        
+    return {
+        "status": "success",
+        "synced_hidden_count": len(hidden_ids),
+        "synced_visible_count": len(visible_ids),
+    }
 
 
 @router.patch(
@@ -743,8 +775,10 @@ async def update_product_visibility(
     await db.refresh(product)
     
     # Синхронізація з Meilisearch
-    import asyncio
-    asyncio.create_task(update_search_index_visibility([product_id], body.is_hidden))
+    try:
+        await update_search_index_visibility([product_id], body.is_hidden)
+    except Exception as e:
+        print(f"[ProductService] Error awaiting product search index update: {e}")
     
     return product
 
