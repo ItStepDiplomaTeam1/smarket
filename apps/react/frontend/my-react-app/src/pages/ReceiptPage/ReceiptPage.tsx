@@ -34,29 +34,26 @@ const ReceiptPage: React.FC = () => {
 
   const snapshotStore = receipt.snapshot[0];
 
-  // Адреса зі знімка чека є першоджерелом: координати від постачальника
-  // можуть належати іншій торговій точці або бути застарілими.
+  // Google Maps Directions API (/dir/?api=1&destination=...):
+  // Автоматично ставить магазин у пункт призначення (destination),
+  // а за відсутності origin Google Maps замовчуванням вибирає "Моє місцезнаходження".
   const buildMapUrl = () => {
     if (!snapshotStore) return '';
     const { lat, lng, store_name, address } = snapshotStore;
 
-    if (address) {
-      const query = encodeURIComponent(
+    let destination = '';
+    if (lat !== undefined && lng !== undefined) {
+      destination = `${lat},${lng}`;
+    } else if (address) {
+      destination = encodeURIComponent(
         [store_name, address, 'Україна'].filter(Boolean).join(', '),
       );
-      return `https://www.google.com/maps/search/?api=1&query=${query}`;
+    } else if (store_name) {
+      destination = encodeURIComponent(`${store_name}, Україна`);
     }
 
-    // Для старих чеків без адреси залишаємо координати як резервний варіант.
-    if (lat !== undefined && lng !== undefined) {
-      return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-    }
-
-    if (store_name) {
-      return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${store_name}, Україна`)}`;
-    }
-
-    return '';
+    if (!destination) return '';
+    return `https://www.google.com/maps/dir/?api=1&destination=${destination}`;
   };
 
   const hasCoordinates = snapshotStore?.lat !== undefined && snapshotStore?.lng !== undefined;
