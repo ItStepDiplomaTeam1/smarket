@@ -84,6 +84,11 @@ export const CartSummary: React.FC = () => {
     ? calculatedSavings
     : activeCart.summary.maxPossibleSavings;
 
+  const cartTotalSum = activeCart.items.reduce(
+    (acc, item) => acc + (item.totalItemPrice || item.basePrice * item.quantity || 0),
+    0
+  );
+
   return (
     <div className="bg-white dark:bg-[#111A17] rounded-xl border border-gray-200 dark:border-[#265447]/30 p-6 flex flex-col gap-6 transition-colors">
       <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Підсумок кошика</h2>
@@ -96,7 +101,9 @@ export const CartSummary: React.FC = () => {
         </div>
         <div className="flex justify-between">
           <span className="text-gray-500 dark:text-[#A9B6B0]">Орієнтовна сума</span>
-          <span className="font-medium dark:text-white">{Number(selectedPrice).toFixed(2)} ₴</span>
+          <span className="font-medium dark:text-white">
+            {Number(cartTotalSum || selectedPrice).toFixed(2)} ₴
+          </span>
         </div>
         <div className="flex flex-wrap justify-between items-center gap-2">
           <span className="text-gray-500 dark:text-[#A9B6B0] whitespace-nowrap">Обраний магазин</span>

@@ -391,7 +391,21 @@ async def _build_stores_comparison(
         if comp["found_items_count"] == total_items_in_cart:
             comp["is_complete"] = True
 
-    result_list = list(stores_comparison.values())
+    # Deduplicate store entries with identical name, city, and address
+    unique_stores = {}
+    for comp in list(stores_comparison.values()):
+        key = (comp.get("store_name"), comp.get("city"), comp.get("address"))
+        if key not in unique_stores:
+            unique_stores[key] = comp
+        else:
+            existing = unique_stores[key]
+            if (comp["missing_items_count"], comp["total_price"]) < (
+                existing["missing_items_count"],
+                existing["total_price"],
+            ):
+                unique_stores[key] = comp
+
+    result_list = list(unique_stores.values())
     result_list.sort(key=lambda x: (x["missing_items_count"], x["total_price"]))
 
     # Якщо фільтр по місту дав порожній результат — fallback на всі міста
@@ -440,7 +454,20 @@ async def _build_stores_comparison(
             if comp["found_items_count"] == total_items_in_cart:
                 comp["is_complete"] = True
 
-        result_list = list(stores_comparison_all.values())
+        unique_stores_all = {}
+        for comp in list(stores_comparison_all.values()):
+            key = (comp.get("store_name"), comp.get("city"), comp.get("address"))
+            if key not in unique_stores_all:
+                unique_stores_all[key] = comp
+            else:
+                existing = unique_stores_all[key]
+                if (comp["missing_items_count"], comp["total_price"]) < (
+                    existing["missing_items_count"],
+                    existing["total_price"],
+                ):
+                    unique_stores_all[key] = comp
+
+        result_list = list(unique_stores_all.values())
         result_list.sort(key=lambda x: (x["missing_items_count"], x["total_price"]))
 
     return result_list, offers_data_map
