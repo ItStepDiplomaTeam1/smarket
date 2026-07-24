@@ -81,6 +81,7 @@ export const useFetchCartComparison = (cartId: string | null) => {
       return data.map((c: {
         store_id: string;
         store_name: string;
+        city?: string | null;
         address?: string | null;
         total_price: number;
         is_complete: boolean;
@@ -89,6 +90,7 @@ export const useFetchCartComparison = (cartId: string | null) => {
       }, index: number) => ({
         storeId: c.store_id,
         storeName: c.store_name,
+        city: c.city ?? undefined,
         address: c.address ?? undefined,
         totalPrice: c.total_price,
         isBest: index === 0 && c.is_complete,

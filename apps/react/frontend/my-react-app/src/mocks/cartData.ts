@@ -2,6 +2,7 @@
 export interface StoreComparison {
   storeId: string;
   storeName: string;
+  city?: string;
   address?: string;
   totalPrice: number;
   isBest: boolean;
