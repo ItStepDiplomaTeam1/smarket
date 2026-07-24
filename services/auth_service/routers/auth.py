@@ -87,13 +87,16 @@ def _build_cookie_params(value: str | None = None, is_delete: bool = False) -> d
     """
     Builds parameters for set_cookie or delete_cookie based on env variables.
     """
-    samesite = os.getenv("COOKIE_SAMESITE", "lax").lower()
+    samesite = os.getenv("COOKIE_SAMESITE", "none").lower()
     domain = os.getenv("COOKIE_DOMAIN")
+
+    # Browsers strictly require secure=True whenever samesite="none"
+    secure = _COOKIE_SECURE or samesite == "none"
 
     params = {
         "key": "refresh_token",
         "httponly": True,
-        "secure": _COOKIE_SECURE,
+        "secure": secure,
         "samesite": samesite,
         # The cookie is only needed by gateway auth endpoints.
         "path": "/api/v1/auth",

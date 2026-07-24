@@ -24,24 +24,52 @@ export default function ProductDetail() {
       return;
     }
 
-    const fetchProduct = async (retries = 1) => {
-      try {
-        setIsLoading(true);
-        setNotFound(false);
-        const response = await apiClient.get(`/api/v1/products/${productId}`);
-        setProduct(response.data);
-      } catch (error) {
-        if (retries > 0) {
-          await new Promise((r) => setTimeout(r, 1000));
-          return fetchProduct(retries - 1);
+    let isMounted = true;
+
+    const loadProductWithRetries = async () => {
+      setIsLoading(true);
+      setNotFound(false);
+      setProduct(null);
+
+      const maxRetries = 1;
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          const response = await apiClient.get(`/api/v1/products/${productId}`);
+          if (isMounted) {
+            setProduct(response.data);
+            setIsLoading(false);
+          }
+          return;
+        } catch (error: any) {
+          // Якщо сервер повернув 404 — товар не існує, ретраї не потрібні
+          if (error?.response?.status === 404) {
+            if (isMounted) {
+              setNotFound(true);
+              setIsLoading(false);
+            }
+            return;
+          }
+
+          // Якщо залишилися спроби — робимо паузу 1с перед повторним запитом
+          if (attempt < maxRetries) {
+            await new Promise((r) => setTimeout(r, 1000));
+          }
         }
-        console.error('Помилка завантаження товару:', error);
+      }
+
+      // Якщо всі спроби вичерпано і товар так і не завантажився
+      if (isMounted) {
+        console.error('Помилка завантаження товару після ретраїв');
         setNotFound(true);
-      } finally {
         setIsLoading(false);
       }
     };
-    fetchProduct();
+
+    loadProductWithRetries();
+
+    return () => {
+      isMounted = false;
+    };
   }, [productId]);
 
   // Автоматичне оновлення URL для відображення слага (SEO URL)
