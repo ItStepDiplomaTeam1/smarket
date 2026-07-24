@@ -98,6 +98,7 @@ def _build_cookie_params(value: str | None = None, is_delete: bool = False) -> d
         "httponly": True,
         "secure": secure,
         "samesite": samesite,
+        "partitioned": samesite == "none",
         "path": "/",
     }
 
@@ -110,6 +111,43 @@ def _build_cookie_params(value: str | None = None, is_delete: bool = False) -> d
         params["max_age"] = _REFRESH_TOKEN_MAX_AGE
 
     return params
+
+
+def _mark_refresh_cookie_partitioned(response: Response) -> None:
+    """
+    Opt the cross-site refresh cookie into CHIPS partitioned storage.
+
+    Starlette delegates its ``partitioned=`` argument to Python's SimpleCookie,
+    which is unavailable before Python 3.14. Smarket currently runs on Python
+    3.11, so add the standards-compliant attribute to the generated header.
+    """
+    for index in range(len(response.raw_headers) - 1, -1, -1):
+        header_name, header_value = response.raw_headers[index]
+        if header_name.lower() != b"set-cookie":
+            continue
+        if not header_value.lower().startswith(b"refresh_token="):
+            continue
+        if b"; partitioned" not in header_value.lower():
+            response.raw_headers[index] = (header_name, header_value + b"; Partitioned")
+        return
+
+    raise RuntimeError("refresh_token Set-Cookie header was not created")
+
+
+def _set_refresh_cookie(response: Response, value: str) -> None:
+    params = _build_cookie_params(value=value)
+    partitioned = params.pop("partitioned")
+    response.set_cookie(**params)
+    if partitioned:
+        _mark_refresh_cookie_partitioned(response)
+
+
+def _delete_refresh_cookie(response: Response) -> None:
+    params = _build_cookie_params(is_delete=True)
+    partitioned = params.pop("partitioned")
+    response.delete_cookie(**params)
+    if partitioned:
+        _mark_refresh_cookie_partitioned(response)
 
 
 def _mask_email(email: str) -> str:
@@ -320,7 +358,7 @@ async def register_verify(
         refresh_token = create_refresh_token(str(user.id), user.role, user.email, token_version)
 
         # Set refresh token cookie
-        response.set_cookie(**_build_cookie_params(value=refresh_token))
+        _set_refresh_cookie(response, refresh_token)
 
         logger.success(f"Користувач {_mask_email(body.email)} успішно верифікований та активований")
         return RegisterResponse(
@@ -382,7 +420,7 @@ async def login(
         access_token = create_access_token(str(user.id), user.role, user.email, token_version)
         refresh_token = create_refresh_token(str(user.id), user.role, user.email, token_version)
 
-        response.set_cookie(**_build_cookie_params(value=refresh_token))
+        _set_refresh_cookie(response, refresh_token)
 
         logger.success(f"Користувач {_mask_email(body.email)} успішно авторизований. ID: {user.id}")
         return LoginResponse(
@@ -492,7 +530,7 @@ async def refresh(request: Request, response: Response, db: AsyncSession = Depen
     new_access_token = create_access_token(str(user.id), user.role, user.email, token_version)
     new_refresh_token = create_refresh_token(str(user.id), user.role, user.email, token_version)
 
-    response.set_cookie(**_build_cookie_params(value=new_refresh_token))
+    _set_refresh_cookie(response, new_refresh_token)
     return TokenResponse(
         access_token=new_access_token,
         token_type="bearer",
@@ -550,7 +588,7 @@ async def change_password(
     current_user.token_version = _user_token_version(current_user) + 1
     await db.commit()
     await invalidate_cached_auth_user(current_user.email)
-    response.delete_cookie(**_build_cookie_params(is_delete=True))
+    _delete_refresh_cookie(response)
     return {"message": "Пароль успішно змінено"}
 
 
@@ -591,7 +629,7 @@ async def logout(request: Request, response: Response):
             raise
         except Exception:
             logger.exception("Не вдалося заблокувати refresh токен при logout")
-    response.delete_cookie(**_build_cookie_params(is_delete=True))
+    _delete_refresh_cookie(response)
     return
 
 

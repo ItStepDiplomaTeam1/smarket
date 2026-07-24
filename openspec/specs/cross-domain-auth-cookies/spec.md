@@ -10,6 +10,7 @@ The `auth_service` SHALL set the `SameSite` attribute of the `refresh_token` coo
 - **WHEN** `COOKIE_SAMESITE` environment variable is set to `none`
 - **THEN** the `refresh_token` cookie MUST be set with `SameSite=None`
 - **AND** the `Secure` attribute MUST be `True` (browsers reject `SameSite=None` without `Secure`)
+- **AND** the `Partitioned` attribute MUST be present so browsers can persist the cookie in the `pages.dev` top-level site partition
 
 #### Scenario: Local development with same-origin
 - **WHEN** `COOKIE_SAMESITE` environment variable is set to `lax` or not set
@@ -46,7 +47,7 @@ All endpoints that set the `refresh_token` cookie (`/register`, `/login`, `/refr
 
 #### Scenario: All auth endpoints use identical cookie parameters
 - **WHEN** any endpoint sets the `refresh_token` cookie
-- **THEN** the cookie parameters (`path`, `httponly`, `secure`, `samesite`, `max_age`, `domain`) MUST be identical across all endpoints
+- **THEN** the cookie parameters (`path`, `httponly`, `secure`, `samesite`, `partitioned`, `max_age`, `domain`) MUST be identical across all endpoints
 
 ### Requirement: Centralized cookie parameter function
 The `auth_service` SHALL provide a single function `_build_cookie_params()` that returns the complete set of cookie parameters. All endpoints setting the `refresh_token` cookie SHALL use this function.
@@ -82,4 +83,3 @@ The API Gateway SHALL include `https://smarket-7go.pages.dev` in the CORS `allow
 - **WHEN** the browser sends an `OPTIONS` preflight request from `https://smarket-7go.pages.dev`
 - **THEN** the gateway MUST respond with `Access-Control-Allow-Origin: https://smarket-7go.pages.dev`
 - **AND** `Access-Control-Allow-Credentials: true`
-

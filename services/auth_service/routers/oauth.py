@@ -16,7 +16,7 @@ from services.auth_service.plugins.security.jwt_handler import (
 )
 from services.auth_service.plugins.security.secrets.load_secret import get_secret
 from services.auth_service.plugins.security.telegram_validator import verify_telegram_auth
-from services.auth_service.routers.auth import _build_cookie_params, _mask_email
+from services.auth_service.routers.auth import _mask_email, _set_refresh_cookie
 from services.auth_service.shared.DTO import (
     GoogleOAuthRequest,
     LoginResponse,
@@ -174,7 +174,7 @@ async def oauth_google_login(
     access_token = create_access_token(str(user.id), user.role, user.email, token_version)
     refresh_token = create_refresh_token(str(user.id), user.role, user.email, token_version)
 
-    response.set_cookie(**_build_cookie_params(value=refresh_token))
+    _set_refresh_cookie(response, refresh_token)
 
     return LoginResponse(
         access_token=access_token,
@@ -275,7 +275,7 @@ async def oauth_telegram_login(
     access_token = create_access_token(str(user.id), user.role, user.email, token_version)
     refresh_token = create_refresh_token(str(user.id), user.role, user.email, token_version)
 
-    response.set_cookie(**_build_cookie_params(value=refresh_token))
+    _set_refresh_cookie(response, refresh_token)
 
     return LoginResponse(
         access_token=access_token,
