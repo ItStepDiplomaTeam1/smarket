@@ -349,6 +349,7 @@ async def _build_stores_comparison(
     for item in cart.items:
         offers_data = offers_data_map.get(item.product_id, {})
         offers = offers_data.get("offers", [])
+        seen_stores_for_item = set()
         for offer in offers:
             store = offer.get("store")
             if not store:
@@ -361,6 +362,9 @@ async def _build_stores_comparison(
                     continue
 
             store_id = store.get("external_id")
+            if not store_id or store_id in seen_stores_for_item:
+                continue
+
             price = offer.get("price", 0.0)
             in_stock = offer.get("in_stock", False)
             if store_id not in stores_comparison:
@@ -378,6 +382,7 @@ async def _build_stores_comparison(
                     "is_complete": False,
                 }
             if in_stock:
+                seen_stores_for_item.add(store_id)
                 stores_comparison[store_id]["total_price"] += price * item.quantity
                 stores_comparison[store_id]["found_items_count"] += 1
                 stores_comparison[store_id]["missing_items_count"] -= 1
@@ -398,11 +403,15 @@ async def _build_stores_comparison(
         for item in cart.items:
             offers_data = offers_data_map.get(item.product_id, {})
             offers = offers_data.get("offers", [])
+            seen_stores_for_item_fallback = set()
             for offer in offers:
                 store = offer.get("store")
                 if not store:
                     continue
                 store_id = store.get("external_id")
+                if not store_id or store_id in seen_stores_for_item_fallback:
+                    continue
+
                 price = offer.get("price", 0.0)
                 in_stock = offer.get("in_stock", False)
                 if store_id not in stores_comparison_all:
@@ -420,6 +429,7 @@ async def _build_stores_comparison(
                         "is_complete": False,
                     }
                 if in_stock:
+                    seen_stores_for_item_fallback.add(store_id)
                     stores_comparison_all[store_id]["total_price"] += (
                         price * item.quantity
                     )

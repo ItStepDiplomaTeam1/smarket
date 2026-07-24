@@ -230,6 +230,63 @@ async def test_compare_cart_happy_path(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_compare_cart_deduplicates_multiple_offers_for_same_store(monkeypatch):
+    mock_item = CartItem(
+        id=uuid.uuid4(), cart_id=CART_ID, product_id=PRODUCT_ID, quantity=1
+    )
+    mock_cart = Cart(
+        id=CART_ID,
+        user_id=USER_ID,
+        name="Test Cart",
+        updated_at=datetime.datetime.utcnow(),
+        items=[mock_item],
+    )
+    monkeypatch.setattr(crud, "get_cart", AsyncMock(return_value=mock_cart))
+
+    # Product return 2 duplicate offers for store_silpo
+    mock_offers = AsyncMock(
+        return_value=[
+            {
+                "id": PRODUCT_ID,
+                "offers": [
+                    {
+                        "store": {
+                            "external_id": "store_silpo",
+                            "name": "Silpo",
+                            "retail_chain": "silpo",
+                            "city": "kiev",
+                        },
+                        "price": 100.0,
+                        "in_stock": True,
+                    },
+                    {
+                        "store": {
+                            "external_id": "store_silpo",
+                            "name": "Silpo",
+                            "retail_chain": "silpo",
+                            "city": "kiev",
+                        },
+                        "price": 100.0,
+                        "in_stock": True,
+                    },
+                ],
+            }
+        ]
+    )
+    monkeypatch.setattr("app.routers.cart.fetch_products_batch_offers", mock_offers)
+
+    response = client.get(f"/cart/{CART_ID}/compare")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    # Total price must be 100.0 (counted once), not 200.0
+    assert data[0]["store_id"] == "store_silpo"
+    assert data[0]["total_price"] == 100.0
+    assert data[0]["found_items_count"] == 1
+    assert data[0]["missing_items_count"] == 0
+
+
+@pytest.mark.asyncio
 async def test_compare_cart_city_filter(monkeypatch):
     mock_item = CartItem(
         id=uuid.uuid4(), cart_id=CART_ID, product_id=PRODUCT_ID, quantity=2

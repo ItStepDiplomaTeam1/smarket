@@ -151,9 +151,12 @@ export const CartSummary: React.FC = () => {
                   <span className="block truncate font-medium text-gray-900 dark:text-white" title={store.storeName}>
                     {store.storeName}
                   </span>
-                  {store.address && (
-                    <span className="block truncate text-xs" title={store.address}>
-                      {store.address}
+                  {(store.address || store.city) && (
+                    <span
+                      className="block truncate text-xs text-gray-500 dark:text-[#A9B6B0]/80"
+                      title={[store.city, store.address].filter(Boolean).join(', ')}
+                    >
+                      {[store.city, store.address].filter(Boolean).join(', ')}
                     </span>
                   )}
                   {!isComplete && (

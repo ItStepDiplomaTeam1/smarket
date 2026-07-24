@@ -766,7 +766,7 @@ func indexProductsToSearch(
 			lpr.price,
 			lpr.old_price,
 			lpr.in_stock,
-			p.is_hidden,
+			(p.is_hidden OR COALESCE(c.is_hidden, false)) AS is_hidden,
 			p.created_at
 		FROM store_products sp
 		JOIN products p ON p.id = sp.product_id
@@ -934,7 +934,7 @@ func RunFullBackfill(
 			lpr.price,
 			lpr.old_price,
 			lpr.in_stock,
-			p.is_hidden,
+			(p.is_hidden OR COALESCE(c.is_hidden, false)) AS is_hidden,
 			p.created_at
 		FROM store_products sp
 		JOIN products p ON p.id = sp.product_id
