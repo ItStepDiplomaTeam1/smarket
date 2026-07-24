@@ -502,6 +502,10 @@ async def complete_cart(
     cart_id: uuid.UUID,
     background_tasks: BackgroundTasks,
     city: Optional[str] = Query(None, description="Фільтр по місту користувача"),
+    store_id: Optional[str] = Query(
+        None,
+        description="ID магазину, обраного для формування чека",
+    ),
     user_id: uuid.UUID = Depends(get_user_id),
     db: AsyncSession = Depends(get_db),
     http_client: httpx.AsyncClient = Depends(get_http_client),
@@ -527,7 +531,28 @@ async def complete_cart(
             detail="Жоден магазин не має всіх товарів із кошика",
         )
 
-    chosen_store_comp = complete_stores[0]
+    if store_id:
+        chosen_store_comp = next(
+            (store for store in complete_stores if store["store_id"] == store_id),
+            None,
+        )
+        if chosen_store_comp is None:
+            selected_store = next(
+                (store for store in result_list if store["store_id"] == store_id),
+                None,
+            )
+            if selected_store is not None:
+                raise HTTPException(
+                    status_code=422,
+                    detail="Обраний магазин не має всіх товарів із кошика",
+                )
+            raise HTTPException(
+                status_code=422,
+                detail="Обраний магазин недоступний для цього кошика",
+            )
+    else:
+        chosen_store_comp = complete_stores[0]
+
     chosen_store_id = chosen_store_comp["store_id"]
 
     if len(complete_stores) > 1:

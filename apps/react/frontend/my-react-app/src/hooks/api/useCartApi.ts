@@ -79,13 +79,17 @@ export const useFetchCartComparison = (cartId: string | null) => {
         params: { city: userCity }
       });
       return data.map((c: {
+        store_id: string;
         store_name: string;
+        address?: string | null;
         total_price: number;
         is_complete: boolean;
         found_items_count: number;
         missing_items_count: number;
       }, index: number) => ({
+        storeId: c.store_id,
         storeName: c.store_name,
+        address: c.address ?? undefined,
         totalPrice: c.total_price,
         isBest: index === 0 && c.is_complete,
         isComplete: c.is_complete,
@@ -275,19 +279,24 @@ export interface ReceiptListItem {
   store_name: string;
 }
 
+interface CompleteCartVariables {
+  cartId: string;
+  storeId: string;
+}
+
 export const useCompleteCart = () => {
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
   const userCity = user?.settings?.city || 'Київ';
 
-  return useMutation<ReceiptResponse, Error, string>({
-    mutationFn: async (cartId: string) => {
+  return useMutation<ReceiptResponse, Error, CompleteCartVariables>({
+    mutationFn: async ({ cartId, storeId }) => {
       const { data } = await apiClient.post(`/api/v1/cart/${cartId}/complete`, null, {
-        params: { city: userCity }
+        params: { city: userCity, store_id: storeId }
       });
       return data;
     },
-    onSuccess: (data, cartId) => {
+    onSuccess: (_data, { cartId }) => {
       queryClient.invalidateQueries({ queryKey: ['my-receipts'] });
       queryClient.invalidateQueries({ queryKey: ['carts'] });
       queryClient.invalidateQueries({ queryKey: ['cart', cartId] });

@@ -1,6 +1,8 @@
 // Загальна інформація про магазин у порівнянні
 export interface StoreComparison {
+  storeId: string;
   storeName: string;
+  address?: string;
   totalPrice: number;
   isBest: boolean;
   isComplete?: boolean;
@@ -130,9 +132,9 @@ export const mockCartDetails: Record<string, CartDetailResponse> = {
       totalItems: 6,
       maxPossibleSavings: 303,
       comparison: [
-        { storeName: 'АТБ', totalPrice: 1042, isBest: true },
-        { storeName: 'Сільпо', totalPrice: 1345, isBest: false },
-        { storeName: 'Novus', totalPrice: 1237, isBest: false },
+        { storeId: 'atb', storeName: 'АТБ', totalPrice: 1042, isBest: true },
+        { storeId: 'silpo', storeName: 'Сільпо', totalPrice: 1345, isBest: false },
+        { storeId: 'novus', storeName: 'Novus', totalPrice: 1237, isBest: false },
       ]
     }
   },
@@ -143,8 +145,8 @@ export const mockCartDetails: Record<string, CartDetailResponse> = {
       totalItems: 0,
       maxPossibleSavings: 120,
       comparison: [
-        { storeName: 'Сільпо', totalPrice: 1560, isBest: true },
-        { storeName: 'Novus', totalPrice: 1680, isBest: false },
+        { storeId: 'silpo', storeName: 'Сільпо', totalPrice: 1560, isBest: true },
+        { storeId: 'novus', storeName: 'Novus', totalPrice: 1680, isBest: false },
       ]
     }
   },
@@ -155,8 +157,8 @@ export const mockCartDetails: Record<string, CartDetailResponse> = {
       totalItems: 0,
       maxPossibleSavings: 45,
       comparison: [
-        { storeName: 'Novus', totalPrice: 245, isBest: true },
-        { storeName: 'АТБ', totalPrice: 290, isBest: false },
+        { storeId: 'novus', storeName: 'Novus', totalPrice: 245, isBest: true },
+        { storeId: 'atb', storeName: 'АТБ', totalPrice: 290, isBest: false },
       ]
     }
   }

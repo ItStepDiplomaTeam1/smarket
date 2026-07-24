@@ -376,6 +376,70 @@ async def test_complete_cart_happy_path(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_complete_cart_uses_selected_store(monkeypatch):
+    mock_item = CartItem(
+        id=uuid.uuid4(), cart_id=CART_ID, product_id=PRODUCT_ID, quantity=2
+    )
+    mock_cart = Cart(
+        id=CART_ID,
+        user_id=USER_ID,
+        name="Selected Store Cart",
+        updated_at=datetime.datetime.utcnow(),
+        items=[mock_item],
+    )
+    monkeypatch.setattr(crud, "get_cart", AsyncMock(return_value=mock_cart))
+    monkeypatch.setattr(
+        "app.routers.cart.fetch_products_batch_offers",
+        AsyncMock(
+            return_value=[
+                {
+                    "id": PRODUCT_ID,
+                    "title": "Milk",
+                    "offers": [
+                        {
+                            "store": {
+                                "external_id": "store_silpo",
+                                "name": "Silpo",
+                                "retail_chain": "silpo",
+                                "city": "kiev",
+                                "address": "Khreshchatyk 1",
+                            },
+                            "price": 10.5,
+                            "in_stock": True,
+                        },
+                        {
+                            "store": {
+                                "external_id": "store_novus",
+                                "name": "Novus",
+                                "retail_chain": "novus",
+                                "city": "kiev",
+                                "address": "Peremohy 10",
+                            },
+                            "price": 12.0,
+                            "in_stock": True,
+                        },
+                    ],
+                }
+            ]
+        ),
+    )
+
+    with patch("app.routers.cart._generate_ai_description") as mock_bg_task:
+        response = client.post(
+            f"/cart/{CART_ID}/complete",
+            params={"store_id": "store_novus"},
+        )
+
+    assert response.status_code in (200, 201)
+    data = response.json()
+    assert data["total_price"] == 24.0
+    assert data["savings_amount"] == 0.0
+    assert data["snapshot"][0]["store_id"] == "store_novus"
+    assert data["snapshot"][0]["store_name"] == "Novus"
+    mock_bg_task.assert_called_once()
+
+
+@pytest.mark.asyncio
 async def test_complete_empty_cart(monkeypatch):
     mock_cart = Cart(
         id=CART_ID,
@@ -443,6 +507,89 @@ async def test_complete_cart_rejects_partial_store_without_deleting_cart(
 
     assert response.status_code == 422
     assert "всіх товарів" in response.json()["detail"]
+    setup_dependencies.delete.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_complete_cart_rejects_selected_partial_store(
+    monkeypatch,
+    setup_dependencies,
+):
+    first_item = CartItem(
+        id=uuid.uuid4(),
+        cart_id=CART_ID,
+        product_id=PRODUCT_ID,
+        quantity=1,
+    )
+    second_item = CartItem(
+        id=uuid.uuid4(),
+        cart_id=CART_ID,
+        product_id=456,
+        quantity=1,
+    )
+    mock_cart = Cart(
+        id=CART_ID,
+        user_id=USER_ID,
+        name="Selected Partial Store Cart",
+        updated_at=datetime.datetime.utcnow(),
+        items=[first_item, second_item],
+    )
+    monkeypatch.setattr(crud, "get_cart", AsyncMock(return_value=mock_cart))
+    monkeypatch.setattr(
+        "app.routers.cart.fetch_products_batch_offers",
+        AsyncMock(
+            return_value=[
+                {
+                    "id": PRODUCT_ID,
+                    "offers": [
+                        {
+                            "store": {
+                                "external_id": "store_silpo",
+                                "name": "Silpo",
+                                "retail_chain": "silpo",
+                                "city": "kiev",
+                            },
+                            "price": 10.5,
+                            "in_stock": True,
+                        },
+                        {
+                            "store": {
+                                "external_id": "store_novus",
+                                "name": "Novus",
+                                "retail_chain": "novus",
+                                "city": "kiev",
+                            },
+                            "price": 9.5,
+                            "in_stock": True,
+                        },
+                    ],
+                },
+                {
+                    "id": 456,
+                    "offers": [
+                        {
+                            "store": {
+                                "external_id": "store_silpo",
+                                "name": "Silpo",
+                                "retail_chain": "silpo",
+                                "city": "kiev",
+                            },
+                            "price": 20.0,
+                            "in_stock": True,
+                        }
+                    ],
+                },
+            ]
+        ),
+    )
+
+    response = client.post(
+        f"/cart/{CART_ID}/complete",
+        params={"store_id": "store_novus"},
+    )
+
+    assert response.status_code == 422
+    assert "Обраний магазин не має всіх товарів" in response.json()["detail"]
     setup_dependencies.delete.assert_not_awaited()
 
 
