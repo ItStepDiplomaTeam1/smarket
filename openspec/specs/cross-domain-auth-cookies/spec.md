@@ -38,6 +38,19 @@ The `auth_service` SHALL optionally set the `Domain` attribute of the `refresh_t
 - **WHEN** `COOKIE_DOMAIN` is not set or empty
 - **THEN** the `refresh_token` cookie MUST NOT include a `Domain` attribute
 
+### Requirement: Production cookie configuration isolation
+The production Docker Compose configuration SHALL map deployment-scoped
+`SMARKET_AUTH_COOKIE_*` variables to the auth service `COOKIE_*` variables so
+local defaults from the service `env_file` cannot override the production
+cross-site cookie policy.
+
+#### Scenario: Local SameSite value exists in the service env file
+- **WHEN** the auth service `env_file` contains `COOKIE_SAMESITE=lax`
+- **AND** no deployment-specific override is provided
+- **THEN** the production auth container MUST receive `COOKIE_SAMESITE=none`
+- **AND** `COOKIE_SECURE=true`
+- **AND** an empty `COOKIE_DOMAIN` for a host-only cookie
+
 ### Requirement: Consistent cookie path across all auth endpoints
 All endpoints that set the `refresh_token` cookie (`/register`, `/login`, `/refresh`, `/oauth/google`, `/oauth/telegram`) SHALL set `path="/"` on the cookie.
 

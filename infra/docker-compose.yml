@@ -52,10 +52,12 @@ services:
     expose:
       - "8001"
     environment:
-      COOKIE_SECURE: "${COOKIE_SECURE:-true}"
-      COOKIE_SAMESITE: "${COOKIE_SAMESITE:-none}"
+      # Use deployment-scoped names so COOKIE_* values from the auth service
+      # env_file cannot silently override the cross-site production policy.
+      COOKIE_SECURE: "${SMARKET_AUTH_COOKIE_SECURE:-true}"
+      COOKIE_SAMESITE: "${SMARKET_AUTH_COOKIE_SAMESITE:-none}"
       # Empty means a safer host-only cookie.
-      COOKIE_DOMAIN: "${COOKIE_DOMAIN:-}"
+      COOKIE_DOMAIN: "${SMARKET_AUTH_COOKIE_DOMAIN:-}"
       REDIS_URL: "redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set}@redis:6379/0"
       RABBITMQ_URL: "amqp://${RABBITMQ_USER:-smarket}:${RABBITMQ_PASS:?RABBITMQ_PASS must be set}@rabbitmq:5672/"
     env_file:
