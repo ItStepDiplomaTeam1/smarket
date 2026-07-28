@@ -43,3 +43,25 @@ func TestPostWithRetrySendsInternalToken(t *testing.T) {
 		t.Fatalf("status = %d, want %d", response.StatusCode, http.StatusAccepted)
 	}
 }
+
+func TestResetSearchIndexUsesProtectedDeleteEndpoint(t *testing.T) {
+	const expectedToken = "test-internal-token"
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodDelete {
+			t.Fatalf("method = %s, want DELETE", r.Method)
+		}
+		if r.URL.Path != "/api/v1/index" {
+			t.Fatalf("path = %q, want /api/v1/index", r.URL.Path)
+		}
+		if got := r.Header.Get("X-Internal-Token"); got != expectedToken {
+			t.Fatalf("X-Internal-Token = %q, want %q", got, expectedToken)
+		}
+		w.WriteHeader(http.StatusAccepted)
+	}))
+	defer server.Close()
+
+	if err := resetSearchIndex(server.URL, expectedToken); err != nil {
+		t.Fatalf("resetSearchIndex returned error: %v", err)
+	}
+}

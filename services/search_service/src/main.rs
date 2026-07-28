@@ -15,7 +15,7 @@ use subtle::ConstantTimeEq;
 use tracing::info;
 
 use handlers::get_search::search_handler;
-use handlers::post_index::{delete_handler, index_handler, patch_handler};
+use handlers::post_index::{delete_handler, index_handler, patch_handler, reset_handler};
 
 struct Config {
     service_port: u16,
@@ -160,7 +160,12 @@ async fn main() {
         .route("/search", get(search_handler));
 
     let internal_routes = Router::new()
-        .route("/index", post(index_handler).patch(patch_handler))
+        .route(
+            "/index",
+            post(index_handler)
+                .patch(patch_handler)
+                .delete(reset_handler),
+        )
         .route("/index/:id", delete(delete_handler))
         .route_layer(middleware::from_fn_with_state(
             config.internal_api_token.clone(),

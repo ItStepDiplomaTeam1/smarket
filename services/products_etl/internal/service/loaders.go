@@ -36,9 +36,9 @@ type categoryItem struct {
 
 // productsPageMeta — мінімальні поля сторінки продуктів (для пагінації).
 type productsPageMeta struct {
-	Count   int             `json:"count"`
-	Next    *string         `json:"next"`
-	Results json.RawMessage `json:"results"`
+	Count   int               `json:"count"`
+	Next    *string           `json:"next"`
+	Results []json.RawMessage `json:"results"`
 }
 
 // ---------------------------------------------------------------------------
@@ -144,7 +144,7 @@ func processExtractTask(ch *amqp.Channel, msg amqp.Delivery, mongoDB *mongo.Data
 		} else {
 			log.Printf("[ExtractLoad] ✗ ETL для store_id=%s: спроба %d/%d, повторно публікуємо у чергу: %v",
 				task.StoreID, retryCount+1, maxRetries, err)
-			
+
 			// Копіюємо і оновлюємо хедери для ретраю
 			headers := msg.Headers
 			if headers == nil {
@@ -321,12 +321,13 @@ func fetchCategorySlugs(storeID string) ([]categoryItem, error) {
 // Якщо API відпаде на середині — вже збережені сторінки залишаться в Mongo.
 func fetchAndStoreAllPages(storeID, slug string, collection *mongo.Collection) error {
 	page := 1
+	fetched := 0
 
 	for {
 		offset := (page - 1) * productsPageLimit
 		url := fmt.Sprintf(
-			"https://stores-api.zakaz.ua/stores/%s/categories/%s/products/?limit=%d&offset=%d",
-			storeID, slug, productsPageLimit, offset,
+			"https://stores-api.zakaz.ua/stores/%s/categories/%s/products/?page=%d&limit=%d&offset=%d",
+			storeID, slug, page, productsPageLimit, offset,
 		)
 
 		rawBody, meta, err := fetchProductsPage(url)
@@ -343,8 +344,13 @@ func fetchAndStoreAllPages(storeID, slug string, collection *mongo.Collection) e
 				storeID, slug, page, len(meta.Results), meta.Count)
 		}
 
-		// Зупиняємось якщо немає наступної сторінки або повернулась порожня.
-		if meta.Next == nil || len(meta.Results) == 0 {
+		fetched += len(meta.Results)
+
+		// Zakaz API більше не повертає next і ігнорує offset/limit, але підтримує
+		// page з фіксованим розміром сторінки (зараз 30). Count залишається
+		// загальною кількістю товарів. Параметри offset/limit збережені у URL для
+		// сумісності зі старою версією API.
+		if !hasMoreProductPages(meta, fetched) {
 			break
 		}
 
@@ -352,6 +358,16 @@ func fetchAndStoreAllPages(storeID, slug string, collection *mongo.Collection) e
 	}
 
 	return nil
+}
+
+func hasMoreProductPages(meta *productsPageMeta, fetched int) bool {
+	if len(meta.Results) == 0 {
+		return false
+	}
+	if meta.Count > 0 {
+		return fetched < meta.Count
+	}
+	return meta.Next != nil
 }
 
 func fetchProductsPage(url string) ([]byte, *productsPageMeta, error) {

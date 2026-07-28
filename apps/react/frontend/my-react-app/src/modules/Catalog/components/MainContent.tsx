@@ -116,6 +116,7 @@ interface FetchFilters {
   maxPrice: number;
   search: string;
   sortBy: string;
+  city?: string;
 }
 
 export const MAIN_CATEGORIES = [

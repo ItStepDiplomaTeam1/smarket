@@ -210,3 +210,34 @@ pub async fn delete_handler(
         }
     }
 }
+
+pub async fn reset_handler(
+    State(client): State<Client>,
+) -> Result<Json<Value>, (StatusCode, Json<Value>)> {
+    warn!("[reset] Запит на повне очищення індексу products");
+
+    let index = client.index("products");
+
+    match index.delete_all_documents().await {
+        Ok(task) => {
+            info!(
+                "[reset] Задачу на очищення індексу поставлено в чергу Meilisearch. Task UID: {:?}",
+                task.task_uid
+            );
+            Ok(Json(json!({
+                "status": "accepted",
+                "task_uid": task.task_uid,
+            })))
+        }
+        Err(err) => {
+            error!("[reset] Помилка очищення індексу Meilisearch: {:?}", err);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({
+                    "error": "Meilisearch index reset failed",
+                    "detail": err.to_string()
+                })),
+            ))
+        }
+    }
+}

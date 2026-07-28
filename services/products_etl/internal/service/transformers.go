@@ -921,9 +921,12 @@ func RunFullBackfill(
 
 	// Отримуємо загальну кількість
 	var totalCount int
-	err := pgPool.QueryRow(ctx, "SELECT COUNT(*) FROM store_products").Scan(&totalCount)
+	err := pgPool.QueryRow(ctx, "SELECT COUNT(DISTINCT product_id) FROM store_products").Scan(&totalCount)
 	if err != nil {
 		return 0, fmt.Errorf("отримання кількості товарів: %w", err)
+	}
+	if totalCount == 0 {
+		return 0, fmt.Errorf("повний backfill скасовано: PostgreSQL не містить товарів для індексації")
 	}
 	log.Printf("[Backfill] Початок повної індексації. Всього товарів для обробки: %d", totalCount)
 
@@ -963,6 +966,10 @@ func RunFullBackfill(
 		return 0, fmt.Errorf("запит на вибірку всіх товарів: %w", err)
 	}
 	defer rows.Close()
+
+	if err := resetSearchIndex(searchServiceURL, searchInternalToken); err != nil {
+		return 0, fmt.Errorf("очищення старого індексу перед backfill: %w", err)
+	}
 
 	var docs []SearchProductDocument
 	indexedCount := 0
@@ -1035,26 +1042,51 @@ func RunFullBackfill(
 
 		if len(docs) >= batchSize {
 			if err := sendBatch(docs); err != nil {
-				log.Printf("[Backfill] Помилка відправки батчу: %v", err)
-			} else {
-				indexedCount += len(docs)
-				log.Printf("[Backfill] Прогрес: проіндексовано %d/%d товарів", indexedCount, totalCount)
+				return indexedCount, fmt.Errorf("відправка батчу після %d документів: %w", indexedCount, err)
 			}
+			indexedCount += len(docs)
+			log.Printf("[Backfill] Прогрес: проіндексовано %d документів", indexedCount)
 			docs = nil
 		}
+	}
+
+	if err := rows.Err(); err != nil {
+		return indexedCount, fmt.Errorf("читання товарів для backfill: %w", err)
 	}
 
 	// Відправляємо залишок
 	if len(docs) > 0 {
 		if err := sendBatch(docs); err != nil {
-			log.Printf("[Backfill] Помилка відправки фінального батчу: %v", err)
-		} else {
-			indexedCount += len(docs)
+			return indexedCount, fmt.Errorf("відправка фінального батчу: %w", err)
 		}
+		indexedCount += len(docs)
 	}
 
 	log.Printf("[Backfill] Успішно завершено! Всього проіндексовано: %d товарів", indexedCount)
 	return indexedCount, nil
+}
+
+func resetSearchIndex(searchServiceURL string, searchInternalToken string) error {
+	url := strings.TrimRight(searchServiceURL, "/") + "/api/v1/index"
+	req, err := http.NewRequest(http.MethodDelete, url, nil)
+	if err != nil {
+		return fmt.Errorf("створення запиту reset search_service: %w", err)
+	}
+	req.Header.Set("X-Internal-Token", searchInternalToken)
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req) //nolint:gosec
+	if err != nil {
+		return fmt.Errorf("DELETE search_service index: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("search_service повернув статус %d під час reset", resp.StatusCode)
+	}
+
+	log.Printf("[Backfill] 🧹 Очищення старого індексу Meilisearch поставлено в чергу")
+	return nil
 }
 
 // notifyProductsUpdated надсилає pg_notify на канал 'products_updated'.
