@@ -23,11 +23,9 @@ async def main():
     print("Connecting to database...")
     conn = await asyncpg.connect(db_url)
     try:
-        # Get count before
         total_before = await conn.fetchval("SELECT COUNT(*) FROM prices")
         print(f"Total rows in 'prices' before deduplication: {total_before:,}")
 
-        # Fetch all distinct product_ids
         print("Fetching distinct product IDs...")
         rows = await conn.fetch("SELECT DISTINCT product_id FROM prices ORDER BY product_id")
         product_ids = [r['product_id'] for r in rows]
@@ -45,7 +43,6 @@ async def main():
         for i in range(0, total_products, batch_size):
             batch = product_ids[i:i + batch_size]
             
-            # Prune query for this batch using = ANY($1)
             query = """
                 DELETE FROM prices
                 WHERE product_id = ANY($1::bigint[])
@@ -65,7 +62,6 @@ async def main():
                   )
             """
             
-            # Execute
             status = await conn.execute(query, batch)
             deleted = 0
             if status.startswith("DELETE "):
@@ -75,7 +71,6 @@ async def main():
             elapsed = time.time() - start_time
             print(f"Processed products {i+1} to {min(i+batch_size, total_products)} of {total_products} | Deleted: {deleted:,} rows | Total deleted: {total_deleted:,} | Elapsed: {elapsed:.1f}s")
                 
-            # Yield control
             await asyncio.sleep(0.01)
 
         total_after = await conn.fetchval("SELECT COUNT(*) FROM prices")

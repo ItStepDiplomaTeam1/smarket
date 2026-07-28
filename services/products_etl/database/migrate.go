@@ -279,6 +279,25 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 					ADD COLUMN IF NOT EXISTS lng DOUBLE PRECISION
 			`,
 		},
+		{
+			name: "clean consecutive duplicate prices",
+			sql: `
+				WITH numbered_prices AS (
+					SELECT id, product_id, store_id, price, old_price, in_stock, recorded_at,
+						   LAG(price) OVER (PARTITION BY product_id, store_id ORDER BY recorded_at, id) AS prev_price,
+						   LAG(old_price) OVER (PARTITION BY product_id, store_id ORDER BY recorded_at, id) AS prev_old_price,
+						   LAG(in_stock) OVER (PARTITION BY product_id, store_id ORDER BY recorded_at, id) AS prev_in_stock
+					FROM prices
+				)
+				DELETE FROM prices
+				WHERE id IN (
+					SELECT id FROM numbered_prices
+					WHERE price = prev_price
+					  AND in_stock = prev_in_stock
+					  AND (old_price IS NOT DISTINCT FROM prev_old_price)
+				);
+			`,
+		},
 	}
 
 	for _, m := range migrations {

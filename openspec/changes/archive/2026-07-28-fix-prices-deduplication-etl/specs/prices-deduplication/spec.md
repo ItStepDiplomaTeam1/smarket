@@ -1,15 +1,4 @@
-# prices-deduplication Specification
-
-## Purpose
-TBD - created by archiving change optimize-prices-storage. Update Purpose after archive.
-## Requirements
-### Requirement: Deduplication of prices table
-
-The system SHALL support pruning of the `prices` table to delete consecutive records for the same product and store where `price`, `old_price`, and `in_stock` remain unchanged, keeping only the earliest snapshot and subsequent change events.
-
-#### Scenario: Running the database pruning script
-- **WHEN** the prune script is executed against the database
-- **THEN** it deletes all consecutive duplicate price rows and leaves only unique historical price and stock status changes.
+## MODIFIED Requirements
 
 ### Requirement: Prevention of future consecutive duplicates
 
@@ -26,4 +15,3 @@ The Go ETL service SHALL only insert a new row in the `prices` table if the inco
 #### Scenario: ETL batch contains multiple entries for the same product
 - **WHEN** the ETL batch processes multiple price events for the same product and store within the same ETL run
 - **THEN** the system deduplicates the incoming items in memory and executes only one price insertion check against the latest database record.
-

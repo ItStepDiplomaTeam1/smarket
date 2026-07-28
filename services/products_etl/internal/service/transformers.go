@@ -557,6 +557,8 @@ func batchUpsertPage(
 	// Ціни конвертуються з копійок у гривні (÷100).
 	batch := &pgx.Batch{}
 	priceCount := 0
+	seenProductStore := make(map[string]bool)
+
 	for _, p := range products {
 		var productID int64
 		var ok bool
@@ -578,6 +580,13 @@ func batchUpsertPage(
 			continue
 		}
 
+		// Внутрішньопакетна дедубликація для одного товару в поточному ETL батчі
+		seenKey := fmt.Sprintf("%d_%s", productID, storeID)
+		if seenProductStore[seenKey] {
+			continue
+		}
+		seenProductStore[seenKey] = true
+
 		// Конвертація цін з копійок у гривні (API повертає 10890 = 108.90 грн)
 		priceUAH := priceKopecksToUAH(p.Price)
 		var oldPriceUAH *float64
@@ -586,20 +595,23 @@ func batchUpsertPage(
 			oldPriceUAH = &v
 		}
 
-		// Крок 3: INSERT ціни лише якщо вона змінилась з моменту останнього запису.
-		// Порівнюємо: ціна, стара ціна та наявність. Якщо все однакове — пропускаємо.
+		// Крок 3: INSERT ціни лише якщо вона змінилась порівняно з АБСОЛЮТНО ОСТАННІМ записом у БД.
+		// Порівнюємо з найостаннішим записом (ORDER BY recorded_at DESC LIMIT 1) з явним кастом ::numeric(10,2).
 		// Це запобігає безконтрольному зростанню таблиці prices при кожному перепарсингу.
 		batch.Queue(`
 			INSERT INTO prices (product_id, store_id, price, old_price, in_stock, recorded_at)
-			SELECT $1, $2, $3, $4, $5, NOW()
+			SELECT $1, $2, $3::numeric(10,2), $4::numeric(10,2), $5, NOW()
 			WHERE NOT EXISTS (
-				SELECT 1 FROM prices
-				WHERE product_id = $1
-				  AND store_id   = $2
-				  AND price      = $3
-				  AND in_stock   = $5
-				  AND (old_price IS NOT DISTINCT FROM $4)
-				  AND recorded_at > NOW() - INTERVAL '3 hours'
+				SELECT 1 FROM (
+					SELECT price, old_price, in_stock
+					FROM prices
+					WHERE product_id = $1 AND store_id = $2
+					ORDER BY recorded_at DESC
+					LIMIT 1
+				) latest
+				WHERE latest.price = $3::numeric(10,2)
+				  AND latest.in_stock = $5
+				  AND (latest.old_price IS NOT DISTINCT FROM $4::numeric(10,2))
 			)`,
 			productID, storeID, priceUAH, oldPriceUAH, p.InStock,
 		)
