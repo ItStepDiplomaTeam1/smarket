@@ -878,18 +878,25 @@ func indexProductsToSearch(
 
 // postWithRetry здійснює HTTP POST із експоненціальною затримкою при помилках мережі або 5xx помилках сервера.
 func postWithRetry(url string, body []byte, internalToken string, maxRetries int) (*http.Response, error) {
+	return searchRequestWithRetry(http.MethodPost, url, body, internalToken, maxRetries)
+}
+
+func searchRequestWithRetry(method, url string, body []byte, internalToken string, maxRetries int) (*http.Response, error) {
 	var resp *http.Response
 	var err error
 	delay := 1 * time.Second
+	client := &http.Client{Timeout: 30 * time.Second}
 
 	for i := 0; i < maxRetries; i++ {
-		req, requestErr := http.NewRequest(http.MethodPost, url, bytes.NewReader(body))
+		req, requestErr := http.NewRequest(method, url, bytes.NewReader(body))
 		if requestErr != nil {
 			return nil, fmt.Errorf("створення запиту search_service: %w", requestErr)
 		}
-		req.Header.Set("Content-Type", "application/json")
+		if len(body) > 0 {
+			req.Header.Set("Content-Type", "application/json")
+		}
 		req.Header.Set("X-Internal-Token", internalToken)
-		resp, err = http.DefaultClient.Do(req) //nolint:gosec
+		resp, err = client.Do(req) //nolint:gosec
 		if err == nil && resp.StatusCode < 500 {
 			// Успіх або клієнтська помилка (4xx), повторювати не потрібно
 			return resp, nil
@@ -1068,14 +1075,13 @@ func RunFullBackfill(
 
 func resetSearchIndex(searchServiceURL string, searchInternalToken string) error {
 	url := strings.TrimRight(searchServiceURL, "/") + "/api/v1/index"
-	req, err := http.NewRequest(http.MethodDelete, url, nil)
-	if err != nil {
-		return fmt.Errorf("створення запиту reset search_service: %w", err)
-	}
-	req.Header.Set("X-Internal-Token", searchInternalToken)
-
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req) //nolint:gosec
+	resp, err := searchRequestWithRetry(
+		http.MethodDelete,
+		url,
+		nil,
+		searchInternalToken,
+		5,
+	)
 	if err != nil {
 		return fmt.Errorf("DELETE search_service index: %w", err)
 	}

@@ -180,6 +180,7 @@ Smarket — це високонавантажений агрегатор цін 
 *   **Порт**: `8083` (внутрішній)
 *   **Вхідна точка**: `services/search_service/src/main.rs`
 *   **Роль**: Тонкий, надшвидкий проксі над Meilisearch (<2ms затримка, 128 MB RAM).
+*   **Внутрішня синхронізація індексу**: Захищений `X-Internal-Token` маршрут `DELETE /api/v1/index` очищає всі документи перед повним ETL backfill, щоб видалені або перенумеровані PostgreSQL товари не залишались у пошуку.
 *   **Розгортання Категорій (Category Expansion)**: Мапить спрощені слаги (`drinks`, `zoo`) на `main_category_id` (1–10) та розгортає їх у мережеві підкатегорії (`["molochni-produkty-novus", "molochni-produkty-silpo", ...]`).
 
 ---
