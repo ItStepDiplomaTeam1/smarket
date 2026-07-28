@@ -5,6 +5,8 @@ import { useFavoritesStore } from '@/shared/context/favoritesStore';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { useLocationStore } from '@/shared/store/locationStore';
 import { getOptionalCityFilter } from '@/shared/utils/city';
+import { fetchExistingProducts } from '@/shared/api/productCatalog';
+import { mergeVerifiedProducts } from '@/shared/utils/productValidation';
 
 // ================= SVG ІКОНКИ ДЛЯ МАКЕТУ =================
 const CheckIcon = ({ className = "text-white dark:text-[#0B120F]" }) => (
@@ -104,6 +106,7 @@ interface ProductsResponse {
 
 interface BatchOffersProduct {
   id: number;
+  is_hidden?: boolean;
   offers?: StoreOffer[];
 }
 
@@ -275,37 +278,16 @@ const fetchProducts = async (filters: FetchFilters): Promise<ProductsResponse> =
     }
     const searchData = json;
     const searchItems: Product[] = searchData.hits || [];
-    let items = searchItems.map((product) => ({
-      ...product,
-      storesCount: countAvailableStores(product.offers),
-    }));
+    let items: Product[] = [];
 
     if (searchItems.length > 0) {
-      const batchUrl = new URL(`${apiBaseUrl}/api/v1/products/batch/offers`);
-      searchItems.forEach((product) => {
-        batchUrl.searchParams.append('product_ids', product.id.toString());
-      });
-
-      try {
-        const batchResponse = await fetch(batchUrl.toString());
-        if (batchResponse.ok) {
-          const productsWithOffers: BatchOffersProduct[] = await batchResponse.json();
-          const countsByProductId = new Map(
-            productsWithOffers.map((product) => [
-              product.id,
-              countAvailableStores(product.offers),
-            ])
-          );
-          items = searchItems.map((product) => ({
-            ...product,
-            storesCount:
-              countsByProductId.get(product.id) ??
-              countAvailableStores(product.offers),
-          }));
-        }
-      } catch {
-        // Search data remains usable while the read-only batch adapter is unavailable.
-      }
+      const productsInDatabase = await fetchExistingProducts<BatchOffersProduct>(
+        searchItems.map((product) => product.id),
+      );
+      items = mergeVerifiedProducts(searchItems, productsInDatabase).map((product) => ({
+        ...product,
+        storesCount: countAvailableStores(product.offers),
+      }));
     }
 
     return {

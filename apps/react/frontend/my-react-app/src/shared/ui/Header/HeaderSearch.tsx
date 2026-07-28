@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { apiClient } from '@/shared/api/apiClient';
 import { useLocationStore } from '@/shared/store/locationStore';
 import { getOptionalCityFilter } from '@/shared/utils/city';
+import { fetchExistingProducts } from '@/shared/api/productCatalog';
+import { mergeVerifiedProducts } from '@/shared/utils/productValidation';
 
 interface StoreOffer {
   price: number;
@@ -16,6 +18,7 @@ interface SearchProduct {
   title: string;
   brand?: string | null;
   image_url?: string | null;
+  is_hidden?: boolean;
   offers?: StoreOffer[];
 }
 
@@ -120,7 +123,15 @@ export function HeaderSearch({ isOpen, onClose }: HeaderSearchProps) {
       const { data: response } = await apiClient.get('/api/v1/search/search', {
         params: { q: debouncedQuery, limit: 7, offset: 0, city: cityFilter },
       });
-      return response;
+      const candidates: SearchProduct[] = response.hits ?? [];
+      const productsInDatabase = await fetchExistingProducts<SearchProduct>(
+        candidates.map((product) => product.id),
+      );
+
+      return {
+        ...response,
+        hits: mergeVerifiedProducts(candidates, productsInDatabase),
+      };
     },
     enabled: isOpen && debouncedQuery.length >= 2,
   });
