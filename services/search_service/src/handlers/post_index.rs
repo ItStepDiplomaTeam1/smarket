@@ -54,6 +54,9 @@ pub struct ProductDocument {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub city: Option<String>,
 
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cities: Vec<String>,
+
     pub price: f64,
 
     #[serde(skip_serializing_if = "Option::is_none")]

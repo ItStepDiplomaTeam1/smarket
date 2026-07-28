@@ -78,6 +78,7 @@ export function Header() {
     const [cityModalOpen, setCityModalOpen] = useState(false);
 
     const currentCity = useLocationStore((state) => state.currentCity);
+    const isCityFilterEnabled = useLocationStore((state) => state.isCityFilterEnabled);
 
     const dropdownRef = useRef<HTMLDivElement>(null);
     const favoritesRef = useRef<HTMLDivElement>(null);
@@ -156,10 +157,12 @@ export function Header() {
                         type="button"
                         onClick={() => setCityModalOpen(true)}
                         className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#EEF5F1] dark:bg-[#1C2C26] text-[#265447] dark:text-[#3DAE8B] hover:bg-[#E2ECE7] dark:hover:bg-[#243A32] font-semibold text-xs md:text-sm transition-all cursor-pointer border border-[rgba(38,84,71,0.12)] dark:border-[rgba(61,174,139,0.2)] shadow-xs"
-                        title="Змінити місто"
+                        title={isCityFilterEnabled ? 'Змінити місто' : 'Увімкнути фільтр за містом'}
                     >
                         <MapPin className="w-3.5 h-3.5 md:w-4 md:h-4 text-[#265447] dark:text-[#3DAE8B] shrink-0" />
-                        <span className="max-w-[70px] md:max-w-[100px] truncate">{currentCity}</span>
+                        <span className="max-w-[70px] md:max-w-[100px] truncate">
+                            {isCityFilterEnabled ? currentCity : 'Усі міста'}
+                        </span>
                     </button>
 
                     <ThemeToggle />

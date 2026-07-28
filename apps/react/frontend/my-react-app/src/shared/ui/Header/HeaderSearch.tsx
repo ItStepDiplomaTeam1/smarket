@@ -4,6 +4,7 @@ import { ArrowRight, Package, Search, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '@/shared/api/apiClient';
 import { useLocationStore } from '@/shared/store/locationStore';
+import { getOptionalCityFilter } from '@/shared/utils/city';
 
 interface StoreOffer {
   price: number;
@@ -110,12 +111,14 @@ export function HeaderSearch({ isOpen, onClose }: HeaderSearchProps) {
   }, [isOpen, onClose, openCatalog, query]);
 
   const currentCity = useLocationStore((state) => state.currentCity);
+  const isCityFilterEnabled = useLocationStore((state) => state.isCityFilterEnabled);
+  const cityFilter = getOptionalCityFilter(currentCity, isCityFilterEnabled);
 
   const { data, isFetching } = useQuery<SearchResponse>({
-    queryKey: ['header-search', debouncedQuery, currentCity],
+    queryKey: ['header-search', debouncedQuery, cityFilter],
     queryFn: async () => {
       const { data: response } = await apiClient.get('/api/v1/search/search', {
-        params: { q: debouncedQuery, limit: 7, offset: 0, city: currentCity },
+        params: { q: debouncedQuery, limit: 7, offset: 0, city: cityFilter },
       });
       return response;
     },

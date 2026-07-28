@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { useLocationStore } from '@/shared/store/locationStore';
+import { getCityDisplayName, getOptionalCityFilter } from '@/shared/utils/city';
 
 // ================= ІКОНКИ =================
 const SearchIcon = () => (
@@ -108,7 +109,7 @@ const fetchStoresWithStats = async (city?: string): Promise<StoreCard[]> => {
           prod: stats.total_products,
           promo: stats.promo_products,
           eco: stats.max_savings,
-          city: store.city || city || '',
+          city: getCityDisplayName(store.city || city || ''),
         };
       } catch {
         return {
@@ -119,7 +120,7 @@ const fetchStoresWithStats = async (city?: string): Promise<StoreCard[]> => {
           prod: 0,
           promo: 0,
           eco: 0,
-          city: store.city || city || '',
+          city: getCityDisplayName(store.city || city || ''),
         };
       }
     })
@@ -151,14 +152,16 @@ const StoreCardSkeleton: React.FC = () => (
 // ================= КОМПОНЕНТ =================
 export const Mainpart: React.FC = () => {
   const currentCity = useLocationStore((state) => state.currentCity);
+  const isCityFilterEnabled = useLocationStore((state) => state.isCityFilterEnabled);
+  const cityFilter = getOptionalCityFilter(currentCity, isCityFilterEnabled);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategoryTab, setActiveCategoryTab] = useState('popular');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
 
   const { data: stores, isLoading } = useQuery<StoreCard[]>({
-    queryKey: ['storesList', currentCity],
-    queryFn: () => fetchStoresWithStats(currentCity),
+    queryKey: ['storesList', cityFilter],
+    queryFn: () => fetchStoresWithStats(cityFilter),
     staleTime: 5 * 60 * 1000, 
   });
 

@@ -731,6 +731,8 @@ type SearchProductDocument struct {
 	StoreID        string   `json:"store_id"`
 	StoreName      string   `json:"store_name,omitempty"`
 	RetailChain    string   `json:"retail_chain,omitempty"`
+	City           string   `json:"city,omitempty"`
+	Cities         []string `json:"cities,omitempty"`
 	Price          float64  `json:"price"`
 	OldPrice       *float64 `json:"old_price,omitempty"`
 	InStock        bool     `json:"in_stock"`
@@ -775,6 +777,16 @@ func indexProductsToSearch(
 			sp.store_id,
 			COALESCE(s.name, '')               AS store_name,
 			COALESCE(s.retail_chain, '')        AS retail_chain,
+			COALESCE(s.city, '')                AS city,
+			ARRAY(
+				SELECT DISTINCT s2.city
+				FROM store_products sp2
+				JOIN stores s2 ON s2.external_id = sp2.store_id
+				WHERE sp2.product_id = p.id
+				  AND s2.is_active = true
+				  AND s2.city IS NOT NULL
+				  AND s2.city <> ''
+			)                                  AS cities,
 			lpr.price,
 			lpr.old_price,
 			lpr.in_stock,
@@ -823,6 +835,8 @@ func indexProductsToSearch(
 			&doc.StoreID,
 			&doc.StoreName,
 			&doc.RetailChain,
+			&doc.City,
+			&doc.Cities,
 			&doc.Price,
 			&oldPrice,
 			&doc.InStock,
@@ -953,6 +967,16 @@ func RunFullBackfill(
 			sp.store_id,
 			COALESCE(s.name, '')               AS store_name,
 			COALESCE(s.retail_chain, '')        AS retail_chain,
+			COALESCE(s.city, '')                AS city,
+			ARRAY(
+				SELECT DISTINCT s2.city
+				FROM store_products sp2
+				JOIN stores s2 ON s2.external_id = sp2.store_id
+				WHERE sp2.product_id = p.id
+				  AND s2.is_active = true
+				  AND s2.city IS NOT NULL
+				  AND s2.city <> ''
+			)                                  AS cities,
 			lpr.price,
 			lpr.old_price,
 			lpr.in_stock,
@@ -1024,6 +1048,8 @@ func RunFullBackfill(
 			&doc.StoreID,
 			&doc.StoreName,
 			&doc.RetailChain,
+			&doc.City,
+			&doc.Cities,
 			&doc.Price,
 			&oldPrice,
 			&doc.InStock,

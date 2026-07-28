@@ -268,7 +268,10 @@ pub async fn search_handler(
     }
 
     if let Some(ref city_val) = filters.city {
-        filter_conditions.push(format!("city = \"{}\"", city_val));
+        filter_conditions.push(format!(
+            "(cities = \"{}\" OR city = \"{}\")",
+            city_val, city_val
+        ));
     }
 
     // Multi-store filter: retail_chain IN ["atb", "silpo"]

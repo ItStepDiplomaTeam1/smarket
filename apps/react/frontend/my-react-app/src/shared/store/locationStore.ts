@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { apiClient } from '@/shared/api/apiClient';
+import { getCityDisplayName, getCityFilterValue } from '@/shared/utils/city';
 
 export interface CityItem {
   city: string;
@@ -9,35 +10,86 @@ export interface CityItem {
 
 interface LocationState {
   currentCity: string;
+  isCityFilterEnabled: boolean;
   availableCities: CityItem[];
   isLoadingCities: boolean;
   isDetectingLocation: boolean;
   setCity: (city: string) => void;
+  setCityFilterEnabled: (enabled: boolean) => void;
   fetchCities: () => Promise<void>;
   detectGeoLocation: () => Promise<string | null>;
 }
 
 const DEFAULT_CITY = 'Київ';
+const FALLBACK_CITIES = ['kiev', 'lviv', 'odesa', 'dnipro', 'kharkiv'].map((city) => ({
+  city: getCityDisplayName(city),
+  count: 0,
+}));
+
+interface StoreCitySource {
+  city?: string | null;
+}
+
+const prepareCities = (items: CityItem[]): CityItem[] => {
+  const citiesByValue = new Map<string, CityItem>();
+
+  for (const item of items) {
+    const value = getCityFilterValue(item.city);
+    if (!value) continue;
+
+    const previous = citiesByValue.get(value);
+    citiesByValue.set(value, {
+      city: getCityDisplayName(item.city),
+      count: (previous?.count ?? 0) + item.count,
+    });
+  }
+
+  return Array.from(citiesByValue.values()).sort(
+    (left, right) => right.count - left.count || left.city.localeCompare(right.city, 'uk'),
+  );
+};
+
+const fetchCitiesFromStores = async (): Promise<CityItem[]> => {
+  const { data } = await apiClient.get<StoreCitySource[]>('/api/v1/stores/', {
+    params: { is_active: true, limit: 1000 },
+  });
+  const counts = new Map<string, number>();
+
+  for (const store of data) {
+    const city = store.city?.trim();
+    if (!city) continue;
+    counts.set(city, (counts.get(city) ?? 0) + 1);
+  }
+
+  return prepareCities(
+    Array.from(counts, ([city, count]) => ({ city, count })),
+  );
+};
 
 export const useLocationStore = create<LocationState>()(
   persist(
     (set, get) => ({
       currentCity: DEFAULT_CITY,
+      isCityFilterEnabled: false,
       availableCities: [],
       isLoadingCities: false,
       isDetectingLocation: false,
 
       setCity: (city: string) => {
         if (!city || !city.trim()) return;
-        const normalized = city.trim();
-        set({ currentCity: normalized });
+        const normalized = getCityDisplayName(city);
+        set({ currentCity: normalized, isCityFilterEnabled: true });
 
         // Синхронізація з профілем авторизованого користувача якщо доступно
-        try {
-          apiClient.patch('/api/v1/auth/me', {
-            settings: { city: normalized }
-          }).catch(() => {});
-        } catch {}
+        apiClient.patch('/api/v1/auth/me', {
+          settings: { city: normalized }
+        }).catch(() => {
+          // The local preference remains valid when the optional profile sync is unavailable.
+        });
+      },
+
+      setCityFilterEnabled: (enabled: boolean) => {
+        set({ isCityFilterEnabled: enabled });
       },
 
       fetchCities: async () => {
@@ -45,30 +97,19 @@ export const useLocationStore = create<LocationState>()(
         try {
           const { data } = await apiClient.get<CityItem[]>('/api/v1/stores/cities');
           if (Array.isArray(data) && data.length > 0) {
-            set({ availableCities: data });
+            set({ availableCities: prepareCities(data) });
           } else {
-            // Фолбек якщо сервер ще порожній
-            set({
-              availableCities: [
-                { city: 'Київ', count: 15 },
-                { city: 'Львів', count: 8 },
-                { city: 'Одеса', count: 6 },
-                { city: 'Дніпро', count: 5 },
-                { city: 'Харків', count: 4 },
-              ]
-            });
+            const cities = await fetchCitiesFromStores();
+            set({ availableCities: cities.length > 0 ? cities : FALLBACK_CITIES });
           }
         } catch (e) {
           console.error('[locationStore] Failed to fetch cities', e);
-          set({
-            availableCities: [
-              { city: 'Київ', count: 15 },
-              { city: 'Львів', count: 8 },
-              { city: 'Одеса', count: 6 },
-              { city: 'Дніпро', count: 5 },
-              { city: 'Харків', count: 4 },
-            ]
-          });
+          try {
+            const cities = await fetchCitiesFromStores();
+            set({ availableCities: cities.length > 0 ? cities : FALLBACK_CITIES });
+          } catch {
+            set({ availableCities: FALLBACK_CITIES });
+          }
         } finally {
           set({ isLoadingCities: false });
         }
@@ -124,7 +165,10 @@ export const useLocationStore = create<LocationState>()(
     }),
     {
       name: 'smarket_user_city',
-      partialize: (state) => ({ currentCity: state.currentCity }),
+      partialize: (state) => ({
+        currentCity: state.currentCity,
+        isCityFilterEnabled: state.isCityFilterEnabled,
+      }),
     }
   )
 );

@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useFavoritesStore } from '@/shared/context/favoritesStore';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { useLocationStore } from '@/shared/store/locationStore';
+import { getOptionalCityFilter } from '@/shared/utils/city';
 
 // ================= SVG ІКОНКИ ДЛЯ МАКЕТУ =================
 const CheckIcon = ({ className = "text-white dark:text-[#0B120F]" }) => (
@@ -317,12 +318,16 @@ export function MainContent() {
   const navigate = useNavigate();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const { isFavorite, add: addFavorite, remove: removeFavorite } = useFavoritesStore();
+  const currentCity = useLocationStore((state) => state.currentCity);
+  const isCityFilterEnabled = useLocationStore((state) => state.isCityFilterEnabled);
+  const cityFilter = getOptionalCityFilter(currentCity, isCityFilterEnabled);
 
   const { data: storesList } = useQuery({
-      queryKey: ['availableStores'],
+      queryKey: ['availableStores', cityFilter],
       queryFn: async () => {
           const apiBaseUrl = import.meta.env.VITE_API_URL || 'https://smarket-api.duckdns.org';
           const url = new URL(`${apiBaseUrl}/api/v1/stores/`);
+          if (cityFilter) url.searchParams.set('city', cityFilter);
           const res = await fetch(url.toString());
           if (!res.ok) return [];
           const data = await res.json();
@@ -390,8 +395,6 @@ export function MainContent() {
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  const currentCity = useLocationStore((state) => state.currentCity);
-
   const filterParams: FetchFilters = {
     page,
     category: selectedCategory,
@@ -402,7 +405,7 @@ export function MainContent() {
     maxPrice,
     search: debouncedSearch,
     sortBy,
-    city: currentCity
+    city: cityFilter
   };
 
   const { data, isLoading } = useQuery<ProductsResponse>({
@@ -412,11 +415,12 @@ export function MainContent() {
 
   // Dynamic filter counts — parallel requests with limit=1
   const { data: filterCounts } = useQuery<FilterCounts>({
-    queryKey: ['filterCounts', selectedStores, debouncedSearch],
+    queryKey: ['filterCounts', selectedStores, debouncedSearch, cityFilter],
     queryFn: async () => {
       const storeParams: Record<string, string> = {};
       if (selectedStores.length === 1) storeParams['retail_chain'] = selectedStores[0];
       if (debouncedSearch.trim()) storeParams['q'] = debouncedSearch.trim();
+      if (cityFilter) storeParams['city'] = cityFilter;
 
       const [catCounts, subCounts, discCounts] = await Promise.all([
         // Category counts

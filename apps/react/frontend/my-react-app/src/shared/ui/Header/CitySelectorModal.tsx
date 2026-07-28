@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocationStore } from '@/shared/store/locationStore';
-import { MapPin, Search, Navigation, X, Check, Building2 } from 'lucide-react';
+import { MapPin, Search, Navigation, X, Check, Building2, Globe2 } from 'lucide-react';
 
 interface CitySelectorModalProps {
   isOpen: boolean;
@@ -10,7 +10,17 @@ interface CitySelectorModalProps {
 const POPULAR_CITIES = ['Київ', 'Львів', 'Одеса', 'Дніпро', 'Харків'];
 
 export const CitySelectorModal: React.FC<CitySelectorModalProps> = ({ isOpen, onClose }) => {
-  const { currentCity, availableCities, isLoadingCities, isDetectingLocation, setCity, fetchCities, detectGeoLocation } = useLocationStore();
+  const {
+    currentCity,
+    isCityFilterEnabled,
+    availableCities,
+    isLoadingCities,
+    isDetectingLocation,
+    setCity,
+    setCityFilterEnabled,
+    fetchCities,
+    detectGeoLocation,
+  } = useLocationStore();
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -23,6 +33,11 @@ export const CitySelectorModal: React.FC<CitySelectorModalProps> = ({ isOpen, on
 
   const handleSelectCity = (cityName: string) => {
     setCity(cityName);
+    onClose();
+  };
+
+  const handleShowAllCities = () => {
+    setCityFilterEnabled(false);
     onClose();
   };
 
@@ -64,6 +79,27 @@ export const CitySelectorModal: React.FC<CitySelectorModalProps> = ({ isOpen, on
         </div>
 
         <div className="p-5 space-y-4 max-h-[80vh] overflow-y-auto">
+          <button
+            type="button"
+            onClick={handleShowAllCities}
+            className={`w-full flex items-center justify-between gap-3 p-3 rounded-xl border text-left transition-all cursor-pointer ${
+              !isCityFilterEnabled
+                ? 'border-[#265447] bg-[#EEF5F1] dark:border-[#3DAE8B] dark:bg-[#1E3028] text-[#265447] dark:text-[#3DAE8B]'
+                : 'border-[#E5E7EB] dark:border-[#22382F] text-[#173B33] dark:text-[#EAF3EF] hover:bg-[#F9FAFB] dark:hover:bg-[#1D2A25]'
+            }`}
+          >
+            <span className="flex items-center gap-2.5">
+              <Globe2 className="w-4 h-4" />
+              <span>
+                <span className="block text-sm font-semibold">Усі міста</span>
+                <span className="block text-xs text-[#6D8279] dark:text-[#A4B3AF]">
+                  Не обмежувати каталог за містом
+                </span>
+              </span>
+            </span>
+            {!isCityFilterEnabled && <Check className="w-4 h-4 shrink-0" />}
+          </button>
+
           {/* Autodetect button */}
           <button
             onClick={handleDetectGeo}
@@ -93,7 +129,9 @@ export const CitySelectorModal: React.FC<CitySelectorModalProps> = ({ isOpen, on
             </span>
             <div className="flex flex-wrap gap-2">
               {POPULAR_CITIES.map((cityName) => {
-                const isSelected = currentCity.toLowerCase() === cityName.toLowerCase();
+                const isSelected =
+                  isCityFilterEnabled &&
+                  currentCity.toLowerCase() === cityName.toLowerCase();
                 return (
                   <button
                     key={cityName}
@@ -128,7 +166,9 @@ export const CitySelectorModal: React.FC<CitySelectorModalProps> = ({ isOpen, on
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {filteredCities.map((item) => {
-                  const isSelected = currentCity.toLowerCase() === item.city.toLowerCase();
+                  const isSelected =
+                    isCityFilterEnabled &&
+                    currentCity.toLowerCase() === item.city.toLowerCase();
                   return (
                     <button
                       key={item.city}
