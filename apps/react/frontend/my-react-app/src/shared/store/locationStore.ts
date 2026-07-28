@@ -93,23 +93,16 @@ export const useLocationStore = create<LocationState>()(
       },
 
       fetchCities: async () => {
+        const { availableCities, isLoadingCities } = get();
+        if (isLoadingCities || availableCities.length > 0) return;
+
         set({ isLoadingCities: true });
         try {
-          const { data } = await apiClient.get<CityItem[]>('/api/v1/stores/cities');
-          if (Array.isArray(data) && data.length > 0) {
-            set({ availableCities: prepareCities(data) });
-          } else {
-            const cities = await fetchCitiesFromStores();
-            set({ availableCities: cities.length > 0 ? cities : FALLBACK_CITIES });
-          }
-        } catch (e) {
-          console.error('[locationStore] Failed to fetch cities', e);
-          try {
-            const cities = await fetchCitiesFromStores();
-            set({ availableCities: cities.length > 0 ? cities : FALLBACK_CITIES });
-          } catch {
-            set({ availableCities: FALLBACK_CITIES });
-          }
+          const cities = await fetchCitiesFromStores();
+          set({ availableCities: cities.length > 0 ? cities : FALLBACK_CITIES });
+        } catch (error) {
+          console.warn('[locationStore] Failed to derive cities from stores', error);
+          set({ availableCities: FALLBACK_CITIES });
         } finally {
           set({ isLoadingCities: false });
         }
