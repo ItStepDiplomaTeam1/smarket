@@ -10,7 +10,9 @@ import { useQuery } from '@tanstack/react-query';
 import { type ReceiptListItem } from '@/hooks/api/useCartApi';
 import { ReceiptsDropdown } from './ReceiptsDropdown';
 import { HeaderSearch } from '@/shared/ui/Header/HeaderSearch';
-import { ReceiptText } from 'lucide-react';
+import { ReceiptText, MapPin } from 'lucide-react';
+import { useLocationStore } from '@/shared/store/locationStore';
+import { CitySelectorModal } from './CitySelectorModal';
 
 // ================= ICONS =================
 const HeartIcon = ({ filled = false }: { filled?: boolean }) => (
@@ -73,6 +75,9 @@ export function Header() {
     const [favoritesOpen, setFavoritesOpen] = useState(false);
     const [receiptsOpen, setReceiptsOpen] = useState(false);
     const [searchOpen, setSearchOpen] = useState(false);
+    const [cityModalOpen, setCityModalOpen] = useState(false);
+
+    const currentCity = useLocationStore((state) => state.currentCity);
 
     const dropdownRef = useRef<HTMLDivElement>(null);
     const favoritesRef = useRef<HTMLDivElement>(null);
@@ -146,7 +151,17 @@ export function Header() {
                     <NavLink to="/cart" viewTransition className={navLinkClass} onClick={() => setMobileMenuOpen(false)}>Кошик</NavLink>
                 </nav>
 
-                <div className="flex items-center gap-4 md:gap-6 z-10">
+                <div className="flex items-center gap-3 md:gap-4 z-10">
+                    <button
+                        type="button"
+                        onClick={() => setCityModalOpen(true)}
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-[#EEF5F1] dark:bg-[#1C2C26] text-[#265447] dark:text-[#3DAE8B] hover:bg-[#E2ECE7] dark:hover:bg-[#243A32] font-semibold text-xs md:text-sm transition-all cursor-pointer border border-[rgba(38,84,71,0.12)] dark:border-[rgba(61,174,139,0.2)] shadow-xs"
+                        title="Змінити місто"
+                    >
+                        <MapPin className="w-3.5 h-3.5 md:w-4 md:h-4 text-[#265447] dark:text-[#3DAE8B] shrink-0" />
+                        <span className="max-w-[70px] md:max-w-[100px] truncate">{currentCity}</span>
+                    </button>
+
                     <ThemeToggle />
 
                     {/* ЛУПА */}
@@ -334,6 +349,7 @@ export function Header() {
                 </div>
             </div>
             <HeaderSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
+            <CitySelectorModal isOpen={cityModalOpen} onClose={() => setCityModalOpen(false)} />
         </header>
     );
 }

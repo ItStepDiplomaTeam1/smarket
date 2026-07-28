@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, Package, Search, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { apiClient } from '@/shared/api/apiClient';
+import { useLocationStore } from '@/shared/store/locationStore';
 
 interface StoreOffer {
   price: number;
@@ -108,11 +109,13 @@ export function HeaderSearch({ isOpen, onClose }: HeaderSearchProps) {
     };
   }, [isOpen, onClose, openCatalog, query]);
 
+  const currentCity = useLocationStore((state) => state.currentCity);
+
   const { data, isFetching } = useQuery<SearchResponse>({
-    queryKey: ['header-search', debouncedQuery],
+    queryKey: ['header-search', debouncedQuery, currentCity],
     queryFn: async () => {
       const { data: response } = await apiClient.get('/api/v1/search/search', {
-        params: { q: debouncedQuery, limit: 7, offset: 0 },
+        params: { q: debouncedQuery, limit: 7, offset: 0, city: currentCity },
       });
       return response;
     },

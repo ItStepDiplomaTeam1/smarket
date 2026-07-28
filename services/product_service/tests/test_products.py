@@ -201,3 +201,46 @@ async def test_get_product_by_id_unknown(mock_db):
     assert response.status_code == 404
     # Ensure raw exceptions don't leak
     assert "detail" in response.json()
+
+
+@pytest.mark.asyncio
+async def test_get_stores_cities(mock_db):
+    mock_row_1 = MagicMock()
+    mock_row_1.city = "Київ"
+    mock_row_1.count = 15
+
+    mock_row_2 = MagicMock()
+    mock_row_2.city = "Львів"
+    mock_row_2.count = 8
+
+    mock_result = MagicMock()
+    mock_result.all.return_value = [mock_row_1, mock_row_2]
+    mock_db.execute.return_value = mock_result
+
+    response = client.get("/api/v1/stores/cities")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 2
+    assert data[0]["city"] == "Київ"
+    assert data[0]["count"] == 15
+    assert data[1]["city"] == "Львів"
+    assert data[1]["count"] == 8
+
+
+@pytest.mark.asyncio
+async def test_get_products_city_filter(mock_db, mock_product, mock_price):
+    mock_db.scalar.return_value = 1
+
+    mock_result_products = MagicMock()
+    mock_result_products.all.return_value = [(mock_product, 45.50, True)]
+
+    mock_result_prices = MagicMock()
+    mock_result_prices.scalars().all.return_value = [mock_price]
+
+    mock_db.execute.side_effect = [mock_result_products, mock_result_prices]
+
+    response = client.get("/api/v1/products?city=Київ")
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["items"]) == 1
+

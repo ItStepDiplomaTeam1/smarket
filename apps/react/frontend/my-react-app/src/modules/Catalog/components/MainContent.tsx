@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useFavoritesStore } from '@/shared/context/favoritesStore';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
+import { useLocationStore } from '@/shared/store/locationStore';
 
 // ================= SVG ІКОНКИ ДЛЯ МАКЕТУ =================
 const CheckIcon = ({ className = "text-white dark:text-[#0B120F]" }) => (
@@ -227,6 +228,9 @@ const fetchProducts = async (filters: FetchFilters): Promise<ProductsResponse> =
     if (filters.search.trim()) {
         url.searchParams.append('q', filters.search.trim());
       }
+    if (filters.city) {
+        url.searchParams.append('city', filters.city);
+    }
     url.searchParams.append('limit', limit.toString());
     url.searchParams.append('offset', skip.toString());
     
@@ -385,6 +389,8 @@ export function MainContent() {
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
+  const currentCity = useLocationStore((state) => state.currentCity);
+
   const filterParams: FetchFilters = {
     page,
     category: selectedCategory,
@@ -394,7 +400,8 @@ export function MainContent() {
     discounts: selectedDiscounts,
     maxPrice,
     search: debouncedSearch,
-    sortBy
+    sortBy,
+    city: currentCity
   };
 
   const { data, isLoading } = useQuery<ProductsResponse>({

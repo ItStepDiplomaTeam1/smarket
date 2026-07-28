@@ -89,6 +89,7 @@ async fn configure_meilisearch_index(client: &meilisearch_sdk::client::Client) {
             "category_slug",
             "store_id",
             "retail_chain",
+            "city",
             "price",
             "in_stock",
             "is_hidden",

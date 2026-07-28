@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import { useLocationStore } from '@/shared/store/locationStore';
 
 // ================= ІКОНКИ =================
 const SearchIcon = () => (
@@ -70,8 +71,9 @@ const STORE_BADGES: Record<string, { label: string; className: string }> = {
 // ================= API =================
 const API_BASE = import.meta.env.VITE_API_URL || 'https://smarket-api.duckdns.org';
 
-const fetchStores = async (): Promise<StoreFromAPI[]> => {
-  const res = await fetch(`${API_BASE}/api/v1/stores/?is_active=true`);
+const fetchStores = async (city?: string): Promise<StoreFromAPI[]> => {
+  const url = `${API_BASE}/api/v1/stores/?is_active=true${city ? `&city=${encodeURIComponent(city)}` : ''}`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error('Помилка завантаження магазинів');
   return res.json();
 };
@@ -82,8 +84,8 @@ const fetchStoreStats = async (storeId: string): Promise<StoreStats> => {
   return res.json();
 };
 
-const fetchStoresWithStats = async (): Promise<StoreCard[]> => {
-  const stores = await fetchStores();
+const fetchStoresWithStats = async (city?: string): Promise<StoreCard[]> => {
+  const stores = await fetchStores(city);
   
   const chainMap = new Map<string, StoreFromAPI>();
   for (const store of stores) {
@@ -106,7 +108,7 @@ const fetchStoresWithStats = async (): Promise<StoreCard[]> => {
           prod: stats.total_products,
           promo: stats.promo_products,
           eco: stats.max_savings,
-          city: store.city || '',
+          city: store.city || city || '',
         };
       } catch {
         return {
@@ -117,7 +119,7 @@ const fetchStoresWithStats = async (): Promise<StoreCard[]> => {
           prod: 0,
           promo: 0,
           eco: 0,
-          city: store.city || '',
+          city: store.city || city || '',
         };
       }
     })
@@ -148,14 +150,15 @@ const StoreCardSkeleton: React.FC = () => (
 
 // ================= КОМПОНЕНТ =================
 export const Mainpart: React.FC = () => {
+  const currentCity = useLocationStore((state) => state.currentCity);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategoryTab, setActiveCategoryTab] = useState('popular');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
 
   const { data: stores, isLoading } = useQuery<StoreCard[]>({
-    queryKey: ['storesList'],
-    queryFn: fetchStoresWithStats,
+    queryKey: ['storesList', currentCity],
+    queryFn: () => fetchStoresWithStats(currentCity),
     staleTime: 5 * 60 * 1000, 
   });
 

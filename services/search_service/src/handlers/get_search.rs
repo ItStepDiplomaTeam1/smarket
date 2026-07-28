@@ -43,6 +43,7 @@ pub struct ProductFilters {
     pub category_id: Option<i32>,
     pub category_slug: Option<String>,
     pub store_id: Option<String>,
+    pub city: Option<String>,
     /// Multiple retail chains — combined with OR logic in Meilisearch filter.
     pub retail_chains: Vec<String>,
     pub price_min: Option<f64>,
@@ -174,6 +175,8 @@ pub struct SearchRequest {
     pub category_slug: Option<String>,
     #[serde(default)]
     pub store_id: Option<String>,
+    #[serde(default)]
+    pub city: Option<String>,
     /// Multi-value: ?retail_chain=atb&retail_chain=silpo — OR logic across chains.
     #[serde(default, deserialize_with = "deserialize_string_vec")]
     pub retail_chain: Vec<String>,
@@ -225,6 +228,7 @@ pub async fn search_handler(
         category_id: payload.category_id,
         category_slug: payload.category_slug.clone(),
         store_id: payload.store_id.clone(),
+        city: payload.city.clone(),
         retail_chains: payload.retail_chain.clone(),
         price_min: payload.price_min,
         price_max: payload.price_max,
@@ -261,6 +265,10 @@ pub async fn search_handler(
 
     if let Some(ref store) = filters.store_id {
         filter_conditions.push(format!("store_id = \"{}\"", store));
+    }
+
+    if let Some(ref city_val) = filters.city {
+        filter_conditions.push(format!("city = \"{}\"", city_val));
     }
 
     // Multi-store filter: retail_chain IN ["atb", "silpo"]
@@ -398,6 +406,7 @@ pub async fn search_handler(
                                 "id": doc.store_id,
                                 "name": doc.store_name,
                                 "retail_chain": doc.retail_chain,
+                                "city": doc.city,
                             },
                             "price": doc.price,
                             "old_price": doc.old_price,

@@ -156,6 +156,7 @@ async def get_products(
     category: Optional[str] = Query(None, description="ID категорії"),
     subcategories: Optional[str] = Query(None, description="Слаги підкатегорій"),
     offers: Optional[str] = Query(None, description="Фільтри пропозицій (promo, new, save)"),
+    city: Optional[str] = Query(None, description="Фільтр по місту"),
     # === НОВИЙ ПАРАМЕТР З ФРОНТЕНДУ ===
     discounts: Optional[str] = Query(None, description="Розмір знижки через кому (напр. '10,20,30-50')"),
     max_price: Optional[float] = Query(None, description="Максимальна ціна"),
@@ -175,6 +176,7 @@ async def get_products(
     # entire immutable price history before LIMIT can be applied.
     has_price_filters = bool(
         store_ids
+        or city
         or max_price is not None
         or discount_list
         or {"promo", "save"}.intersection(offer_list)
@@ -253,10 +255,22 @@ async def get_products(
         ),
     )
 
-    if store_ids:
+    if store_ids and city:
+        current_prices_stmt = current_prices_stmt.join(
+            Store, Price.store_id == Store.external_id
+        ).where(
+            Store.retail_chain.in_(store_ids),
+            func.lower(Store.city) == city.strip().lower(),
+        )
+    elif store_ids:
         current_prices_stmt = current_prices_stmt.join(
             Store, Price.store_id == Store.external_id
         ).where(Store.retail_chain.in_(store_ids))
+    elif city:
+        current_prices_stmt = current_prices_stmt.join(
+            Store, Price.store_id == Store.external_id
+        ).where(func.lower(Store.city) == city.strip().lower())
+
 
     current_prices_cte = current_prices_stmt.cte("current_prices")
 

@@ -1,14 +1,35 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import ORJSONResponse
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional
 
 from app.database.models import Store
-from app.shared.schemas import StoreResponse, StoreStatsResponse
+from app.shared.schemas import CityItemResponse, StoreResponse, StoreStatsResponse
 from app.database.session import get_db
 
 router = APIRouter(default_response_class=ORJSONResponse)
+
+
+@router.get(
+    "/cities",
+    response_model=list[CityItemResponse],
+    status_code=status.HTTP_200_OK,
+    summary="Список міст з активними магазинами",
+    description="Повертає список унікальних міст та кількість активних магазинів у кожному місті.",
+)
+async def get_store_cities(
+    db: AsyncSession = Depends(get_db),
+):
+    stmt = (
+        select(Store.city, func.count(Store.external_id).label("count"))
+        .where(Store.is_active == True, Store.city.isnot(None), Store.city != "")
+        .group_by(Store.city)
+        .order_by(func.count(Store.external_id).desc())
+    )
+    result = await db.execute(stmt)
+    rows = result.all()
+    return [CityItemResponse(city=r.city, count=r.count) for r in rows if r.city]
 
 
 @router.get(
@@ -33,13 +54,14 @@ async def get_stores(
     if retail_chain:
         stmt = stmt.where(Store.retail_chain == retail_chain)
     if city:
-        stmt = stmt.where(Store.city == city)
+        stmt = stmt.where(func.lower(Store.city) == city.strip().lower())
     if is_active is not None:
         stmt = stmt.where(Store.is_active == is_active)
 
     stmt = stmt.order_by(Store.name).offset(skip).limit(limit)
     result = await db.execute(stmt)
     return list(result.scalars().all())
+
 
 
 @router.get(

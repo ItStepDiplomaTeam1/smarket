@@ -51,6 +51,9 @@ pub struct ProductDocument {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub retail_chain: Option<String>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub city: Option<String>,
+
     pub price: f64,
 
     #[serde(skip_serializing_if = "Option::is_none")]

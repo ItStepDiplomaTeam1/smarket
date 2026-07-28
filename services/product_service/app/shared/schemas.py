@@ -26,6 +26,12 @@ class StoreStatsResponse(BaseModel):
     store_logo_url: str
 
 
+class CityItemResponse(BaseModel):
+    city: str
+    count: int
+
+
+
 class CategoryResponse(BaseModel):
     id: int
     slug: str
