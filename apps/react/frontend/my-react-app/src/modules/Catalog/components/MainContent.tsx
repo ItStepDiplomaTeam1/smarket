@@ -7,6 +7,7 @@ import { useLocationStore } from '@/shared/store/locationStore';
 import { getOptionalCityFilter } from '@/shared/utils/city';
 import { fetchExistingProducts } from '@/shared/api/productCatalog';
 import { mergeVerifiedProducts } from '@/shared/utils/productValidation';
+import { CatalogProductsSkeleton, CatalogRefreshIndicator } from '@/shared/ui';
 
 // ================= SVG ІКОНКИ ДЛЯ МАКЕТУ =================
 const CheckIcon = ({ className = "text-white dark:text-[#0B120F]" }) => (
@@ -388,7 +389,7 @@ export function MainContent() {
     city: cityFilter
   };
 
-  const { data, isLoading } = useQuery<ProductsResponse>({
+  const { data, isLoading, isFetching } = useQuery<ProductsResponse>({
       queryKey: ['productsList', filterParams],
       queryFn: () => fetchProducts(filterParams),
   });
@@ -790,6 +791,8 @@ export function MainContent() {
               <div className="flex items-center border border-[#E5E7EB] dark:border-[#1F3227] rounded-[8px] overflow-hidden bg-white dark:bg-[#0D1612] transition-colors shrink-0">
                 <button 
                   onClick={() => setViewMode('grid')}
+                  aria-label="Показати товари сіткою"
+                  aria-pressed={viewMode === 'grid'}
                   className={`p-[10px] border-none cursor-pointer flex items-center justify-center transition-colors ${
                     viewMode === 'grid' ? 'bg-[#F3F4F6] dark:bg-[#3CD27D] text-[#111827] dark:text-[#0B120F]' : 'bg-white dark:bg-transparent text-[#9CA3AF] dark:text-[#7A8D85] hover:bg-[#F9FAFB] dark:hover:text-[#A4B3AF]'
                   }`}
@@ -799,6 +802,8 @@ export function MainContent() {
                 <div className="w-[1px] h-[20px] bg-[#E5E7EB] dark:bg-[#1F3227]"></div>
                 <button 
                   onClick={() => setViewMode('list')}
+                  aria-label="Показати товари списком"
+                  aria-pressed={viewMode === 'list'}
                   className={`p-[10px] border-none cursor-pointer flex items-center justify-center transition-colors ${
                     viewMode === 'list' ? 'bg-[#F3F4F6] dark:bg-[#3CD27D] text-[#111827] dark:text-[#0B120F]' : 'bg-white dark:bg-transparent text-[#9CA3AF] dark:text-[#7A8D85] hover:bg-[#F9FAFB] dark:hover:text-[#A4B3AF]'
                   }`}
@@ -812,7 +817,11 @@ export function MainContent() {
           {/* ================= АКТИВНІ ТЕГИ ================= */}
           <div className="flex flex-col sm:flex-row sm:items-center flex-wrap gap-[8px] sm:gap-[12px] mb-[24px]">
             <p className="text-[13px] text-[#6D8279] dark:text-[#7A8D85] m-0">
-                Знайдено <span className="font-bold text-[#111827] dark:text-[#3CD27D]">{totalProducts} товари</span>
+                {isLoading ? (
+                  <span className="font-bold text-[#265447] dark:text-[#3CD27D]">Шукаємо товари…</span>
+                ) : (
+                  <>Знайдено <span className="font-bold text-[#111827] dark:text-[#3CD27D]">{totalProducts} товари</span></>
+                )}
             </p>
             
             <div className="flex gap-[8px] flex-wrap">
@@ -895,17 +904,17 @@ export function MainContent() {
           </div>
 
           {/* ================= СІТКА ПРОДУКТІВ ================= */}
-          <div className={`grid gap-[16px] ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'grid-cols-1'}`}>
-            {isLoading ? (
-              <div className="col-span-full text-center py-10 font-medium text-[#6D8279] dark:text-[#7A8D85]">
-                Завантаження каталогу...
-              </div>
-            ) : products.length === 0 ? (
-              <div className="col-span-full text-center py-10 font-medium text-[#111827] dark:text-white">
-                За вибраними фільтрами нічого не знайдено.
-              </div>
-            ) : (
-              products.map((product, idx) => {
+          <section className="relative" aria-label="Каталог товарів" aria-busy={isFetching}>
+            {isFetching && !isLoading ? <CatalogRefreshIndicator /> : null}
+            <div className={`grid gap-[16px] ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'grid-cols-1'}`}>
+              {isLoading ? (
+                <CatalogProductsSkeleton viewMode={viewMode} />
+              ) : products.length === 0 ? (
+                <div className="col-span-full text-center py-10 font-medium text-[#111827] dark:text-white">
+                  За вибраними фільтрами нічого не знайдено.
+                </div>
+              ) : (
+                products.map((product, idx) => {
                 const isListView = viewMode === 'list';
                 const eligibleOffers = getEligibleOffers(product, selectedStores, maxPrice);
                 const offer = getLowestPriceOffer(eligibleOffers);
@@ -1057,9 +1066,10 @@ export function MainContent() {
                     </div>
                   </div>
                 );
-              })
-            )}
-          </div>
+                })
+              )}
+            </div>
+          </section>
 
           {/* Блок пагінації */}
           {products.length > 0 && (

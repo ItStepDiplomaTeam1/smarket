@@ -434,6 +434,29 @@
   background-size: 200% 100%;
 }
 
+@keyframes catalog-progress {
+  0% {
+    transform: translateX(-115%);
+  }
+  55% {
+    transform: translateX(85%);
+  }
+  100% {
+    transform: translateX(240%);
+  }
+}
+
+.catalog-progress-bar {
+  animation: catalog-progress 1.35s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shimmer-bg,
+  .catalog-progress-bar {
+    animation: none;
+  }
+}
+
 /* Smooth hover scale and shadow lift for cards */
 .hover-lift {
   transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.22s ease, border-color 0.22s ease;
@@ -453,4 +476,4 @@
 }
 .btn-smooth:active {
   transform: translateY(1px) scale(0.98);
-}
+}

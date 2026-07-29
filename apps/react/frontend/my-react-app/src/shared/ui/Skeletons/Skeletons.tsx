@@ -1,17 +1,103 @@
 import React from 'react';
 
-// Generic shimmering card to use in grids
-export const ProductCardSkeleton = () => (
-  <div className="w-[271px] h-[489px] shrink-0 bg-white border border-[rgba(38,84,71,0.08)] rounded-[16px] p-[16px] flex flex-col box-border dark:bg-[#1D2A25] dark:border-[rgba(38,84,71,0.2)] transition-colors">
-    {/* Product Image placeholder */}
-    <div className="w-full h-[339px] rounded-[10px] shimmer-bg mb-[16px]" />
-    {/* Title placeholder */}
-    <div className="h-4 shimmer-bg rounded w-3/4 mb-[8px]" />
-    <div className="h-3 shimmer-bg rounded w-1/2 mb-[16px]" />
-    {/* Price & Button placeholder */}
-    <div className="mt-auto flex justify-between items-center">
-      <div className="h-5 shimmer-bg rounded w-1/3" />
-      <div className="h-[26px] w-[92px] shimmer-bg rounded-[10px]" />
+type ProductSkeletonViewMode = 'grid' | 'list';
+
+interface ProductCardSkeletonProps {
+  viewMode?: ProductSkeletonViewMode;
+}
+
+const GRID_SKELETON_IDS = Array.from({ length: 8 }, (_, index) => `grid-${index}`);
+const LIST_SKELETON_IDS = Array.from({ length: 4 }, (_, index) => `list-${index}`);
+
+// Generic shimmering card that mirrors both catalog layouts.
+export const ProductCardSkeleton = ({ viewMode = 'grid' }: ProductCardSkeletonProps) => {
+  const isListView = viewMode === 'list';
+
+  return (
+    <div
+      aria-hidden="true"
+      className={`border border-[#E5E7EB] dark:border-transparent rounded-[12px] p-[16px] bg-white dark:bg-[#15231D] box-border ${
+        isListView
+          ? 'flex min-h-[260px] flex-col sm:grid sm:grid-cols-[180px_minmax(0,1fr)] sm:grid-rows-[auto_1fr] sm:gap-x-[20px]'
+          : 'flex min-h-[404px] flex-col'
+      }`}
+    >
+      <div className={`flex min-h-[24px] items-center justify-between ${isListView ? 'sm:col-start-2 sm:row-start-1' : ''}`}>
+        <div className="h-[18px] w-[58px] rounded-[4px] shimmer-bg" />
+        <div className="h-[18px] w-[18px] rounded-full shimmer-bg" />
+      </div>
+
+      <div
+        className={`w-full rounded-[8px] shimmer-bg ${
+          isListView
+            ? 'mt-[12px] mb-[16px] h-[140px] sm:col-start-1 sm:row-start-1 sm:row-span-2 sm:mt-0 sm:mb-0 sm:h-full sm:min-h-[190px]'
+            : 'mt-[12px] mb-[16px] h-[140px]'
+        }`}
+      />
+
+      <div className={`flex flex-1 flex-col ${isListView ? 'sm:col-start-2 sm:row-start-2' : ''}`}>
+        <div className="mb-[8px] h-[10px] w-1/3 rounded shimmer-bg" />
+        <div className="mb-[7px] h-[16px] w-5/6 rounded shimmer-bg" />
+        <div className="mb-[16px] h-[16px] w-2/3 rounded shimmer-bg" />
+        <div className="mb-[18px] h-[12px] w-1/2 rounded shimmer-bg" />
+
+        <div className={`mt-auto flex gap-[16px] ${isListView ? 'flex-col sm:flex-row sm:items-end sm:justify-between' : 'flex-col'}`}>
+          <div className="space-y-[5px]">
+            <div className="h-[10px] w-[24px] rounded shimmer-bg" />
+            <div className="h-[22px] w-[82px] rounded shimmer-bg" />
+          </div>
+          <div className={`${isListView ? 'w-full sm:w-[160px]' : 'w-full'} h-[34px] rounded-[6px] shimmer-bg`} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export const CatalogProductsSkeleton = ({ viewMode = 'grid' }: ProductCardSkeletonProps) => {
+  const skeletonIds = viewMode === 'list' ? LIST_SKELETON_IDS : GRID_SKELETON_IDS;
+
+  return (
+    <>
+      <div
+        className="relative col-span-full overflow-hidden rounded-[14px] border border-[#DCECE5] bg-[#F2FBF7] px-[18px] py-[14px] dark:border-[#244337] dark:bg-[#13271E]"
+        role="status"
+        aria-live="polite"
+      >
+        <div className="relative flex items-center gap-[12px]">
+          <span className="relative flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full bg-white shadow-sm dark:bg-[#1A3026]">
+            <span className="absolute inset-[5px] rounded-full border-2 border-[#BEE7D4] border-t-[#265447] motion-safe:animate-spin dark:border-[#285440] dark:border-t-[#3CD27D]" />
+            <span className="h-[6px] w-[6px] rounded-full bg-[#265447] dark:bg-[#3CD27D]" />
+          </span>
+
+          <div className="min-w-0">
+            <p className="m-0 font-manrope text-[14px] font-extrabold text-[#183E32] dark:text-white">
+              Завантажуємо товари
+            </p>
+            <p className="m-0 mt-[2px] truncate text-[12px] text-[#6D8279] dark:text-[#A4B3AF]">
+              Збираємо актуальні ціни з магазинів…
+            </p>
+          </div>
+
+          <span className="ml-auto hidden items-end gap-[4px] sm:flex" aria-hidden="true">
+            <span className="h-[5px] w-[5px] rounded-full bg-[#3CD27D] motion-safe:animate-bounce" />
+            <span className="h-[5px] w-[5px] rounded-full bg-[#3CD27D] motion-safe:animate-bounce [animation-delay:120ms]" />
+            <span className="h-[5px] w-[5px] rounded-full bg-[#3CD27D] motion-safe:animate-bounce [animation-delay:240ms]" />
+          </span>
+        </div>
+      </div>
+
+      {skeletonIds.map((id) => (
+        <ProductCardSkeleton key={id} viewMode={viewMode} />
+      ))}
+    </>
+  );
+};
+
+export const CatalogRefreshIndicator = () => (
+  <div className="pointer-events-none absolute inset-x-0 -top-[8px] z-10" role="status" aria-live="polite">
+    <span className="sr-only">Оновлюємо список товарів…</span>
+    <div className="h-[3px] overflow-hidden rounded-full bg-[#DDEDE6] dark:bg-[#20382E]">
+      <div className="catalog-progress-bar h-full w-[42%] rounded-full bg-gradient-to-r from-transparent via-[#2DBE72] to-transparent dark:via-[#3CD27D]" />
     </div>
   </div>
 );
