@@ -367,12 +367,12 @@ services:
       - mongodb_data:/data/db
     healthcheck:
       <<: *healthcheck-defaults
-      test: ["CMD-SHELL", "mongosh --quiet --host 127.0.0.1 --port 27017 --username \"$$MONGO_INITDB_ROOT_USERNAME\" --password \"$$MONGO_INITDB_ROOT_PASSWORD\" --authenticationDatabase admin --eval 'quit(db.adminCommand({ ping: 1 }).ok ? 0 : 1)'"]
+      test: ["CMD-SHELL", "mongosh --quiet --eval 'quit(db.adminCommand({ ping: 1 }).ok ? 0 : 1)'"]
       interval: "${MONGO_HEALTH_INTERVAL:-10s}"
       timeout: "${MONGO_HEALTH_TIMEOUT:-10s}"
       retries: 30
       start_period: "${MONGO_HEALTH_START_PERIOD:-120s}"
-    mem_limit: 768m
+    mem_limit: 1024m
     cpus: 1.00
     pids_limit: 256
     labels:
