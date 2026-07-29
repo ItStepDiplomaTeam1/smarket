@@ -69,10 +69,27 @@ export function TermsOfUsePage() {
     }
   ];
 
-  const [expandedId, setExpandedId] = useState<number | null>(1);
+  const [expandedIds, setExpandedIds] = useState<Set<number>>(() => new Set([1]));
 
   const toggleSection = (id: number) => {
-    setExpandedId(prev => (prev === id ? null : id));
+    setExpandedIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const openSection = (id: number) => {
+    setExpandedIds((previous) => {
+      if (previous.has(id)) return previous;
+      const next = new Set(previous);
+      next.add(id);
+      return next;
+    });
   };
 
   return (
@@ -90,9 +107,9 @@ export function TermsOfUsePage() {
                 <a
                   key={item.id}
                   href={`#section-${item.id}`}
-                  onClick={() => setExpandedId(item.id)}
+                  onClick={() => openSection(item.id)}
                   className={`text-[13px] lg:text-[14px] font-medium leading-[20px] transition-colors ${
-                    expandedId === item.id 
+                    expandedIds.has(item.id)
                       ? 'text-[#173B33] dark:text-[#3CD27D] font-bold' 
                       : 'text-[#6D8279] dark:text-[#7A8D85] hover:text-[#173B33] dark:hover:text-[#A4B3AF]'
                   }`}
@@ -148,7 +165,7 @@ export function TermsOfUsePage() {
           {/* Список правил з акордеоном */}
           <div className="flex flex-col gap-3 md:gap-4">
             {termsItems.map((item) => {
-              const isOpen = expandedId === item.id;
+              const isOpen = expandedIds.has(item.id);
               
               return (
                 <div 
@@ -159,6 +176,8 @@ export function TermsOfUsePage() {
                   <button 
                     type="button"
                     onClick={() => toggleSection(item.id)}
+                    aria-expanded={isOpen}
+                    aria-controls={`section-content-${item.id}`}
                     className="w-full flex items-center justify-between p-[16px] md:p-5 text-left select-none hover:bg-[#FDFEFE] dark:hover:bg-[#1A2E25] transition-colors focus:outline-none gap-3"
                   >
                     <div className="flex items-center gap-[12px] md:gap-4">
@@ -180,36 +199,41 @@ export function TermsOfUsePage() {
                   </button>
 
                   <div 
-                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                      isOpen ? 'max-h-[1200px] opacity-100 border-t border-[#F5F7F6] dark:border-[#1F3227]' : 'max-h-0 opacity-0'
+                    id={`section-content-${item.id}`}
+                    className={`grid overflow-hidden transition-[grid-template-rows,opacity] duration-300 ease-out ${
+                      isOpen
+                        ? 'grid-rows-[1fr] opacity-100 border-t border-[#F5F7F6] dark:border-[#1F3227]'
+                        : 'grid-rows-[0fr] opacity-0'
                     }`}
                   >
-                    <div className="p-[16px] pt-0 md:p-5 md:pt-0 md:pl-[68px] flex flex-col gap-[12px] md:gap-4 text-[13px] md:text-[14px] font-medium text-[#6D8279] dark:text-[#A4B3AF] leading-[22px] transition-colors mt-[12px] md:mt-0">
-                      <p className="m-0">
-                        {item.intro}
-                      </p>
-                      
-                      {item.subIntro && (
-                        <p className="font-semibold text-[#173B33] dark:text-white m-0 mt-1 transition-colors">
-                          {item.subIntro}
+                    <div className="min-h-0">
+                      <div className="p-[16px] pt-0 md:p-5 md:pt-0 md:pl-[68px] flex flex-col gap-[12px] md:gap-4 text-[13px] md:text-[14px] font-medium text-[#6D8279] dark:text-[#A4B3AF] leading-[22px] transition-colors mt-[12px] md:mt-0">
+                        <p className="m-0">
+                          {item.intro}
                         </p>
-                      )}
-                      
-                      {item.bullets && (
-                        <ul className="list-disc pl-5 leading-[22px] md:leading-[24px] flex flex-col gap-1.5">
-                          {item.bullets.map((bullet, index) => (
-                            <li key={index} className="pl-1">
-                              {bullet}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                      
-                      {item.outro && (
-                        <p className="m-0 mt-1 md:mt-2">
-                          {item.outro}
-                        </p>
-                      )}
+
+                        {item.subIntro && (
+                          <p className="font-semibold text-[#173B33] dark:text-white m-0 mt-1 transition-colors">
+                            {item.subIntro}
+                          </p>
+                        )}
+
+                        {item.bullets && (
+                          <ul className="list-disc pl-5 leading-[22px] md:leading-[24px] flex flex-col gap-1.5">
+                            {item.bullets.map((bullet, index) => (
+                              <li key={index} className="pl-1">
+                                {bullet}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+
+                        {item.outro && (
+                          <p className="m-0 mt-1 md:mt-2">
+                            {item.outro}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
 

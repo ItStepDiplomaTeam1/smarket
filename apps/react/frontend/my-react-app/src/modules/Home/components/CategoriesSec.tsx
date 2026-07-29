@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import home6 from '@/shared/assets/home6.svg';
 import home7 from '@/shared/assets/home7.svg';
 import home8 from '@/shared/assets/home8.svg';
@@ -12,10 +13,14 @@ import home9D from '@/shared/assets/home9D.svg';
 import home10D from '@/shared/assets/home10D.svg';
 import home11D from '@/shared/assets/home11D.svg';
 
-const CATEGORY_LIGHT_ICONS = [home6, home7, home8, home9, home10, home11];
-const CATEGORY_DARK_ICONS = [home6D, home7D, home8D, home9D, home10D, home11D];
-
-import { useNavigate } from 'react-router-dom';
+const CATEGORIES = [
+  { name: 'Продукти', slug: 'products', lightIcon: home6, darkIcon: home6D, fallback: '🥦' },
+  { name: 'Напої', slug: 'drinks', lightIcon: home7, darkIcon: home7D, fallback: '🥤' },
+  { name: 'Дитячі товари', slug: 'baby', lightIcon: home8, darkIcon: home8D, fallback: '🍼' },
+  { name: 'Побутова хімія', slug: 'chemistry', lightIcon: home9, darkIcon: home9D, fallback: '🧼' },
+  { name: 'Краса та догляд', slug: 'beauty', lightIcon: home10, darkIcon: home10D, fallback: '💄' },
+  { name: 'Товари для дому', slug: 'home', lightIcon: home11, darkIcon: home11D, fallback: '🏠' },
+] as const;
 
 export function CategoriesSec() {
   const navigate = useNavigate();
@@ -32,42 +37,45 @@ export function CategoriesSec() {
           </p>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-[16px] sm:gap-[20px]">
-          {[
-            { name: 'Продукти', slug: 'products' },
-            { name: 'Напої', slug: 'drinks' },
-            { name: 'Дитячі товари', slug: 'baby' },
-            { name: 'Побутова хімія', slug: 'chemistry' },
-            { name: 'Краса та догляд', slug: 'beauty' },
-            { name: 'Товари для дому', slug: 'home' },
-          ].map(({ name, slug }, idx) => (
-            <div
+          {CATEGORIES.map(({ name, slug, lightIcon, darkIcon, fallback }) => (
+            <button
+              type="button"
               key={name}
               onClick={() => navigate(`/catalog?category=${slug}`)}
-              className="bg-white dark:bg-[#15231D] border border-transparent dark:border-[#1F3227] rounded-[16px] px-[12px] py-[20px] sm:px-[16px] sm:py-[24px] flex flex-col items-center text-center transition-all duration-300 hover:shadow-[0_10px_25px_rgba(0,0,0,0.05)] dark:hover:shadow-none hover:-translate-y-1 cursor-pointer group"
+              className="w-full bg-white dark:bg-[#15231D] border border-transparent dark:border-[#1F3227] rounded-[16px] px-[12px] py-[20px] sm:px-[16px] sm:py-[24px] flex flex-col items-center text-center transition-all duration-300 hover:shadow-[0_10px_25px_rgba(0,0,0,0.05)] dark:hover:shadow-none hover:-translate-y-1 cursor-pointer group"
             >
-              <img 
-                src={CATEGORY_LIGHT_ICONS[idx]} 
-                alt={name} 
-                className="w-[54px] h-[54px] sm:w-[64px] sm:h-[64px] mb-[16px] block dark:hidden" 
-              />
-              <div className="hidden dark:flex w-[54px] h-[54px] sm:w-[64px] sm:h-[64px] rounded-full bg-[#1A2E25] items-center justify-center mb-[16px]">
-                <img 
-                  src={CATEGORY_DARK_ICONS[idx]} 
-                  alt={name} 
-                  className="w-[36px] h-[36px] sm:w-[42px] sm:h-[42px] object-contain opacity-90" 
+              <div className="relative w-[64px] h-[64px] sm:w-[72px] sm:h-[72px] mb-[16px] rounded-[12px] bg-[#EAF7F2] dark:bg-[#1A2E25] flex items-center justify-center overflow-hidden">
+                <span aria-hidden="true" className="text-[30px]">
+                  {fallback}
+                </span>
+                <img
+                  src={lightIcon}
+                  alt=""
+                  width="72"
+                  height="72"
+                  decoding="async"
+                  className="absolute inset-0 w-full h-full object-contain block dark:hidden"
+                />
+                <img
+                  src={darkIcon}
+                  alt=""
+                  width="72"
+                  height="72"
+                  decoding="async"
+                  className="absolute inset-0 w-full h-full object-contain hidden dark:block"
                 />
               </div>
 
-                <h3 className="font-inter text-[14px] sm:text-[15px] font-bold text-[#173B33] dark:text-white m-0 mb-[8px] transition-colors">
-                  {name}
-                </h3>
+              <h3 className="font-inter text-[14px] sm:text-[15px] font-bold text-[#173B33] dark:text-white m-0 mb-[8px] transition-colors">
+                {name}
+              </h3>
 
               <div
                 className="font-inter text-[12px] sm:text-[13px] font-semibold text-[#265447] dark:text-[#3CD27D] no-underline transition-colors duration-200 hover:text-[#1A453A] dark:hover:text-white"
               >
                 Переглянути <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
               </div>
-            </div>
+            </button>
           ))}
         </div>
 

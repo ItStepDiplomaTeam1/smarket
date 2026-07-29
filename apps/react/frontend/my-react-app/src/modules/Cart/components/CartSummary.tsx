@@ -72,7 +72,16 @@ export const CartSummary: React.FC = () => {
 
   const hasCompleteStore = completeComparisons.length > 0;
   const selectedStoreName = selectedStore?.storeName ?? 'Немає повного набору';
-  const selectedPrice = selectedStore?.totalPrice ?? 0;
+  const quantitiesByProductId = new Map(
+    activeCart.items.map((item) => [item.productId, item.quantity]),
+  );
+  const selectedPrice = selectedStore?.itemPrices
+    ? selectedStore.itemPrices.reduce(
+        (total, item) =>
+          total + item.unitPrice * (quantitiesByProductId.get(item.productId) ?? item.quantity),
+        0,
+      )
+    : selectedStore?.totalPrice ?? 0;
   const comparison = comparisonData || activeCart.summary.comparison;
 
   const prices = completeComparisons.map((store) => store.totalPrice);

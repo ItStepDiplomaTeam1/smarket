@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { apiClient } from '@/shared/api/apiClient';
+import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { getCityDisplayName, getCityFilterValue } from '@/shared/utils/city';
 
 export interface CityItem {
@@ -80,12 +81,14 @@ export const useLocationStore = create<LocationState>()(
         const normalized = getCityDisplayName(city);
         set({ currentCity: normalized, isCityFilterEnabled: true });
 
-        // Синхронізація з профілем авторизованого користувача якщо доступно
-        apiClient.patch('/api/v1/auth/me', {
-          settings: { city: normalized }
-        }).catch(() => {
-          // The local preference remains valid when the optional profile sync is unavailable.
-        });
+        // Синхронізація з профілем доступна лише після відновлення сесії.
+        if (useAuthStore.getState().isAuthenticated) {
+          apiClient.patch('/api/v1/auth/me', {
+            settings: { city: normalized }
+          }).catch(() => {
+            // The local preference remains valid when the optional profile sync is unavailable.
+          });
+        }
       },
 
       setCityFilterEnabled: (enabled: boolean) => {

@@ -13,6 +13,8 @@ import { useAuthStore } from '@/modules/Auth/store/authStore';
 // DELETE /api/v1/cart/{cart_id} -> deletes cart
 
 export const useFetchCarts = () => {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
   return useQuery<CartListItem[]>({
     queryKey: ['carts'],
     queryFn: async () => {
@@ -27,10 +29,14 @@ export const useFetchCarts = () => {
         updatedAt: cart.updated_at,
       }));
     },
+    enabled: isAuthenticated,
+    retry: false,
   });
 };
 
 export const useFetchCartDetails = (cartId: string | null) => {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
   return useQuery<CartDetailResponse | null>({
     queryKey: ['cart', cartId],
     queryFn: async () => {
@@ -64,12 +70,14 @@ export const useFetchCartDetails = (cartId: string | null) => {
         }
       };
     },
-    enabled: !!cartId,
+    enabled: isAuthenticated && !!cartId,
+    retry: false,
   });
 };
 
 export const useFetchCartComparison = (cartId: string | null) => {
   const user = useAuthStore((state) => state.user);
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const userCity = user?.settings?.city || 'Київ';
 
   return useQuery<StoreComparison[]>({
@@ -111,7 +119,8 @@ export const useFetchCartComparison = (cartId: string | null) => {
         })) ?? [],
       }));
     },
-    enabled: !!cartId,
+    enabled: isAuthenticated && !!cartId,
+    retry: false,
   });
 };
 
@@ -145,11 +154,21 @@ export const useUpdateCartItemQuantity = () => {
       return data;
     },
     onMutate: async (newVariables) => {
-      await queryClient.cancelQueries({ queryKey: ['cart', newVariables.cartId] });
-      const previousCart = queryClient.getQueryData(['cart', newVariables.cartId]);
+      await Promise.all([
+        queryClient.cancelQueries({ queryKey: ['cart', newVariables.cartId] }),
+        queryClient.cancelQueries({ queryKey: ['cart-compare', newVariables.cartId] }),
+      ]);
+      const cartQueryKey = ['cart', newVariables.cartId] as const;
+      const previousCart = queryClient.getQueryData<CartDetailResponse | null>(cartQueryKey);
+      const previousComparisons = queryClient.getQueriesData<StoreComparison[]>({
+        queryKey: ['cart-compare', newVariables.cartId],
+      });
+      const targetProductId = previousCart?.items.find(
+        (item) => item.id === newVariables.itemId,
+      )?.productId;
 
       if (previousCart) {
-        queryClient.setQueryData<CartDetailResponse | null>(['cart', newVariables.cartId], (old) => {
+        queryClient.setQueryData<CartDetailResponse | null>(cartQueryKey, (old) => {
           if (!old) return old;
           return {
             ...old,
@@ -166,12 +185,44 @@ export const useUpdateCartItemQuantity = () => {
         });
       }
 
-      return { previousCart };
+      if (targetProductId) {
+        queryClient.setQueriesData<StoreComparison[]>(
+          { queryKey: ['cart-compare', newVariables.cartId] },
+          (old) => {
+            if (!old) return old;
+
+            return old.map((store) => {
+              const itemPrices = store.itemPrices?.map((item) =>
+                item.productId === targetProductId
+                  ? {
+                      ...item,
+                      quantity: newVariables.quantity,
+                      subtotal: item.unitPrice * newVariables.quantity,
+                    }
+                  : item,
+              );
+
+              return {
+                ...store,
+                itemPrices,
+                totalPrice: itemPrices
+                  ? itemPrices.reduce((total, item) => total + item.subtotal, 0)
+                  : store.totalPrice,
+              };
+            });
+          },
+        );
+      }
+
+      return { previousCart, previousComparisons };
     },
     onError: (err, newVariables, context) => {
-      if (context?.previousCart) {
+      if (context?.previousCart !== undefined) {
         queryClient.setQueryData(['cart', newVariables.cartId], context.previousCart);
       }
+      context?.previousComparisons.forEach(([queryKey, data]) => {
+        queryClient.setQueryData(queryKey, data);
+      });
     },
     onSettled: (data, error, variables) => {
       queryClient.invalidateQueries({ queryKey: ['cart', variables.cartId] });
@@ -214,9 +265,9 @@ export const useDeleteCart = () => {
 export const useCreateCart = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<string, Error, string>({
     mutationFn: async (name: string) => {
-      const { data } = await apiClient.post('/api/v1/cart/', { name });
+      const { data } = await apiClient.post<{ id: string }>('/api/v1/cart/', { name });
       return data.id;
     },
     onSuccess: () => {
@@ -333,13 +384,17 @@ export const useGetReceipt = (token: string) => {
   });
 };
 
-export const useGetMyReceipts = () => {
+export const useGetMyReceipts = (enabled = true) => {
+  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
+
   return useQuery<ReceiptListItem[], Error>({
     queryKey: ['my-receipts'],
     queryFn: async () => {
       const { data } = await apiClient.get('/api/v1/cart/receipts');
       return data;
     },
+    enabled: isAuthenticated && enabled,
+    retry: false,
   });
 };
 

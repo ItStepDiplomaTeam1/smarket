@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { apiClient } from '../../../shared/api/apiClient';
 import { type Product } from '../type';
 import axios from 'axios';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { useFetchProductReviews } from '@/hooks/api/useReviewsApi';
 import zeroStar from '@/shared/assets/star-for-review.svg';
-import { useFetchCarts, useUpdateCartItem } from '@/hooks/api/useCartApi';
+import { useCreateCart, useFetchCarts, useUpdateCartItem } from '@/hooks/api/useCartApi';
 import { useCartStore } from '@/modules/Cart/store/useCartStore';
 import { useFavoritesStore } from '@/shared/context/favoritesStore';
 
@@ -27,26 +26,25 @@ export function ProductHero({ product }: ProductHeroProps) {
     // ====================================
 
     const { isAuthenticated, user } = useAuthStore();
-    const { data: carts } = useFetchCarts();
+    const { data: carts, isLoading: isCartsLoading } = useFetchCarts();
     const { mutateAsync: updateCartItem } = useUpdateCartItem();
-    const { activeCartId } = useCartStore();
+    const { mutateAsync: createCart } = useCreateCart();
+    const activeCartId = useCartStore((state) => state.activeCartId);
+    const setActiveCart = useCartStore((state) => state.setActiveCart);
     const { isFavorite, add: addFavorite, remove: removeFavorite } = useFavoritesStore();
     const navigate = useNavigate();
 
     const [quantity, setQuantity] = useState<number>(1);
     const [isAdding, setIsAdding] = useState<boolean>(false);
-    const [selectedCart, setSelectedCart] = useState<string | null>(null);
+    const [selectedCartOverride, setSelectedCartOverride] = useState<string | null>(null);
     const [selectedStoreId, setSelectedStoreId] = useState<string | null>(null);
-
-    useEffect(() => {
-        if (carts && carts.length > 0) {
-            if (activeCartId && carts.find(c => c.id === activeCartId)) {
-                setSelectedCart(activeCartId);
-            } else {
-                setSelectedCart(carts[0].id);
-            }
-        }
-    }, [carts, activeCartId]);
+    const selectedCart =
+        (selectedCartOverride && carts?.some((cart) => cart.id === selectedCartOverride)
+            ? selectedCartOverride
+            : null) ??
+        (activeCartId && carts?.some((cart) => cart.id === activeCartId) ? activeCartId : null) ??
+        carts?.[0]?.id ??
+        null;
 
     const userId = user?.id;
 
@@ -81,38 +79,28 @@ export function ProductHero({ product }: ProductHeroProps) {
     const handleAddToCart = async () => {
         const targetId = product?.id || productId;
 
-        if (isAuthenticated && carts && carts.length > 1 && !selectedCart) {
-            alert('Будь ласка, оберіть кошик');
+        if (!isAuthenticated || !userId) {
+            navigate('/auth');
             return;
         }
-
-        const targetCartId = selectedCart || (carts && carts[0]?.id);
-
-        if (!userId) {
-            alert('Будь ласка, увійдіть в систему, щоб додавати товари до кошика.');
+        if (targetId == null || isCartsLoading) {
             return;
         }
 
         try {
             setIsAdding(true);
+            let targetCartId = selectedCart;
 
-            if (isAuthenticated && targetCartId) {
-                await updateCartItem({
-                    cartId: targetCartId,
-                    productId: String(targetId),
-                    quantity: quantity
-                });
-            } else if (isAuthenticated) {
-                // No cart exists yet — create one first
-                const cartResponse = await apiClient.post('/api/v1/cart/', {
-                    name: "Мій кошик"
-                });
-                const newCartId = cartResponse.data.id;
-                await apiClient.post(`/api/v1/cart/${newCartId}/items`, {
-                    product_id: targetId,
-                    quantity: quantity
-                });
+            if (!targetCartId) {
+                targetCartId = await createCart('Мій кошик');
+                setActiveCart(targetCartId);
             }
+
+            await updateCartItem({
+                cartId: targetCartId,
+                productId: String(targetId),
+                quantity
+            });
 
             alert('Товар успішно додано до кошика!');
             setQuantity(1);
@@ -123,7 +111,13 @@ export function ProductHero({ product }: ProductHeroProps) {
                 const detail = error.response?.data?.detail;
 
                 if (Array.isArray(detail)) {
-                    const errorMessages = detail.map((err: any) => `Поле: [${err.loc.join(' -> ')}] | Проблема: ${err.msg}`).join('\n');
+                    const errorMessages = detail.map((entry: unknown) => {
+                        const validationError = entry as {
+                            loc?: Array<string | number>;
+                            msg?: string;
+                        };
+                        return `Поле: [${validationError.loc?.join(' -> ') ?? 'невідоме'}] | Проблема: ${validationError.msg ?? 'невідома'}`;
+                    }).join('\n');
                     alert(`Помилка даних (422):\n${errorMessages}`);
                 } else {
                     const backendMessage = detail || error.response?.data?.message || 'Помилка мережі';
@@ -166,6 +160,7 @@ export function ProductHero({ product }: ProductHeroProps) {
     const activePriceObj = selectedStoreId
         ? sortedPrices.find(p => p.store_id === selectedStoreId) || cheapestPriceObj
         : cheapestPriceObj;
+    const isProductAvailable = Boolean(activePriceObj && activePriceObj.in_stock !== false);
 
     const maxPrice = sortedPrices.length > 0 ? sortedPrices[sortedPrices.length - 1].price : 0;
     const minPrice = sortedPrices.length > 0 ? sortedPrices[0].price : 0;
@@ -291,9 +286,9 @@ export function ProductHero({ product }: ProductHeroProps) {
                                     }
                                 </div>
                             )}
-                            <div className={`px-[10px] py-[4px] rounded-[6px] font-inter text-[13px] font-semibold leading-[19.5px] ${activePriceObj?.in_stock ? 'bg-[#EAF7F2] dark:bg-[#EAF7F2]/10 text-[#265447] dark:text-[#3DAE8B]' : 'bg-[#FFF2F1] dark:bg-[#FFF2F1]/10 text-[#D94841] dark:text-[#EF4444]'
+                            <div className={`px-[10px] py-[4px] rounded-[6px] font-inter text-[13px] font-semibold leading-[19.5px] ${isProductAvailable ? 'bg-[#EAF7F2] dark:bg-[#EAF7F2]/10 text-[#265447] dark:text-[#3DAE8B]' : 'bg-[#FFF2F1] dark:bg-[#FFF2F1]/10 text-[#D94841] dark:text-[#EF4444]'
                                 }`}>
-                                {activePriceObj?.in_stock ? 'В наявності' : 'Немає в наявності'}
+                                {isProductAvailable ? 'В наявності' : 'Немає в наявності'}
                             </div>
                         </div>
 
@@ -301,8 +296,10 @@ export function ProductHero({ product }: ProductHeroProps) {
                         <div className="flex flex-wrap items-center gap-[12px] mb-[12px]">
                             <div className="flex items-center h-[44px] px-[8px] rounded-[10px] border border-[rgba(38,84,71,0.16)] dark:border-[#265447]/30 bg-white dark:bg-[#1D2A25] shadow-sm">
                                 <button
+                                    type="button"
                                     onClick={handleDecrease}
-                                    disabled={quantity <= 1 || !activePriceObj?.in_stock}
+                                    disabled={quantity <= 1 || !isProductAvailable}
+                                    aria-label="Зменшити кількість"
                                     className="w-[36px] h-full bg-transparent border-none text-[20px] text-[#4B5563] dark:text-[#A9B6B0] cursor-pointer disabled:opacity-30 transition-opacity"
                                 >
                                     -
@@ -311,8 +308,10 @@ export function ProductHero({ product }: ProductHeroProps) {
                                     {quantity}
                                 </span>
                                 <button
+                                    type="button"
                                     onClick={handleIncrease}
-                                    disabled={!activePriceObj?.in_stock}
+                                    disabled={!isProductAvailable}
+                                    aria-label="Збільшити кількість"
                                     className="w-[36px] h-full bg-transparent border-none text-[20px] text-[#4B5563] dark:text-[#A9B6B0] cursor-pointer hover:text-[#173B33] dark:hover:text-white transition-colors disabled:opacity-30"
                                 >
                                     +
@@ -321,8 +320,9 @@ export function ProductHero({ product }: ProductHeroProps) {
 
                             {/* ДОДАТИ В КОШИК */}
                             <button
+                                type="button"
                                 onClick={handleAddToCart}
-                                disabled={isAdding || !activePriceObj?.in_stock || (isAuthenticated && carts && carts.length > 1 && !selectedCart)}
+                                disabled={isAdding || !isProductAvailable || (isAuthenticated && isCartsLoading)}
                                 className="h-[44px] px-[24px] rounded-[10px] border-none bg-[#265447] dark:bg-[#3DAE8B] font-inter text-[13px] font-semibold text-white dark:text-[#111A17] whitespace-nowrap cursor-pointer transition-colors duration-200 hover:bg-[#1A3E2F] dark:hover:bg-[#2C9E7C] disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
                             >
                                 {isAdding ? 'Додаємо...' : 'Додати до кошика'}
@@ -370,7 +370,7 @@ export function ProductHero({ product }: ProductHeroProps) {
                                 <select
                                     className="h-[44px] px-[16px] rounded-[10px] border border-[rgba(38,84,71,0.16)] dark:border-[#265447]/30 bg-white dark:bg-[#1D2A25] font-inter text-[13px] text-[#173B33] dark:text-[#EAF7F2] outline-none"
                                     value={selectedCart || ''}
-                                    onChange={(e) => setSelectedCart(e.target.value)}
+                                    onChange={(e) => setSelectedCartOverride(e.target.value)}
                                 >
                                     <option value="" disabled>-- Оберіть кошик --</option>
                                     {carts.map(c => (

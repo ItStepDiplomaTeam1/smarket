@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useFavoritesStore } from '@/shared/context/favoritesStore';
@@ -45,12 +45,6 @@ const ListIcon = () => (
 const CloseIcon = () => (
   <svg width="10" height="10" viewBox="0 0 10 10" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M8.33333 1.66667L1.66667 8.33333M1.66667 1.66667L8.33333 8.33333" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-  </svg>
-);
-
-const HeartIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
   </svg>
 );
 
@@ -110,6 +104,11 @@ interface BatchOffersProduct {
   offers?: StoreOffer[];
 }
 
+interface StoreListRecord {
+  is_active: boolean;
+  retail_chain: string;
+}
+
 interface FetchFilters {
   page: number;
   category: string;
@@ -122,20 +121,6 @@ interface FetchFilters {
   sortBy: string;
   city?: string;
 }
-
-export const MAIN_CATEGORIES = [
-  { id: 1, slug: 'products', name: 'Продукти' },
-  { id: 2, slug: 'drinks', name: 'Напої' },
-  { id: 3, slug: 'snacks', name: 'Солодощі та снеки' },
-  { id: 4, slug: 'alcohol-tobacco', name: 'Алкоголь та тютюн' },
-  { id: 5, slug: 'home', name: 'Товари для дому' },
-  { id: 6, slug: 'beauty', name: "Краса та догляд" },
-  { id: 7, slug: 'zoo', name: 'Зоотовари' },
-  { id: 8, slug: 'baby', name: 'Дитячі товари' },
-  { id: 9, slug: 'chemistry', name: 'Побутова хімія' },
-  { id: 10, slug: 'hobby-rest', name: 'Хобі та відпочинок' },
-  { id: 11, slug: 'promo', name: 'Акції та промо' }
-];
 
 const CATEGORY_OPTIONS = [
   { id: 'products', icon: '🥦', name: 'Продукти', count: '1 240' },
@@ -161,10 +146,10 @@ const SUBCATEGORY_OPTIONS = [
 ];
 
 const DISCOUNT_OPTIONS = [
-  { id: '10', name: 'до 10%' },
-  { id: '10-20', name: '10%-20%' },
-  { id: '20-30', name: '20%-30%' },
-  { id: '30+', name: '30%+' },
+  { id: '10', name: 'Від 0% до 10%' },
+  { id: '10-20', name: 'Від 10% до 20%' },
+  { id: '20-30', name: 'Від 20% до 30%' },
+  { id: '30+', name: 'Від 30% і більше' },
 ];
 
 const PROPOSAL_OPTIONS = [
@@ -188,6 +173,30 @@ const countAvailableStores = (offers: StoreOffer[] = []): number => {
 
   return storeKeys.size;
 };
+
+const normalizeRetailChain = (value: string): string => value.trim().toLowerCase();
+
+const getEligibleOffers = (
+  product: Product,
+  selectedStores: string[],
+  maxPrice: number,
+): StoreOffer[] => {
+  const selectedStoreSet = new Set(selectedStores.map(normalizeRetailChain));
+
+  return (product.offers ?? []).filter((offer) => {
+    const retailChain = normalizeRetailChain(offer.store.retail_chain ?? '');
+    const matchesStore = selectedStoreSet.size === 0 || selectedStoreSet.has(retailChain);
+    const matchesPrice = Number.isFinite(maxPrice) && offer.price <= maxPrice;
+
+    return offer.in_stock && matchesStore && matchesPrice;
+  });
+};
+
+const getLowestPriceOffer = (offers: StoreOffer[]): StoreOffer | undefined =>
+  offers.reduce<StoreOffer | undefined>(
+    (lowest, offer) => (!lowest || offer.price < lowest.price ? offer : lowest),
+    undefined,
+  );
 
 const getStoresLabel = (count: number): string => {
   const lastTwoDigits = count % 100;
@@ -243,7 +252,7 @@ const fetchProducts = async (filters: FetchFilters): Promise<ProductsResponse> =
         url.searchParams.append('category_slug', filters.category);
     }
     
-    if (filters.maxPrice < 2000) {
+    if (Number.isFinite(filters.maxPrice) && filters.maxPrice >= 0) {
         url.searchParams.append('price_max', filters.maxPrice.toString());
     }
     
@@ -312,11 +321,13 @@ export function MainContent() {
           if (cityFilter) url.searchParams.set('city', cityFilter);
           const res = await fetch(url.toString());
           if (!res.ok) return [];
-          const data = await res.json();
-          const activeStores = data.filter((s: any) => s.is_active);
+          const data: unknown = await res.json();
+          const activeStores = Array.isArray(data)
+            ? (data as StoreListRecord[]).filter((store) => store.is_active)
+            : [];
           
           const storeMap = new Map<string, string>();
-          activeStores.forEach((s: any) => {
+          activeStores.forEach((s) => {
               if (!storeMap.has(s.retail_chain)) {
                   let label = s.retail_chain.charAt(0).toUpperCase() + s.retail_chain.slice(1);
                   if (s.retail_chain === 'atb') label = 'АТБ';
@@ -338,11 +349,16 @@ export function MainContent() {
   const initialSearch = searchParams.get('search') || '';
   const initialCategory = searchParams.get('category') || 'products';
   const initialOffer = searchParams.get('offer');
+  const initialStores = searchParams
+    .getAll('store')
+    .flatMap((value) => value.split(','))
+    .map(normalizeRetailChain)
+    .filter(Boolean);
 
   const [page, setPage] = useState(1);
   const [maxPrice, setMaxPrice] = useState<number>(2000); 
   const [selectedCategory, setSelectedCategory] = useState<string>(initialCategory); 
-  const [selectedStores, setSelectedStores] = useState<string[]>([]);
+  const [selectedStores, setSelectedStores] = useState<string[]>(initialStores);
   const [selectedSubcategories, setSelectedSubcategories] = useState<string[]>([]); 
   const [selectedOffers, setSelectedOffers] = useState<string[]>(initialOffer ? [initialOffer] : []);
   const [selectedDiscounts, setSelectedDiscounts] = useState<string[]>([]);
@@ -351,24 +367,6 @@ export function MainContent() {
   const [debouncedSearch, setDebouncedSearch] = useState<string>(initialSearch);
   const [sortBy, setSortBy] = useState<string>('best_price');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-
-  useEffect(() => {
-    const s = searchParams.get('search');
-    if (s !== null && s !== searchQuery) {
-      setSearchQuery(s);
-    }
-    const c = searchParams.get('category');
-    if (c !== null && c !== selectedCategory) {
-      setSelectedCategory(c);
-      setSelectedSubcategories([]);
-      setPage(1);
-    }
-    const o = searchParams.get('offer');
-    if (o !== null && !selectedOffers.includes(o)) {
-      setSelectedOffers([o]);
-      setPage(1);
-    }
-  }, [searchParams]);
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -439,7 +437,13 @@ export function MainContent() {
     staleTime: 2 * 60 * 1000, // 2 хвилини кеш
   });
 
-  const products = data?.items ?? [];
+  const products = useMemo(
+    () =>
+      (data?.items ?? []).filter(
+        (product) => getEligibleOffers(product, selectedStores, maxPrice).length > 0,
+      ),
+    [data?.items, maxPrice, selectedStores],
+  );
   const totalProducts = data?.total ?? 0;
 
   const toggleCategory = (categoryId: string) => {
@@ -490,18 +494,14 @@ export function MainContent() {
 
   const totalPages = Math.ceil(totalProducts / 12);
   
-  let paginationNumbers = [];
-  if (totalPages <= 7) {
-    paginationNumbers = Array.from({ length: totalPages }, (_, i) => i + 1);
-  } else {
-    if (page <= 3) {
-      paginationNumbers = [1, 2, 3, 4, '...', totalPages - 1, totalPages];
-    } else if (page >= totalPages - 2) {
-      paginationNumbers = [1, 2, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
-    } else {
-      paginationNumbers = [1, '...', page - 1, page, page + 1, '...', totalPages];
-    }
-  }
+  const paginationNumbers: Array<number | string> =
+    totalPages <= 7
+      ? Array.from({ length: totalPages }, (_, i) => i + 1)
+      : page <= 3
+        ? [1, 2, 3, 4, '...', totalPages - 1, totalPages]
+        : page >= totalPages - 2
+          ? [1, 2, '...', totalPages - 3, totalPages - 2, totalPages - 1, totalPages]
+          : [1, '...', page - 1, page, page + 1, '...', totalPages];
 
   return (
     <div className="w-full bg-white dark:bg-[#0B120F] transition-colors duration-300">
@@ -564,9 +564,11 @@ export function MainContent() {
               <div className="border border-[#E5E7EB] dark:border-[#263D31] bg-white dark:bg-[#0D1612] rounded-[8px] px-[12px] py-[10px] mb-[16px] transition-colors">
                   <input 
                   type="number" 
+                  min="0"
                   value={maxPrice}
                   onChange={(e) => {
-                      setMaxPrice(Number(e.target.value));
+                      const nextPrice = e.target.valueAsNumber;
+                      setMaxPrice(Number.isFinite(nextPrice) ? Math.max(0, nextPrice) : 0);
                       setPage(1);
                   }}
                   className="w-full border-none outline-none text-[#111827] dark:text-white text-[14px] bg-transparent"
@@ -580,7 +582,7 @@ export function MainContent() {
                   max="2000" 
                   value={maxPrice}
                   onChange={(e) => {
-                      setMaxPrice(Number(e.target.value));
+                      setMaxPrice(e.target.valueAsNumber);
                       setPage(1);
                   }}
                   className="w-full h-[4px] bg-[#F3F4F6] dark:bg-[#263D31] rounded-[2px] appearance-none cursor-pointer accent-[#173B33] dark:accent-[#3CD27D]"
@@ -904,7 +906,9 @@ export function MainContent() {
               </div>
             ) : (
               products.map((product, idx) => {
-                const offer = product.offers?.[0];
+                const isListView = viewMode === 'list';
+                const eligibleOffers = getEligibleOffers(product, selectedStores, maxPrice);
+                const offer = getLowestPriceOffer(eligibleOffers);
                 const currentPrice = offer?.price || 0;
                 const oldPrice = offer?.old_price || null;
                 
@@ -916,8 +920,15 @@ export function MainContent() {
                 const badgeType = discountPercent > 0 ? 'discount' : (idx % 4 === 1 ? 'new' : 'top');
 
                 return (
-                  <div key={product.id} className="border border-[#E5E7EB] dark:border-transparent rounded-[12px] p-[16px] flex flex-col bg-white dark:bg-[#15231D] hover:shadow-sm transition-all group">
-                    <div className="flex justify-between items-start min-h-[24px]">
+                  <div
+                    key={product.id}
+                    className={`border border-[#E5E7EB] dark:border-transparent rounded-[12px] p-[16px] bg-white dark:bg-[#15231D] hover:shadow-sm transition-all group ${
+                      isListView
+                        ? 'flex flex-col sm:grid sm:grid-cols-[180px_minmax(0,1fr)] sm:grid-rows-[auto_1fr] sm:gap-x-[20px]'
+                        : 'flex flex-col'
+                    }`}
+                  >
+                    <div className={`flex justify-between items-start min-h-[24px] ${isListView ? 'sm:col-start-2 sm:row-start-1' : ''}`}>
                       <div className="flex gap-[4px]">
                         {hasBadge && badgeType === 'discount' && (
                           <span className="text-[10px] font-bold px-[6px] py-[2px] rounded-[4px] bg-[#FFD600] text-[#111827]">
@@ -966,7 +977,14 @@ export function MainContent() {
                       </button>
                     </div>
                     
-                    <Link to={`/product/${product.id}`} className="w-full h-[140px] bg-[#F9FAFB] dark:bg-[#1A2E25] rounded-[8px] flex items-center justify-center mb-[16px] mt-[12px] overflow-hidden p-[8px]">
+                    <Link
+                      to={`/product/${product.id}`}
+                      className={`w-full bg-[#F9FAFB] dark:bg-[#1A2E25] rounded-[8px] flex items-center justify-center overflow-hidden p-[8px] ${
+                        isListView
+                          ? 'h-[140px] mt-[12px] mb-[16px] sm:h-full sm:min-h-[190px] sm:mt-0 sm:mb-0 sm:col-start-1 sm:row-start-1 sm:row-span-2'
+                          : 'h-[140px] mb-[16px] mt-[12px]'
+                      }`}
+                    >
                       {product.image_url ? (
                         <img src={product.image_url} alt={product.title} className="max-w-full max-h-full object-contain mix-blend-multiply dark:mix-blend-normal" />
                       ) : (
@@ -978,7 +996,7 @@ export function MainContent() {
                       )}
                     </Link>
                     
-                    <div className="flex flex-col flex-1">
+                    <div className={`flex flex-col flex-1 ${isListView ? 'sm:col-start-2 sm:row-start-2' : ''}`}>
                       <span className="text-[10px] font-bold text-[#9CA3AF] dark:text-[#7E968C] uppercase tracking-[0.05em] mb-[4px] truncate">
                         {product.category_name || product.category?.name || ''}
                       </span>
@@ -1000,7 +1018,7 @@ export function MainContent() {
                         </span>
                       </div>
                       
-                      <div className="mt-auto flex flex-col gap-[16px]">
+                      <div className={`mt-auto flex gap-[16px] ${isListView ? 'flex-col sm:flex-row sm:items-end sm:justify-between' : 'flex-col'}`}>
                         <div className="flex justify-between items-end min-h-[36px]">
                           <div className="flex flex-col">
                             <span className="text-[11px] text-[#6D8279] dark:text-[#7E968C] mb-[2px]">від</span>
@@ -1026,7 +1044,7 @@ export function MainContent() {
                         </div>
                         
                         <button onClick={() => navigate(`/product/${product.id}`)}
-                          className={`w-full py-[8px] rounded-[6px] font-bold text-[13px] border cursor-pointer transition-colors ${
+                          className={`${isListView ? 'w-full sm:w-auto sm:min-w-[160px]' : 'w-full'} py-[8px] rounded-[6px] font-bold text-[13px] border cursor-pointer transition-colors ${
                             oldPrice && oldPrice > currentPrice
                               ? 'bg-[#265447] text-white border-[#265447] hover:bg-[#1A3E2F] dark:bg-[#3CD27D] dark:text-[#0B120F] dark:border-transparent dark:hover:bg-[#34B86D]' 
                               : 'bg-white text-[#265447] border-[#E5E7EB] hover:border-[#265447] dark:bg-[#3CD27D] dark:text-[#0B120F] dark:border-transparent dark:hover:bg-[#34B86D]'
