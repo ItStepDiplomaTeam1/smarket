@@ -266,6 +266,7 @@ jobs:
           severity: CRITICAL,HIGH
           format: table
           exit-code: 1
+          trivyignores: .trivyignore
 
   # ═══════════════════════════════════════════
   #  STAGE 3 — LINT & TEST (parallel)
