@@ -1,10 +1,8 @@
 <svg width="175" height="140" viewBox="0 0 175 140" fill="none" xmlns="http://www.w3.org/2000/svg">
 <rect width="174.8" height="140" rx="10" fill="url(#paint0_linear_284_2069)"/>
-<path d="M75.3901 50V90" stroke="#3DAE8B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M99.3901 50V90" stroke="#3DAE8B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M75.3901 58H99.3901" stroke="#3DAE8B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M75.3901 74H99.3901" stroke="#3DAE8B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M75.3901 82H99.3901" stroke="#3DAE8B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M83.3999 56H91.3999V52C91.3999 51.4696 91.1892 50.9609 90.8141 50.5858C90.439 50.2107 89.9303 50 89.3999 50H85.3999C84.8695 50 84.3608 50.2107 83.9857 50.5858C83.6106 50.9609 83.3999 51.4696 83.3999 52V56Z" stroke="#3DAE8B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M91.3999 53C91.3999 56.252 92.4139 59.424 94.2999 62.074L94.3999 62.214C96.3506 64.9558 97.3992 68.237 97.3999 71.602V84C97.3999 85.0609 96.9785 86.0783 96.2283 86.8284C95.4782 87.5786 94.4608 88 93.3999 88H81.3999C80.339 88 79.3216 87.5786 78.5715 86.8284C77.8213 86.0783 77.3999 85.0609 77.3999 84V71.6C77.3999 68.236 78.4479 64.956 80.3999 62.214L80.4999 62.074C82.3866 59.4245 83.4003 56.2526 83.3999 53" stroke="#3DAE8B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M77.3999 75.6061C78.1999 75.2621 78.8913 74.7069 79.3999 74.0001C79.8542 73.3671 80.4558 72.8542 81.1528 72.5058C81.8497 72.1573 82.6209 71.9838 83.3999 72.0001C84.1789 71.9838 84.9502 72.1573 85.6471 72.5058C86.344 72.8542 86.9456 73.3671 87.3999 74.0001C87.8542 74.6331 88.4558 75.1459 89.1528 75.4944C89.8497 75.8428 90.6209 76.0164 91.3999 76.0001C92.1789 76.0164 92.9502 75.8428 93.6471 75.4944C94.344 75.1459 94.9456 74.6331 95.3999 74.0001C95.908 73.2918 96.5994 72.7352 97.3999 72.3901" stroke="#3DAE8B" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
 <defs>
 <linearGradient id="paint0_linear_284_2069" x1="87.4" y1="0" x2="87.4" y2="140" gradientUnits="userSpaceOnUse">
 <stop stop-color="#111A17"/>

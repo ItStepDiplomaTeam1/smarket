@@ -136,13 +136,11 @@ export function ProductsSec() {
                 alt={name} 
                 className="w-full max-w-[80px] h-auto mb-[24px] block dark:hidden" 
               />
-              <div className="hidden dark:flex w-[100px] h-[100px] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[#1A3B2A] to-[#111C17] rounded-[16px] border border-[#1A3125] items-center justify-center mb-[24px]">
-                <img 
-                  src={HOME_DARK_ICONS[index % HOME_DARK_ICONS.length]} 
-                  alt={name} 
-                  className="w-[60px] h-[60px] object-contain opacity-90" 
-                />
-              </div>
+              <img 
+                src={HOME_DARK_ICONS[index % HOME_DARK_ICONS.length]} 
+                alt={name} 
+                className="w-full max-w-[80px] h-auto mb-[24px] hidden dark:block" 
+              />
 
               <h3 className="font-inter text-[15px] font-bold text-[#173B33] dark:text-white m-0 mb-[8px] leading-[1.4] transition-colors">
                 {name}
