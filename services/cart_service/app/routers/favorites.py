@@ -47,14 +47,18 @@ async def add_favorite(
     existing = result.scalars().first()
     if existing:
         # Update cached fields if provided
-        if body.product_title:
+        updated = False
+        if body.product_title and existing.product_title != body.product_title:
             existing.product_title = body.product_title
-        if body.product_image_url:
+            updated = True
+        if body.product_image_url and existing.product_image_url != body.product_image_url:
             existing.product_image_url = body.product_image_url
-        if body.product_price is not None:
+            updated = True
+        if body.product_price is not None and existing.product_price != body.product_price:
             existing.product_price = body.product_price
-        await db.commit()
-        await db.refresh(existing)
+            updated = True
+        if updated:
+            await db.commit()
         return existing
 
     fav = Favorite(
