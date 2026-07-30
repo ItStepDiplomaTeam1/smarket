@@ -605,7 +605,7 @@ jobs:
           printf '%s\n' "$HETZNER_SSH_KEY" |
             sed 's/\r$//' > "$HOME/.ssh/hetzner_deploy_key"
           chmod 600 "$HOME/.ssh/hetzner_deploy_key"
-          ssh-keygen -y -f "$HOME/.ssh/hetzner_deploy_key" > /dev/null
+          ssh-keygen -y -P "" -f "$HOME/.ssh/hetzner_deploy_key" > /dev/null
 
           known_hosts_tmp="$RUNNER_TEMP/hetzner_known_hosts"
           if [[ -n "$HETZNER_KNOWN_HOSTS" ]]; then
