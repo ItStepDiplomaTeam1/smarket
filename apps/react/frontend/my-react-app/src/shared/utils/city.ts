@@ -46,6 +46,16 @@ export const getOptionalCityFilter = (
   isEnabled ? getCityFilterValue(city) : undefined
 );
 
+export const matchesCityFilter = (
+  storeCity: string | null | undefined,
+  cityFilter: string | undefined,
+): boolean => {
+  if (!cityFilter) return true;
+  if (!storeCity?.trim()) return false;
+
+  return getCityFilterValue(storeCity) === getCityFilterValue(cityFilter);
+};
+
 export const getCityDisplayName = (city: string): string => {
   const trimmed = city.trim();
   if (!trimmed) return '';

@@ -5,6 +5,7 @@ import { useFavoritesStore } from '@/shared/context/favoritesStore';
 import { useAuthStore } from '@/modules/Auth/store/authStore';
 import { useLocationStore } from '@/shared/store/locationStore';
 import { getOptionalCityFilter } from '@/shared/utils/city';
+import { getCategorySearchParams } from '@/shared/utils/catalogCategory';
 import { fetchExistingProducts } from '@/shared/api/productCatalog';
 import { mergeVerifiedProducts } from '@/shared/utils/productValidation';
 import { CatalogProductsSkeleton, CatalogRefreshIndicator } from '@/shared/ui';
@@ -249,8 +250,10 @@ const fetchProducts = async (filters: FetchFilters): Promise<ProductsResponse> =
     url.searchParams.append('limit', limit.toString());
     url.searchParams.append('offset', skip.toString());
     
-    if (filters.category && filters.category !== 'products') {
-        url.searchParams.append('category_slug', filters.category);
+    if (filters.category) {
+        Object.entries(getCategorySearchParams(filters.category)).forEach(([key, value]) => {
+            url.searchParams.set(key, value);
+        });
     }
     
     if (Number.isFinite(filters.maxPrice) && filters.maxPrice >= 0) {
@@ -407,8 +410,10 @@ export function MainContent() {
         // Category counts
         Promise.all(
           CATEGORY_OPTIONS.map(async (cat) => {
-            const params: Record<string, string> = { ...storeParams };
-            if (cat.id !== 'products') params['category_slug'] = cat.id;
+            const params: Record<string, string> = {
+              ...storeParams,
+              ...getCategorySearchParams(cat.id),
+            };
             const count = await fetchCount(params);
             return [cat.id, count] as [string, number];
           })

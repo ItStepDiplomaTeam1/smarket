@@ -8,6 +8,8 @@ import zeroStar from '@/shared/assets/star-for-review.svg';
 import { useCreateCart, useFetchCarts, useUpdateCartItem } from '@/hooks/api/useCartApi';
 import { useCartStore } from '@/modules/Cart/store/useCartStore';
 import { useFavoritesStore } from '@/shared/context/favoritesStore';
+import { useLocationStore } from '@/shared/store/locationStore';
+import { getOptionalCityFilter, matchesCityFilter } from '@/shared/utils/city';
 
 import mainMilk from '@/shared/assets/milk.svg';
 import starIcon from '@/shared/assets/gold-star.svg';
@@ -32,6 +34,9 @@ export function ProductHero({ product }: ProductHeroProps) {
     const activeCartId = useCartStore((state) => state.activeCartId);
     const setActiveCart = useCartStore((state) => state.setActiveCart);
     const { isFavorite, add: addFavorite, remove: removeFavorite } = useFavoritesStore();
+    const currentCity = useLocationStore((state) => state.currentCity);
+    const isCityFilterEnabled = useLocationStore((state) => state.isCityFilterEnabled);
+    const cityFilter = getOptionalCityFilter(currentCity, isCityFilterEnabled);
     const navigate = useNavigate();
 
     const [quantity, setQuantity] = useState<number>(1);
@@ -142,23 +147,29 @@ export function ProductHero({ product }: ProductHeroProps) {
     const getLatestPrices = () => {
         if (!product.prices || product.prices.length === 0) return [];
         const latestMap: Record<string, typeof product.prices[0]> = {};
-        product.prices.forEach((item) => {
+        product.prices
+          .filter((item) => matchesCityFilter(item.store.city, cityFilter))
+          .forEach((item) => {
             const storeId = item.store_id;
             const existing = latestMap[storeId];
             if (!existing || new Date(item.recorded_at) > new Date(existing.recorded_at)) {
                 latestMap[storeId] = item;
             }
-        });
+          });
         return Object.values(latestMap);
     };
 
     const latestPrices = getLatestPrices();
     const sortedPrices = [...latestPrices].sort((a, b) => a.price - b.price);
     const cheapestPriceObj = sortedPrices[0] || null;
+    const activeSelectedStoreId = selectedStoreId
+        && sortedPrices.some((price) => price.store_id === selectedStoreId)
+        ? selectedStoreId
+        : null;
 
     // Determine the active price object based on selected store
-    const activePriceObj = selectedStoreId
-        ? sortedPrices.find(p => p.store_id === selectedStoreId) || cheapestPriceObj
+    const activePriceObj = activeSelectedStoreId
+        ? sortedPrices.find(p => p.store_id === activeSelectedStoreId) || cheapestPriceObj
         : cheapestPriceObj;
     const isProductAvailable = Boolean(activePriceObj && activePriceObj.in_stock !== false);
 
@@ -402,8 +413,8 @@ export function ProductHero({ product }: ProductHeroProps) {
                                 ) : (
                                     sortedPrices.map((priceObj, index) => {
                                         const isCheapest = index === 0 && sortedPrices.length > 1;
-                                        const isSelected = selectedStoreId
-                                            ? priceObj.store_id === selectedStoreId
+                                        const isSelected = activeSelectedStoreId
+                                            ? priceObj.store_id === activeSelectedStoreId
                                             : index === 0;
                                         return (
                                             <div

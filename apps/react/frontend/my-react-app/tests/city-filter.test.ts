@@ -5,6 +5,7 @@ import {
   getCityDisplayName,
   getCityFilterValue,
   getOptionalCityFilter,
+  matchesCityFilter,
 } from '../src/shared/utils/city.ts';
 
 test('city labels are converted to values stored by the catalog services', () => {
@@ -26,4 +27,11 @@ test('disabled city filtering omits the city query parameter', () => {
 test('unknown cities remain usable instead of being discarded', () => {
   assert.equal(getCityFilterValue('  Uzhhorod  '), 'uzhhorod');
   assert.equal(getCityDisplayName('  Uzhhorod  '), 'Uzhhorod');
+});
+
+test('store cities are matched against the selected normalized city', () => {
+  assert.equal(matchesCityFilter('Київ', 'kiev'), true);
+  assert.equal(matchesCityFilter('odesa', 'kiev'), false);
+  assert.equal(matchesCityFilter(undefined, 'kiev'), false);
+  assert.equal(matchesCityFilter('odesa', undefined), true);
 });
