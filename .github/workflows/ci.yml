@@ -591,7 +591,7 @@ jobs:
       - name: Configure SSH host verification
         shell: bash
         env:
-          HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
+          HETZNER_HOST: ${{ secrets.HETZNER_HOST || '157.180.74.21' }}
           HETZNER_KNOWN_HOSTS: ${{ secrets.HETZNER_KNOWN_HOSTS }}
           HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
         run: |
@@ -630,7 +630,7 @@ jobs:
           DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_USER: ${{ github.actor }}
-          HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
+          HETZNER_HOST: ${{ secrets.HETZNER_HOST || '157.180.74.21' }}
           HETZNER_SSH_USER: ${{ secrets.HETZNER_SSH_USER || 'root' }}
         run: |
           set -Eeuo pipefail
