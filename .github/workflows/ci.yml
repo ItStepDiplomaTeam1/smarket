@@ -581,49 +581,144 @@ jobs:
       github.ref == 'refs/heads/develop' &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: read
       packages: read
-    env:
-      HOME: /root
-      DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
-      SMARKET_DEPLOY_WAIT_TIMEOUT: "360"
-      SMARKET_MIN_FREE_MB: "1024"
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Install Doppler CLI
+      - name: Configure SSH host verification
+        shell: bash
+        env:
+          HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
+          HETZNER_KNOWN_HOSTS: ${{ secrets.HETZNER_KNOWN_HOSTS }}
+          HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
         run: |
-          if ! command -v doppler &> /dev/null; then
-            curl -Ls --tlsv1.2 --proto "=https" --retry 3 \
+          set -Eeuo pipefail
+          trap 'echo "::error::SSH setup failed at line ${LINENO}."' ERR
+
+          : "${HETZNER_HOST:?HETZNER_HOST secret is required}"
+          : "${HETZNER_SSH_KEY:?HETZNER_SSH_KEY secret is required}"
+
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$HETZNER_SSH_KEY" |
+            sed 's/\r$//' > "$HOME/.ssh/hetzner_deploy_key"
+          chmod 600 "$HOME/.ssh/hetzner_deploy_key"
+          ssh-keygen -y -f "$HOME/.ssh/hetzner_deploy_key" > /dev/null
+
+          known_hosts_tmp="$RUNNER_TEMP/hetzner_known_hosts"
+          if [[ -n "$HETZNER_KNOWN_HOSTS" ]]; then
+            printf '%s\n' "$HETZNER_KNOWN_HOSTS" |
+              sed 's/\r$//' > "$known_hosts_tmp"
+          else
+            echo "::warning::HETZNER_KNOWN_HOSTS is not set; trusting the host key returned by the first connection."
+            for attempt in 1 2 3; do
+              if ssh-keyscan -T 10 -H "$HETZNER_HOST" > "$known_hosts_tmp" 2> /dev/null; then
+                break
+              fi
+              echo "Host-key scan attempt ${attempt}/3 failed."
+            done
+          fi
+          test -s "$known_hosts_tmp"
+          install -m 600 "$known_hosts_tmp" "$HOME/.ssh/known_hosts"
+          ssh-keygen -F "$HETZNER_HOST" -f "$HOME/.ssh/known_hosts" > /dev/null
+
+      - name: Deploy develop over SSH
+        shell: bash
+        env:
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GHCR_USER: ${{ github.actor }}
+          HETZNER_HOST: ${{ secrets.HETZNER_HOST }}
+          HETZNER_SSH_USER: ${{ secrets.HETZNER_SSH_USER || 'root' }}
+        run: |
+          set -Eeuo pipefail
+          trap 'echo "::error::SSH deployment transport failed at line ${LINENO}."' ERR
+
+          : "${DOPPLER_TOKEN:?DOPPLER_TOKEN secret is required}"
+          : "${GHCR_TOKEN:?GITHUB_TOKEN is required}"
+          : "${HETZNER_HOST:?HETZNER_HOST secret is required}"
+          : "${HETZNER_SSH_USER:?HETZNER_SSH_USER must not be empty}"
+
+          ssh_options=(
+            -i "$HOME/.ssh/hetzner_deploy_key"
+            -o BatchMode=yes
+            -o ConnectTimeout=20
+            -o ServerAliveCountMax=3
+            -o ServerAliveInterval=15
+            -o StrictHostKeyChecking=yes
+            -o UserKnownHostsFile="$HOME/.ssh/known_hosts"
+          )
+
+          {
+            # Secrets travel only through the encrypted SSH stream, never as
+            # command-line arguments or echoed workflow values.
+            printf '%s\n' "$DOPPLER_TOKEN"
+            printf '%s\n' "$GHCR_TOKEN"
+            printf '%s\n' "$GHCR_USER"
+            cat <<'REMOTE_SCRIPT'
+          set -Eeuo pipefail
+
+          deploy_tmp=""
+          cleanup() {
+            if [[ -n "$deploy_tmp" && -d "$deploy_tmp" ]]; then
+              rm -rf -- "$deploy_tmp"
+            fi
+          }
+          report_failure() {
+            local exit_code=$?
+            echo "::error::Remote deployment failed near line ${BASH_LINENO[0]} (exit ${exit_code})." >&2
+            exit "$exit_code"
+          }
+          trap cleanup EXIT
+          trap report_failure ERR
+
+          : "${DOPPLER_TOKEN:?Doppler credential was not received}"
+          : "${GHCR_TOKEN:?GHCR credential was not received}"
+          : "${GHCR_USER:?GHCR username was not received}"
+
+          readonly app_dir=/app/smarket
+          readonly deploy_wait_timeout=360
+          readonly min_free_mb=1024
+          deploy_tmp="$(mktemp -d /tmp/smarket-deploy.XXXXXX)"
+
+          echo "=== Updating application checkout ==="
+          test -d "$app_dir/.git"
+          cd "$app_dir"
+          git config --global --add safe.directory /app/smarket || true
+
+          # Preserve host-level Compose values while the tracked checkout moves.
+          if [[ -f infra/.env ]]; then
+            cp infra/.env "$deploy_tmp/infra.env"
+          fi
+          if [[ -f .env ]]; then
+            cp .env "$deploy_tmp/root.env"
+          fi
+
+          git checkout develop
+          git pull --ff-only origin develop
+
+          if [[ -f "$deploy_tmp/infra.env" ]]; then
+            install -m 600 "$deploy_tmp/infra.env" infra/.env
+          else
+            touch infra/.env
+            chmod 600 infra/.env
+          fi
+          if [[ -f "$deploy_tmp/root.env" ]]; then
+            install -m 600 "$deploy_tmp/root.env" .env
+          else
+            touch .env
+            chmod 600 .env
+          fi
+
+          echo "=== Synchronizing service secrets from Doppler ==="
+          if ! command -v doppler > /dev/null 2>&1; then
+            curl -LsS --tlsv1.2 --proto "=https" --retry 3 \
               https://cli.doppler.com/install.sh | sh
           fi
           doppler --version
 
-      - name: Doppler Diagnostics
-        run: |
-          echo "=== Doppler Token Check ==="
-          if [[ "$DOPPLER_TOKEN" == dp.st.* ]]; then
-            echo "⚠️ WARNING: You are using a Doppler Service Token (starts with 'dp.st.')."
-            echo "Service Tokens are restricted to a single configuration and cannot fetch secrets for other configs."
-            echo "Please use a Personal Access Token (starts with 'dp.pt.') for multi-service builds."
-          elif [[ "$DOPPLER_TOKEN" == dp.pt.* ]]; then
-            echo "✅ Token type: Personal Access Token (dp.pt.)."
-          else
-            echo "Token prefix: ${DOPPLER_TOKEN:0:7}..."
-          fi
-          echo "Running 'doppler me' to verify token details:"
-          doppler me --token "$DOPPLER_TOKEN" || true
-          echo "Running 'doppler projects' to list accessible projects:"
-          doppler projects --token "$DOPPLER_TOKEN" || true
-
-      - name: Pull secrets from Doppler → .env files
-        run: |
           declare -A configs=(
             ["services/gateway"]="dev_gateway"
             ["services/auth_service"]="dev_auth_service"
@@ -638,66 +733,26 @@ jobs:
           )
           for path in "${!configs[@]}"; do
             config="${configs[$path]}"
-            echo "⬇️  $config → $path/.env"
+            env_tmp="$deploy_tmp/${config}.env"
+            echo "Downloading Doppler config ${config}."
             doppler secrets download \
               --project smarket-services-secrets \
               --config "$config" \
-              --token "$DOPPLER_TOKEN" \
               --no-file --format env \
-              > "$path/.env"
+              > "$env_tmp"
+            test -s "$env_tmp"
+            install -m 600 "$env_tmp" "$path/.env"
           done
-          echo "✅ All .env files generated"
-
-      - name: Login to GHCR
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | \
-            docker login ghcr.io -u ${{ github.actor }} --password-stdin
-
-      - name: Pull latest images & restart services
-        working-directory: /app/smarket
-        run: |
-          git config --global --add safe.directory "${{ github.workspace }}" || true
-          git config --global --add safe.directory /app/smarket || true
-          if [ -f .git/shallow ]; then
-            echo "Target repository is shallow. Unshallowing..."
-            git fetch --unshallow "${{ github.workspace }}" HEAD
-          else
-            git fetch "${{ github.workspace }}" HEAD
-          fi
-          # Preserve host existing infra env files before checkout refresh
-          [ -f infra/.env ] && cp infra/.env /tmp/smarket_infra_host.env 2>/dev/null || true
-          [ -f .env ] && cp .env /tmp/smarket_root_host.env 2>/dev/null || true
-
-          git checkout -f -B develop FETCH_HEAD
-
-          for srv in services/gateway services/auth_service services/product_service \
-                     services/cart_service services/email_worker services/reviews_service \
-                     services/products_etl services/search_service services/zephyros_agent \
-                     services/audit_service; do
-            cp "${{ github.workspace }}/$srv/.env" "$srv/.env" 2>/dev/null || true
-          done
-
-          # Restore base host infra envs if present
-          if [ -f /tmp/smarket_infra_host.env ]; then
-            cp /tmp/smarket_infra_host.env infra/.env
-          else
-            touch infra/.env
-          fi
-          if [ -f /tmp/smarket_root_host.env ]; then
-            cp /tmp/smarket_root_host.env .env
-          else
-            touch .env
-          fi
 
           # Source host .env to populate process environment with valid secrets
           set -a
-          [ -f .env ] && source .env
+          source .env
           set +a
 
           # Enforce minimum length >= 32 for SEARCH_INTERNAL_API_TOKEN and ETL_ADMIN_KEY
           for var in SEARCH_INTERNAL_API_TOKEN ETL_ADMIN_KEY; do
-            val="${!var}"
-            if [ -z "$val" ] || [ "${#val}" -lt 32 ]; then
+            val="$(printenv "$var" 2> /dev/null || true)"
+            if [[ -z "$val" || "${#val}" -lt 32 ]]; then
               new_val=$(openssl rand -hex 20 2>/dev/null || tr -dc 'a-zA-Z0-9' < /dev/urandom | head -c 40)
               export "${var}=${new_val}"
             fi
@@ -705,15 +760,15 @@ jobs:
 
           # Clean up any stale or short secrets across all .env files
           for var in REDIS_PASSWORD RABBITMQ_PASS MONGO_PASS MEILISEARCH_API_KEY SEARCH_INTERNAL_API_TOKEN ETL_ADMIN_KEY; do
-            val="${!var}"
-            if [ -n "$val" ]; then
+            val="$(printenv "$var" 2> /dev/null || true)"
+            if [[ -n "$val" ]]; then
               sed -i "/^${var}=/d" .env 2>/dev/null || true
               echo "${var}=${val}" >> .env
               sed -i "/^${var}=/d" infra/.env 2>/dev/null || true
               echo "${var}=${val}" >> infra/.env
 
-              for f in "${{ github.workspace }}"/services/*/.env services/*/.env; do
-                if [ -f "$f" ]; then
+              for f in services/*/.env; do
+                if [[ -f "$f" ]]; then
                   sed -i "/^${var}=/d" "$f" 2>/dev/null || true
                   echo "${var}=${val}" >> "$f"
                 fi
@@ -722,13 +777,13 @@ jobs:
           done
 
           # Combine service .env files
-          cat "${{ github.workspace }}"/services/*/.env >> infra/.env 2>/dev/null || true
-          cat "${{ github.workspace }}"/services/*/.env >> .env 2>/dev/null || true
+          cat services/*/.env >> infra/.env
+          cat services/*/.env >> .env
 
           # Ensure sanitized secrets take final precedence at the end of .env & infra/.env
           for var in REDIS_PASSWORD RABBITMQ_PASS MONGO_PASS MEILISEARCH_API_KEY SEARCH_INTERNAL_API_TOKEN ETL_ADMIN_KEY; do
-            val="${!var}"
-            if [ -n "$val" ]; then
+            val="$(printenv "$var" 2> /dev/null || true)"
+            if [[ -n "$val" ]]; then
               sed -i "/^${var}=/d" .env 2>/dev/null || true
               echo "${var}=${val}" >> .env
               sed -i "/^${var}=/d" infra/.env 2>/dev/null || true
@@ -737,13 +792,11 @@ jobs:
           done
 
           set -a
-          [ -f .env ] && source .env
+          source .env
           set +a
 
           export IMAGE_TAG=develop
           compose=(docker compose --env-file .env -f infra/docker-compose.yml)
-          deploy_wait_timeout="${SMARKET_DEPLOY_WAIT_TIMEOUT:-360}"
-          min_free_mb="${SMARKET_MIN_FREE_MB:-1024}"
 
           if ! [[ "$deploy_wait_timeout" =~ ^[1-9][0-9]*$ && "$min_free_mb" =~ ^[1-9][0-9]*$ ]]; then
             echo "❌ Deploy timeout and minimum free disk space must be positive integers"
@@ -767,6 +820,11 @@ jobs:
               return 1
             fi
           }
+
+          echo "=== Authenticating Docker registry ==="
+          printf '%s' "$GHCR_TOKEN" |
+            docker login ghcr.io --username "$GHCR_USER" --password-stdin
+          unset DOPPLER_TOKEN GHCR_TOKEN
 
           "${compose[@]}" config --quiet
 
@@ -797,9 +855,17 @@ jobs:
             df -h "$docker_root" || true
             exit 1
           fi
-          timeout --signal=TERM --kill-after=10s 120s docker image prune -af || true
+          timeout --signal=TERM --kill-after=10s 120s docker image prune -af
 
           echo "✅ Deploy completed at $(date)"
+          REMOTE_SCRIPT
+          } | ssh "${ssh_options[@]}" \
+            "${HETZNER_SSH_USER}@${HETZNER_HOST}" \
+            'IFS= read -r DOPPLER_TOKEN &&
+             IFS= read -r GHCR_TOKEN &&
+             IFS= read -r GHCR_USER &&
+             export DOPPLER_TOKEN GHCR_TOKEN GHCR_USER &&
+             exec bash --noprofile --norc -se'
 
   # ═══════════════════════════════════════════
   #  STAGE 6 — AGGREGATE STATUS
