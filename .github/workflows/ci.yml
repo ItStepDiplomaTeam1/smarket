@@ -594,6 +594,7 @@ jobs:
           HETZNER_HOST: ${{ secrets.HETZNER_HOST || '157.180.74.21' }}
           HETZNER_KNOWN_HOSTS: ${{ secrets.HETZNER_KNOWN_HOSTS }}
           HETZNER_SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+          HETZNER_SSH_PASSPHRASE: ${{ secrets.HETZNER_SSH_PASSPHRASE }}
         run: |
           set -Eeuo pipefail
           trap 'echo "::error::SSH setup failed at line ${LINENO}."' ERR
@@ -605,7 +606,11 @@ jobs:
           printf '%s\n' "$HETZNER_SSH_KEY" |
             sed 's/\r$//' > "$HOME/.ssh/hetzner_deploy_key"
           chmod 600 "$HOME/.ssh/hetzner_deploy_key"
-          ssh-keygen -y -P "" -f "$HOME/.ssh/hetzner_deploy_key" > /dev/null
+          if [[ -z "$HETZNER_SSH_PASSPHRASE" ]] &&
+             ! ssh-keygen -y -P "" -f "$HOME/.ssh/hetzner_deploy_key" > /dev/null; then
+            echo "::error::HETZNER_SSH_KEY is encrypted. Add the HETZNER_SSH_PASSPHRASE secret or replace it with an unencrypted deploy key."
+            exit 1
+          fi
 
           known_hosts_tmp="$RUNNER_TEMP/hetzner_known_hosts"
           if [[ -n "$HETZNER_KNOWN_HOSTS" ]]; then
@@ -631,6 +636,7 @@ jobs:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GHCR_USER: ${{ github.actor }}
           HETZNER_HOST: ${{ secrets.HETZNER_HOST || '157.180.74.21' }}
+          HETZNER_SSH_PASSPHRASE: ${{ secrets.HETZNER_SSH_PASSPHRASE }}
           HETZNER_SSH_USER: ${{ secrets.HETZNER_SSH_USER || 'root' }}
         run: |
           set -Eeuo pipefail
@@ -641,15 +647,58 @@ jobs:
           : "${HETZNER_HOST:?HETZNER_HOST secret is required}"
           : "${HETZNER_SSH_USER:?HETZNER_SSH_USER must not be empty}"
 
+          ssh_agent_started=false
+          askpass_helper=""
+          cleanup_ssh() {
+            local exit_code=$?
+            trap - EXIT
+            if [[ "$ssh_agent_started" == true ]]; then
+              ssh-agent -k > /dev/null 2>&1 || true
+            fi
+            if [[ -n "$askpass_helper" ]]; then
+              rm -f -- "$askpass_helper"
+            fi
+            exit "$exit_code"
+          }
+          trap cleanup_ssh EXIT
+
           ssh_options=(
-            -i "$HOME/.ssh/hetzner_deploy_key"
             -o BatchMode=yes
             -o ConnectTimeout=20
+            -o PreferredAuthentications=publickey
             -o ServerAliveCountMax=3
             -o ServerAliveInterval=15
             -o StrictHostKeyChecking=yes
             -o UserKnownHostsFile="$HOME/.ssh/known_hosts"
           )
+
+          if [[ -n "$HETZNER_SSH_PASSPHRASE" ]]; then
+            eval "$(ssh-agent -s)" > /dev/null
+            ssh_agent_started=true
+            askpass_helper="$RUNNER_TEMP/hetzner_ssh_askpass"
+            cat > "$askpass_helper" <<'ASKPASS_SCRIPT'
+          #!/bin/sh
+          printf '%s\n' "$HETZNER_SSH_PASSPHRASE"
+          ASKPASS_SCRIPT
+            chmod 700 "$askpass_helper"
+
+            if ! DISPLAY=:0 \
+              SSH_ASKPASS="$askpass_helper" \
+              SSH_ASKPASS_REQUIRE=force \
+              ssh-add "$HOME/.ssh/hetzner_deploy_key" < /dev/null; then
+              echo "::error::Unable to unlock HETZNER_SSH_KEY with HETZNER_SSH_PASSPHRASE."
+              exit 1
+            fi
+            rm -f -- "$askpass_helper"
+            askpass_helper=""
+            unset HETZNER_SSH_PASSPHRASE
+            ssh_options+=(-o "IdentityAgent=$SSH_AUTH_SOCK")
+          else
+            ssh_options+=(
+              -i "$HOME/.ssh/hetzner_deploy_key"
+              -o IdentitiesOnly=yes
+            )
+          fi
 
           {
             # Secrets travel only through the encrypted SSH stream, never as
