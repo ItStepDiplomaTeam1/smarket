@@ -582,6 +582,7 @@ jobs:
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
     runs-on: self-hosted
+    timeout-minutes: 20
     permissions:
       contents: read
       packages: read
@@ -589,6 +590,7 @@ jobs:
       HOME: /root
       DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
       SMARKET_DEPLOY_WAIT_TIMEOUT: "360"
+      SMARKET_MIN_FREE_MB: "1024"
 
     steps:
       - uses: actions/checkout@v4
@@ -739,21 +741,63 @@ jobs:
           set +a
 
           export IMAGE_TAG=develop
-          # Free disk space on host server (truncate container logs, prune stopped containers & dangling images)
-          truncate -s 0 /var/lib/docker/containers/*/*-json.log 2>/dev/null || true
-          docker container prune -f || true
-          docker image prune -af || true
-          docker builder prune -af || true
+          compose=(docker compose --env-file .env -f infra/docker-compose.yml)
+          deploy_wait_timeout="${SMARKET_DEPLOY_WAIT_TIMEOUT:-360}"
+          min_free_mb="${SMARKET_MIN_FREE_MB:-1024}"
 
-          docker compose --env-file .env -f infra/docker-compose.yml config --quiet
-          docker compose --env-file .env -f infra/docker-compose.yml pull --quiet
-
-          if ! docker compose --env-file .env -f infra/docker-compose.yml up -d --remove-orphans --wait --wait-timeout "${SMARKET_DEPLOY_WAIT_TIMEOUT:-240}"; then
-            docker compose --env-file .env -f infra/docker-compose.yml ps
-            docker compose --env-file .env -f infra/docker-compose.yml logs --tail=150 mongodb rabbitmq redis products_etl auth_service auth_migration_job cart_service cart_migration_job product_service product_migration_job reviews_service reviews_migration_job gateway_service email_worker search_service meilisearch zephyros_agent audit_service audit_migration_job
+          if ! [[ "$deploy_wait_timeout" =~ ^[1-9][0-9]*$ && "$min_free_mb" =~ ^[1-9][0-9]*$ ]]; then
+            echo "❌ Deploy timeout and minimum free disk space must be positive integers"
             exit 1
           fi
-          docker image prune -af || true
+
+          docker_root="$(timeout --signal=TERM --kill-after=5s 15s \
+            docker info --format '{{.DockerRootDir}}' 2>/dev/null || true)"
+          [ -n "$docker_root" ] && [ -e "$docker_root" ] || docker_root=/
+
+          check_free_space() {
+            local available_mb
+            available_mb="$(df -Pk "$docker_root" | awk 'NR == 2 { print int($4 / 1024) }')"
+            if ! [[ "$available_mb" =~ ^[0-9]+$ ]]; then
+              echo "❌ Unable to determine free space for $docker_root"
+              return 1
+            fi
+            echo "💽 Free space on $docker_root: ${available_mb} MB"
+            if (( available_mb < min_free_mb )); then
+              echo "❌ At least ${min_free_mb} MB is required before starting MongoDB"
+              return 1
+            fi
+          }
+
+          "${compose[@]}" config --quiet
+
+          echo "=== Docker disk usage before cleanup ==="
+          df -h "$docker_root" || true
+          timeout --signal=TERM --kill-after=10s 30s docker system df || true
+
+          # Never truncate active json-file logs: Docker keeps the old write offset,
+          # which can create huge sparse logs and make `docker compose logs` hang.
+          timeout --signal=TERM --kill-after=10s 60s docker container prune -f || true
+          timeout --signal=TERM --kill-after=10s 120s docker image prune -af || true
+          timeout --signal=TERM --kill-after=10s 120s docker builder prune -af || true
+
+          echo "=== Docker disk usage after cleanup ==="
+          df -h "$docker_root" || true
+          check_free_space
+
+          timeout --signal=TERM --kill-after=30s 300s "${compose[@]}" pull --quiet
+          check_free_space
+
+          if ! timeout --signal=TERM --kill-after=30s "$((deploy_wait_timeout + 30))s" \
+            "${compose[@]}" up -d --remove-orphans --wait --wait-timeout "$deploy_wait_timeout"; then
+            timeout --signal=TERM --kill-after=5s 20s "${compose[@]}" ps --all || true
+            if ! timeout --signal=TERM --kill-after=5s 30s \
+              "${compose[@]}" logs --no-color --since=10m --tail=60; then
+              echo "⚠️ Container log collection timed out; failing deploy without blocking the runner"
+            fi
+            df -h "$docker_root" || true
+            exit 1
+          fi
+          timeout --signal=TERM --kill-after=10s 120s docker image prune -af || true
 
           echo "✅ Deploy completed at $(date)"
 
