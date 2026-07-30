@@ -739,7 +739,9 @@ jobs:
           set +a
 
           export IMAGE_TAG=develop
-          # Free disk space on host server prior to pull & container restart
+          # Free disk space on host server (truncate container logs, prune stopped containers & dangling images)
+          truncate -s 0 /var/lib/docker/containers/*/*-json.log 2>/dev/null || true
+          docker container prune -f || true
           docker image prune -af || true
           docker builder prune -af || true
 
