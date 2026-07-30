@@ -45,24 +45,21 @@ export function CategoriesSec() {
               className="w-full bg-white dark:bg-[#15231D] border border-transparent dark:border-[#1F3227] rounded-[16px] px-[12px] py-[20px] sm:px-[16px] sm:py-[24px] flex flex-col items-center text-center transition-all duration-300 hover:shadow-[0_10px_25px_rgba(0,0,0,0.05)] dark:hover:shadow-none hover:-translate-y-1 cursor-pointer group"
             >
               <div className="relative w-[64px] h-[64px] sm:w-[72px] sm:h-[72px] mb-[16px] rounded-[12px] bg-[#EAF7F2] dark:bg-[#1A2E25] flex items-center justify-center overflow-hidden">
-                <span aria-hidden="true" className="text-[30px]">
-                  {fallback}
-                </span>
                 <img
                   src={lightIcon}
-                  alt=""
+                  alt={name}
                   width="72"
                   height="72"
                   decoding="async"
-                  className="absolute inset-0 w-full h-full object-contain block dark:hidden"
+                  className="w-full h-full object-contain block dark:hidden"
                 />
                 <img
                   src={darkIcon}
-                  alt=""
+                  alt={name}
                   width="72"
                   height="72"
                   decoding="async"
-                  className="absolute inset-0 w-full h-full object-contain hidden dark:block"
+                  className="w-full h-full object-contain hidden dark:block"
                 />
               </div>
 
