@@ -579,6 +579,7 @@ jobs:
     if: |
       always() &&
       github.ref == 'refs/heads/develop' &&
+      needs.detect.outputs.has_deploy_changes == 'true' &&
       !contains(needs.*.result, 'failure') &&
       !contains(needs.*.result, 'cancelled')
     runs-on: ubuntu-latest
@@ -640,7 +641,7 @@ jobs:
           HETZNER_SSH_USER: ${{ secrets.HETZNER_SSH_USER || 'root' }}
         run: |
           set -Eeuo pipefail
-          trap 'echo "::error::SSH deployment transport failed at line ${LINENO}."' ERR
+          trap 'echo "::error::Deployment step failed at workflow line ${LINENO}; inspect the preceding remote error."' ERR
 
           : "${DOPPLER_TOKEN:?DOPPLER_TOKEN secret is required}"
           : "${GHCR_TOKEN:?GITHUB_TOKEN is required}"
@@ -899,9 +900,10 @@ jobs:
             timeout --signal=TERM --kill-after=5s 20s "${compose[@]}" ps --all || true
             if ! timeout --signal=TERM --kill-after=5s 30s \
               "${compose[@]}" logs --no-color --since=10m --tail=60; then
-              echo "⚠️ Container log collection timed out; failing deploy without blocking the runner"
+              echo "⚠️ Container log collection timed out; continuing with failure diagnostics"
             fi
             df -h "$docker_root" || true
+            echo "::error::Docker Compose failed to start all services; inspect the container status and logs above." >&2
             exit 1
           fi
           timeout --signal=TERM --kill-after=10s 120s docker image prune -af
@@ -930,6 +932,7 @@ jobs:
       - go-ci
       - rust-ci
       - docker-build
+      - deploy
     if: always()
     runs-on: ubuntu-latest
     steps:
