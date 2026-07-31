@@ -6,6 +6,7 @@ import {
   buildChatRequest,
   hasFallback,
   isMutationAction,
+  stripExecutableActionTokens,
 } from '../src/modules/AiChat/lib/chatContract.ts';
 
 const widgetSource = readFileSync(
@@ -64,10 +65,58 @@ test('only server-confirmed mutations require action tokens', () => {
 });
 
 
+test('persisted chat responses cannot replay one-time mutation tokens', () => {
+  const response = stripExecutableActionTokens({
+    blocks: [
+      {
+        type: 'action_button',
+        label: 'Додати',
+        action: 'add_to_cart',
+        payload: { product_id: 42, action_token: 'one-time-token' },
+      },
+      {
+        type: 'tabs',
+        items: [
+          {
+            label: 'Кошик',
+            blocks: [
+              {
+                type: 'action_button',
+                label: 'Очистити',
+                action: 'clear_cart',
+                payload: { cart_id: 'cart-1', action_token: 'nested-token' },
+              },
+            ],
+          },
+        ],
+      },
+      {
+        type: 'action_button',
+        label: 'Відкрити',
+        action: 'navigate',
+        payload: { route: '/cart', action_token: 'navigation-metadata' },
+      },
+    ],
+  });
+
+  assert.deepEqual(response.blocks[0].payload, { product_id: 42 });
+  assert.deepEqual(
+    response.blocks[1].items[0].blocks[0].payload,
+    { cart_id: 'cart-1' },
+  );
+  assert.equal(
+    response.blocks[2].payload.action_token,
+    'navigation-metadata',
+  );
+});
+
+
 test('widget keeps mutation execution and responsive accessibility contracts', () => {
   assert.match(widgetSource, /const isMutation = isMutationAction\(block\.action\);/);
   assert.match(widgetSource, /if \(isMutation\)/);
   assert.match(widgetSource, /execute\(\);/);
+  assert.match(widgetSource, /executingTokenRef\.current === token/);
+  assert.match(widgetSource, /invalidateActionToken\(token\)/);
   assert.match(widgetSource, /pending \? 'Виконується/);
   assert.match(widgetSource, /role="dialog"/);
   assert.match(widgetSource, /aria-live="polite"/);

@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
+import { stripExecutableActionTokens } from '@/modules/AiChat/lib/chatContract';
+
 export type UIBlock =
   | { type: 'text'; content: string }
   | { type: 'image'; url: string; alt?: string }
@@ -33,7 +35,23 @@ interface AiChatState {
   toggle: () => void;
   setProductView: (view: 'compact' | 'visual') => void;
   addMessage: (message: ChatMessage) => void;
+  invalidateActionToken: (token: string) => void;
   clearMessages: () => void;
+}
+
+function withoutExecutableActionTokens(
+  messages: ChatMessage[],
+  actionToken?: string,
+): ChatMessage[] {
+  return messages.map((message) => {
+    if (message.role !== 'assistant' || typeof message.content === 'string') {
+      return message;
+    }
+    return {
+      ...message,
+      content: stripExecutableActionTokens(message.content, actionToken),
+    };
+  });
 }
 
 export const useAiChatStore = create<AiChatState>()(
@@ -47,6 +65,10 @@ export const useAiChatStore = create<AiChatState>()(
       toggle: () => set((s) => ({ isOpen: !s.isOpen })),
       setProductView: (productView) => set({ productView }),
       addMessage: (message) => set((s) => ({ messages: [...s.messages, message] })),
+      invalidateActionToken: (token) =>
+        set((state) => ({
+          messages: withoutExecutableActionTokens(state.messages, token),
+        })),
       clearMessages: () => set({ messages: [] }),
     }),
     {
@@ -54,8 +76,16 @@ export const useAiChatStore = create<AiChatState>()(
       partialize: (state) => ({
         isOpen: state.isOpen,
         productView: state.productView,
-        messages: state.messages,
+        messages: withoutExecutableActionTokens(state.messages),
       }),
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState as Partial<AiChatState>;
+        return {
+          ...currentState,
+          ...persisted,
+          messages: withoutExecutableActionTokens(persisted.messages ?? []),
+        };
+      },
     }
   )
 );

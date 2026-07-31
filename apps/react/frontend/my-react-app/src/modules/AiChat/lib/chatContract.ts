@@ -32,3 +32,43 @@ export function isMutationAction(
     action === 'create_review'
   );
 }
+
+
+function stripActionToken(
+  block: UIBlock,
+  actionToken?: string,
+): UIBlock {
+  if (block.type === 'tabs') {
+    return {
+      ...block,
+      items: block.items.map((item) => ({
+        ...item,
+        blocks: item.blocks.map((child) => stripActionToken(child, actionToken)),
+      })),
+    };
+  }
+  if (block.type !== 'action_button' || !isMutationAction(block.action)) {
+    return block;
+  }
+  if (
+    actionToken !== undefined &&
+    block.payload.action_token !== actionToken
+  ) {
+    return block;
+  }
+
+  const payload = { ...block.payload };
+  delete payload.action_token;
+  return { ...block, payload };
+}
+
+
+export function stripExecutableActionTokens(
+  response: ZephyrosResponse,
+  actionToken?: string,
+): ZephyrosResponse {
+  return {
+    ...response,
+    blocks: response.blocks.map((block) => stripActionToken(block, actionToken)),
+  };
+}

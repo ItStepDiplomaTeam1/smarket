@@ -6,6 +6,7 @@ import {
   useState,
 } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { isAxiosError } from 'axios';
 import {
   AlertCircle,
   ArrowDown,
@@ -391,17 +392,30 @@ function ActionButtonView({
 }) {
   const navigate = useNavigate();
   const close = useAiChatStore((state) => state.close);
+  const invalidateActionToken = useAiChatStore((state) => state.invalidateActionToken);
   const [pending, setPending] = useState(false);
   const [completed, setCompleted] = useState(false);
+  const [expired, setExpired] = useState(false);
+  const executingTokenRef = useRef<string | null>(null);
   const isMutation = isMutationAction(block.action);
 
   const execute = async () => {
     const token = block.payload?.action_token;
-    if (!token || pending || completed) return;
+    if (
+      typeof token !== 'string' ||
+      !token ||
+      executingTokenRef.current === token ||
+      completed ||
+      expired
+    ) {
+      return;
+    }
+    executingTokenRef.current = token;
     setPending(true);
     try {
       await apiClient.post('/api/v1/agent/actions/execute', { action_token: token });
       setCompleted(true);
+      invalidateActionToken(token);
       const successMessages: Partial<
         Record<Extract<UIBlock, { type: 'action_button' }>['action'], string>
       > = {
@@ -418,13 +432,29 @@ function ActionButtonView({
           },
         ],
       });
-    } catch {
+    } catch (error) {
+      const actionExpired =
+        isAxiosError(error) &&
+        (
+          error.response?.status === 409 ||
+          error.response?.data?.error === 'agent_action_expired'
+        );
+      if (actionExpired) {
+        setExpired(true);
+        invalidateActionToken(token);
+      } else {
+        executingTokenRef.current = null;
+      }
       onFeedback({
         blocks: [
           {
             type: 'fallback',
-            message: 'Не вдалося виконати дію.',
-            suggestion: 'Оновіть пропозицію Zephyros і підтвердьте її ще раз.',
+            message: actionExpired
+              ? 'Дія вже виконана або термін підтвердження минув.'
+              : 'Не вдалося виконати дію.',
+            suggestion: actionExpired
+              ? 'Повторіть запит до Zephyros, щоб отримати актуальну пропозицію.'
+              : 'Перевірте з’єднання та спробуйте ще раз.',
           },
         ],
       });
@@ -466,7 +496,7 @@ function ActionButtonView({
     }
   }
 
-  const unavailable = isMutation && !block.payload?.action_token;
+  const unavailable = isMutation && (!block.payload?.action_token || expired);
   return (
     <button
       type="button"
